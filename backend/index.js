@@ -24,7 +24,9 @@ const app = express();
 app.use(cors({
   origin: [
     "https://drivegoweb.vercel.app/",
+    "https://drivegoweb.vercel.app",
     "https://drivego-admin.vercel.app/",
+    "https://drivego-admin.vercel.app",
     "http://10.239.197.228:8080",
     "http://localhost:8082",
     "http://localhost:8081",
