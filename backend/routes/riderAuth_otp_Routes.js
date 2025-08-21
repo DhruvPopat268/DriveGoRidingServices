@@ -42,7 +42,7 @@ router.post("/find-rider", authMiddleware, async (req, res) => {
     const rider = await Rider.findById(riderId);
 
     if (!rider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res.status(200).json({ success: false, message: "Rider not found" });
     }
 
     res.status(200).json({

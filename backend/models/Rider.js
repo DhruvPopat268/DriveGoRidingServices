@@ -6,9 +6,10 @@ const riderSchema = new mongoose.Schema(
     name: { type: String, default: "" },
     gender: {
       type: String,
-      enum: ["male", "female", "other"],
+      enum: ["male", "female", "other", ""], // add "" as allowed value
       default: ""
     },
+
     email: { type: String, default: "" },
   },
   { timestamps: true }
