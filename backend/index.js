@@ -23,6 +23,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
+    "http://192.168.0.149:8081",
     "https://drivegoweb.vercel.app/",
     "https://drivegoweb.vercel.app",
     "https://drivego-admin.vercel.app/",
@@ -62,6 +63,9 @@ app.use('/api/instructions', instructionRoutes);
 app.use("/api/rider-auth", riderAuthRoutes);
 
 app.use("/api/rides", rideRoutes);
+
+// admin
+app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));
 
 const PORT = process.env.PORT || 5000;
 

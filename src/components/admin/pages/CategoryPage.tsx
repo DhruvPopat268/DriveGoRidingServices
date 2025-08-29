@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Loader } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader, Upload, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import axios from 'axios';
 
 interface Category {
   _id: string;
-  id?: string; // Optional for compatibility
+  id?: string;
   name: string;
+  description?: string;
+  image?: {
+    public_id: string;
+    url: string;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -25,18 +32,27 @@ interface ApiResponse {
   errors?: string[];
 }
 
+
 export const CategoryPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryForm, setCategoryForm] = useState({ name: '' });
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    description: '',
+    image: null as File | null
+  });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Fetch categories on component mount
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -46,18 +62,20 @@ export const CategoryPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
-      const categoriesData = response.data.data || [];
-      // Ensure categoriesData is an array and filter out any null/undefined entries
+      const response = await axios.get(`${API_BASE_URL}/api/categories`);
+      const categoriesData = response.data || [];
+
       const validCategories: Category[] = Array.isArray(categoriesData)
         ? categoriesData.filter((item: any): item is Category =>
-            item !== null && typeof item === 'object' && (item._id || item.id) && typeof item.name === 'string'
-          ).map(item => ({
-              _id: item._id || item.id, // Ensure _id is always present
-              name: item.name,
-              createdAt: item.createdAt,
-              updatedAt: item.updatedAt
-          }))
+          item !== null && typeof item === 'object' && (item._id || item.id) && typeof item.name === 'string'
+        ).map(item => ({
+          _id: item._id || item.id,
+          name: item.name,
+          description: item.description || '',
+          image: item.image,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        }))
         : [];
       setCategories(validCategories);
     } catch (err) {
@@ -69,6 +87,41 @@ export const CategoryPage = () => {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        setError('Image size should be less than 10MB');
+        return;
+      }
+
+      if (!file.type.startsWith('image/')) {
+        setError('Please select a valid image file');
+        return;
+      }
+
+      setCategoryForm(prev => ({ ...prev, image: file }));
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setCategoryForm(prev => ({ ...prev, image: null }));
+    setImagePreview(null);
+  };
+
+  const resetForm = () => {
+    setCategoryForm({ name: '', description: '', image: null });
+    setImagePreview(null);
+    setError(null);
+  };
+
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryForm.name.trim()) return;
@@ -77,27 +130,27 @@ export const CategoryPage = () => {
       setActionLoading({ create: true });
       setError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: categoryForm.name.trim() }),
-      });
+      const formData = new FormData();
+      formData.append('name', categoryForm.name.trim());
+      formData.append('description', categoryForm.description.trim());
+      if (categoryForm.image) {
+        formData.append('image', categoryForm.image);
+      }
 
-      const result: ApiResponse = await response.json();
+      const response = await axios.post(`${API_BASE_URL}/api/categories`, formData);
+
+      const result: ApiResponse = response.data;
 
       if (result.success && result.data) {
-        // Add the new category to the list
         const newCategory = result.data as Category;
         if (newCategory._id || newCategory.id) {
-            setCategories([{ ...newCategory, _id: newCategory._id || newCategory.id! }, ...categories]);
-            setCategoryForm({ name: '' });
-            setCategoryDialogOpen(false);
-            setSuccess('Category created successfully!');
-            setTimeout(() => setSuccess(null), 3000);
+          setCategories([{ ...newCategory, _id: newCategory._id || newCategory.id! }, ...categories]);
+          resetForm();
+          setCategoryDialogOpen(false);
+          setSuccess('Category created successfully!');
+          setTimeout(() => setSuccess(null), 3000);
         } else {
-            setError('Created category is missing an ID.');
+          setError('Created category is missing an ID.');
         }
       } else {
         setError(result.message || 'Failed to create category');
@@ -116,31 +169,34 @@ export const CategoryPage = () => {
 
     const categoryId = editingCategory._id || editingCategory.id;
     if (!categoryId) {
-        setError('Editing category is missing an ID.');
-        return;
+      setError('Editing category is missing an ID.');
+      return;
     }
 
     try {
       setActionLoading({ [`edit-${categoryId}`]: true });
       setError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories/${categoryId}`, {
+      const formData = new FormData();
+      formData.append('name', categoryForm.name.trim());
+      formData.append('description', categoryForm.description.trim());
+      if (categoryForm.image) {
+        formData.append('image', categoryForm.image);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/categories/${categoryId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: categoryForm.name.trim() }),
+        body: formData,
       });
 
       const result: ApiResponse = await response.json();
 
       if (result.success && result.data) {
-        // Update the category in the list
         setCategories(categories.map(cat => {
-            const currentCatId = cat._id || cat.id;
-            return currentCatId === categoryId ? { ...result.data as Category, _id: categoryId } : cat;
+          const currentCatId = cat._id || cat.id;
+          return currentCatId === categoryId ? { ...result.data as Category, _id: categoryId } : cat;
         }));
-        setCategoryForm({ name: '' });
+        resetForm();
         setEditDialogOpen(false);
         setEditingCategory(null);
         setSuccess('Category updated successfully!');
@@ -158,8 +214,23 @@ export const CategoryPage = () => {
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
-    setCategoryForm({ name: category.name });
+    setCategoryForm({
+      name: category.name,
+      description: category.description || '',
+      image: null
+    });
+    // Set existing image as preview if available
+    if (category.image?.url) {
+      setImagePreview(category.image.url);
+    } else {
+      setImagePreview(null);
+    }
     setEditDialogOpen(true);
+  };
+
+  const handleView = (category: Category) => {
+    setViewingCategory(category);
+    setViewDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -167,14 +238,13 @@ export const CategoryPage = () => {
       setActionLoading({ [`delete-${id}`]: true });
       setError(null);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/categories/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/categories/${id}`, {
         method: 'DELETE',
       });
 
       const result: ApiResponse = await response.json();
 
       if (result.success) {
-        // Remove the category from the list
         setCategories(categories.filter(cat => (cat._id || cat.id) !== id));
         setSuccess('Category deleted successfully!');
         setTimeout(() => setSuccess(null), 3000);
@@ -189,8 +259,22 @@ export const CategoryPage = () => {
     }
   };
 
+  const ImagePreviewComponent = ({ src, alt, className }: { src: string; alt: string; className?: string }) => (
+    <div className={`relative ${className || 'w-16 h-16'}`}>
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover rounded-lg"
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yMSAyMUg0M1Y0M0gyMVYyMVoiIGZpbGw9IiNEMUQ1REIiLz4KPHBhdGggZD0iTTI2IDMwTDMwIDM0TDM0IDMwTDM4IDM0VjM4SDI2VjMwWiIgZmlsbD0iIzlDQTNBRiIvPgo8L3N2Zz4K';
+        }}
+      />
+    </div>
+  );
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Category Management</h1>
       </div>
@@ -201,7 +285,7 @@ export const CategoryPage = () => {
           <AlertDescription className="text-green-800">{success}</AlertDescription>
         </Alert>
       )}
-      
+
       {error && (
         <Alert className="border-red-200 bg-red-50">
           <AlertDescription className="text-red-800">{error}</AlertDescription>
@@ -211,7 +295,10 @@ export const CategoryPage = () => {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Categories ({categories.length})</h2>
-          <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+          <Dialog open={categoryDialogOpen} onOpenChange={(open) => {
+            setCategoryDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger asChild>
               <Button disabled={loading || actionLoading.create}>
                 {actionLoading.create ? (
@@ -227,18 +314,60 @@ export const CategoryPage = () => {
                 )}
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Create New Category</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleCategorySubmit} className="space-y-4">
-                <Input
-                  placeholder="Enter category name"
-                  value={categoryForm.name}
-                  onChange={(e) => setCategoryForm({ name: e.target.value })}
-                  required
-                  disabled={actionLoading.create}
-                />
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Category Name *</label>
+                  <Input
+                    placeholder="Enter category name"
+                    value={categoryForm.name}
+                    onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                    required
+                    disabled={actionLoading.create}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Description</label>
+                  <Textarea
+                    placeholder="Enter category description"
+                    value={categoryForm.description}
+                    onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                    disabled={actionLoading.create}
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Category Image</label>
+                  <div className="space-y-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      disabled={actionLoading.create}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+
+                    {imagePreview && (
+                      <div className="relative w-32 h-32">
+                        <ImagePreviewComponent src={imagePreview} alt="Preview" className="w-32 h-32" />
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          disabled={actionLoading.create}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <Button type="submit" className="w-full" disabled={actionLoading.create}>
                   {actionLoading.create ? (
                     <>
@@ -246,7 +375,7 @@ export const CategoryPage = () => {
                       Creating...
                     </>
                   ) : (
-                    'Submit'
+                    'Create Category'
                   )}
                 </Button>
               </form>
@@ -255,19 +384,67 @@ export const CategoryPage = () => {
         </div>
 
         {/* Edit Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
+        <Dialog open={editDialogOpen} onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) {
+            resetForm();
+            setEditingCategory(null);
+          }
+        }}>
+          <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Edit Category</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <Input
-                placeholder="Enter category name"
-                value={categoryForm.name}
-                onChange={(e) => setCategoryForm({ name: e.target.value })}
-                required
-                disabled={editingCategory ? actionLoading[`edit-${editingCategory._id || editingCategory.id}`] : false}
-              />
+              <div>
+                <label className="text-sm font-medium mb-2 block">Category Name *</label>
+                <Input
+                  placeholder="Enter category name"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                  disabled={editingCategory ? actionLoading[`edit-${editingCategory._id || editingCategory.id}`] : false}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Description</label>
+                <Textarea
+                  placeholder="Enter category description"
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                  disabled={editingCategory ? actionLoading[`edit-${editingCategory._id || editingCategory.id}`] : false}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Category Image</label>
+                <div className="space-y-3">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    disabled={editingCategory ? actionLoading[`edit-${editingCategory._id || editingCategory.id}`] : false}
+                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+
+                  {imagePreview && (
+                    <div className="relative w-32 h-32">
+                      <ImagePreviewComponent src={imagePreview} alt="Preview" className="w-32 h-32" />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                        disabled={editingCategory ? actionLoading[`edit-${editingCategory._id || editingCategory.id}`] : false}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full"
@@ -279,10 +456,44 @@ export const CategoryPage = () => {
                     Updating...
                   </>
                 ) : (
-                  'Update'
+                  'Update Category'
                 )}
               </Button>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Dialog */}
+        <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Category Details</DialogTitle>
+            </DialogHeader>
+            {viewingCategory && (
+              <div className="space-y-4">
+                {viewingCategory.image?.url && (
+                  <div className="flex justify-center">
+                    <ImagePreviewComponent
+                      src={viewingCategory.image.url}
+                      alt={viewingCategory.name}
+                      className="w-48 h-48"
+                    />
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-semibold text-lg">{viewingCategory.name}</h3>
+                  {viewingCategory.description && (
+                    <p className="text-gray-600 mt-2">{viewingCategory.description}</p>
+                  )}
+                </div>
+                <div className="text-sm text-gray-500">
+                  <p>Created: {viewingCategory.createdAt ? new Date(viewingCategory.createdAt).toLocaleDateString() : 'N/A'}</p>
+                  {viewingCategory.updatedAt && (
+                    <p>Updated: {new Date(viewingCategory.updatedAt).toLocaleDateString()}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
@@ -295,8 +506,10 @@ export const CategoryPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Index</TableHead>{/* Changed from ID to Index */}
+                <TableHead>Index</TableHead>
+                <TableHead>Image</TableHead>
                 <TableHead>Category Name</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead>Created At</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -304,25 +517,47 @@ export const CategoryPage = () => {
             <TableBody>
               {categories.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     No categories found. Create your first category!
                   </TableCell>
                 </TableRow>
               ) : (
-                categories.map((category, index) => { // Added 'index' parameter to map
+                categories.map((category, index) => {
                   const categoryId = category._id || category.id;
-                  // Ensure category and its ID are valid before rendering
                   if (!category || !categoryId) {
                     console.warn("Skipping invalid category entry:", category);
-                    return null; // Skip this iteration
+                    return null;
                   }
 
                   return (
-                    <TableRow key={categoryId}> {/* Still using categoryId for unique key */}
+                    <TableRow key={categoryId}>
                       <TableCell className="font-mono text-sm">
-                        {index + 1} {/* Displaying index starting from 1 */}
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        {category.image?.url ? (
+                          <ImagePreviewComponent
+                            src={category.image.url}
+                            alt={category.name}
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <Upload className="w-6 h-6 text-gray-400" />
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="max-w-xs">
+                        {category.description ? (
+                          <div className="truncate" title={category.description}>
+                            {category.description.length > 50
+                              ? category.description.substring(0, 50) + '...'
+                              : category.description}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">No description</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {category.createdAt
                           ? new Date(category.createdAt).toLocaleDateString()
@@ -334,8 +569,17 @@ export const CategoryPage = () => {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => handleView(category)}
+                            title="View details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleEdit(category)}
                             disabled={actionLoading[`edit-${categoryId}`] || actionLoading[`delete-${categoryId}`]}
+                            title="Edit category"
                           >
                             {actionLoading[`edit-${categoryId}`] ? (
                               <Loader className="w-4 h-4 animate-spin" />
@@ -349,6 +593,7 @@ export const CategoryPage = () => {
                                 variant="outline"
                                 size="sm"
                                 disabled={actionLoading[`edit-${categoryId}`] || actionLoading[`delete-${categoryId}`]}
+                                title="Delete category"
                               >
                                 {actionLoading[`delete-${categoryId}`] ? (
                                   <Loader className="w-4 h-4 animate-spin" />
@@ -361,7 +606,7 @@ export const CategoryPage = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the category "{category.name}".
+                                  This action cannot be undone. This will permanently delete the category "{category.name}" and its associated image.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>

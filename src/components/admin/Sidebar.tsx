@@ -18,7 +18,8 @@ import {
   Clock,
   BookOpen,
   UserCheck,
-  Package
+  Package,
+  Bike
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,8 @@ const menuItems = [
   { icon: UserCheck, label: "Driver Calculation Model", key: "drivercalculation" },
   { icon: Car, label: "Cab Calculation Model", key: "cabcalculation" },
   { icon: Package, label: "Parcel Calculation Model", key: "parcelcalculation" },
+  { icon: Bike, label: "Rides", key: "rides" },
+
 ];
 
 export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps) => {

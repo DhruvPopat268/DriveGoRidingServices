@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -57,7 +56,7 @@ export const InstructionsPage = () => {
     queryKey: ["categories"],
     queryFn: async () => {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
-      return response.data.data || [];
+      return response.data || [];
     },
   });
 
@@ -66,19 +65,21 @@ export const InstructionsPage = () => {
     queryKey: ["subcategories"],
     queryFn: async () => {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
-   
       return response.data || [];
     },
   });
 
   // Filter subcategories based on selected category
   const filteredSubCategories = subCategories.filter(
-   
     (sub: SubCategory) => sub.categoryId === selectedCategory
-
   );
-    console.log(filteredSubCategories)
 
+  // Reset subcategory when category changes or when filtered subcategories don't include current selection
+  useEffect(() => {
+    if (selectedSubCategory && !filteredSubCategories.some((sub: SubCategory) => sub._id === selectedSubCategory)) {
+      // setSelectedSubCategory("");
+    }
+  }, [selectedCategory, filteredSubCategories, selectedSubCategory]);
 
   // Create instruction mutation
   const createMutation = useMutation({
@@ -93,8 +94,8 @@ export const InstructionsPage = () => {
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error.response?.data?.message || "Failed to add instruction",
         variant: "destructive"
       });
@@ -114,8 +115,8 @@ export const InstructionsPage = () => {
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error.response?.data?.message || "Failed to update instruction",
         variant: "destructive"
       });
@@ -133,8 +134,8 @@ export const InstructionsPage = () => {
       toast({ title: "Success", description: "Instruction deleted successfully" });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error.response?.data?.message || "Failed to delete instruction",
         variant: "destructive"
       });
@@ -150,8 +151,8 @@ export const InstructionsPage = () => {
 
   const handleSubmit = () => {
     if (!selectedCategory || !selectedSubCategory || !instructions.trim()) {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: "Please fill in all fields",
         variant: "destructive"
       });
@@ -195,6 +196,11 @@ export const InstructionsPage = () => {
     setIsDialogOpen(true);
   };
 
+  const handleCategoryChange = (value: string) => {
+    setSelectedCategory(value);
+    setSelectedSubCategory(""); // Reset subcategory when category changes
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -215,10 +221,10 @@ export const InstructionsPage = () => {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select value={selectedCategory} onValueChange={(value) => {
-                  setSelectedCategory(value);
-                  setSelectedSubCategory(""); // Reset subcategory when category changes
-                }}>
+                <Select
+                  value={selectedCategory}
+                  onValueChange={handleCategoryChange}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
@@ -234,22 +240,44 @@ export const InstructionsPage = () => {
 
               <div>
                 <Label htmlFor="subcategory">Sub Category</Label>
-                <Select 
-                  value={selectedSubCategory} 
-                  onValueChange={setSelectedSubCategory}
-                  disabled={!selectedCategory}
+                <Select
+                  key={`${selectedCategory}-subcategory`} // Force re-render when category changes
+                  value={selectedSubCategory || ""} // Ensure controlled component
+                  onValueChange={(value) => {
+                    console.log("🟢 SubCategory changed:", value, typeof value);
+                    setSelectedSubCategory(value);
+                  }}
+                  disabled={!selectedCategory || filteredSubCategories.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Sub Category" />
+                    <SelectValue
+                      placeholder={
+                        !selectedCategory
+                          ? "Select Category first"
+                          : filteredSubCategories.length === 0
+                            ? "No Sub Categories available"
+                            : "Select Sub Category"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredSubCategories.map((subCategory: SubCategory) => (
-                      <SelectItem key={subCategory._id} value={subCategory._id}>
-                        {subCategory.name}
-                      </SelectItem>
-                    ))}
+                    {filteredSubCategories.map((subCategory) => {
+                      // Ensure consistent string types
+                      const subCategoryId = String(subCategory.id);
+
+                      return (
+                        <SelectItem
+                          key={subCategory.id}
+                          value={subCategoryId}
+                        >
+                          {subCategory.name}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+
+              
               </div>
 
               <div>
@@ -263,8 +291,8 @@ export const InstructionsPage = () => {
                 />
               </div>
 
-              <Button 
-                onClick={handleSubmit} 
+              <Button
+                onClick={handleSubmit}
                 className="w-full"
                 disabled={createMutation.isPending || updateMutation.isPending}
               >

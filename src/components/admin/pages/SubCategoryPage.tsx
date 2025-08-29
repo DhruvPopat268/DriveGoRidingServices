@@ -16,32 +16,36 @@ interface Category {
 
 interface SubCategory {
   id: number;
-  _id: string; // Add this for the actual database ID
+  _id: string;
   categoryId: number;
   categoryName: string;
   name: string;
+  description?: string;
+  image?: string;
 }
 
 export const SubCategoryPage = () => {
   const [categories, setCategories] = useState([])
-
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([
-    
-  ]);
-
-  const [subCategoryForm, setSubCategoryForm] = useState({ categoryId: '', name: '' });
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [subCategoryDialogOpen, setSubCategoryDialogOpen] = useState(false);
   const [editingSubCategory, setEditingSubCategory] = useState<SubCategory | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const [subCategoryForm, setSubCategoryForm] = useState({
+    categoryId: '',
+    name: '',
+    description: '',
+  });
+
+  // File state for image uploads
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const cateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
-
-        console.log(cateData.data?.data)
-        
-        const categoryList = cateData.data?.data;
+        const categoryList = cateData.data;
 
         if (Array.isArray(categoryList)) {
           setCategories(categoryList);
@@ -68,12 +72,15 @@ export const SubCategoryPage = () => {
           return;
         }
 
-        // Map the response to ensure we have both id and _id
-        const mappedSubCategories = subcategoryList.map((subCat) => ({
-          ...subCat,
-          id: subCat.id || subCat._id, // Use _id as fallback for id
-          _id: subCat._id || subCat.id  // Ensure _id exists
-        }));
+        const mappedSubCategories = subcategoryList.map((subCat) => {
+          const category = categories.find((cat) => cat._id === subCat.categoryId);
+          return {
+            ...subCat,
+            id: subCat.id || subCat._id,
+            _id: subCat._id || subCat.id,
+            categoryName: category ? category.name : "Unknown",
+          };
+        });
 
         setSubCategories(mappedSubCategories);
       } catch (error) {
@@ -84,21 +91,51 @@ export const SubCategoryPage = () => {
 
     fetchCategories();
     fetchSubCategories();
-  }, []);
+  }, [categories]); // Add categories dependency to re-fetch subcategories when categories change
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+    }
+  };
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditImageFile(file);
+    }
+  };
 
   const handleSubCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (subCategoryForm.categoryId && subCategoryForm.name.trim()) {
       try {
-        const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/subcategories`, {
-          categoryId: subCategoryForm.categoryId,
-          name: subCategoryForm.name.trim(),
-        });
+        // Create FormData for multipart/form-data request
+        const formData = new FormData();
+        formData.append('categoryId', subCategoryForm.categoryId);
+        formData.append('name', subCategoryForm.name.trim());
+        formData.append('description', subCategoryForm.description || '');
 
-        // Refresh the subcategories list to get the correct server response
+        // Add image file if selected
+        if (imageFile) {
+          formData.append('image', imageFile);
+        }
+
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/subcategories`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
+
+        // Refresh the subcategories list
         const subcateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
-        
+
         let subcategoryList = [];
         if (Array.isArray(subcateData.data)) {
           subcategoryList = subcateData.data;
@@ -106,15 +143,27 @@ export const SubCategoryPage = () => {
           subcategoryList = subcateData.data.data;
         }
 
-        const mappedSubCategories = subcategoryList.map((subCat) => ({
-          ...subCat,
-          id: subCat.id || subCat._id,
-          _id: subCat._id || subCat.id
-        }));
+        const mappedSubCategories = subcategoryList.map((subCat) => {
+          const category = categories.find((cat) => cat._id === subCat.categoryId);
+          return {
+            ...subCat,
+            id: subCat.id || subCat._id,
+            _id: subCat._id || subCat.id,
+            categoryName: category ? category.name : "Unknown",
+          };
+        });
 
         setSubCategories(mappedSubCategories);
-        setSubCategoryForm({ categoryId: '', name: '' });
+
+        // Reset form and close dialog
+        setSubCategoryForm({ categoryId: '', name: '', description: '' });
+        setImageFile(null);
         setSubCategoryDialogOpen(false);
+
+        // Reset file input
+        const fileInput = document.getElementById('create-image-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+
       } catch (error) {
         console.error('Failed to add subcategory:', error);
         alert('Error adding subcategory. Please try again.');
@@ -126,14 +175,30 @@ export const SubCategoryPage = () => {
     e.preventDefault();
     if (editingSubCategory && subCategoryForm.categoryId && subCategoryForm.name.trim()) {
       try {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/subcategories/${editingSubCategory._id}`, {
-          categoryId: subCategoryForm.categoryId,
-          name: subCategoryForm.name.trim(),
-        });
+        // Create FormData for multipart/form-data request
+        const formData = new FormData();
+        formData.append('categoryId', subCategoryForm.categoryId);
+        formData.append('name', subCategoryForm.name.trim());
+        formData.append('description', subCategoryForm.description || '');
+
+        // Add image file if a new one is selected
+        if (editImageFile) {
+          formData.append('image', editImageFile);
+        }
+
+        await axios.put(
+          `${import.meta.env.VITE_API_URL}/api/subcategories/${editingSubCategory._id}`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          }
+        );
 
         // Refresh the list after successful update
         const subcateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
-        
+
         let subcategoryList = [];
         if (Array.isArray(subcateData.data)) {
           subcategoryList = subcateData.data;
@@ -141,16 +206,28 @@ export const SubCategoryPage = () => {
           subcategoryList = subcateData.data.data;
         }
 
-        const mappedSubCategories = subcategoryList.map((subCat) => ({
-          ...subCat,
-          id: subCat.id || subCat._id,
-          _id: subCat._id || subCat.id
-        }));
+        const mappedSubCategories = subcategoryList.map((subCat) => {
+          const category = categories.find((cat) => cat._id === subCat.categoryId);
+          return {
+            ...subCat,
+            id: subCat.id || subCat._id,
+            _id: subCat._id || subCat.id,
+            categoryName: category ? category.name : "Unknown",
+          };
+        });
 
         setSubCategories(mappedSubCategories);
-        setSubCategoryForm({ categoryId: '', name: '' });
+
+        // Reset form and close dialog
+        setSubCategoryForm({ categoryId: '', name: '', description: '' });
+        setEditImageFile(null);
         setEditDialogOpen(false);
         setEditingSubCategory(null);
+
+        // Reset file input
+        const fileInput = document.getElementById('edit-image-input') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+
       } catch (error) {
         console.error('Failed to update subcategory:', error);
         alert('Error updating subcategory. Please try again.');
@@ -162,19 +239,18 @@ export const SubCategoryPage = () => {
     setEditingSubCategory(subCategory);
     setSubCategoryForm({
       categoryId: subCategory.categoryId.toString(),
-      name: subCategory.name
+      name: subCategory.name,
+      description: subCategory.description || ''
     });
     setEditDialogOpen(true);
   };
 
   const handleDelete = async (subCategory: SubCategory) => {
     try {
-      // Use the _id (database ID) for deletion, not the local id
       const deleteId = subCategory._id || subCategory.id;
       const response = await axios.delete(`${import.meta.env.VITE_API_URL}/api/subcategories/${deleteId}`);
-      
+
       if (response.status === 200) {
-        // Remove from UI using the local id for filtering
         setSubCategories(prev => prev.filter(subCat => subCat.id !== subCategory.id));
         console.log('Subcategory deleted successfully');
       } else {
@@ -219,12 +295,37 @@ export const SubCategoryPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
+
                 <Input
-                  placeholder="Sub Category"
+                  placeholder="Sub Category Name"
                   value={subCategoryForm.name}
                   onChange={(e) => setSubCategoryForm({ ...subCategoryForm, name: e.target.value })}
                   required
                 />
+
+                <Input
+                  placeholder="Description"
+                  value={subCategoryForm.description}
+                  onChange={(e) => setSubCategoryForm({ ...subCategoryForm, description: e.target.value })}
+                />
+
+                {/* File input for image upload */}
+                <div className="space-y-2">
+                  <label htmlFor="create-image-input" className="text-sm font-medium">
+                    Upload Image
+                  </label>
+                  <Input
+                    id="create-image-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  {imageFile && (
+                    <p className="text-sm text-gray-600">Selected: {imageFile.name}</p>
+                  )}
+                </div>
+
                 <Button type="submit" className="w-full">Submit</Button>
               </form>
             </DialogContent>
@@ -250,12 +351,47 @@ export const SubCategoryPage = () => {
                   ))}
                 </SelectContent>
               </Select>
+
               <Input
-                placeholder="Sub Category"
+                placeholder="Sub Category Name"
                 value={subCategoryForm.name}
                 onChange={(e) => setSubCategoryForm({ ...subCategoryForm, name: e.target.value })}
                 required
               />
+
+              <Input
+                placeholder="Description"
+                value={subCategoryForm.description}
+                onChange={(e) => setSubCategoryForm({ ...subCategoryForm, description: e.target.value })}
+              />
+
+              {/* File input for image upload */}
+              <div className="space-y-2">
+                <label htmlFor="edit-image-input" className="text-sm font-medium">
+                  Upload New Image (optional)
+                </label>
+                {editingSubCategory?.image && (
+                  <div className="flex items-center space-x-2 mb-2">
+                    <img
+                      src={editingSubCategory.image}
+                      alt="Current"
+                      className="h-10 w-10 object-cover rounded"
+                    />
+                    <span className="text-sm text-gray-600">Current image</span>
+                  </div>
+                )}
+                <Input
+                  id="edit-image-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditImageChange}
+                  className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {editImageFile && (
+                  <p className="text-sm text-gray-600">New image selected: {editImageFile.name}</p>
+                )}
+              </div>
+
               <Button type="submit" className="w-full">Update</Button>
             </form>
           </DialogContent>
@@ -264,41 +400,60 @@ export const SubCategoryPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
+              <TableHead>Order</TableHead>
+             
+              <TableHead>Image</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Sub Category Name</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
             {subCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                  No subcategory found. Create your first subcategory!
+                <TableCell colSpan={6} className="text-center text-gray-500 py-6">
+                  No subcategories found. Please add first.
                 </TableCell>
               </TableRow>
             ) : (
-              subCategories.map((subCategory) => (
+              subCategories.map((subCategory, index) => (
                 <TableRow key={subCategory.id}>
-                  <TableCell>{subCategory.id}</TableCell>
+                  <TableCell>{index + 1}</TableCell>
+                 
+                  <TableCell>
+                    {subCategory.image && (
+                      <img
+                        src={subCategory.image}
+                        alt={subCategory.name}
+                        className="h-10 w-10 object-cover rounded"
+                      />
+                    )}
+                  </TableCell>
                   <TableCell>{subCategory.categoryName}</TableCell>
                   <TableCell>{subCategory.name}</TableCell>
+                  <TableCell>{subCategory.description || 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(subCategory)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(subCategory)}
+                      >
                         <Edit className="w-4 h-4" />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm">
+                          <Button variant="destructive" size="sm">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the subcategory.
+                              Are you sure you want to delete "{subCategory.name}"? This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -313,6 +468,7 @@ export const SubCategoryPage = () => {
                   </TableCell>
                 </TableRow>
               ))
+
             )}
           </TableBody>
         </Table>

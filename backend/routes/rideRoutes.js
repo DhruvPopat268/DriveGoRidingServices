@@ -33,22 +33,33 @@ router.post("/book", authMiddleware, async (req, res) => {
     const newRide = new Ride({
       riderId,
       riderMobile: mobile,
-      categoryId,
-      subcategoryId,
-      subcategoryName,
-      carType,
-      fromLocation,
-      toLocation,
-      includeInsurance,
-      notes,
-      selectedCategory,
-      selectedDate,
-      selectedTime,
-      selectedUsage,
-      transmissionType,
-      totalPayable,
+
+      // ✅ move everything into rideInfo
+      rideInfo: {
+        categoryId,
+        subcategoryId,
+        subcategoryName,
+        carType,
+        fromLocation,
+        toLocation,
+        includeInsurance,
+        notes,
+        selectedCategory: selectedCategory?.category || selectedCategory,
+        selectedDate,
+        selectedTime,
+        selectedUsage,
+        transmissionType,
+
+        insuranceCharges: selectedCategory?.insuranceCharges || req.body.insuranceCharges || 0,
+        discount: selectedCategory?.discount || req.body.discount || 0,
+        gstCharges: selectedCategory?.gstCharges || req.body.gstCharges || 0,
+        subtotal: selectedCategory?.subtotal || req.body.subtotal || 0,
+      },
+
+      // ✅ keep at root
+      totalPayable: selectedCategory?.totalPayable || req.body.totalPayable,
       paymentType,
-      status: "BOOKED", // 👈 explicitly set as BOOKED
+      status: "BOOKED",
     });
 
     await newRide.save();
@@ -58,6 +69,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 });
+
 
 // all rides
 router.post("/my-rides", authMiddleware, async (req, res) => {
@@ -106,7 +118,6 @@ router.post("/booked/my-rides", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
-
 
 //give ride doc as per ride id for detail view
 router.post("/booking/id", authMiddleware, async (req, res) => {
