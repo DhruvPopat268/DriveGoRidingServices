@@ -80,7 +80,7 @@ router.post('/calculation', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    // 2. Normalize category & subcategory to match DB format
+    // 2. Normalize names
     const formattedCategory = category.name.toLowerCase().replace(/\s+/g, '-');
     const formattedSubcategory = subcategoryName.toLowerCase().replace(/\s+/g, '-');
 
@@ -91,21 +91,15 @@ router.post('/calculation', async (req, res) => {
     if (formattedSubcategory === 'hourly') {
       usageValue = usageValue * 60; // Convert hours → minutes
     }
-    console.log('Usage Value:', usageValue);
 
-    // 3. Fetch charges using combo
+    // 3. Fetch charges
     const charges = await RideCost.findOne({ modelType });
-    console.log('Charges:', charges);
-
     if (!charges) {
       return res.status(404).json({ error: 'Charges not found for modelType' });
     }
 
     const peakChargesList = await peakHours.find({});
-    console.log('Peak Charges List:', peakChargesList);
     const categoryPrices = await pricecategories.find({});
-    console.log('Category Prices:', categoryPrices);
-
     if (!charges || categoryPrices.length === 0) {
       return res.status(404).json({ error: 'Required data not found' });
     }
@@ -113,11 +107,11 @@ router.post('/calculation', async (req, res) => {
     const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
     const pickCharges = charges.pickCharges || 0;
 
-    // 1 Peak Charges
+    // --- Peak Charges ---
     let peakCharges = 0;
     for (const peak of peakChargesList) {
       if (peak.type === 'peak_dates') {
-       const startDateTime = moment(`${peak.startDate} ${peak.startTime}`, 'YYYY-MM-DD HH:mm');
+        const startDateTime = moment(`${peak.startDate} ${peak.startTime}`, 'YYYY-MM-DD HH:mm');
         const endDateTime = moment(`${peak.endDate} ${peak.endTime}`, 'YYYY-MM-DD HH:mm');
         if (bookingDateTime.isBetween(startDateTime, endDateTime, null, '[]')) {
           peakCharges += peak.price;
@@ -130,17 +124,16 @@ router.post('/calculation', async (req, res) => {
         }
       }
     }
-    // 2. Insurance & Night Charges
+
+    // --- Insurance & Night Charges ---
     const insuranceCharges = includeInsurance ? charges.insurance : 0;
     const hour = bookingDateTime.hour();
     const nightCharges = (hour >= 22 || hour < 6) ? charges.nightCharges : 0;
 
-    // 3. Final result with detailed breakdown for each category
-
+    // --- Result calculation ---
     const result = [];
 
     categoryPrices.forEach((cat) => {
-
       let driverCharges = 0;
       if (modelType === 'oneway') {
         driverCharges = usageValue * cat.chargePerKm;
@@ -150,20 +143,21 @@ router.post('/calculation', async (req, res) => {
 
       const baseTotal = driverCharges + pickCharges + peakCharges + insuranceCharges + nightCharges;
 
-      // Admin commission is % of baseTotal
-
+      // Original admin commission
       const adminCommission = Math.round((baseTotal * charges.extraChargesFromAdmin) / 100);
 
-      let subtotal = baseTotal + adminCommission;
-
-      // Apply discount on commission
-
+      // Apply discount on commission only
       let adjustedAdminCommission = adminCommission;
-
       if (charges.discount > 0) {
-        adjustedAdminCommission -= charges.discount;
+        adjustedAdminCommission = Math.max(0, adminCommission - charges.discount); // no negative commission
       }
+
+      // Subtotal = base charges + adjusted commission
+      const subtotal = baseTotal + adjustedAdminCommission;
+
+      // GST on adjusted commission
       const gstCharges = Math.round((adjustedAdminCommission * charges.gst) / 100);
+
       const totalPayable = Math.round(subtotal + gstCharges);
 
       result.push({
@@ -173,22 +167,22 @@ router.post('/calculation', async (req, res) => {
         peakCharges: Math.round(peakCharges),
         insuranceCharges: Math.round(insuranceCharges),
         nightCharges: Math.round(nightCharges),
-        // adminCommissionPercent: charges.extraChargesFromAdmin,
-        adminCommissionAmount: adminCommission,
-        discount: charges.discount,
+        adminCommissionOriginal: adminCommission,
+        adminCommissionAdjusted: adjustedAdminCommission,
+        discountApplied: charges.discount,
         gstCharges,
         subtotal: Math.round(subtotal),
         totalPayable
       });
     });
+
     res.json(result);
-    
+
   } catch (err) {
     console.error('Error in /calculation route:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
 
 // GET BY MODEL TYPE - Retrieve ride cost models by type
 router.get('/type/:modelType', async (req, res) => {
