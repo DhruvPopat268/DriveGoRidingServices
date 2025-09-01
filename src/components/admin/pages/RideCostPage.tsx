@@ -113,8 +113,6 @@ export const RideCostPage = () => {
   };
 
   const comprehensiveFields = [
-    { key: 'extraPerKm', label: 'Per Km Charges', type: 'number' },
-    { key: 'extraPerMinute', label: 'Per Minute Charges', type: 'number' },
     { key: 'pickCharges', label: 'Pick Charges', type: 'number' },
     { key: 'nightCharges', label: 'Night Charges', type: 'number' },
     { key: 'cancellationFee', label: 'Cancellation Fee', type: 'number' },
@@ -124,18 +122,18 @@ export const RideCostPage = () => {
     { key: 'discount', label: 'Discount', type: 'number' },
   ];
 
-  const simpleFields = [
-    { key: 'perKmRate', label: 'Per Km Rate', type: 'number' },
-    { key: 'perMinuteRate', label: 'Per Minute Rate', type: 'number' },
-    { key: 'minimumFare', label: 'Minimum Fare', type: 'number' },
-    { key: 'pickCharges', label: 'Pick Charges', type: 'number' },
-    { key: 'nightCharges', label: 'Night Charges', type: 'number' },
-    { key: 'cancellationFee', label: 'Cancellation Fee', type: 'number' },
-    { key: 'insurance', label: 'Insurance', type: 'number' },
-    { key: 'extraChargesFromAdmin', label: 'Extra Charges from Admin in %', type: 'number' },
-    { key: 'gst', label: 'GST in %', type: 'number' },
-    { key: 'discount', label: 'Discount', type: 'number' },
-  ];
+  // const simpleFields = [
+  //   { key: 'perKmRate', label: 'Per Km Rate', type: 'number' },
+  //   { key: 'perMinuteRate', label: 'Per Minute Rate', type: 'number' },
+  //   { key: 'minimumFare', label: 'Minimum Fare', type: 'number' },
+  //   { key: 'pickCharges', label: 'Pick Charges', type: 'number' },
+  //   { key: 'nightCharges', label: 'Night Charges', type: 'number' },
+  //   { key: 'cancellationFee', label: 'Cancellation Fee', type: 'number' },
+  //   { key: 'insurance', label: 'Insurance', type: 'number' },
+  //   { key: 'extraChargesFromAdmin', label: 'Extra Charges from Admin in %', type: 'number' },
+  //   { key: 'gst', label: 'GST in %', type: 'number' },
+  //   { key: 'discount', label: 'Discount', type: 'number' },
+  // ];
 
   const getFormFields = (subcategoryName: string) => {
     if (!subcategoryName) return simpleFields;

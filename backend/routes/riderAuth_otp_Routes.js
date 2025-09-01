@@ -10,6 +10,8 @@ const authMiddleware = require("../middleware/authMiddleware");
 // Twilio credentials from env
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
+const MAX_SESSIONS = 2;
+
 router.get("/auth/check", (req, res) => {
   // Get token from "Authorization: Bearer <token>"
   const authHeader = req.headers["authorization"];
@@ -232,10 +234,14 @@ router.post("/send-otp", async (req, res) => {
 router.post("/verify-otp", async (req, res) => {
   try {
     const { mobile, otp } = req.body;
-    if (!mobile || !otp) return res.status(400).json({ message: "Mobile & OTP required" });
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
 
     const otpSession = await OtpSession.findOne({ mobile, otp }).sort({ createdAt: -1 });
-    if (!otpSession) return res.status(400).json({ message: "Invalid OTP" });
+    if (!otpSession) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
 
     if (new Date() > otpSession.otpExpiresAt) {
       return res.status(400).json({ message: "OTP expired" });
@@ -254,8 +260,15 @@ router.post("/verify-otp", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // Remove old sessions for this mobile
-    await Session.deleteMany({ mobileNumber: mobile });
+    // ✅ Enforce max 2 sessions
+    let sessions = await Session.find({ mobileNumber: mobile }).sort({ createdAt: 1 }); // oldest first
+
+    if (sessions.length >= MAX_SESSIONS) {
+      // delete oldest until we are under limit
+      const excess = sessions.length - MAX_SESSIONS + 1;
+      const idsToDelete = sessions.slice(0, excess).map(s => s._id);
+      await Session.deleteMany({ _id: { $in: idsToDelete } });
+    }
 
     // Create new session
     await Session.create({

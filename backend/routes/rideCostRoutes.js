@@ -94,6 +94,7 @@ router.post('/calculation', async (req, res) => {
 
     // 3. Fetch charges
     const charges = await RideCost.findOne({ modelType });
+    console.log('Fetched Charges:', charges);
     if (!charges) {
       return res.status(404).json({ error: 'Charges not found for modelType' });
     }
@@ -135,13 +136,13 @@ router.post('/calculation', async (req, res) => {
 
     categoryPrices.forEach((cat) => {
       let driverCharges = 0;
-      if (modelType === 'oneway') {
+      if (modelType === 'driver-one-way') {
         driverCharges = usageValue * cat.chargePerKm;
       } else {
         driverCharges = usageValue * cat.chargePerMinute;
       }
 
-      const baseTotal = driverCharges + pickCharges + peakCharges + insuranceCharges + nightCharges;
+      const baseTotal = driverCharges + pickCharges + peakCharges  + nightCharges;
 
       // Original admin commission
       const adminCommission = Math.round((baseTotal * charges.extraChargesFromAdmin) / 100);
@@ -155,10 +156,12 @@ router.post('/calculation', async (req, res) => {
       // Subtotal = base charges + adjusted commission
       const subtotal = baseTotal + adjustedAdminCommission;
 
-      // GST on adjusted commission
-      const gstCharges = Math.round((adjustedAdminCommission * charges.gst) / 100);
+      const cancellationCharges = charges.cancellationFee || 0;
 
-      const totalPayable = Math.round(subtotal + gstCharges);
+      // GST on adjusted commission
+      const gstCharges = Math.ceil((adjustedAdminCommission * charges.gst) / 100);
+
+      const totalPayable = Math.round(subtotal + gstCharges + insuranceCharges + cancellationCharges);
 
       result.push({
         category: cat.priceCategoryName,
@@ -170,11 +173,14 @@ router.post('/calculation', async (req, res) => {
         adminCommissionOriginal: adminCommission,
         adminCommissionAdjusted: adjustedAdminCommission,
         discountApplied: charges.discount,
+        cancellationCharges: Math.round(cancellationCharges),
         gstCharges,
         subtotal: Math.round(subtotal),
         totalPayable
       });
     });
+
+    console.log('Calculation Result:', result);
 
     res.json(result);
 

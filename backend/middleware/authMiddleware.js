@@ -17,8 +17,13 @@ const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // ✅ Ensure token exists in Session collection
-    const session = await Session.findOne({ token, mobileNumber: decoded.mobile });
-    if (!session) {
+    // Instead of just one, we allow multiple tokens per mobileNumber
+    const sessions = await Session.find({ mobileNumber: decoded.mobile });
+
+    // Check if the provided token is part of the active sessions
+    const isValidSession = sessions.some((s) => s.token === token);
+
+    if (!isValidSession) {
       return res.status(401).json({ success: false, message: "Session expired or not found" });
     }
 
