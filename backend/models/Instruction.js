@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 
 const instructionSchema = new mongoose.Schema({
@@ -20,7 +19,14 @@ const instructionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  
+  driverCategoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true
+  },
+  driverCategoryName: {
+    type: String,
+    required: true
+  },
   instructions: {
     type: String,
     required: true,

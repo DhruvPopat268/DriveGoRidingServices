@@ -19,6 +19,8 @@ interface Instruction {
   categoryName: string;
   subCategoryId: string;
   subCategoryName: string;
+  driverCategoryId: string;
+  driverCategoryName: string;
   instructions: string;
 }
 
@@ -33,11 +35,19 @@ interface SubCategory {
   categoryId: string;
 }
 
+interface DriverCategory {
+  _id: string;
+  priceCategoryName: string;
+  chargePerKm: number;
+  chargePerMinute: number;
+}
+
 export const InstructionsPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInstruction, setEditingInstruction] = useState<Instruction | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
+  const [selectedDriverCategory, setSelectedDriverCategory] = useState("");
   const [instructions, setInstructions] = useState("");
 
   const queryClient = useQueryClient();
@@ -65,6 +75,15 @@ export const InstructionsPage = () => {
     queryKey: ["subcategories"],
     queryFn: async () => {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      return response.data || [];
+    },
+  });
+
+  // Fetch driver categories (price categories)
+  const { data: driverCategories = [] } = useQuery({
+    queryKey: ["driver-categories"],
+    queryFn: async () => {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`);
       return response.data || [];
     },
   });
@@ -145,12 +164,13 @@ export const InstructionsPage = () => {
   const resetForm = () => {
     setSelectedCategory("");
     setSelectedSubCategory("");
+    setSelectedDriverCategory("");
     setInstructions("");
     setEditingInstruction(null);
   };
 
   const handleSubmit = () => {
-    if (!selectedCategory || !selectedSubCategory || !instructions.trim()) {
+    if (!selectedCategory || !selectedSubCategory || !selectedDriverCategory || !instructions.trim()) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -161,12 +181,15 @@ export const InstructionsPage = () => {
 
     const categoryName = categories.find((cat: Category) => cat._id === selectedCategory)?.name || "";
     const subCategoryName = subCategories.find((sub: SubCategory) => sub._id === selectedSubCategory)?.name || "";
+    const driverCategoryName = driverCategories.find((driver: DriverCategory) => driver._id === selectedDriverCategory)?.priceCategoryName || "";
 
     const data = {
       categoryId: selectedCategory,
       categoryName,
       subCategoryId: selectedSubCategory,
       subCategoryName,
+      driverCategoryId: selectedDriverCategory,
+      driverCategoryName,
       instructions: instructions.trim(),
     };
 
@@ -181,6 +204,7 @@ export const InstructionsPage = () => {
     setEditingInstruction(instruction);
     setSelectedCategory(instruction.categoryId);
     setSelectedSubCategory(instruction.subCategoryId);
+    setSelectedDriverCategory(instruction.driverCategoryId);
     setInstructions(instruction.instructions);
     setIsDialogOpen(true);
   };
@@ -212,7 +236,7 @@ export const InstructionsPage = () => {
               Add T & C
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
                 {editingInstruction ? "Edit Instructions" : "Add Instructions"}
@@ -241,8 +265,8 @@ export const InstructionsPage = () => {
               <div>
                 <Label htmlFor="subcategory">Sub Category</Label>
                 <Select
-                  key={`${selectedCategory}-subcategory`} // Force re-render when category changes
-                  value={selectedSubCategory || ""} // Ensure controlled component
+                  key={`${selectedCategory}-subcategory`}
+                  value={selectedSubCategory || ""}
                   onValueChange={(value) => {
                     console.log("🟢 SubCategory changed:", value, typeof value);
                     setSelectedSubCategory(value);
@@ -262,9 +286,7 @@ export const InstructionsPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {filteredSubCategories.map((subCategory) => {
-                      // Ensure consistent string types
-                      const subCategoryId = String(subCategory.id);
-
+                      const subCategoryId = String(subCategory.id); // ✅ use "id"
                       return (
                         <SelectItem
                           key={subCategory.id}
@@ -275,9 +297,27 @@ export const InstructionsPage = () => {
                       );
                     })}
                   </SelectContent>
-                </Select>
 
-              
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="drivercategory">Driver Category</Label>
+                <Select
+                  value={selectedDriverCategory}
+                  onValueChange={setSelectedDriverCategory}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Driver Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {driverCategories.map((driverCategory: DriverCategory) => (
+                      <SelectItem key={driverCategory._id} value={driverCategory._id}>
+                        {driverCategory.priceCategoryName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -310,57 +350,63 @@ export const InstructionsPage = () => {
           {isLoading ? (
             <div className="text-center py-4">Loading...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Category</TableHead>
-                  <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Sub Category</TableHead>
-                  <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Instructions</TableHead>
-                  <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {instructionsData.length === 0 ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-gray-400 dark:text-gray-400 text-gray-500">
-                      No T & C found
-                    </TableCell>
+                    <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Category</TableHead>
+                    <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Sub Category</TableHead>
+                    <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Driver Category</TableHead>
+                    <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Instructions</TableHead>
+                    <TableHead className="text-gray-300 dark:text-gray-300 text-gray-600">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  instructionsData.map((instruction: Instruction) => (
-                    <TableRow key={instruction._id}>
-                      <TableCell className="text-white dark:text-white text-gray-900">
-                        {instruction.categoryName}
-                      </TableCell>
-                      <TableCell className="text-white dark:text-white text-gray-900">
-                        {instruction.subCategoryName}
-                      </TableCell>
-                      <TableCell className="text-white dark:text-white text-gray-900 max-w-xs truncate">
-                        {instruction.instructions}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(instruction)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDelete(instruction._id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {instructionsData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-gray-400 dark:text-gray-400 text-gray-500">
+                        No T & C found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    instructionsData.map((instruction: Instruction) => (
+                      <TableRow key={instruction._id}>
+                        <TableCell className="text-white dark:text-white text-gray-900">
+                          {instruction.categoryName}
+                        </TableCell>
+                        <TableCell className="text-white dark:text-white text-gray-900">
+                          {instruction.subCategoryName}
+                        </TableCell>
+                        <TableCell className="text-white dark:text-white text-gray-900">
+                          {instruction.driverCategoryName}
+                        </TableCell>
+                        <TableCell className="text-white dark:text-white text-gray-900 max-w-xs truncate">
+                          {instruction.instructions}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(instruction)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDelete(instruction._id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </div>
