@@ -6,6 +6,7 @@ const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const Session = require("../models/Session");
 const authMiddleware = require("../middleware/authMiddleware");
+const { createSession } = require("../Services/sessionService");
 
 // Twilio credentials from env
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -83,7 +84,7 @@ router.put("/update", authMiddleware, async (req, res) => {
       }
 
       // Check if email already exists
-      const existingEmail = await Rider.findOne({ 
+      const existingEmail = await Rider.findOne({
         email: trimmedValue,
         _id: { $ne: req.rider.riderId }
       });
@@ -99,7 +100,7 @@ router.put("/update", authMiddleware, async (req, res) => {
       }
 
       // Check if mobile already exists
-      const existingMobile = await Rider.findOne({ 
+      const existingMobile = await Rider.findOne({
         mobile: trimmedValue,
         _id: { $ne: req.rider.riderId }
       });
@@ -131,29 +132,29 @@ router.put("/update", authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: "Rider not found" });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       rider: updatedRider,
       message: `${field.charAt(0).toUpperCase() + field.slice(1)} updated successfully`
     });
   } catch (err) {
     console.error("Update profile error:", err);
-    
+
     // Handle validation errors
     if (err.name === 'ValidationError') {
       const errorMessages = Object.values(err.errors).map(error => error.message);
-      return res.status(400).json({ 
-        success: false, 
-        message: `Validation failed: ${errorMessages.join(', ')}` 
+      return res.status(400).json({
+        success: false,
+        message: `Validation failed: ${errorMessages.join(', ')}`
       });
     }
-    
+
     // Handle duplicate key errors (if you have unique indexes)
     if (err.code === 11000) {
       const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({ 
-        success: false, 
-        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists` 
+      return res.status(400).json({
+        success: false,
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
       });
     }
 
@@ -260,21 +261,8 @@ router.post("/verify-otp", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // ✅ Enforce max 2 sessions
-    let sessions = await Session.find({ mobileNumber: mobile }).sort({ createdAt: 1 }); // oldest first
-
-    if (sessions.length >= MAX_SESSIONS) {
-      // delete oldest until we are under limit
-      const excess = sessions.length - MAX_SESSIONS + 1;
-      const idsToDelete = sessions.slice(0, excess).map(s => s._id);
-      await Session.deleteMany({ _id: { $in: idsToDelete } });
-    }
-
-    // Create new session
-    await Session.create({
-      mobileNumber: mobile,
-      token
-    });
+    // ✅ Use service helper to enforce max 2 sessions
+    await createSession(mobile, token);
 
     // ✅ Send token in response instead of cookie
     res.json({ success: true, token, isNew, rider });
