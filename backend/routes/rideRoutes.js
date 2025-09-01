@@ -20,12 +20,23 @@ router.post("/book", authMiddleware, async (req, res) => {
       selectedTime,
       selectedUsage,
       transmissionType,
-      totalPayable,
+      totalAmount,
       paymentType,
     } = req.body;
 
-    if (!categoryId || !totalPayable || !paymentType) {
+    console.log("Request Body:", req.body);
+
+    if (!categoryId || !totalAmount || !paymentType) {
       return res.status(400).json({ message: "Required fields missing" });
+    }
+
+    // ✅ find charges for the chosen category
+    const selectedCategoryData = totalAmount.find(
+      (item) => item.category === selectedCategory
+    );
+
+    if (!selectedCategoryData) {
+      return res.status(400).json({ message: "Invalid selectedCategory" });
     }
 
     const { riderId, mobile } = req.rider;
@@ -34,7 +45,6 @@ router.post("/book", authMiddleware, async (req, res) => {
       riderId,
       riderMobile: mobile,
 
-      // ✅ move everything into rideInfo
       rideInfo: {
         categoryId,
         subcategoryId,
@@ -44,31 +54,34 @@ router.post("/book", authMiddleware, async (req, res) => {
         toLocation,
         includeInsurance,
         notes,
-        selectedCategory: selectedCategory?.category || selectedCategory,
+        selectedCategory,
         selectedDate,
         selectedTime,
         selectedUsage,
         transmissionType,
 
-        insuranceCharges: selectedCategory?.insuranceCharges || req.body.insuranceCharges || 0,
-        discount: selectedCategory?.discount || req.body.discount || 0,
-        gstCharges: selectedCategory?.gstCharges || req.body.gstCharges || 0,
-        subtotal: selectedCategory?.subtotal || req.body.subtotal || 0,
+        insuranceCharges: selectedCategoryData.insuranceCharges || 0,
+        cancellationCharges: selectedCategoryData.cancellationCharges || 0,
+        discount: selectedCategoryData.discountApplied || 0,
+        gstCharges: selectedCategoryData.gstCharges || 0,
+        subtotal: selectedCategoryData.subtotal || 0,
       },
 
-      // ✅ keep at root
-      totalPayable: selectedCategory?.totalPayable || req.body.totalPayable,
+      totalPayable: selectedCategoryData.totalPayable,
       paymentType,
       status: "BOOKED",
     });
 
     await newRide.save();
-    res.status(201).json({ message: "Ride booked successfully", ride: newRide });
+    res
+      .status(201)
+      .json({ message: "Ride booked successfully", ride: newRide });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error", error });
   }
 });
+
 
 
 // all rides

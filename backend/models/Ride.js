@@ -22,6 +22,7 @@ const rideSchema = new mongoose.Schema({
 
     // charge fields
     insuranceCharges: { type: Number, default: 0 },
+    cancellationCharges: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
     gstCharges: { type: Number, default: 0 },
     subtotal: { type: Number, default: 0 },
