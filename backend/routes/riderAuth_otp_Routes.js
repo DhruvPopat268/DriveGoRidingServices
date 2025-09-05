@@ -275,14 +275,32 @@ router.post("/verify-otp", async (req, res) => {
 // 🔹 Save Rider Profile
 router.post("/save-profile", async (req, res) => {
   try {
-    const { mobile, name, gender, email } = req.body;
+    const { mobile, name, gender, email, referralCodeUsed } = req.body;
+
     let rider = await Rider.findOne({ mobile });
     if (!rider) return res.status(404).json({ message: "Rider not found" });
 
     rider.name = name;
     rider.gender = gender;
     rider.email = email;
-    await rider.save();
+
+    // 🔹 If referralCodeUsed is provided and rider has no referredBy yet
+    if (referralCodeUsed && !rider.referredBy) {
+      const referrer = await Rider.findOne({ referralCode: referralCodeUsed });
+
+      if (!referrer) {
+        return res.status(400).json({ success: false, message: "Invalid referral code" });
+      }
+
+      rider.referredBy = referrer._id; // link who referred
+      await rider.save();
+
+      // update referrer’s list
+      referrer.referrals.push(rider._id);
+      await referrer.save();
+    } else {
+      await rider.save();
+    }
 
     res.json({ success: true, message: "Profile saved", rider });
   } catch (error) {
@@ -290,5 +308,6 @@ router.post("/save-profile", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to save profile" });
   }
 });
+
 
 module.exports = router;

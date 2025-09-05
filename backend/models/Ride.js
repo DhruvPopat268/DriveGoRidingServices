@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { boolean } = require("zod");
 
 const rideSchema = new mongoose.Schema({
   riderId: { type: mongoose.Schema.Types.ObjectId, ref: "Rider", required: true },
@@ -26,7 +27,11 @@ const rideSchema = new mongoose.Schema({
     discount: { type: Number, default: 0 },
     gstCharges: { type: Number, default: 0 },
     subtotal: { type: Number, default: 0 },
+    adminCharges: { type: Number, default: 0 },
   },
+  // to check if referral earning is applied for this ride
+  referralEarning: { type: Boolean, default: false },
+  referralBalance: { type: Number, default: 0 }, // amount used from referral balance
 
   totalPayable: { type: Number, required: true },
   paymentType: { type: String, enum: ["cash", "online"], required: true },

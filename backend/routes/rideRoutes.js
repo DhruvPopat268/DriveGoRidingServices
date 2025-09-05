@@ -2,6 +2,7 @@ const express = require("express");
 const Ride = require('../models/Ride'); // Ensure this path is correct
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const router = express.Router();
+const Rider = require("../models/Rider");
 
 // Save new ride booking
 router.post("/book", authMiddleware, async (req, res) => {
@@ -22,6 +23,9 @@ router.post("/book", authMiddleware, async (req, res) => {
       transmissionType,
       totalAmount,
       paymentType,
+      totalPayable,
+      referralEarning,   // ✅ from frontend
+      referralBalance    // ✅ from frontend
     } = req.body;
 
     console.log("Request Body:", req.body);
@@ -44,7 +48,6 @@ router.post("/book", authMiddleware, async (req, res) => {
     const newRide = new Ride({
       riderId,
       riderMobile: mobile,
-
       rideInfo: {
         categoryId,
         subcategoryId,
@@ -59,30 +62,62 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedTime,
         selectedUsage,
         transmissionType,
-
         insuranceCharges: selectedCategoryData.insuranceCharges || 0,
         cancellationCharges: selectedCategoryData.cancellationCharges || 0,
         discount: selectedCategoryData.discountApplied || 0,
         gstCharges: selectedCategoryData.gstCharges || 0,
         subtotal: selectedCategoryData.subtotal || 0,
+        adminCharges: selectedCategoryData.adminCommissionAdjusted || 0,
       },
-
-      totalPayable: selectedCategoryData.totalPayable,
+      referralEarning: referralEarning || false,   // ✅ store toggle
+      referralBalance: referralEarning ? referralBalance : 0, // ✅ store amount used
+      totalPayable,
       paymentType,
       status: "BOOKED",
     });
 
     await newRide.save();
-    res
-      .status(201)
-      .json({ message: "Ride booked successfully", ride: newRide });
+
+    // ✅ Referral Earnings Update
+    const rider = await Rider.findById(riderId);
+
+    if (rider) {
+      // Case 1: Rider used referral balance
+      if (referralEarning && referralBalance > 0) {
+        // If full balance used, reset to 0
+        if (rider.referralEarning.currentBalance === referralBalance) {
+          rider.referralEarning.currentBalance = 0;
+        } else {
+          // Otherwise subtract the used amount
+          rider.referralEarning.currentBalance =
+            rider.referralEarning.currentBalance - referralBalance;
+        }
+        await rider.save();
+      }
+
+      // Case 2: Rider was referred by someone → give bonus to referrer
+      if (rider.referredBy) {
+        const adminCharges = selectedCategoryData.adminCommissionAdjusted || 0;
+        const referralBonus = adminCharges * 0.2; // 20%
+
+        await Rider.findByIdAndUpdate(rider.referredBy, {
+          $inc: {
+            "referralEarning.totalEarnings": referralBonus,
+            "referralEarning.currentBalance": referralBonus,
+          },
+        });
+      }
+    }
+
+    res.status(201).json({
+      message: "Ride booked successfully",
+      ride: newRide,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Book ride error:", error);
     res.status(500).json({ message: "Server error", error });
   }
 });
-
-
 
 // all rides
 router.post("/my-rides", authMiddleware, async (req, res) => {
