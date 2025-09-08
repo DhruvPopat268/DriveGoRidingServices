@@ -3,6 +3,8 @@ const Ride = require('../models/Ride'); // Ensure this path is correct
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const router = express.Router();
 const Rider = require("../models/Rider");
+const axios = require("axios");
+const referralRules = require("../models/ReferralRule");
 
 // Save new ride booking
 router.post("/book", authMiddleware, async (req, res) => {
@@ -24,11 +26,9 @@ router.post("/book", authMiddleware, async (req, res) => {
       totalAmount,
       paymentType,
       totalPayable,
-      referralEarning,   // ✅ from frontend
-      referralBalance    // ✅ from frontend
+      referralEarning,
+      referralBalance,
     } = req.body;
-
-    console.log("Request Body:", req.body);
 
     if (!categoryId || !totalAmount || !paymentType) {
       return res.status(400).json({ message: "Required fields missing" });
@@ -69,8 +69,8 @@ router.post("/book", authMiddleware, async (req, res) => {
         subtotal: selectedCategoryData.subtotal || 0,
         adminCharges: selectedCategoryData.adminCommissionAdjusted || 0,
       },
-      referralEarning: referralEarning || false,   // ✅ store toggle
-      referralBalance: referralEarning ? referralBalance : 0, // ✅ store amount used
+      referralEarning: referralEarning || false,
+      referralBalance: referralEarning ? referralBalance : 0,
       totalPayable,
       paymentType,
       status: "BOOKED",
@@ -84,28 +84,56 @@ router.post("/book", authMiddleware, async (req, res) => {
     if (rider) {
       // Case 1: Rider used referral balance
       if (referralEarning && referralBalance > 0) {
-        // If full balance used, reset to 0
-        if (rider.referralEarning.currentBalance === referralBalance) {
+        rider.referralEarning.currentBalance =
+          rider.referralEarning.currentBalance - referralBalance;
+        if (rider.referralEarning.currentBalance < 0) {
           rider.referralEarning.currentBalance = 0;
-        } else {
-          // Otherwise subtract the used amount
-          rider.referralEarning.currentBalance =
-            rider.referralEarning.currentBalance - referralBalance;
         }
         await rider.save();
       }
 
       // Case 2: Rider was referred by someone → give bonus to referrer
       if (rider.referredBy) {
-        const adminCharges = selectedCategoryData.adminCommissionAdjusted || 0;
-        const referralBonus = adminCharges * 0.2; // 20%
+        const rule = await referralRules.findOne({});
+        if (!rule) {
+          console.log("No referral rules found, skipping commission");
+        } else {
+          const { commission, MaxReferrals } = rule;
 
-        await Rider.findByIdAndUpdate(rider.referredBy, {
-          $inc: {
-            "referralEarning.totalEarnings": referralBonus,
-            "referralEarning.currentBalance": referralBonus,
-          },
-        });
+          const referrer = await Rider.findById(rider.referredBy);
+          if (referrer) {
+            let eligible = false;
+
+            if (MaxReferrals === -1) {
+              // ✅ Unlimited referrals allowed
+              eligible = true;
+            } else {
+              // ✅ Normal case: check referral index
+              const referralIndex = referrer.referrals.findIndex(
+                (refId) => refId.toString() === riderId.toString()
+              );
+              eligible = referralIndex >= 0 && referralIndex < MaxReferrals;
+            }
+
+            if (eligible) {
+              const adminCharges = selectedCategoryData.adminCommissionAdjusted || 0;
+              const referralBonus = (adminCharges * commission) / 100;
+
+              referrer.referralEarning.totalEarnings =
+                (referrer.referralEarning.totalEarnings || 0) + referralBonus;
+              referrer.referralEarning.currentBalance =
+                (referrer.referralEarning.currentBalance || 0) + referralBonus;
+
+              await referrer.save();
+
+              console.log(
+                `Commission given: MaxReferrals = ${MaxReferrals}, Commission = ${commission}%`
+              );
+            } else {
+              console.log(`No commission: MaxReferrals = ${MaxReferrals}`);
+            }
+          }
+        }
       }
     }
 

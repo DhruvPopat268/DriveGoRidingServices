@@ -15,6 +15,7 @@ const riderAuthRoutes = require('./routes/riderAuth_otp_Routes');
 const connectToDb = require('./database/db');
 const cookieParser = require("cookie-parser");
 const rideRoutes = require("./routes/rideRoutes");
+const referralRulesRoutes = require('./routes/referralRules');
 
 const app = express();
 
@@ -59,6 +60,8 @@ app.use('/api/instructions', instructionRoutes);
 app.use("/api/rider-auth", riderAuthRoutes);
 
 app.use("/api/rides", rideRoutes);
+
+app.use('/api/referral-rules', referralRulesRoutes);
 
 // admin
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));

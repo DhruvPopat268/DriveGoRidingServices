@@ -26,6 +26,7 @@ import { InstructionsPage } from "@/components/admin/pages/InstructionsPage";
 import { DriverCalculationPage } from "@/components/admin/pages/DriverCalculationPage";
 import { CabCalculationPage } from "@/components/admin/pages/CabCalculationPage";
 import { ParcelCalculationPage } from "@/components/admin/pages/ParcelCalculationPage";
+import  ReferEarnPage  from "@/components/admin/pages/ReferEarnPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -91,6 +92,8 @@ const Index = () => {
         return <SafetyPage />;
       case "settings":
         return <SettingsPage />;
+      case "referearn":
+        return <ReferEarnPage />;
       default:
         return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
     }
