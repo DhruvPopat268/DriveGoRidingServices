@@ -27,11 +27,19 @@ interface Category {
   };
 }
 
+interface Subcategory {
+  _id: string;
+  name: string;
+  description: string;
+  category: string;
+}
+
 interface PriceCategory {
   _id: string;
   priceCategoryName: string;
   description: string;
-  category: string | Category; // Can be populated or just ID
+  category: string | Category;
+  subcategory: string | Subcategory;
   chargePerKm: number;
   chargePerMinute: number;
 }
@@ -39,10 +47,13 @@ interface PriceCategory {
 export const PriceCategoryPage = () => {
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [priceCategoryForm, setPriceCategoryForm] = useState({
     priceCategoryName: '',
     description: '',
     category: '',
+    subcategory: '',
     chargePerKm: '',
     chargePerMinute: ''
   });
@@ -51,8 +62,29 @@ export const PriceCategoryPage = () => {
 
   useEffect(() => {
     fetchCategories();
+    fetchSubcategories();
     fetchPriceCategories();
   }, []);
+
+  // Filter subcategories when category changes
+  useEffect(() => {
+    if (priceCategoryForm.category) {
+      console.log('Filtering subcategories for category:', priceCategoryForm.category);
+      console.log('All subcategories:', subcategories);
+      const filtered = subcategories.filter(sub => sub.categoryId === priceCategoryForm.category);
+      setFilteredSubcategories(filtered);
+      // Reset subcategory selection when category changes
+      if (priceCategoryForm.subcategory) {
+        const isSubcategoryValid = filtered.some(sub => sub._id === priceCategoryForm.subcategory);
+        if (!isSubcategoryValid) {
+          setPriceCategoryForm(prev => ({ ...prev, subcategory: '' }));
+        }
+      }
+    } else {
+      setFilteredSubcategories([]);
+      setPriceCategoryForm(prev => ({ ...prev, subcategory: '' }));
+    }
+  }, [priceCategoryForm.category, subcategories]);
 
   const fetchCategories = async () => {
     try {
@@ -60,6 +92,15 @@ export const PriceCategoryPage = () => {
       setCategories(res.data);
     } catch (err) {
       console.error('Failed to fetch categories', err);
+    }
+  };
+
+  const fetchSubcategories = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      setSubcategories(res.data);
+    } catch (err) {
+      console.error('Failed to fetch subcategories', err);
     }
   };
 
@@ -78,6 +119,7 @@ export const PriceCategoryPage = () => {
       priceCategoryName: priceCategoryForm.priceCategoryName.trim(),
       description: priceCategoryForm.description.trim(),
       category: priceCategoryForm.category,
+      subcategory: priceCategoryForm.subcategory,
       chargePerKm: parseFloat(priceCategoryForm.chargePerKm),
       chargePerMinute: parseFloat(priceCategoryForm.chargePerMinute)
     };
@@ -91,7 +133,14 @@ export const PriceCategoryPage = () => {
       await fetchPriceCategories();
       setDialogOpen(false);
       setEditingCategory(null);
-      setPriceCategoryForm({ priceCategoryName: '', description: '', category: '', chargePerKm: '', chargePerMinute: '' });
+      setPriceCategoryForm({ 
+        priceCategoryName: '', 
+        description: '', 
+        category: '', 
+        subcategory: '',
+        chargePerKm: '', 
+        chargePerMinute: '' 
+      });
     } catch (err) {
       console.error('Failed to save price category', err);
     }
@@ -103,6 +152,7 @@ export const PriceCategoryPage = () => {
       priceCategoryName: priceCategory.priceCategoryName,
       description: priceCategory.description,
       category: typeof priceCategory.category === 'string' ? priceCategory.category : priceCategory.category._id,
+      subcategory: typeof priceCategory.subcategory === 'string' ? priceCategory.subcategory : priceCategory.subcategory._id,
       chargePerKm: priceCategory.chargePerKm.toString(),
       chargePerMinute: priceCategory.chargePerMinute.toString()
     });
@@ -126,6 +176,26 @@ export const PriceCategoryPage = () => {
     return category.name;
   };
 
+  const getSubcategoryName = (subcategory: string | Subcategory): string => {
+    if (typeof subcategory === 'string') {
+      const foundSubcategory = subcategories.find(sub => sub._id === subcategory);
+      return foundSubcategory ? foundSubcategory.name : 'Unknown';
+    }
+    return subcategory.name;
+  };
+
+  const resetForm = () => {
+    setEditingCategory(null);
+    setPriceCategoryForm({ 
+      priceCategoryName: '', 
+      description: '', 
+      category: '', 
+      subcategory: '',
+      chargePerKm: '', 
+      chargePerMinute: '' 
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -138,12 +208,7 @@ export const PriceCategoryPage = () => {
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                onClick={() => {
-                  setEditingCategory(null);
-                  setPriceCategoryForm({ priceCategoryName: '', description: '', category: '', chargePerKm: '', chargePerMinute: '' });
-                }}
-              >
+              <Button onClick={resetForm}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add New
               </Button>
@@ -169,6 +234,31 @@ export const PriceCategoryPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
+
+                <Select
+                  value={priceCategoryForm.subcategory}
+                  onValueChange={(value) => setPriceCategoryForm({ ...priceCategoryForm, subcategory: value })}
+                  disabled={!priceCategoryForm.category || filteredSubcategories.length === 0}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={
+                      !priceCategoryForm.category 
+                        ? "Select category first" 
+                        : filteredSubcategories.length === 0 
+                        ? "No subcategories available"
+                        : "Select a subcategory"
+                    } />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredSubcategories.map((subcategory) => (
+                      <SelectItem key={subcategory.id} value={subcategory.id}>
+                        {subcategory.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
                 <Input
                   placeholder="Driver Category Name"
                   value={priceCategoryForm.priceCategoryName}
@@ -209,6 +299,7 @@ export const PriceCategoryPage = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Category</TableHead>
+              <TableHead>Subcategory</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Charge Per Km</TableHead>
               <TableHead>Charge Per Minute</TableHead>
@@ -219,7 +310,7 @@ export const PriceCategoryPage = () => {
           <TableBody>
             {priceCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
+                <TableCell colSpan={7} className="text-center">
                   No price category found. Create your first one!
                 </TableCell>
               </TableRow>
@@ -227,6 +318,7 @@ export const PriceCategoryPage = () => {
               priceCategories.map((priceCategory) => (
                 <TableRow key={priceCategory._id}>
                   <TableCell>{getCategoryName(priceCategory.category)}</TableCell>
+                  <TableCell>{getSubcategoryName(priceCategory.subcategory)}</TableCell>
                   <TableCell>{priceCategory.priceCategoryName}</TableCell>
                   <TableCell>{priceCategory.chargePerKm.toFixed(2)}</TableCell>
                   <TableCell>{priceCategory.chargePerMinute.toFixed(2)}</TableCell>
