@@ -1,0 +1,274 @@
+const express = require('express');
+const router = express.Router();
+const RideCost = require('../models/RideCost');
+const Category = require('../models/Category');
+const peakHours = require('../models/Peak')
+const pricecategories = require('../models/PriceCategory')
+const moment = require('moment');
+
+router.post('/', async (req, res) => {
+  try {
+    const rideCost = new RideCost(req.body);
+    const saved = await rideCost.save();
+    res.status(201).json({
+      success: true,
+      message: 'Ride cost model created successfully',
+      data: saved
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// GET ALL - Retrieve all ride cost models
+router.get('/', async (req, res) => {
+  try {
+    const rideCosts = await RideCost.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: rideCosts.length,
+      data: rideCosts
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// GET BY ID - Retrieve single ride cost model
+router.get('/:id', async (req, res) => {
+  try {
+    const rideCost = await RideCost.findById(req.params.id);
+    if (!rideCost) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ride cost model not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: rideCost
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+router.post('/calculation', async (req, res) => {
+  try {
+    const fullData = req.body;
+    const {
+      categoryId,
+      selectedDate,
+      selectedTime,
+      includeInsurance,
+      selectedUsage,
+      subcategoryName,
+    } = fullData;
+
+    // 1. Get category from DB
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // 2. Normalize names
+    const formattedCategory = category.name.toLowerCase().replace(/\s+/g, '-');
+    const formattedSubcategory = subcategoryName.toLowerCase().replace(/\s+/g, '-');
+
+    const modelType = `${formattedCategory}-${formattedSubcategory}`;
+    console.log('Model Type:', modelType);
+
+    let usageValue = parseFloat(selectedUsage);
+    if (formattedSubcategory === 'hourly') {
+      usageValue = usageValue * 60; // Convert hours → minutes
+    }
+
+    // 3. Fetch charges
+    const charges = await RideCost.findOne({ modelType });
+    console.log('Fetched Charges:', charges);
+    if (!charges) {
+      return res.status(404).json({ error: 'Charges not found for modelType' });
+    }
+
+    const peakChargesList = await peakHours.find({});
+    const categoryPrices = await pricecategories.find({ category: categoryId });
+
+    if (!charges || categoryPrices.length === 0) {
+      return res.status(404).json({ error: 'Required data not found' });
+    }
+
+    const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
+    const pickCharges = charges.pickCharges || 0;
+
+    // --- Peak Charges ---
+    let peakCharges = 0;
+    for (const peak of peakChargesList) {
+      if (peak.type === 'peak_dates') {
+        const startDateTime = moment(`${peak.startDate} ${peak.startTime}`, 'YYYY-MM-DD HH:mm');
+        const endDateTime = moment(`${peak.endDate} ${peak.endTime}`, 'YYYY-MM-DD HH:mm');
+        if (bookingDateTime.isBetween(startDateTime, endDateTime, null, '[]')) {
+          peakCharges += peak.price;
+        }
+      } else if (peak.type === 'peak_hours') {
+        const startTime = moment(`${selectedDate} ${peak.startTime}`, 'YYYY-MM-DD HH:mm');
+        const endTime = moment(`${selectedDate} ${peak.endTime}`, 'YYYY-MM-DD HH:mm');
+        if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+          peakCharges += peak.price;
+        }
+      }
+    }
+
+    // --- Insurance & Night Charges ---
+    const insuranceCharges = includeInsurance ? charges.insurance : 0;
+    const hour = bookingDateTime.hour();
+    const nightCharges = (hour >= 22 || hour < 6) ? charges.nightCharges : 0;
+
+    // --- Result calculation ---
+    const result = [];
+
+    categoryPrices.forEach((cat) => {
+      let driverCharges = 0;
+      if (modelType === 'driver-one-way') {
+        driverCharges = usageValue * cat.chargePerKm;
+      } else {
+        driverCharges = usageValue * cat.chargePerMinute;
+      }
+
+      const baseTotal = driverCharges + pickCharges + peakCharges + nightCharges;
+
+      // Original admin commission
+      const adminCommission = Math.round((baseTotal * charges.extraChargesFromAdmin) / 100);
+
+      // Apply discount on commission only
+      let adjustedAdminCommission = adminCommission;
+      if (charges.discount > 0) {
+        adjustedAdminCommission = Math.max(0, adminCommission - charges.discount); // no negative commission
+      }
+
+      // Subtotal = base charges + adjusted commission
+      const subtotal = baseTotal + adjustedAdminCommission;
+
+      const cancellationCharges = charges.cancellationFee || 0;
+
+      // GST on adjusted commission
+      const gstCharges = Math.ceil((adjustedAdminCommission * charges.gst) / 100);
+
+      const totalPayable = Math.round(subtotal + gstCharges + insuranceCharges + cancellationCharges);
+
+      result.push({
+        category: cat.priceCategoryName,
+        driverCharges: Math.round(driverCharges),
+        pickCharges: Math.round(pickCharges),
+        peakCharges: Math.round(peakCharges),
+        insuranceCharges: Math.round(insuranceCharges),
+        nightCharges: Math.round(nightCharges),
+        adminCommissionOriginal: adminCommission,
+        adminCommissionAdjusted: adjustedAdminCommission,
+        discountApplied: charges.discount,
+        cancellationCharges: Math.round(cancellationCharges),
+        gstCharges,
+        subtotal: Math.round(subtotal),
+        totalPayable
+      });
+    });
+
+    console.log('Calculation Result:', result);
+
+    res.json(result);
+
+  } catch (err) {
+    console.error('Error in /calculation route:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// GET BY MODEL TYPE - Retrieve ride cost models by type
+router.get('/type/:modelType', async (req, res) => {
+  try {
+    const { modelType } = req.params;
+    const validTypes = ['oneway', 'roundtrip', 'hourly', 'monthly', 'weekly'];
+
+    if (!validTypes.includes(modelType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid model type'
+      });
+    }
+
+    const rideCosts = await RideCost.find({ modelType }).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: rideCosts.length,
+      data: rideCosts
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// UPDATE - Update ride cost model
+router.put('/:id', async (req, res) => {
+  try {
+    const rideCost = await RideCost.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!rideCost) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ride cost model not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Ride cost model updated successfully',
+      data: rideCost
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// DELETE - Delete ride cost model
+router.delete('/:id', async (req, res) => {
+  try {
+    const rideCost = await RideCost.findByIdAndDelete(req.params.id);
+
+    if (!rideCost) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ride cost model not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Ride cost model deleted successfully'
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+module.exports = router;
