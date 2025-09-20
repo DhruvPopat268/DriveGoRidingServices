@@ -5,15 +5,20 @@ const Category = require('../models/Category');
 const peakHours = require('../models/Peak')
 const pricecategories = require('../models/PriceCategory')
 const moment = require('moment');
+const SubCategory = require('../models/SubCategory');
 
 router.post('/', async (req, res) => {
   try {
     const rideCost = new RideCost(req.body);
     const saved = await rideCost.save();
+    const populated = await RideCost.findById(saved._id)
+      .populate('category', 'name')
+      .populate('subcategory', 'name')
+      .populate('priceCategory', 'priceCategoryName');
     res.status(201).json({
       success: true,
       message: 'Ride cost model created successfully',
-      data: saved
+      data: populated
     });
   } catch (err) {
     res.status(400).json({
@@ -26,7 +31,11 @@ router.post('/', async (req, res) => {
 // GET ALL - Retrieve all ride cost models
 router.get('/', async (req, res) => {
   try {
-    const rideCosts = await RideCost.find().sort({ createdAt: -1 });
+    const rideCosts = await RideCost.find()
+      .populate('category', 'name')
+      .populate('subcategory', 'name')
+      .populate('priceCategory', 'priceCategoryName')
+      .sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: rideCosts.length,
@@ -71,7 +80,9 @@ router.post('/calculation', async (req, res) => {
       selectedTime,
       includeInsurance,
       selectedUsage,
-      subcategoryName,
+      subcategoryId,
+      numberOfWeeks,
+      numberOfMonths
     } = fullData;
 
     // 1. Get category from DB
@@ -80,29 +91,42 @@ router.post('/calculation', async (req, res) => {
       return res.status(404).json({ error: 'Category not found' });
     }
 
-    // 2. Normalize names
-    const formattedCategory = category.name.toLowerCase().replace(/\s+/g, '-');
-    const formattedSubcategory = subcategoryName.toLowerCase().replace(/\s+/g, '-');
-
-    const modelType = `${formattedCategory}-${formattedSubcategory}`;
-    console.log('Model Type:', modelType);
-
+    // 2. Usage value calculation
     let usageValue = parseFloat(selectedUsage);
-    if (formattedSubcategory === 'hourly') {
-      usageValue = usageValue * 60; // Convert hours → minutes
+
+    // If subcategory is hourly, convert hours → minutes
+    const subcategory = await SubCategory.findById(subcategoryId);
+    if (!subcategory) {
+      return res.status(404).json({ error: 'Subcategory not found' });
     }
 
-    // 3. Fetch charges
-    const charges = await RideCost.findOne({ modelType });
+    const formattedSubcategory = subcategory.name.toLowerCase().replace(/\s+/g, '-');
+    console.log('Formatted Subcategory:', formattedSubcategory);
+    if (formattedSubcategory === 'hourly') {
+      usageValue = usageValue * 60;
+    }
+
+    // 3. Fetch charges using categoryId + subcategoryId
+    const charges = await RideCost.findOne({
+      category: categoryId,
+      subcategory: subcategoryId
+    });
+
     console.log('Fetched Charges:', charges);
     if (!charges) {
-      return res.status(404).json({ error: 'Charges not found for modelType' });
+      return res.status(404).json({ error: 'Charges not found for category + subcategory' });
     }
 
     const peakChargesList = await peakHours.find({});
-    const categoryPrices = await pricecategories.find({ category: categoryId });
 
-    if (!charges || categoryPrices.length === 0) {
+    // Fetch all ride cost models for the same category & subcategory
+    const rideCostModels = await RideCost.find({
+      category: categoryId,
+      subcategory: subcategoryId
+    });
+    console.log('Ride Cost Models:', rideCostModels);
+
+    if (!charges || rideCostModels.length === 0) {
       return res.status(404).json({ error: 'Required data not found' });
     }
 
@@ -135,51 +159,60 @@ router.post('/calculation', async (req, res) => {
     // --- Result calculation ---
     const result = [];
 
-    categoryPrices.forEach((cat) => {
+    for (const model of rideCostModels) {
+      const priceCategoryId = model.priceCategory;
+      const priceCategory = await pricecategories.findById(priceCategoryId);
+
+      console.log('Price Category:', priceCategory.priceCategoryName);
+
       let driverCharges = 0;
-      if (modelType === 'driver-one-way') {
-        driverCharges = usageValue * cat.chargePerKm;
+
+      if (formattedSubcategory === 'hourly') {
+        // Hourly → usage already converted to minutes above
+        driverCharges = usageValue * model.chargePerMinute;
+      } else if (formattedSubcategory === 'weekly') {
+        // Weekly → usageValue * perMinute * 60 * 7 * numberOfWeeks
+        const weeks = parseInt(numberOfWeeks) || 1;
+        driverCharges = usageValue * model.chargePerMinute * 60 * 7 * weeks;
+      } else if (formattedSubcategory === 'monthly') {
+        // Monthly → usageValue * perMinute * 60 * 30 * numberOfMonths
+        const months = parseInt(numberOfMonths) || 1;
+        driverCharges = usageValue * model.chargePerMinute * 60 * 30 * months;
       } else {
-        driverCharges = usageValue * cat.chargePerMinute;
+        // Default → per Km
+        driverCharges = usageValue * model.chargePerKm;
       }
 
-      const baseTotal = driverCharges + pickCharges + peakCharges + nightCharges;
+      const modelPickCharges = model.pickCharges || pickCharges;
+      const modelNightCharges = (hour >= 22 || hour < 6) ? model.nightCharges || 0 : 0;
+      const modelInsurance = includeInsurance ? model.insurance || 0 : 0;
+      const cancellationCharges = model.cancellationFee || 0;
 
-      // Original admin commission
-      const adminCommission = Math.round((baseTotal * charges.extraChargesFromAdmin) / 100);
+      const baseTotal = driverCharges + modelPickCharges + peakCharges + modelNightCharges + modelInsurance + cancellationCharges;
 
-      // Apply discount on commission only
-      let adjustedAdminCommission = adminCommission;
-      if (charges.discount > 0) {
-        adjustedAdminCommission = Math.max(0, adminCommission - charges.discount); // no negative commission
-      }
-
-      // Subtotal = base charges + adjusted commission
+      const adminCommission = Math.round((baseTotal * model.extraChargesFromAdmin) / 100);
+      const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
       const subtotal = baseTotal + adjustedAdminCommission;
 
-      const cancellationCharges = charges.cancellationFee || 0;
-
-      // GST on adjusted commission
-      const gstCharges = Math.ceil((adjustedAdminCommission * charges.gst) / 100);
-
-      const totalPayable = Math.round(subtotal + gstCharges + insuranceCharges + cancellationCharges);
+      const gstCharges = Math.ceil((subtotal * model.gst) / 100);
+      const totalPayable = Math.round(subtotal + gstCharges);
 
       result.push({
-        category: cat.priceCategoryName,
+        category: priceCategory.priceCategoryName,
         driverCharges: Math.round(driverCharges),
-        pickCharges: Math.round(pickCharges),
+        pickCharges: Math.round(modelPickCharges),
         peakCharges: Math.round(peakCharges),
-        insuranceCharges: Math.round(insuranceCharges),
-        nightCharges: Math.round(nightCharges),
+        insuranceCharges: Math.round(modelInsurance),
+        nightCharges: Math.round(modelNightCharges),
         adminCommissionOriginal: adminCommission,
         adminCommissionAdjusted: adjustedAdminCommission,
-        discountApplied: charges.discount,
+        discountApplied: model.discount,
         cancellationCharges: Math.round(cancellationCharges),
         gstCharges,
         subtotal: Math.round(subtotal),
         totalPayable
       });
-    });
+    }
 
     console.log('Calculation Result:', result);
 
@@ -190,6 +223,7 @@ router.post('/calculation', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
 
 // GET BY MODEL TYPE - Retrieve ride cost models by type
 router.get('/type/:modelType', async (req, res) => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -19,20 +19,19 @@ import {
 
 interface RideCost {
   _id?: string;
-  modelType: string;
-  extraPerKm?: number;
-  extraPerMinute?: number;
-  pickCharges?: number;
-  nightCharges?: number;
-  cancellationFee?: number;
-  insurance?: number;
-  extraChargesFromAdmin?: number;
-  gst?: number;
-  discount?: number;
-  // New fields from backend schema
-  perKmRate?: number;
-  perMinuteRate?: number;
-  minimumFare?: number;
+  category: string | { _id: string; name: string };
+  subcategory: string | { _id: string; name: string };
+  priceCategory: string | { _id: string; priceCategoryName: string };
+  chargePerKm: number;
+  chargePerMinute: number;
+  pickCharges: number;
+  nightCharges: number;
+  cancellationFee: number;
+  insurance: number;
+  extraChargesFromAdmin: number;
+  gst: number;
+  discount: number;
+  minimumFare: number;
 }
 
 interface Category {
@@ -46,164 +45,158 @@ interface Subcategory {
   categoryId: string;
 }
 
+interface PriceCategory {
+  _id: string;
+  priceCategoryName: string;
+}
+
 export const RideCostPage = () => {
   const [rideCosts, setRideCosts] = useState<RideCost[]>([]);
-  const [rideCostForm, setRideCostForm] = useState<any>({});
-  const [rideCostDialogOpen, setRideCostDialogOpen] = useState(false);
+  const [filteredRideCosts, setFilteredRideCosts] = useState<RideCost[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
+  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
+  const [filteredPriceCategories, setFilteredPriceCategories] = useState<PriceCategory[]>([]);
+  
+  // Filter states
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+  const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<Subcategory[]>([]);
+  
+  const [rideCostForm, setRideCostForm] = useState({
+    category: '',
+    subcategory: '',
+    priceCategory: '',
+    chargePerKm: '',
+    chargePerMinute: '',
+    pickCharges: '',
+    nightCharges: '',
+    cancellationFee: '',
+    insurance: '',
+    extraChargesFromAdmin: '',
+    gst: '',
+    discount: ''
+  });
+  
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRideCost, setEditingRideCost] = useState<RideCost | null>(null);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewingRideCost, setViewingRideCost] = useState<RideCost | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      await fetchRideCosts();
-      await fetchCategoriesAndSubcategories();
-      setLoading(false);
-    };
     fetchData();
   }, []);
 
-  const fetchRideCosts = async () => {
-    try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/ride-costs`);
-      const fetchedRideCosts = res.data.data || res.data;
-      if (Array.isArray(fetchedRideCosts)) {
-        setRideCosts(fetchedRideCosts);
-      } else {
-        console.warn("API response for ride costs is not an array. Setting state to empty array.", res.data);
-        setRideCosts([]);
-      }
-    } catch (error) {
-      console.error('Error fetching ride costs:', error);
-      setRideCosts([]);
+  // Filter subcategories when category changes in form
+  useEffect(() => {
+    if (rideCostForm.category) {
+      const filtered = subcategories.filter(sub => sub.categoryId === rideCostForm.category);
+      setFilteredSubcategories(filtered);
+      setRideCostForm(prev => ({ ...prev, subcategory: '', priceCategory: '' }));
+      setFilteredPriceCategories([]);
+    } else {
+      setFilteredSubcategories([]);
+      setFilteredPriceCategories([]);
     }
-  };
+  }, [rideCostForm.category, subcategories]);
 
-  const fetchCategoriesAndSubcategories = async () => {
+  // Show all price categories when subcategory is selected in form
+  useEffect(() => {
+    if (rideCostForm.subcategory) {
+      setFilteredPriceCategories(priceCategories);
+      setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+    } else {
+      setFilteredPriceCategories([]);
+    }
+  }, [rideCostForm.subcategory, priceCategories]);
+
+  // Filter subcategories for filter dropdown
+  useEffect(() => {
+    if (filterCategory && filterCategory !== 'all') {
+      const filtered = subcategories.filter(sub => sub.categoryId === filterCategory);
+      setFilterSubcategoriesForFilter(filtered);
+      setFilterSubcategory('all');
+    } else {
+      setFilterSubcategoriesForFilter([]);
+      setFilterSubcategory('all');
+    }
+  }, [filterCategory, subcategories]);
+
+  // Apply filters to ride costs
+  useEffect(() => {
+    let filtered = [...rideCosts];
+
+    if (filterCategory && filterCategory !== 'all') {
+      filtered = filtered.filter(rideCost => {
+        const categoryId = typeof rideCost.category === 'string' ? rideCost.category : rideCost.category._id;
+        return categoryId === filterCategory;
+      });
+    }
+
+    if (filterSubcategory && filterSubcategory !== 'all') {
+      filtered = filtered.filter(rideCost => {
+        const subcategoryId = typeof rideCost.subcategory === 'string' ? rideCost.subcategory : rideCost.subcategory._id;
+        return subcategoryId === filterSubcategory;
+      });
+    }
+
+    setFilteredRideCosts(filtered);
+  }, [rideCosts, filterCategory, filterSubcategory]);
+
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      const [categoriesRes, subcategoriesRes] = await Promise.all([
+      const [rideCostsRes, categoriesRes, subcategoriesRes, priceCategoriesRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/api/ride-costs`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/categories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`)
+        axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`)
       ]);
       
-      console.log('Categories response:', categoriesRes.data);
-      console.log('Subcategories response:', subcategoriesRes.data);
-      
-      // Based on your console output, the data is directly in the response
-      const categoriesData = categoriesRes.data || [];
-      const subcategoriesData = subcategoriesRes.data || [];
-      
-      console.log('Setting categories:', categoriesData);
-      console.log('Setting subcategories:', subcategoriesData);
-      
-      setCategories(Array.isArray(categoriesData) ? categoriesData : []);
-      setSubcategories(Array.isArray(subcategoriesData) ? subcategoriesData : []);
+      setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
+      setCategories(categoriesRes.data);
+      setSubcategories(subcategoriesRes.data);
+      setPriceCategories(priceCategoriesRes.data);
     } catch (error) {
-      console.error('Error fetching categories and subcategories:', error);
-      setCategories([]);
-      setSubcategories([]);
-    }
-  };
-
-  const comprehensiveFields = [
-    { key: 'pickCharges', label: 'Pick Charges', type: 'number' },
-    { key: 'nightCharges', label: 'Night Charges', type: 'number' },
-    { key: 'cancellationFee', label: 'Cancellation Fee', type: 'number' },
-    { key: 'insurance', label: 'Insurance', type: 'number' },
-    { key: 'extraChargesFromAdmin', label: 'Extra Charges from Admin in %', type: 'number' },
-    { key: 'gst', label: 'GST in %', type: 'number' },
-    { key: 'discount', label: 'Discount', type: 'number' },
-  ];
-
-  const getFormFields = (subcategoryName: string) => {
-    if (!subcategoryName) return simpleFields;
-    
-    const subcategory = subcategories.find(sub => sub.name.toLowerCase() === subcategoryName.toLowerCase());
-    const category = subcategory && categories.find(cat => cat._id === subcategory.categoryId);
-
-    if (category?.name.toLowerCase() === 'driver' && ['oneway', 'hourly'].includes(subcategoryName.toLowerCase())) {
-        return comprehensiveFields;
-    } else {
-        return comprehensiveFields;
-    }
-  };
-
-  // Get category ID by name
-  const getCategoryIdByName = (categoryName: string): string => {
-    const category = categories.find(cat => cat.name.toLowerCase() === categoryName.toLowerCase());
-    return category?._id || '';
-  };
-
-  // Get filtered subcategories based on selected category
-  const getFilteredSubcategories = () => {
-    if (!selectedCategory) return [];
-    const categoryId = getCategoryIdByName(selectedCategory);
-    return subcategories.filter(sub => sub.categoryId === categoryId);
-  };
-
-  const handleRideCostSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      setLoading(true);
-      const modelType = `${selectedCategory.toLowerCase()}-${selectedSubcategory.toLowerCase()}`;
-      const payload = Object.fromEntries(
-        Object.entries(rideCostForm).map(([key, value]) => [
-          key,
-          parseFloat(String(value || '0'))
-        ])
-      );
-      payload.modelType = modelType;
-
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/ride-costs`, payload);
-      fetchRideCosts();
-      setRideCostDialogOpen(false);
-      setRideCostForm({});
-      setSelectedCategory('');
-      setSelectedSubcategory('');
-      alert('Ride cost model created successfully!');
-    } catch (error) {
-      console.error('Error creating ride cost:', error);
-      alert('Failed to create ride cost model');
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
-    if (!editingRideCost?._id) return;
+    const payload = {
+      category: rideCostForm.category,
+      subcategory: rideCostForm.subcategory,
+      priceCategory: rideCostForm.priceCategory,
+      chargePerKm: parseFloat(rideCostForm.chargePerKm) || 0,
+      chargePerMinute: parseFloat(rideCostForm.chargePerMinute) || 0,
+      pickCharges: parseFloat(rideCostForm.pickCharges) || 0,
+      nightCharges: parseFloat(rideCostForm.nightCharges) || 0,
+      cancellationFee: parseFloat(rideCostForm.cancellationFee) || 0,
+      insurance: parseFloat(rideCostForm.insurance) || 0,
+      extraChargesFromAdmin: parseFloat(rideCostForm.extraChargesFromAdmin) || 0,
+      gst: parseFloat(rideCostForm.gst) || 0,
+      discount: parseFloat(rideCostForm.discount) || 0
+    };
 
     try {
-      setLoading(true);
-      const modelType = `${selectedCategory.toLowerCase()}-${selectedSubcategory.toLowerCase()}`;
-      const payload = Object.fromEntries(
-        Object.entries(rideCostForm).map(([key, value]) => [
-          key,
-          parseFloat(String(value || '0'))
-        ])
-      );
-      payload.modelType = modelType;
-
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/ride-costs/${editingRideCost._id}`, payload);
-      fetchRideCosts();
-      setEditDialogOpen(false);
-      setEditingRideCost(null);
-      setRideCostForm({});
-      setSelectedCategory('');
-      setSelectedSubcategory('');
-      alert('Ride cost model updated successfully!');
+      if (editingRideCost) {
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/ride-costs/${editingRideCost._id}`, payload);
+      } else {
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/ride-costs`, payload);
+      }
+      
+      await fetchData();
+      setDialogOpen(false);
+      resetForm();
     } catch (error) {
-      console.error('Error updating ride cost:', error);
-      alert('Failed to update ride cost model');
+      console.error('Error saving ride cost:', error);
     } finally {
       setLoading(false);
     }
@@ -211,51 +204,62 @@ export const RideCostPage = () => {
 
   const handleEdit = (rideCost: RideCost) => {
     setEditingRideCost(rideCost);
-    
-    // Parse the modelType to get category and subcategory
-    const modelTypeParts = rideCost.modelType.split('-');
-    if (modelTypeParts.length >= 2) {
-      const categoryName = modelTypeParts[0];
-      const subcategoryName = modelTypeParts[1];
-      
-      // Find the actual category name (case-insensitive)
-      const category = categories.find(cat => cat.name.toLowerCase() === categoryName.toLowerCase());
-      const subcategory = subcategories.find(sub => sub.name.toLowerCase() === subcategoryName.toLowerCase());
-      
-      setSelectedCategory(category?.name || categoryName);
-      setSelectedSubcategory(subcategory?.name || subcategoryName);
-    }
-
-    // Populate form with existing data
-    const newForm: any = {};
-    Object.entries(rideCost).forEach(([key, value]) => {
-      if (key !== '_id' && key !== 'modelType' && typeof value !== 'undefined') {
-        newForm[key] = value?.toString() || '';
-      }
+    setRideCostForm({
+      category: typeof rideCost.category === 'string' ? rideCost.category : rideCost.category._id,
+      subcategory: typeof rideCost.subcategory === 'string' ? rideCost.subcategory : rideCost.subcategory._id,
+      priceCategory: typeof rideCost.priceCategory === 'string' ? rideCost.priceCategory : rideCost.priceCategory._id,
+      chargePerKm: rideCost.chargePerKm.toString(),
+      chargePerMinute: rideCost.chargePerMinute.toString(),
+      pickCharges: rideCost.pickCharges.toString(),
+      nightCharges: rideCost.nightCharges.toString(),
+      cancellationFee: rideCost.cancellationFee.toString(),
+      insurance: rideCost.insurance.toString(),
+      extraChargesFromAdmin: rideCost.extraChargesFromAdmin.toString(),
+      gst: rideCost.gst.toString(),
+      discount: rideCost.discount.toString()
     });
-    setRideCostForm(newForm);
-    setEditDialogOpen(true);
+    setDialogOpen(true);
   };
 
   const handleDelete = async (id?: string) => {
     if (!id) return;
-
+    setLoading(true);
     try {
-      setLoading(true);
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/ride-costs/${id}`);
-      fetchRideCosts();
-      alert('Ride cost model deleted successfully!');
+      await fetchData();
     } catch (error) {
       console.error('Error deleting ride cost:', error);
-      alert('Failed to delete ride cost model');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleView = (rideCost: RideCost) => {
-    setViewingRideCost(rideCost);
-    setViewDialogOpen(true);
+  const resetForm = () => {
+    setEditingRideCost(null);
+    setRideCostForm({
+      category: '',
+      subcategory: '',
+      priceCategory: '',
+      chargePerKm: '',
+      chargePerMinute: '',
+      pickCharges: '',
+      nightCharges: '',
+      cancellationFee: '',
+      insurance: '',
+      extraChargesFromAdmin: '',
+      gst: '',
+      discount: ''
+    });
+  };
+
+  const clearFilters = () => {
+    setFilterCategory('all');
+    setFilterSubcategory('all');
+  };
+
+  const getName = (item: string | { name?: string; priceCategoryName?: string }): string => {
+    if (typeof item === 'string') return 'Unknown';
+    return item.name || item.priceCategoryName || 'Unknown';
   };
 
   return (
@@ -268,185 +272,260 @@ export const RideCostPage = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Ride Cost Models</h2>
           
-          <Dialog open={rideCostDialogOpen} onOpenChange={setRideCostDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => {
-                setRideCostForm({});
-                setSelectedCategory('');
-                setSelectedSubcategory('');
-              }} disabled={loading}>
+              <Button onClick={resetForm} disabled={loading}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Ride Cost Model
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Ride Cost Model</DialogTitle>
+                <DialogTitle>{editingRideCost ? 'Edit' : 'Create'} Ride Cost Model</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleRideCostSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Category</label>
-                    <Select onValueChange={(value) => {
-                      setSelectedCategory(value);
-                      setSelectedSubcategory(''); // Reset subcategory when category changes
-                    }} value={selectedCategory}>
+                  <Select
+                    value={rideCostForm.category}
+                    onValueChange={(value) => setRideCostForm(prev => ({ ...prev, category: value }))}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat._id} value={cat._id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select
+                    value={rideCostForm.subcategory}
+                    onValueChange={(value) => setRideCostForm(prev => ({ ...prev, subcategory: value }))}
+                    disabled={!rideCostForm.category}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Subcategory" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredSubcategories.map((sub) => (
+                        <SelectItem key={sub.id} value={sub.id}>
+                          {sub.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="col-span-2">
+                    <Select
+                      value={rideCostForm.priceCategory}
+                      onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                      disabled={!rideCostForm.subcategory}
+                      required
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue placeholder="Select Driver Category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat._id} value={cat.name}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Subcategory</label>
-                    <Select onValueChange={setSelectedSubcategory} value={selectedSubcategory} disabled={!selectedCategory}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a subcategory" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getFilteredSubcategories().map((sub) => (
-                          <SelectItem key={sub._id} value={sub.name}>
-                            {sub.name}
+                        {filteredPriceCategories.map((pc) => (
+                          <SelectItem key={pc._id} value={pc._id}>
+                            {pc.priceCategoryName}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {selectedCategory && selectedSubcategory && (
-                    getFormFields(selectedSubcategory).map((field) => (
-                      <div key={field.key}>
-                        <label className="block text-sm font-medium mb-1">{field.label}</label>
-                        <Input
-                          type={field.type}
-                          placeholder={`Enter ${field.label.toLowerCase()}`}
-                          value={rideCostForm[field.key] || ''}
-                          onChange={(e) =>
-                            setRideCostForm((prev: any) => ({
-                              ...prev,
-                              [field.key]: e.target.value
-                            }))
-                          }
-                          required
-                        />
-                      </div>
-                    ))
-                  )}
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Charge per km"
+                    value={rideCostForm.chargePerKm}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, chargePerKm: e.target.value }))}
+                    required
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Charge per minute"
+                    value={rideCostForm.chargePerMinute}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, chargePerMinute: e.target.value }))}
+                    required
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Pick Charges"
+                    value={rideCostForm.pickCharges}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, pickCharges: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Night Charges"
+                    value={rideCostForm.nightCharges}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, nightCharges: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Cancellation Fee"
+                    value={rideCostForm.cancellationFee}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationFee: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Insurance"
+                    value={rideCostForm.insurance}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, insurance: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Admin Commission %"
+                    value={rideCostForm.extraChargesFromAdmin}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargesFromAdmin: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="GST %"
+                    value={rideCostForm.gst}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, gst: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Discount"
+                    value={rideCostForm.discount}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, discount: e.target.value }))}
+                  />
+
                 </div>
-                <Button type="submit" className="w-full" disabled={loading || !selectedCategory || !selectedSubcategory}>
-                  {loading ? 'Creating...' : 'Submit'}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Saving...' : editingRideCost ? 'Update' : 'Create'}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Edit Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Ride Cost Model</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Category</label>
-                  <Select onValueChange={(value) => {
-                    setSelectedCategory(value);
-                    setSelectedSubcategory(''); // Reset subcategory when category changes
-                  }} value={selectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat.name}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Subcategory</label>
-                  <Select onValueChange={setSelectedSubcategory} value={selectedSubcategory} disabled={!selectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a subcategory" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getFilteredSubcategories().map((sub) => (
-                        <SelectItem key={sub._id} value={sub.name}>
-                          {sub.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {selectedCategory && selectedSubcategory && (
-                  getFormFields(selectedSubcategory).map((field) => (
-                    <div key={field.key}>
-                      <label className="block text-sm font-medium mb-1">{field.label}</label>
-                      <Input
-                        type={field.type}
-                        value={rideCostForm[field.key] || ''}
-                        onChange={(e) =>
-                          setRideCostForm((prev: any) => ({
-                            ...prev,
-                            [field.key]: e.target.value
-                          }))
-                        }
-                        required
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-              <Button type="submit" className="w-full" disabled={loading || !selectedCategory || !selectedSubcategory}>
-                {loading ? 'Updating...' : 'Update'}
+        {/* Filter Section */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-gray-700">Filter Options</h3>
+            {(filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="text-xs"
+              >
+                <X className="w-3 h-3 mr-1" />
+                Clear Filters
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Filter by Category
+              </label>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat._id} value={cat._id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Filter by Subcategory
+              </label>
+              <Select 
+                value={filterSubcategory} 
+                onValueChange={setFilterSubcategory}
+                disabled={!filterCategory || filterCategory === 'all'}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Subcategories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subcategories</SelectItem>
+                  {filterSubcategoriesForFilter.map((sub) => (
+                    <SelectItem key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <div className="text-sm text-gray-600">
+                Showing {filteredRideCosts.length} of {rideCosts.length} models
+              </div>
+            </div>
+          </div>
+        </div>
 
         <ScrollArea className="w-full">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Model Type</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Subcategory</TableHead>
+                <TableHead>Driver Category</TableHead>
+                <TableHead>Per Km</TableHead>
+                <TableHead>Per Min</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center py-6 text-muted-foreground">
-                    Loading...
-                  </TableCell>
+                  <TableCell colSpan={6} className="text-center py-6">Loading...</TableCell>
                 </TableRow>
-              ) : rideCosts.length === 0 ? (
+              ) : filteredRideCosts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={2} className="text-center py-6 text-muted-foreground">
-                    No ride cost model found. Add your first one!
+                  <TableCell colSpan={6} className="text-center py-6">
+                    {rideCosts.length === 0 
+                      ? "No ride cost models found. Create your first one!"
+                      : "No models match the selected filters."
+                    }
                   </TableCell>
                 </TableRow>
               ) : (
-                rideCosts.map((rideCost) => (
+                filteredRideCosts.map((rideCost) => (
                   <TableRow key={rideCost._id}>
-                    <TableCell>{rideCost.modelType}</TableCell>
+                    <TableCell>{getName(rideCost.category)}</TableCell>
+                    <TableCell>{getName(rideCost.subcategory)}</TableCell>
+                    <TableCell>{getName(rideCost.priceCategory)}</TableCell>
+                    <TableCell>₹{rideCost.chargePerKm}</TableCell>
+                    <TableCell>₹{rideCost.chargePerMinute}</TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleView(rideCost)}
-                          disabled={loading}
+                          onClick={() => {
+                            setViewingRideCost(rideCost);
+                            setViewDialogOpen(true);
+                          }}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -468,16 +547,13 @@ export const RideCostPage = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will delete the ride cost permanently. This action cannot be undone.
+                                This will permanently delete the ride cost model.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(rideCost._id)}
-                                disabled={loading}
-                              >
-                                {loading ? 'Deleting...' : 'Delete'}
+                              <AlertDialogAction onClick={() => handleDelete(rideCost._id)}>
+                                Delete
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -493,29 +569,52 @@ export const RideCostPage = () => {
 
         {/* View Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>View Ride Cost Model</DialogTitle>
             </DialogHeader>
             {viewingRideCost && (
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium mb-1">Model Type</label>
-                  <Input value={viewingRideCost.modelType} readOnly />
+                <div>
+                  <label className="text-sm font-medium">Category</label>
+                  <p className="text-sm text-gray-600">{getName(viewingRideCost.category)}</p>
                 </div>
-                {(() => {
-                  const modelTypeParts = viewingRideCost.modelType.split('-');
-                  const subcategoryName = modelTypeParts.length >= 2 ? modelTypeParts[1] : '';
-                  return getFormFields(subcategoryName).map((field) => (
-                    <div key={field.key}>
-                      <label className="block text-sm font-medium mb-1">{field.label}</label>
-                      <Input 
-                        value={viewingRideCost[field.key as keyof RideCost]?.toString() || '0'} 
-                        readOnly 
-                      />
-                    </div>
-                  ));
-                })()}
+                <div>
+                  <label className="text-sm font-medium">Subcategory</label>
+                  <p className="text-sm text-gray-600">{getName(viewingRideCost.subcategory)}</p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium">Driver Category</label>
+                  <p className="text-sm text-gray-600">{getName(viewingRideCost.priceCategory)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Pick Charges</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.pickCharges}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Night Charges</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.nightCharges}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Cancellation Fee</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.cancellationFee}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Insurance</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.insurance}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Admin Commission</label>
+                  <p className="text-sm text-gray-600">{viewingRideCost.extraChargesFromAdmin}%</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">GST</label>
+                  <p className="text-sm text-gray-600">{viewingRideCost.gst}%</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Discount</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.discount}</p>
+                </div>
               </div>
             )}
           </DialogContent>

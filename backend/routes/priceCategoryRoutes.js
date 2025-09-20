@@ -21,13 +21,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get all price categories with populated category and subcategory details
+// Get all price categories
 router.get('/', async (req, res) => {
   try {
-    const categories = await PriceCategory.find()
-      .populate('category', 'name description image')
-      .populate('subcategory', 'name description image') // lowercase, matches schema
-      .sort({ createdAt: -1 });
+    const categories = await PriceCategory.find().sort({ createdAt: -1 });
     res.json(categories);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -41,9 +38,7 @@ router.put('/:id', async (req, res) => {
       req.params.id,
       req.body,
       { new: true }
-    )
-      .populate('category', 'name description image')
-      .populate('subcategory', 'name description');
+    );
 
     if (!updated) return res.status(404).json({ error: 'Price category not found' });
     res.json(updated);
