@@ -210,7 +210,6 @@ export const DriverCalculationPage = () => {
         };
 
         setModels([...models, newDisplayModel]);
-
         // Reset form
         setFormData({
           baseFare: '',
@@ -235,7 +234,6 @@ export const DriverCalculationPage = () => {
         });
         setSelectedModelType('');
         setIsDialogOpen(false);
-
         // Show success message (you can implement a toast notification here)
         console.log('Model created successfully:', result.message);
       } else {

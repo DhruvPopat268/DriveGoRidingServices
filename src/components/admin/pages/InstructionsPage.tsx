@@ -405,5 +405,4 @@ export const InstructionsPage = () => {
       </div>
     </div>
   );
-
 };

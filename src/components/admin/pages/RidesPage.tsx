@@ -20,7 +20,6 @@ export const RidesPage = () => {
           <Button className="bg-blue-600 hover:bg-blue-700">Export</Button>
         </div>
       </div>
-
       <div className="space-y-4">
         {ridesData.map((ride) => (
           <Card key={ride.id} className="bg-white border-gray-200">

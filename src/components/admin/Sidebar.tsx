@@ -42,10 +42,9 @@ const menuItems = [
   { icon: Car, label: "Cab Calculation Model", key: "cabcalculation" },
   { icon: Package, label: "Parcel Calculation Model", key: "parcelcalculation" },
   { icon: Bike, label: "Rides", key: "rides" },
-<<<<<<< HEAD
-=======
-  {icon:Gift , label: "Refer Earn", key: "referearn"}
->>>>>>> 0a33a10cdd650f7055c5fd418c20c1498df0ffe7
+
+  { icon: Gift, label: "Refer Earn", key: "referearn" }
+
 ];
 
 export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps) => {

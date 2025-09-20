@@ -81,14 +81,19 @@ export const ParcelCalculationPage = () => {
                   <SelectTrigger className="bg-white border-gray-300 text-black">
                     <SelectValue placeholder="Select model type" />
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-gray-200">
+                  <SelectContent>
                     {modelTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value} className="text-black hover:bg-gray-100">
+                      <SelectItem
+                        key={type.value}
+                        value={type.value}
+                        className="text-black hover:bg-gray-100"
+                      >
                         {type.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+
               </div>
 
               <div className="grid grid-cols-2 gap-4">
