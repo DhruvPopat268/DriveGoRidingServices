@@ -19,9 +19,9 @@ import {
 
 interface RideCost {
   _id?: string;
-  category: string | { _id: string; name: string };
-  subcategory: string | { _id: string; name: string };
-  priceCategory: string | { _id: string; priceCategoryName: string };
+  category: string | { _id?: string; id?: string; name: string };
+  subcategory: string | { _id?: string; id?: string; name: string };
+  priceCategory: string | { _id?: string; id?: string; priceCategoryName: string };
   chargePerKm: number;
   chargePerMinute: number;
   pickCharges: number;
@@ -40,7 +40,8 @@ interface Category {
 }
 
 interface Subcategory {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   categoryId: string;
 }
@@ -84,6 +85,12 @@ export const RideCostPage = () => {
   const [viewingRideCost, setViewingRideCost] = useState<RideCost | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Helper function to extract ID from objects that might have either _id or id
+  const extractId = (item: string | { _id?: string; id?: string }) => {
+    if (typeof item === 'string') return item;
+    return item._id || item.id || '';
+  };
 
   useEffect(() => {
     fetchData();
@@ -130,14 +137,14 @@ export const RideCostPage = () => {
 
     if (filterCategory && filterCategory !== 'all') {
       filtered = filtered.filter(rideCost => {
-        const categoryId = typeof rideCost.category === 'string' ? rideCost.category : rideCost.category._id;
+        const categoryId = extractId(rideCost.category);
         return categoryId === filterCategory;
       });
     }
 
     if (filterSubcategory && filterSubcategory !== 'all') {
       filtered = filtered.filter(rideCost => {
-        const subcategoryId = typeof rideCost.subcategory === 'string' ? rideCost.subcategory : rideCost.subcategory._id;
+        const subcategoryId = extractId(rideCost.subcategory);
         return subcategoryId === filterSubcategory;
       });
     }
@@ -203,11 +210,24 @@ export const RideCostPage = () => {
   };
 
   const handleEdit = (rideCost: RideCost) => {
+    console.log('Editing ride cost:', rideCost);
     setEditingRideCost(rideCost);
+    
+    const categoryId = extractId(rideCost.category);
+    const subcategoryId = extractId(rideCost.subcategory);
+    const priceCategoryId = extractId(rideCost.priceCategory);
+    
+    // Set filtered subcategories first
+    const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
+    setFilteredSubcategories(filteredSubs);
+    
+    // Set filtered price categories - show all when subcategory is selected
+    setFilteredPriceCategories(priceCategories);
+    
     setRideCostForm({
-      category: typeof rideCost.category === 'string' ? rideCost.category : rideCost.category._id,
-      subcategory: typeof rideCost.subcategory === 'string' ? rideCost.subcategory : rideCost.subcategory._id,
-      priceCategory: typeof rideCost.priceCategory === 'string' ? rideCost.priceCategory : rideCost.priceCategory._id,
+      category: categoryId,
+      subcategory: subcategoryId,
+      priceCategory: priceCategoryId,
       chargePerKm: rideCost.chargePerKm.toString(),
       chargePerMinute: rideCost.chargePerMinute.toString(),
       pickCharges: rideCost.pickCharges.toString(),
@@ -313,7 +333,7 @@ export const RideCostPage = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {filteredSubcategories.map((sub) => (
-                        <SelectItem key={sub.id} value={sub.id}>
+                        <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
                           {sub.name}
                         </SelectItem>
                       ))}
@@ -467,7 +487,7 @@ export const RideCostPage = () => {
                 <SelectContent>
                   <SelectItem value="all">All Subcategories</SelectItem>
                   {filterSubcategoriesForFilter.map((sub) => (
-                    <SelectItem key={sub.id} value={sub.id}>
+                    <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
                       {sub.name}
                     </SelectItem>
                   ))}
