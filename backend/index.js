@@ -31,6 +31,8 @@ app.use(cors({
     "http://localhost:8082",
     "http://localhost:8081",
     "http://localhost:8080",
+    "http://localhost:5173",
+    "http://localhost:3000",
    "https://driver-go-admin-frontend.onrender.com",
    "https://drive-go-frontend.onrender.com"
   ],
@@ -67,6 +69,8 @@ app.use('/api/referral-rules', referralRulesRoutes);
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));
 
 app.use('/api/driver', require('./driverRoutes/DriverRoute'));
+
+app.use('/api/payments', require('./routes/Payment&Wallet'));
 
 const PORT = process.env.PORT || 5000;
 
