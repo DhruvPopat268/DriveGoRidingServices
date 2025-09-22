@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Edit, Trash2, } from 'lucide-react';
+
 
 interface ReferralRule {
   _id: string;
   commission: number;
-  MaxReferrals : number;
+  MaxReferrals: number;
   createdAt: string;
 }
 
@@ -103,9 +105,9 @@ const ReferEarnPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 bg-white text-black">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Refer & Earn</h1>
+        <h1 className="text-2xl font-bold">Refer & Earn</h1>
         <button
           onClick={() => setShowForm(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
@@ -121,56 +123,58 @@ const ReferEarnPage: React.FC = () => {
       )}
 
       {/* Rules Table */}
-      <div className="bg-[#1f2937] shadow-md rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-gray-900">
+      <div className="bg-white border shadow-md rounded-lg overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-100">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Index
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Referral Commission (%)
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                Max Referrals 
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                Max Referrals
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Created At
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700 text-gray-100">
+          <tbody className="divide-y divide-gray-200 text-gray-900">
             {rules && rules.length > 0 ? (
               rules.map((rule, index) => (
-                <tr key={rule._id} className="hover:bg-gray-700">
+                <tr key={rule._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{index + 1}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{rule.commission}%</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{rule.MaxReferrals}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {new Date(rule.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center gap-3">
                     <button
                       onClick={() => handleEdit(rule)}
-                      className="text-blue-400 hover:text-blue-300 mr-3"
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Edit"
                     >
-                      Edit
+                      <Edit size={18} />
                     </button>
                     <button
                       onClick={() => handleDelete(rule._id)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-600 hover:text-red-800"
+                      title="Delete"
                     >
-                      Delete
+                      <Trash2 size={18} />
                     </button>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-400">
+                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
                   No referral rules found. Click "Create Rules" to add one.
                 </td>
               </tr>
@@ -179,20 +183,19 @@ const ReferEarnPage: React.FC = () => {
         </table>
       </div>
 
-
       {/* Modal Form */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#1f2937] rounded-lg shadow-xl w-full max-w-md">
-            <div className="px-6 py-4 border-b border-gray-700">
-              <h2 className="text-xl font-semibold text-gray-100">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
                 {editingRule ? 'Edit Rule' : 'Create New Rule'}
               </h2>
             </div>
             <form onSubmit={handleSubmit} className="px-6 py-4">
               <div className="mb-4">
                 <label
-                  className="block text-gray-300 text-sm font-medium mb-2"
+                  className="block text-gray-700 text-sm font-medium mb-2"
                   htmlFor="commission"
                 >
                   Referral Commission (%)
@@ -203,7 +206,7 @@ const ReferEarnPage: React.FC = () => {
                   name="commission"
                   value={formData.commission}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-800 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                   min="0"
                   max="100"
@@ -212,10 +215,10 @@ const ReferEarnPage: React.FC = () => {
               </div>
               <div className="mb-6">
                 <label
-                  className="block text-gray-300 text-sm font-medium mb-2"
+                  className="block text-gray-700 text-sm font-medium mb-2"
                   htmlFor="MaxReferrals"
                 >
-                  Number of max Referrals 
+                  Number of max Referrals
                 </label>
                 <input
                   type="number"
@@ -223,16 +226,15 @@ const ReferEarnPage: React.FC = () => {
                   name="MaxReferrals"
                   value={formData.MaxReferrals}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-800 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
-                
                 />
               </div>
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
                   onClick={handleCloseForm}
-                  className="px-4 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
                 >
                   Cancel
                 </button>
@@ -247,9 +249,9 @@ const ReferEarnPage: React.FC = () => {
           </div>
         </div>
       )}
-
     </div>
   );
+
 };
 
 export default ReferEarnPage;

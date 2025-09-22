@@ -23,9 +23,6 @@ import { NotificationsPage } from "@/components/admin/pages/NotificationsPage";
 import { SafetyPage } from "@/components/admin/pages/SafetyPage";
 import { SettingsPage } from "@/components/admin/pages/SettingsPage";
 import { InstructionsPage } from "@/components/admin/pages/InstructionsPage";
-import { DriverCalculationPage } from "@/components/admin/pages/DriverCalculationPage";
-import { CabCalculationPage } from "@/components/admin/pages/CabCalculationPage";
-import { ParcelCalculationPage } from "@/components/admin/pages/ParcelCalculationPage";
 import  ReferEarnPage  from "@/components/admin/pages/ReferEarnPage";
 
 const Index = () => {

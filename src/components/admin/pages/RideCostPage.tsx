@@ -22,6 +22,7 @@ interface RideCost {
   category: string | { _id?: string; id?: string; name: string };
   subcategory: string | { _id?: string; id?: string; name: string };
   priceCategory: string | { _id?: string; id?: string; priceCategoryName: string };
+  weight?: number;
   chargePerKm: number;
   chargePerMinute: number;
   pickCharges: number;
@@ -59,16 +60,17 @@ export const RideCostPage = () => {
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [filteredPriceCategories, setFilteredPriceCategories] = useState<PriceCategory[]>([]);
-  
+
   // Filter states
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
   const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<Subcategory[]>([]);
-  
+
   const [rideCostForm, setRideCostForm] = useState({
     category: '',
     subcategory: '',
     priceCategory: '',
+    weight: '',
     chargePerKm: '',
     chargePerMinute: '',
     pickCharges: '',
@@ -79,7 +81,7 @@ export const RideCostPage = () => {
     gst: '',
     discount: ''
   });
-  
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRideCost, setEditingRideCost] = useState<RideCost | null>(null);
   const [viewingRideCost, setViewingRideCost] = useState<RideCost | null>(null);
@@ -90,6 +92,22 @@ export const RideCostPage = () => {
   const extractId = (item: string | { _id?: string; id?: string }) => {
     if (typeof item === 'string') return item;
     return item._id || item.id || '';
+  };
+
+  // Helper function to check if current category is parcel
+  const isParcelCategory = (categoryItem: string | { _id?: string; id?: string; name: string }) => {
+    const categoryName = getName(categoryItem);
+    return categoryName.toLowerCase() === 'parcel';
+  };
+
+  // Helper function to get selected category name from form
+  const getSelectedCategoryName = () => {
+    const selectedCategory = categories.find(cat => cat._id === rideCostForm.category);
+    return selectedCategory ? selectedCategory.name : '';
+  };
+
+  const isFormParcelCategory = () => {
+    return getSelectedCategoryName().toLowerCase() === 'parcel';
   };
 
   useEffect(() => {
@@ -161,7 +179,7 @@ export const RideCostPage = () => {
         axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`)
       ]);
-      
+
       setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
       setCategories(categoriesRes.data);
       setSubcategories(subcategoriesRes.data);
@@ -181,6 +199,7 @@ export const RideCostPage = () => {
       category: rideCostForm.category,
       subcategory: rideCostForm.subcategory,
       priceCategory: rideCostForm.priceCategory,
+      ...(isFormParcelCategory() && { weight: parseFloat(rideCostForm.weight) || 0 }),
       chargePerKm: parseFloat(rideCostForm.chargePerKm) || 0,
       chargePerMinute: parseFloat(rideCostForm.chargePerMinute) || 0,
       pickCharges: parseFloat(rideCostForm.pickCharges) || 0,
@@ -198,7 +217,7 @@ export const RideCostPage = () => {
       } else {
         await axios.post(`${import.meta.env.VITE_API_URL}/api/ride-costs`, payload);
       }
-      
+
       await fetchData();
       setDialogOpen(false);
       resetForm();
@@ -212,22 +231,23 @@ export const RideCostPage = () => {
   const handleEdit = (rideCost: RideCost) => {
     console.log('Editing ride cost:', rideCost);
     setEditingRideCost(rideCost);
-    
+
     const categoryId = extractId(rideCost.category);
     const subcategoryId = extractId(rideCost.subcategory);
     const priceCategoryId = extractId(rideCost.priceCategory);
-    
+
     // Set filtered subcategories first
     const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
     setFilteredSubcategories(filteredSubs);
-    
+
     // Set filtered price categories - show all when subcategory is selected
     setFilteredPriceCategories(priceCategories);
-    
+
     setRideCostForm({
       category: categoryId,
       subcategory: subcategoryId,
       priceCategory: priceCategoryId,
+      weight: rideCost.weight?.toString() || '',
       chargePerKm: rideCost.chargePerKm.toString(),
       chargePerMinute: rideCost.chargePerMinute.toString(),
       pickCharges: rideCost.pickCharges.toString(),
@@ -260,6 +280,7 @@ export const RideCostPage = () => {
       category: '',
       subcategory: '',
       priceCategory: '',
+      weight: '',
       chargePerKm: '',
       chargePerMinute: '',
       pickCharges: '',
@@ -291,7 +312,7 @@ export const RideCostPage = () => {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Ride Cost Models</h2>
-          
+
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm} disabled={loading}>
@@ -358,7 +379,20 @@ export const RideCostPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
+
                   </div>
+
+                  {isFormParcelCategory() && (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Weight (kg)"
+                      value={rideCostForm.weight}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, weight: e.target.value }))}
+                      required
+                    />
+                  )}
+
 
                   <Input
                     type="number"
@@ -438,7 +472,6 @@ export const RideCostPage = () => {
         {/* Filter Section */}
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-gray-700">Filter Options</h3>
             {(filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') && (
               <Button
                 variant="outline"
@@ -451,7 +484,7 @@ export const RideCostPage = () => {
               </Button>
             )}
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -476,8 +509,8 @@ export const RideCostPage = () => {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Filter by Subcategory
               </label>
-              <Select 
-                value={filterSubcategory} 
+              <Select
+                value={filterSubcategory}
                 onValueChange={setFilterSubcategory}
                 disabled={!filterCategory || filterCategory === 'all'}
               >
@@ -512,18 +545,22 @@ export const RideCostPage = () => {
                 <TableHead>Driver Category</TableHead>
                 <TableHead>Per Km</TableHead>
                 <TableHead>Per Min</TableHead>
+                {/* Show Weight column header if any filtered ride cost is from parcel category */}
+                {filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) && (
+                  <TableHead>Weight (kg)</TableHead>
+                )}
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-6">Loading...</TableCell>
+                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 7 : 6} className="text-center py-6">Loading...</TableCell>
                 </TableRow>
               ) : filteredRideCosts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-6">
-                    {rideCosts.length === 0 
+                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 7 : 6} className="text-center py-6">
+                    {rideCosts.length === 0
                       ? "No ride cost models found. Create your first one!"
                       : "No models match the selected filters."
                     }
@@ -537,6 +574,12 @@ export const RideCostPage = () => {
                     <TableCell>{getName(rideCost.priceCategory)}</TableCell>
                     <TableCell>₹{rideCost.chargePerKm}</TableCell>
                     <TableCell>₹{rideCost.chargePerMinute}</TableCell>
+                    {/* Show Weight column data if any filtered ride cost is from parcel category */}
+                    {filteredRideCosts.some(rc => isParcelCategory(rc.category)) && (
+                      <TableCell>
+                        {isParcelCategory(rideCost.category) ? `${rideCost.weight || 0} kg` : '-'}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
@@ -607,6 +650,12 @@ export const RideCostPage = () => {
                   <label className="text-sm font-medium">Driver Category</label>
                   <p className="text-sm text-gray-600">{getName(viewingRideCost.priceCategory)}</p>
                 </div>
+                {isParcelCategory(viewingRideCost.category) && (
+                  <div>
+                    <label className="text-sm font-medium">Weight</label>
+                    <p className="text-sm text-gray-600">{viewingRideCost.weight || 0} kg</p>
+                  </div>
+                )}
                 <div>
                   <label className="text-sm font-medium">Pick Charges</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.pickCharges}</p>

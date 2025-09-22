@@ -27,6 +27,8 @@ interface SubCategory {
 export const SubCategoryPage = () => {
   const [categories, setCategories] = useState([])
   const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
+  const [filteredSubCategories, setFilteredSubCategories] = useState<SubCategory[]>([]);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [subCategoryDialogOpen, setSubCategoryDialogOpen] = useState(false);
   const [editingSubCategory, setEditingSubCategory] = useState<SubCategory | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -40,6 +42,18 @@ export const SubCategoryPage = () => {
   // File state for image uploads
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+
+  // Filter subcategories based on selected category
+  useEffect(() => {
+    if (selectedCategoryFilter === 'all') {
+      setFilteredSubCategories(subCategories);
+    } else {
+      const filtered = subCategories.filter(subCat => 
+        subCat.categoryId.toString() === selectedCategoryFilter
+      );
+      setFilteredSubCategories(filtered);
+    }
+  }, [subCategories, selectedCategoryFilter]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -271,65 +285,86 @@ export const SubCategoryPage = () => {
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Sub Categories</h2>
-          <Dialog open={subCategoryDialogOpen} onOpenChange={setSubCategoryDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Subcategory
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Subcategory</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubCategorySubmit} className="space-y-4">
-                <Select value={subCategoryForm.categoryId} onValueChange={(value) => setSubCategoryForm({ ...subCategoryForm, categoryId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category._id} value={category._id.toString()}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="flex items-center space-x-4">
+            {/* Category Filter Dropdown */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700">Filter by Category:</span>
+              <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category._id} value={category._id.toString()}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Create Button */}
+            <Dialog open={subCategoryDialogOpen} onOpenChange={setSubCategoryDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Subcategory
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Subcategory</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubCategorySubmit} className="space-y-4">
+                  <Select value={subCategoryForm.categoryId} onValueChange={(value) => setSubCategoryForm({ ...subCategoryForm, categoryId: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category._id} value={category._id.toString()}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-                <Input
-                  placeholder="Sub Category Name"
-                  value={subCategoryForm.name}
-                  onChange={(e) => setSubCategoryForm({ ...subCategoryForm, name: e.target.value })}
-                  required
-                />
-
-                <Input
-                  placeholder="Description"
-                  value={subCategoryForm.description}
-                  onChange={(e) => setSubCategoryForm({ ...subCategoryForm, description: e.target.value })}
-                />
-
-                {/* File input for image upload */}
-                <div className="space-y-2">
-                  <label htmlFor="create-image-input" className="text-sm font-medium">
-                    Upload Image
-                  </label>
                   <Input
-                    id="create-image-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    placeholder="Sub Category Name"
+                    value={subCategoryForm.name}
+                    onChange={(e) => setSubCategoryForm({ ...subCategoryForm, name: e.target.value })}
+                    required
                   />
-                  {imageFile && (
-                    <p className="text-sm text-gray-600">Selected: {imageFile.name}</p>
-                  )}
-                </div>
 
-                <Button type="submit" className="w-full">Submit</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <Input
+                    placeholder="Description"
+                    value={subCategoryForm.description}
+                    onChange={(e) => setSubCategoryForm({ ...subCategoryForm, description: e.target.value })}
+                  />
+
+                  {/* File input for image upload */}
+                  <div className="space-y-2">
+                    <label htmlFor="create-image-input" className="text-sm font-medium">
+                      Upload Image
+                    </label>
+                    <Input
+                      id="create-image-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {imageFile && (
+                      <p className="text-sm text-gray-600">Selected: {imageFile.name}</p>
+                    )}
+                  </div>
+
+                  <Button type="submit" className="w-full">Submit</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Edit Dialog */}
@@ -401,7 +436,6 @@ export const SubCategoryPage = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Order</TableHead>
-             
               <TableHead>Image</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Sub Category Name</TableHead>
@@ -411,17 +445,19 @@ export const SubCategoryPage = () => {
           </TableHeader>
 
           <TableBody>
-            {subCategories.length === 0 ? (
+            {filteredSubCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-gray-500 py-6">
-                  No subcategories found. Please add first.
+                  {selectedCategoryFilter === 'all' 
+                    ? "No subcategories found. Please add first."
+                    : "No subcategories found for the selected category."
+                  }
                 </TableCell>
               </TableRow>
             ) : (
-              subCategories.map((subCategory, index) => (
+              filteredSubCategories.map((subCategory, index) => (
                 <TableRow key={subCategory.id}>
                   <TableCell>{index + 1}</TableCell>
-                 
                   <TableCell>
                     {subCategory.image && (
                       <img
@@ -468,7 +504,6 @@ export const SubCategoryPage = () => {
                   </TableCell>
                 </TableRow>
               ))
-
             )}
           </TableBody>
         </Table>

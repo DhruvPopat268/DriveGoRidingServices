@@ -38,11 +38,7 @@ const menuItems = [
   { icon: Calculator, label: "Ride Cost", key: "ridecost" },
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
   { icon: BookOpen, label: "T & C", key: "instructions" },
-  { icon: UserCheck, label: "Driver Calculation Model", key: "drivercalculation" },
-  { icon: Car, label: "Cab Calculation Model", key: "cabcalculation" },
-  { icon: Package, label: "Parcel Calculation Model", key: "parcelcalculation" },
   { icon: Bike, label: "Rides", key: "rides" },
-
   { icon: Gift, label: "Refer Earn", key: "referearn" }
 
 ];

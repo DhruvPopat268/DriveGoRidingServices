@@ -8,6 +8,9 @@ const rideCostSchema = new mongoose.Schema({
   // Base charges (moved from PriceCategory)
   chargePerKm: { type: Number, required: true },
   chargePerMinute: { type: Number, required: true },
+
+  weight: { type: Number }, // Optional, only required for parcel categories
+
   
   // Additional charges
   pickCharges: { type: Number, default: 0 },
