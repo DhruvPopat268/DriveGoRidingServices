@@ -9,48 +9,65 @@ const referenceSchema = new mongoose.Schema({
 const driverSchema = new mongoose.Schema(
   {
     mobile: { type: String, required: true, unique: true, index: true },
-    status: { type: String, enum: ["Pending", "Active", "Onreview"], default: "Pending" },
+
     personalInformation: {
       fullName: { type: String },
       dateOfBirth: { type: Date },
       gender: { type: String, enum: ["Male", "Female", "Other"] },
       mobileNumber: { type: String },
       alternateNumber: { type: String },
-      email: { type: String, unique: true, sparse: true },
+      email: { type: String },
       currentAddress: { type: String },
-      permanentAddress: { type: String }
+      permanentAddress: { type: String },
+
+      // ✅ Identity Proofs (Cloudinary URLs)
+      aadharFront: { type: String },   // Cloudinary URL
+      aadharBack: { type: String },
+      panCard: { type: String },
+      drivingLicenseFront: { type: String },
+      drivingLicenseBack: { type: String },
+      passportPhoto: { type: String }  // Selfie / Profile photo
     },
+
     drivingDetails: {
       drivingExperienceYears: { type: Number },
       licenseType: { type: String, enum: ["LMV", "HMV", "Commercial", "Others"] },
       vehicleType: { type: String, enum: ["Manual", "Automatic"] },
-      canDrive: [{ type: String, enum: ["Hatchback", "Sedan", "SUV", "Luxury Cars"] }],
-      preferredWork: { type: String, enum: ["Full-Time", "Guest / On-Call"] }
+      canDrive: [{ type: String }], // Hatchback, Sedan, SUV, Luxury Cars
+      preferredWork: { type: String, enum: ["Full-Time", "Part-Time", "Guest/On-Call"] }
     },
+
     paymentAndSubscription: {
-      paymentPreference: { type: String, enum: ["Weekly", "Monthly"] },
+      preferredPaymentCycle: { type: String, enum: ["Daily", "Weekly", "Monthly"] },
       bankAccountHolderName: { type: String },
       bankName: { type: String },
       accountNumber: { type: String },
       ifscCode: { type: String },
-      registrationFee: { type: Number },
-      subscriptionPlan: { type: String, enum: ["Basic Plan", "Premium Plan"] },
+
+      oneTimeRegistrationFee: { type: Number },
+      subscriptionPlan: { type: String, enum: ["Basic", "Standard", "Premium"] },
       subscriptionAmount: { type: Number },
-      paymentMode: { type: String, enum: ["Bank Transfer", "Cash"] }
+      paymentMode: { type: String, enum: ["UPI", "Bank Transfer", "Cash"] }
     },
+
     languageSkillsAndReferences: {
       knownLanguages: [{ type: String }],
-      references: [referenceSchema]
+      references: [referenceSchema] // at least 1 required
     },
+
     declaration: {
-      agreement: { type: Boolean },
-      applicantSignature: { type: String },
-      date: { type: Date }
+      agreement: { type: Boolean, default: false },
+      signedAt: { type: Date }
+    },
+
+    status: {
+      type: String,
+      enum: ["Pending", "Onreview", "Approved", "Rejected"],
+      default: "Pending"
     }
   },
   { timestamps: true }
 );
 
 const Driver = mongoose.model("Driver", driverSchema);
-
 module.exports = Driver;

@@ -12,7 +12,6 @@ const cloudinary = require("../config/cloudinary");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
-
 // router.post("/send-otp", async (req, res) => {
 //   try {
 //     const { mobile } = req.body;
@@ -82,9 +81,6 @@ router.post("/send-otp", async (req, res) => {
     });
     await otpSession.save();
 
-    // ✅ No Twilio SMS sending
-    console.log(`OTP for ${mobile}: ${otp}`);
-
     res.json({
       success: true,
       message: "OTP generated successfully",
@@ -150,8 +146,9 @@ router.post("/verify-otp", async (req, res) => {
 router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res) => {
   try {
     const { step } = req.body;
-    const mobile = req.driver.mobile;
-    const data = JSON.parse(req.body.data || "{}"); // parse JSON fields from frontend
+    const mobile = req.driver?.mobile;
+
+    const data = JSON.parse(req.body.data || "{}");
 
     if (!mobile || !step) {
       return res.status(400).json({ message: "Mobile & step are required" });
@@ -175,29 +172,44 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       return res.status(400).json({ message: "Invalid step number" });
     }
 
-    // ✅ Handle file uploads (if any)
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const result = await cloudinary.uploader.upload_stream(
-          { folder: `drivers/${mobile}/${field}` },
-          (error, uploadResult) => {
-            if (error) throw error;
-            // save Cloudinary URL in the correct field
-            data[file.fieldname] = uploadResult.secure_url;
+    // ✅ Helper to upload file buffer to Cloudinary
+    const uploadToCloudinary = (fileBuffer, folder, fieldname) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result.secure_url);
           }
         );
+        stream.end(fileBuffer);
+      });
+    };
 
-        // Write file buffer into stream
-        const stream = result;
-        stream.end(file.buffer);
-      }
+    // ✅ Handle file uploads
+    const uploadedUrls = {};
+    if (req.files && req.files.length > 0) {
+      const uploadPromises = req.files.map(async (file) => {
+        const url = await uploadToCloudinary(
+          file.buffer,
+          `drivers/${mobile}/${field}`,
+          file.fieldname
+        );
+        data[file.fieldname] = url;
+        return { [file.fieldname]: url };
+      });
+
+      const results = await Promise.all(uploadPromises);
+
+      // merge all uploaded urls into uploadedUrls
+      results.forEach(r => Object.assign(uploadedUrls, r));
     }
 
-    // ✅ Update only that step field
+    // ✅ Update only that step field in Mongo
     driver[field] = { ...driver[field].toObject?.(), ...data };
     await driver.save();
 
-    // Re-evaluate step & status
+    // ✅ Re-evaluate step & status
     const { step: nextStep, status } = evaluateDriverProgress(driver);
     driver.status = status;
     await driver.save();
@@ -206,7 +218,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       success: true,
       message: `${field} updated successfully`,
       step: nextStep,
-      status,
+      status,  // ✅ return uploaded Cloudinary URLs in response
       driver
     });
   } catch (error) {

@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const Session = require("../DriverModel/DriverOtpSession"); // adjust path as needed
+const Session = require("../DriverModel/DriverSession"); // adjust path as needed
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -14,7 +14,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // ✅ Verify JWT signature + expiry
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_USER);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_DRIVER);
 
     // ✅ Ensure token exists in Session collection
     // Instead of just one, we allow multiple tokens per mobileNumber
@@ -28,7 +28,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // ✅ Attach user info to request object
-    req.rider = decoded; // contains { riderId, mobile }
+    req.driver = decoded; // contains { riderId, mobile }
     
     next();
   } catch (error) {

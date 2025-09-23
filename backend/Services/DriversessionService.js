@@ -1,7 +1,7 @@
 // services/sessionService.js
-const Session = require("../DriverModel/DriverOtpSession");
+const Session = require("../DriverModel/DriverSession");
 
-const MAX_SESSIONS = 2;
+const MAX_SESSIONS = 1;
 
 async function createSession(mobileNumber, token) {
   // Get all sessions for this user, sorted oldest first
@@ -15,13 +15,10 @@ async function createSession(mobileNumber, token) {
   }
 
   // Save new session
-  const newSession = new Session({   // optional but recommended
-    mobile: mobileNumber,
-    otp: token,             // store OTP as token here
-    otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes expiry
-  });
+  const newSession = new Session({ mobileNumber, token });
   await newSession.save();
 
   return newSession;
 }
+
 module.exports = { createSession };
