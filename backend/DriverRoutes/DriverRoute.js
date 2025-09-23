@@ -92,7 +92,7 @@ router.post("/verify-otp", async (req, res) => {
     // Generate JWT
     const token = jwt.sign(
       { driverId: driver._id, mobile: driver.mobile },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET_DRIVER,
       { expiresIn: "7d" }
     );
 
@@ -127,6 +127,5 @@ router.post("/verify-otp", async (req, res) => {
     res.status(500).json({ success: false, message: "OTP verification failed" });
   }
 });
-
 
 module.exports = router;

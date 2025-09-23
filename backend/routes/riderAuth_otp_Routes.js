@@ -23,7 +23,7 @@ router.get("/auth/check", (req, res) => {
   if (!token) return res.json({ loggedIn: false });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_USER);
     res.json({ loggedIn: true, user: decoded });
   } catch (err) {
     console.error("Invalid or expired token:", err.message);
@@ -257,7 +257,7 @@ router.post("/verify-otp", async (req, res) => {
     // Generate JWT
     const token = jwt.sign(
       { riderId: rider._id, mobile: rider.mobile },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET_USER,
       { expiresIn: "7d" }
     );
 

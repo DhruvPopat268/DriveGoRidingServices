@@ -14,7 +14,7 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // ✅ Verify JWT signature + expiry
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_USER);
 
     // ✅ Ensure token exists in Session collection
     // Instead of just one, we allow multiple tokens per mobileNumber
