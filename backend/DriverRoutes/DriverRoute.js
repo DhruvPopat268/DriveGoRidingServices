@@ -116,11 +116,21 @@ router.post("/verify-otp", async (req, res) => {
       step = 5;
     }
 
+    // ✅ Update driver status
+    let newStatus = "Pending";
+    if (step === 0) {
+      newStatus = "Onreview";
+    }
+
+    driver.status = newStatus;
+    await driver.save();
+
     res.json({
       success: true,
       token,
       isNew,
-      step
+      step,
+      status: newStatus
     });
   } catch (error) {
     console.error("Verify OTP error:", error);

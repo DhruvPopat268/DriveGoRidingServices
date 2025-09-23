@@ -9,6 +9,7 @@ const referenceSchema = new mongoose.Schema({
 const driverSchema = new mongoose.Schema(
   {
     mobile: { type: String, required: true, unique: true, index: true },
+    status: { type: String, enum: ["Pending", "Active", "Onreview"], default: "Pending" },
     personalInformation: {
       fullName: { type: String },
       dateOfBirth: { type: Date },
