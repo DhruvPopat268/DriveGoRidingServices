@@ -159,7 +159,7 @@ router.post('/verify', authMiddleware, async (req, res) => {
 router.get('/history', authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
-    const { page = 1, limit = 20, type, status } = req.query;
+    console.log("History Rider ID:", riderId); // Debug log
 
     // Build query
     let query = { riderId };
@@ -216,6 +216,8 @@ router.get('/history', authMiddleware, async (req, res) => {
 router.get('/wallet', authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
+    console.log("Wallet Rider ID:", riderId); // Debug log
+
 
     let wallet = await Wallet.findOne({ riderId });
     

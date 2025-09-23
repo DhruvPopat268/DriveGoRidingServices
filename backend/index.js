@@ -22,26 +22,21 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
-    "http://192.168.0.149:8081",
+    "http://localhost:8081",
+    "http://localhost:8080",
     "https://drivegoweb.vercel.app/",
     "https://drivegoweb.vercel.app",
     "https://drivego-admin.vercel.app/",
     "https://drivego-admin.vercel.app",
-    "http://10.239.197.228:8080",
-    "http://localhost:8082",
-    "http://localhost:8081",
-    "http://localhost:8080",
-    "http://localhost:5173",
-    "http://localhost:3000",
-   "https://driver-go-admin-frontend.onrender.com",
-   "https://drive-go-frontend.onrender.com"
+    "https://driver-go-admin-frontend.onrender.com",
+    "https://drive-go-frontend.onrender.com"
   ],
   credentials: true
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); 
+app.use(cookieParser());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -52,7 +47,7 @@ connectToDb()
 // Routes
 app.use('/api/categories', categoryRoutes);
 app.use('/api/subcategories', subCategoryRoutes);
-app.use('/api/vehiclecategories',vehicleCategories)
+app.use('/api/vehiclecategories', vehicleCategories)
 app.use('/api/price-categories', priceCategoryRoutes);
 app.use('/api/ride-costs', rideCostRoutes);
 app.use('/api/peaks', peakRoutes);
