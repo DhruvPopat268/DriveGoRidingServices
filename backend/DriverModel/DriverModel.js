@@ -8,6 +8,7 @@ const referenceSchema = new mongoose.Schema({
 
 const driverSchema = new mongoose.Schema(
   {
+    mobile: { type: String, required: true, unique: true, index: true },
     personalInformation: {
       fullName: { type: String },
       dateOfBirth: { type: Date },

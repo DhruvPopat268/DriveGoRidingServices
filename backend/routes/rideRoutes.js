@@ -7,6 +7,15 @@ const axios = require("axios");
 const referralRules = require("../models/ReferralRule");
 
 // Save new ride booking
+router.get('/', async (req, res) => {
+  try {
+    const rides = (await Ride.find().sort({ createdAt: -1 }));
+    res.json(rides);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}); 
+
 router.post("/book", authMiddleware, async (req, res) => {
   try {
     const {

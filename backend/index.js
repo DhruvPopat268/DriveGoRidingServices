@@ -63,9 +63,10 @@ app.use('/api/referral-rules', referralRulesRoutes);
 // admin
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));
 
-app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
-
 app.use('/api/payments', require('./routes/Payment&Wallet'));
+
+//Driver Mobile Application Routes
+app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
 
 const PORT = process.env.PORT || 5000;
 
