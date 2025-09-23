@@ -32,7 +32,7 @@ const driverSchema = new mongoose.Schema(
       bankName: { type: String },
       accountNumber: { type: String },
       ifscCode: { type: String },
-      registrationFee: { type: Number, default: 25 },
+      registrationFee: { type: Number },
       subscriptionPlan: { type: String, enum: ["Basic Plan", "Premium Plan"] },
       subscriptionAmount: { type: Number },
       paymentMode: { type: String, enum: ["Bank Transfer", "Cash"] }
@@ -42,7 +42,7 @@ const driverSchema = new mongoose.Schema(
       references: [referenceSchema]
     },
     declaration: {
-      agreement: { type: Boolean, default: false },
+      agreement: { type: Boolean },
       applicantSignature: { type: String },
       date: { type: Date }
     }

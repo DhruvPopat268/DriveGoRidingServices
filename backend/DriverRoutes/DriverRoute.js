@@ -1,4 +1,4 @@
-const express =  require("express");
+const express = require("express");
 const Driver = require("../DriverModel/DriverModel");
 const router = express.Router();
 const DriverOtpSession = require("../DriverModel/DriverOtpSession");
@@ -6,6 +6,23 @@ const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const { createSession } = require("../Services/DriversessionService");
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+
+// ✅ Helper to check if all fields in an object have values
+function isObjectComplete(obj) {
+  if (!obj) return false;
+  return Object.values(obj).every((value) => {
+    if (value === null || value === undefined || value === "") return false;
+
+    // If array, check non-empty
+    if (Array.isArray(value)) return value.length > 0;
+
+    // If object, recursively check
+    if (typeof value === "object" && !(value instanceof Date)) {
+      return isObjectComplete(value);
+    }
+    return true;
+  });
+}
 
 router.post("/send-otp", async (req, res) => {
   try {
@@ -69,7 +86,8 @@ router.post("/verify-otp", async (req, res) => {
     await otpSession.save();
 
     const driver = await Driver.findOne({ mobile });
-    const isNew = !driver.name;
+
+    const isNew = !driver?.personalInformation?.mobileNumber;
 
     // Generate JWT
     const token = jwt.sign(
@@ -78,15 +96,37 @@ router.post("/verify-otp", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // ✅ Use service helper to enforce max 2 sessions
     await createSession(mobile, token);
 
-    // ✅ Send token in response instead of cookie
-    res.json({ success: true, token, isNew, driver });
+    // ✅ Step validation (check each object deeply)
+    let step = 0;
+
+    if (!isObjectComplete(driver.personalInformation)) {
+      step = 1;
+    } else if (!isObjectComplete(driver.drivingDetails)) {
+      step = 2;
+    } else if (!isObjectComplete(driver.paymentAndSubscription)) {
+      step = 3;
+    } else if (
+      !isObjectComplete(driver.languageSkillsAndReferences) ||
+      !driver.languageSkillsAndReferences?.references?.length
+    ) {
+      step = 4;
+    } else if (!isObjectComplete(driver.declaration) || !driver.declaration.agreement) {
+      step = 5;
+    }
+
+    res.json({
+      success: true,
+      token,
+      isNew,
+      step
+    });
   } catch (error) {
     console.error("Verify OTP error:", error);
     res.status(500).json({ success: false, message: "OTP verification failed" });
   }
 });
+
 
 module.exports = router;
