@@ -21,12 +21,10 @@ const driverSchema = new mongoose.Schema(
       permanentAddress: { type: String },
 
       // ✅ Identity Proofs (Cloudinary URLs)
-      aadharFront: { type: String },   // Cloudinary URL
-      aadharBack: { type: String },
+      aadhar: [{ type: String }],             // array for front & back
       panCard: { type: String },
-      drivingLicenseFront: { type: String },
-      drivingLicenseBack: { type: String },
-      passportPhoto: { type: String }  // Selfie / Profile photo
+      drivingLicense: [{ type: String }],     // array for front & back
+      passportPhoto: { type: String }         // Selfie / Profile photo
     },
 
     drivingDetails: {

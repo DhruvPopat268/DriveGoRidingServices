@@ -147,17 +147,9 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   try {
     const { step } = req.body;
     const mobile = req.driver?.mobile;
-
     const data = JSON.parse(req.body.data || "{}");
 
-    if (!mobile || !step) {
-      return res.status(400).json({ message: "Mobile & step are required" });
-    }
-
-    const driver = await Driver.findOne({ mobile });
-    if (!driver) {
-      return res.status(404).json({ message: "Driver not found" });
-    }
+    if (!mobile || !step) return res.status(400).json({ message: "Mobile & step are required" });
 
     const stepFieldMap = {
       1: "personalInformation",
@@ -166,64 +158,166 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       4: "languageSkillsAndReferences",
       5: "declaration"
     };
-
     const field = stepFieldMap[step];
-    if (!field) {
-      return res.status(400).json({ message: "Invalid step number" });
-    }
+    if (!field) return res.status(400).json({ message: "Invalid step number" });
 
-    // ✅ Helper to upload file buffer to Cloudinary
-    const uploadToCloudinary = (fileBuffer, folder, fieldname) => {
+    // 🚀 Optimization: Enhanced Cloudinary upload with parallel processing
+    const uploadToCloudinary = (fileBuffer, folder, filename) => {
       return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          { folder },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result.secure_url);
-          }
-        );
+        const timeout = setTimeout(() => {
+          reject(new Error('Upload timeout'));
+        }, 8000);
+
+        const stream = cloudinary.uploader.upload_stream({
+          folder,
+          public_id: filename,
+          resource_type: "auto",
+          quality: "auto:good",
+          fetch_format: "auto",
+          flags: "progressive",
+          timeout: 60000
+        }, (error, result) => {
+          clearTimeout(timeout);
+          if (error) return reject(error);
+          resolve(result.secure_url);
+        });
         stream.end(fileBuffer);
       });
     };
 
-    // ✅ Handle file uploads
-    const uploadedUrls = {};
+    // 🚀 PARALLEL OPERATION 1: Database fetch + File uploads simultaneously
+    const parallelOperations = [];
+
+    // Add database fetch
+    parallelOperations.push(Driver.findOne({ mobile }));
+
+    // Add file uploads if files exist
+    let uploadPromises = [];
     if (req.files && req.files.length > 0) {
-      const uploadPromises = req.files.map(async (file) => {
-        const url = await uploadToCloudinary(
-          file.buffer,
-          `drivers/${mobile}/${field}`,
-          file.fieldname
-        );
-        data[file.fieldname] = url;
-        return { [file.fieldname]: url };
+      uploadPromises = req.files.map(async (file) => {
+        try {
+          const filename = `${file.fieldname}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const url = await uploadToCloudinary(file.buffer, `drivers/${mobile}/${field}`, filename);
+          return { fieldname: file.fieldname, url, success: true };
+        } catch (error) {
+          console.error(`Upload failed for ${file.fieldname}:`, error.message);
+          return { fieldname: file.fieldname, error: error.message, success: false };
+        }
       });
-
-      const results = await Promise.all(uploadPromises);
-
-      // merge all uploaded urls into uploadedUrls
-      results.forEach(r => Object.assign(uploadedUrls, r));
+      parallelOperations.push(Promise.all(uploadPromises));
+    } else {
+      parallelOperations.push(Promise.resolve([])); // Empty array for no files
     }
 
-    // ✅ Update only that step field in Mongo
-    driver[field] = { ...driver[field].toObject?.(), ...data };
-    await driver.save();
+    // 🚀 EXECUTE ALL OPERATIONS IN PARALLEL
+    const [driver, uploadResults] = await Promise.all(parallelOperations);
 
-    // ✅ Re-evaluate step & status
-    const { step: nextStep, status } = evaluateDriverProgress(driver);
-    driver.status = status;
-    await driver.save();
+    if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+    // Process upload results
+    const successfulUploads = {};
+    if (Array.isArray(uploadResults)) {
+      uploadResults.forEach(result => {
+        if (result.success) {
+          successfulUploads[result.fieldname] = result.url;
+        }
+      });
+    }
+
+    // 🚀 PARALLEL OPERATION 2: Prepare updates + Evaluate progress simultaneously
+    const prepareUpdates = async () => {
+      const updates = {};
+
+      // Process uploaded file URLs
+      Object.entries(successfulUploads).forEach(([fieldname, url]) => {
+        if (fieldname === "aadharFront" || fieldname === "aadharBack") {
+          if (!updates['personalInformation.aadhar']) {
+            updates['personalInformation.aadhar'] = [...(driver.personalInformation.aadhar || [])];
+          }
+          updates['personalInformation.aadhar'].push(url);
+        } else if (fieldname === "drivingLicenseFront" || fieldname === "drivingLicenseBack") {
+          if (!updates['personalInformation.drivingLicense']) {
+            updates['personalInformation.drivingLicense'] = [...(driver.personalInformation.drivingLicense || [])];
+          }
+          updates['personalInformation.drivingLicense'].push(url);
+        } else {
+          data[fieldname] = url;
+        }
+      });
+
+      // Merge field data
+      const fieldData = { ...driver[field].toObject?.(), ...data };
+      updates[field] = fieldData;
+
+      return updates;
+    };
+
+    const evaluateProgress = async () => {
+      // Create a temporary driver object with updates for evaluation
+      const tempDriver = {
+        ...driver.toObject(),
+        [field]: { ...driver[field].toObject?.(), ...data }
+      };
+
+      // Add uploaded URLs to temp driver
+      Object.entries(successfulUploads).forEach(([fieldname, url]) => {
+        if (fieldname === "aadharFront" || fieldname === "aadharBack") {
+          tempDriver.personalInformation.aadhar = tempDriver.personalInformation.aadhar || [];
+          tempDriver.personalInformation.aadhar.push(url);
+        } else if (fieldname === "drivingLicenseFront" || fieldname === "drivingLicenseBack") {
+          tempDriver.personalInformation.drivingLicense = tempDriver.personalInformation.drivingLicense || [];
+          tempDriver.personalInformation.drivingLicense.push(url);
+        }
+      });
+
+      return evaluateDriverProgress(tempDriver);
+    };
+
+    // 🚀 EXECUTE UPDATE PREPARATION AND PROGRESS EVALUATION IN PARALLEL
+    const [updates, progressResult] = await Promise.all([
+      prepareUpdates(),
+      evaluateProgress()
+    ]);
+
+    // Add status to updates
+    updates.status = progressResult.status;
+
+    // 🚀 PARALLEL OPERATION 3: Database update + Response preparation
+    const updateDatabase = async () => {
+      return Driver.findOneAndUpdate(
+        { mobile },
+        { $set: updates },
+        { new: true }
+      );
+    };
+
+    const prepareResponse = async () => {
+      return {
+        success: true,
+        message: `information updated successfully`,
+        nextStep: progressResult.step,
+        status: progressResult.status,
+      };
+    };
+
+    // 🚀 FINAL PARALLEL EXECUTION
+    const [updatedDriver, responseData] = await Promise.all([
+      updateDatabase(),
+      prepareResponse()
+    ]);
 
     res.json({
-      success: true,
-      message: `${field} updated successfully`,
-      step: nextStep,
-      status,  // ✅ return uploaded Cloudinary URLs in response
-      driver
+      ...responseData,
+      driver: updatedDriver
     });
+
   } catch (error) {
     console.error("Update step error:", error);
-    res.status(500).json({ success: false, message: "Failed to update step" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update step",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
