@@ -164,14 +164,6 @@ router.get('/history', authMiddleware, async (req, res) => {
     // Build query
     let query = { riderId };
     
-    if (type) {
-      query.type = type;
-    }
-    
-    if (status) {
-      query.status = status;
-    }
-
     // Get payments with pagination
     const payments = await Payment.find(query)
       .sort({ createdAt: -1 })
