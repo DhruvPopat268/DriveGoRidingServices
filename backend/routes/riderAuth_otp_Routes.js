@@ -232,6 +232,48 @@ router.post("/send-otp", async (req, res) => {
   }
 });
 
+// router.post("/verify-otp", async (req, res) => {
+//   try {
+//     const { mobile, otp } = req.body;
+//     if (!mobile || !otp) {
+//       return res.status(400).json({ message: "Mobile & OTP required" });
+//     }
+
+//     const otpSession = await OtpSession.findOne({ mobile, otp }).sort({ createdAt: -1 });
+//     if (!otpSession) {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
+
+//     if (new Date() > otpSession.otpExpiresAt) {
+//       return res.status(400).json({ message: "OTP expired" });
+//     }
+
+//     otpSession.isVerified = true;
+//     await otpSession.save();
+
+//     const rider = await Rider.findOne({ mobile });
+//     const isNew = !rider.name;
+
+//     // Generate JWT
+//     const token = jwt.sign(
+//       { riderId: rider._id, mobile: rider.mobile },
+//       process.env.JWT_SECRET_USER,
+//       { expiresIn: "7d" }
+//     );
+
+//     // ✅ Use service helper to enforce max 2 sessions
+//     await createSession(mobile, token);
+
+//     // ✅ Send token in response instead of cookie
+//     res.json({ success: true, token, isNew, rider });
+//   } catch (error) {
+//     console.error("Verify OTP error:", error);
+//     res.status(500).json({ success: false, message: "OTP verification failed" });
+//   }
+// });
+
+// 🔹 Save Rider Profile
+
 router.post("/verify-otp", async (req, res) => {
   try {
     const { mobile, otp } = req.body;
@@ -239,40 +281,49 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
 
-    const otpSession = await OtpSession.findOne({ mobile, otp }).sort({ createdAt: -1 });
-    if (!otpSession) {
+    // 🔒 Check against fixed OTP
+    if (otp !== "123456") {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    if (new Date() > otpSession.otpExpiresAt) {
-      return res.status(400).json({ message: "OTP expired" });
+    // ✅ Mark last OTP session as verified (optional, for consistency)
+    await OtpSession.findOneAndUpdate(
+      { mobile },
+      { isVerified: true },
+      { sort: { createdAt: -1 } }
+    );
+
+    // ✅ Ensure Rider exists
+    let rider = await Rider.findOne({ mobile });
+    if (!rider) {
+      rider = new Rider({ mobile });
+      await rider.save();
     }
 
-    otpSession.isVerified = true;
-    await otpSession.save();
-
-    const rider = await Rider.findOne({ mobile });
     const isNew = !rider.name;
 
-    // Generate JWT
+    // ✅ Generate JWT
     const token = jwt.sign(
       { riderId: rider._id, mobile: rider.mobile },
       process.env.JWT_SECRET_USER,
       { expiresIn: "7d" }
     );
 
-    // ✅ Use service helper to enforce max 2 sessions
+    // ✅ Use helper to enforce max 2 sessions
     await createSession(mobile, token);
 
-    // ✅ Send token in response instead of cookie
-    res.json({ success: true, token, isNew, rider });
+    res.json({
+      success: true,
+      token,
+      isNew,
+      rider
+    });
   } catch (error) {
     console.error("Verify OTP error:", error);
     res.status(500).json({ success: false, message: "OTP verification failed" });
   }
 });
 
-// 🔹 Save Rider Profile
 router.post("/save-profile", async (req, res) => {
   try {
     const { mobile, name, gender, email, referralCodeUsed } = req.body;
