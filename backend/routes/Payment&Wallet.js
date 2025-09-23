@@ -163,16 +163,9 @@ router.get('/history', authMiddleware, async (req, res) => {
 
     // Build query
     let query = { riderId };
-    
-    // Get payments with pagination
-    const payments = await Payment.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .exec();
 
-    // Get total count
-    const total = await Payment.countDocuments(query);
+    // ✅ Get all payments (no pagination)
+    const payments = await Payment.find(query).sort({ createdAt: -1 });
 
     // Format response
     const formattedPayments = payments.map(payment => ({
@@ -189,20 +182,15 @@ router.get('/history', authMiddleware, async (req, res) => {
 
     res.json({
       payments: formattedPayments,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        hasNext: page < Math.ceil(total / limit),
-        hasPrev: page > 1
-      }
+      totalItems: payments.length
     });
 
   } catch (error) {
-    console.error('Get history error:', error);
+    console.error('Get history error:', error.message);
     res.status(500).json({ error: 'Failed to fetch payment history' });
   }
 });
+
 
 // Get wallet details
 router.get('/wallet', authMiddleware, async (req, res) => {
