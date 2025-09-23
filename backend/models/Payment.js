@@ -26,8 +26,8 @@ const paymentSchema = new mongoose.Schema({
   amount: {
     type: Number,
     required: true,
-    min: 100, // 1 INR in paise
-    max: 5000000 // 50,000 in paise
+    min: 1, // 1 INR
+    max: 50000 // 50,000 INR
   },
   currency: {
     type: String,

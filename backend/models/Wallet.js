@@ -9,15 +9,15 @@ const walletSchema = new mongoose.Schema({
   balance: {
     type: Number,
     default: 0,
-    min: 0
+    min: 0 // Amount in rupees
   },
   totalDeposited: {
     type: Number,
-    default: 0
+    default: 0 // Amount in rupees
   },
   totalSpent: {
     type: Number,
-    default: 0
+    default: 0 // Amount in rupees
   },
   lastTransactionAt: {
     type: Date,

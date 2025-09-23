@@ -20,7 +20,7 @@ const rideSchema = new mongoose.Schema({
     selectedUsage: { type: String },
     transmissionType: { type: String },
 
-    // charge fields
+    // charge fields (all amounts in rupees)
     insuranceCharges: { type: Number, default: 0 },
     cancellationCharges: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
@@ -30,10 +30,10 @@ const rideSchema = new mongoose.Schema({
   },
   // to check if referral earning is applied for this ride
   referralEarning: { type: Boolean, default: false },
-  referralBalance: { type: Number, default: 0 }, // amount used from referral balance
+  referralBalance: { type: Number, default: 0 }, // amount used from referral balance (in rupees)
 
-  totalPayable: { type: Number, required: true },
-  paymentType: { type: String, enum: ["cash", "online"], required: true },
+  totalPayable: { type: Number, required: true }, // amount in rupees
+  paymentType: { type: String, enum: ["cash", "wallet"], required: true },
 
   status: {
     type: String,

@@ -18,15 +18,15 @@ router.post('/create-order', authMiddleware, async (req, res) => {
     const { amount, currency = 'INR' } = req.body;
     const riderId = req.rider.riderId;
 
-    // Validate amount (amount should be in INR, not paise)
+    // Validate amount (amount should be in rupees)
     if (!amount || amount < 1 || amount > 50000) {
       return res.status(400).json({ 
         error: 'Invalid amount. Amount should be between ₹1 and ₹50,000' 
       });
     }
 
-    // Convert INR to paise for Razorpay
-    const amountInPaise = amount;
+    // Convert rupees to paise for Razorpay
+    const amountInPaise = amount * 100;
 
     // Generate unique order ID
     const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -48,7 +48,7 @@ router.post('/create-order', authMiddleware, async (req, res) => {
       riderId: riderId,
       orderId: orderId,
       razorpayOrderId: order.id,
-      amount: amountInPaise, // Store in paise for consistency
+      amount: amount, // Store in rupees
       currency: currency,
       status: 'created',
       type: 'deposit',
@@ -135,10 +135,9 @@ router.post('/verify', authMiddleware, async (req, res) => {
       });
     }
 
-    // Update wallet (payment.amount is already in paise, convert to INR)
-    const amountInINR = payment.amount / 100;
-    wallet.balance += amountInINR;
-    wallet.totalDeposited += amountInINR;
+    // Update wallet (payment.amount is in rupees)
+    wallet.balance += payment.amount;
+    wallet.totalDeposited += payment.amount;
     wallet.lastTransactionAt = new Date();
     
     await wallet.save();
@@ -186,7 +185,7 @@ router.get('/history', authMiddleware, async (req, res) => {
     // Format response
     const formattedPayments = payments.map(payment => ({
       id: payment._id,
-      amount: payment.amount / 100, // Convert paise to INR
+      amount: payment.amount, // Amount in rupees
       type: payment.type,
       description: payment.description,
       status: payment.status,
@@ -232,9 +231,9 @@ router.get('/wallet', authMiddleware, async (req, res) => {
     }
 
     res.json({
-      balance: wallet.balance,
-      totalDeposited: wallet.totalDeposited,
-      totalSpent: wallet.totalSpent,
+      balance: wallet.balance, // Amount in rupees
+      totalDeposited: wallet.totalDeposited, // Amount in rupees
+      totalSpent: wallet.totalSpent, // Amount in rupees
       lastTransactionAt: wallet.lastTransactionAt,
       isActive: wallet.isActive
     });
@@ -270,7 +269,7 @@ router.post('/deduct', authMiddleware, async (req, res) => {
       riderId: riderId,
       orderId: `spend_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       razorpayOrderId: `local_${Date.now()}`,
-      amount: amount * 100, // Convert to paise for consistency
+      amount: amount, // Amount in rupees
       status: 'paid',
       type: 'spend',
       description: description,
@@ -357,9 +356,8 @@ const handlePaymentCaptured = async (paymentEntity) => {
         });
 
         if (!existingTransaction) {
-          const amountInINR = payment.amount / 100;
-          wallet.balance += amountInINR;
-          wallet.totalDeposited += amountInINR;
+          wallet.balance += payment.amount; // Amount in rupees
+          wallet.totalDeposited += payment.amount;
           wallet.lastTransactionAt = new Date();
           await wallet.save();
         }

@@ -101,7 +101,6 @@ router.post('/calculation', async (req, res) => {
     }
 
     const formattedSubcategory = subcategory.name.toLowerCase().replace(/\s+/g, '-');
-    console.log('Formatted Subcategory:', formattedSubcategory);
     if (formattedSubcategory === 'hourly') {
       usageValue = usageValue * 60;
     }
@@ -112,7 +111,6 @@ router.post('/calculation', async (req, res) => {
       subcategory: subcategoryId
     });
 
-    console.log('Fetched Charges:', charges);
     if (!charges) {
       return res.status(404).json({ error: 'Charges not found for category + subcategory' });
     }
@@ -124,7 +122,6 @@ router.post('/calculation', async (req, res) => {
       category: categoryId,
       subcategory: subcategoryId
     });
-    console.log('Ride Cost Models:', rideCostModels);
 
     if (!charges || rideCostModels.length === 0) {
       return res.status(404).json({ error: 'Required data not found' });
@@ -163,8 +160,6 @@ router.post('/calculation', async (req, res) => {
       const priceCategoryId = model.priceCategory;
       const priceCategory = await pricecategories.findById(priceCategoryId);
 
-      console.log('Price Category:', priceCategory.priceCategoryName);
-
       let driverCharges = 0;
 
       if (formattedSubcategory === 'hourly') {
@@ -199,7 +194,7 @@ router.post('/calculation', async (req, res) => {
 
       result.push({
         category: priceCategory.priceCategoryName,
-        driverCharges: Math.round(driverCharges),
+        driverCharges: Math.round(driverCharges), // amounts in rupees
         pickCharges: Math.round(modelPickCharges),
         peakCharges: Math.round(peakCharges),
         insuranceCharges: Math.round(modelInsurance),
@@ -210,11 +205,9 @@ router.post('/calculation', async (req, res) => {
         cancellationCharges: Math.round(cancellationCharges),
         gstCharges,
         subtotal: Math.round(subtotal),
-        totalPayable
+        totalPayable // total amount in rupees
       });
     }
-
-    console.log('Calculation Result:', result);
 
     res.json(result);
 
@@ -223,7 +216,6 @@ router.post('/calculation', async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
-
 
 // GET BY MODEL TYPE - Retrieve ride cost models by type
 router.get('/type/:modelType', async (req, res) => {

@@ -5,14 +5,14 @@ const rideCostSchema = new mongoose.Schema({
   subcategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory", required: true },
   priceCategory: { type: mongoose.Schema.Types.ObjectId, ref: "PriceCategory", required: true },
   
-  // Base charges (moved from PriceCategory)
+  // Base charges (moved from PriceCategory) - amounts in rupees
   chargePerKm: { type: Number, required: true },
   chargePerMinute: { type: Number, required: true },
 
   weight: { type: Number }, // Optional, only required for parcel categories
 
   
-  // Additional charges
+  // Additional charges (amounts in rupees)
   pickCharges: { type: Number, default: 0 },
   nightCharges: { type: Number, default: 0 },
   cancellationFee: { type: Number, default: 0 },
