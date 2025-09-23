@@ -68,7 +68,7 @@ app.use('/api/referral-rules', referralRulesRoutes);
 // admin
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));
 
-app.use('/api/driver', require('./driverRoutes/DriverRoute'));
+app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
 
 app.use('/api/payments', require('./routes/Payment&Wallet'));
 
