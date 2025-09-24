@@ -145,7 +145,7 @@ router.post("/verify-otp", async (req, res) => {
 
 router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res) => {
   try {
-    const step = parseInt(req.body.step, 5);
+    const step = parseInt(req.body.step, 10);
     const mobile = req.driver?.mobile;
     const data = JSON.parse(req.body.data || "{}");
 
@@ -239,26 +239,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     console.log("File groups (arrays):", fileGroups);
     console.log("Single files:", singleFiles);
 
-    const updates = {};
-
-    // Handle array field uploads (aadhar, drivingLicense)
-    Object.entries(fileGroups).forEach(([fieldName, urls]) => {
-      if (urls.length > 0) {
-        // Get existing URLs for this field
-        const existingUrls = driver.personalInformation?.[fieldName] || [];
-
-        // Merge existing + new URLs
-        const allUrls = [...existingUrls, ...urls];
-
-        // Remove duplicates if any
-        const uniqueUrls = [...new Set(allUrls)];
-
-        updates[`personalInformation.${fieldName}`] = uniqueUrls;
-
-        console.log(`Updated ${fieldName} with URLs:`, uniqueUrls);
-      }
-    });
-
     // Handle single file uploads (panCard, passportPhoto, etc.)
     Object.entries(singleFiles).forEach(([fieldname, url]) => {
       data[fieldname] = url;
@@ -266,7 +246,19 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     // Merge existing + new data for the step field
     const fieldData = { ...driver[field]?.toObject?.(), ...data };
-    updates[field] = fieldData;
+
+    // Handle array field uploads - merge into fieldData instead of separate updates
+    Object.entries(fileGroups).forEach(([fieldName, urls]) => {
+      if (urls.length > 0) {
+        const existingUrls = driver[field]?.[fieldName] || [];
+        const allUrls = [...existingUrls, ...urls];
+        const uniqueUrls = [...new Set(allUrls)];
+        fieldData[fieldName] = uniqueUrls;
+        console.log(`Updated ${fieldName} with URLs:`, uniqueUrls);
+      }
+    });
+
+    const updates = { [field]: fieldData };
 
     console.log("Final updates object:", updates);
 
@@ -276,15 +268,9 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       [field]: fieldData
     };
 
-    // Apply array field updates to temp driver for progress evaluation
-    if (updates["personalInformation.aadhar"]) {
-      tempDriver.personalInformation.aadhar = updates["personalInformation.aadhar"];
-    }
-    if (updates["personalInformation.drivingLicense"]) {
-      tempDriver.personalInformation.drivingLicense = updates["personalInformation.drivingLicense"];
-    }
+    // tempDriver already has the updated fieldData with array fields
 
-    const progressResult = await evaluateDriverProgress(tempDriver);
+    const progressResult = evaluateDriverProgress(tempDriver);
 
     // Add status
     updates.status = progressResult.status;
