@@ -183,14 +183,14 @@ router.post('/calculation', async (req, res) => {
       const modelInsurance = includeInsurance ? model.insurance || 0 : 0;
       const cancellationCharges = model.cancellationFee || 0;
 
-      const baseTotal = driverCharges + modelPickCharges + peakCharges + modelNightCharges + modelInsurance + cancellationCharges;
+      const baseTotal = driverCharges + modelPickCharges + peakCharges + modelNightCharges 
 
       const adminCommission = Math.round((baseTotal * model.extraChargesFromAdmin) / 100);
       const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
       const subtotal = baseTotal + adjustedAdminCommission;
 
       const gstCharges = Math.ceil((subtotal * model.gst) / 100);
-      const totalPayable = Math.round(subtotal + gstCharges);
+      const totalPayable = Math.round(subtotal + gstCharges + modelInsurance + cancellationCharges);
 
       result.push({
         category: priceCategory.priceCategoryName,
