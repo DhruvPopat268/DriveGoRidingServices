@@ -190,47 +190,47 @@ router.post("/delete-rider", async (req, res) => {
 });
 
 // 🔹 Send OTP
-router.post("/send-otp", async (req, res) => {
-  try {
-    const { mobile } = req.body;
-    if (!mobile) return res.status(400).json({ message: "Mobile number is required" });
+// router.post("/send-otp", async (req, res) => {
+//   try {
+//     const { mobile } = req.body;
+//     if (!mobile) return res.status(400).json({ message: "Mobile number is required" });
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+//     // Generate 6-digit OTP
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile });
-    if (!rider) {
-      rider = new Rider({ mobile });
-      await rider.save();
-    }
+//     // Ensure Rider exists
+//     let rider = await Rider.findOne({ mobile });
+//     if (!rider) {
+//       rider = new Rider({ mobile });
+//       await rider.save();
+//     }
 
-    // Save OTP session
-    const otpSession = new OtpSession({
-      rider: rider._id,
-      mobile,
-      otp,
-      otpExpiresAt
-    });
-    await otpSession.save();
+//     // Save OTP session
+//     const otpSession = new OtpSession({
+//       rider: rider._id,
+//       mobile,
+//       otp,
+//       otpExpiresAt
+//     });
+//     await otpSession.save();
 
-    let toNumber = mobile.startsWith("+") ? mobile : `+91${mobile}`;
+//     let toNumber = mobile.startsWith("+") ? mobile : `+91${mobile}`;
 
-    // ✅ Send OTP via Twilio SMS
-    const resp = await client.messages.create({
-      body: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-      from: process.env.TWILIO_PHONE_NUMBER,  // +17744269453
-      to: toNumber
-    });
-    console.log("Twilio response:", resp.sid);
+//     // ✅ Send OTP via Twilio SMS
+//     const resp = await client.messages.create({
+//       body: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+//       from: process.env.TWILIO_PHONE_NUMBER,  // +17744269453
+//       to: toNumber
+//     });
+//     console.log("Twilio response:", resp.sid);
 
-    res.json({ success: true, message: "OTP sent successfully" });
-  } catch (error) {
-    console.error("Send OTP error:", error.message);
-    res.status(500).json({ success: false, message: "Failed to send OTP" });
-  }
-});
+//     res.json({ success: true, message: "OTP sent successfully" });
+//   } catch (error) {
+//     console.error("Send OTP error:", error.message);
+//     res.status(500).json({ success: false, message: "Failed to send OTP" });
+//   }
+// });
 
 // router.post("/verify-otp", async (req, res) => {
 //   try {
@@ -273,6 +273,46 @@ router.post("/send-otp", async (req, res) => {
 // });
 
 // 🔹 Save Rider Profile
+
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { mobile } = req.body;
+    if (!mobile) {
+      return res.status(400).json({ message: "Mobile number is required" });
+    }
+
+    // Use dummy OTP for testing
+    const otp = "123456";
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    // Ensure Rider exists
+    let rider = await Rider.findOne({ mobile });
+    if (!rider) {
+      rider = new Rider({ mobile });
+      await rider.save();
+    }
+
+    // Save OTP session
+    const otpSession = new OtpSession({
+      rider: rider._id,
+      mobile,
+      otp,
+      otpExpiresAt
+    });
+    await otpSession.save();
+
+    // No Twilio call, just respond
+    res.json({
+      success: true,
+      message: "Dummy OTP generated successfully",
+      otp // ⚠️ expose only in dev/testing, not in production
+    });
+  } catch (error) {
+    console.error("Send OTP error:", error.message);
+    res.status(500).json({ success: false, message: "Failed to generate OTP" });
+  }
+});
+
 
 router.post("/verify-otp", async (req, res) => {
   try {
