@@ -55,57 +55,68 @@ export const SubCategoryPage = () => {
     }
   }, [subCategories, selectedCategoryFilter]);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const cateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
-        const categoryList = cateData.data;
+  // Fetch categories
+  const fetchCategories = async () => {
+    try {
+      const cateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+      const categoryList = cateData.data;
 
-        if (Array.isArray(categoryList)) {
-          setCategories(categoryList);
-        } else {
-          console.error("Category data is not an array:", cateData.data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch categories:", error);
+      if (Array.isArray(categoryList)) {
+        setCategories(categoryList);
+        return categoryList; // Return for chaining
+      } else {
+        console.error("Category data is not an array:", cateData.data);
+        return [];
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+      return [];
+    }
+  };
 
-    const fetchSubCategories = async () => {
-      try {
-        const subcateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+  // Fetch subcategories with category mapping
+  const fetchSubCategories = async (categoriesData = categories) => {
+    try {
+      const subcateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
 
-        let subcategoryList = [];
-        if (Array.isArray(subcateData.data)) {
-          subcategoryList = subcateData.data;
-        } else if (Array.isArray(subcateData.data.data)) {
-          subcategoryList = subcateData.data.data;
-        } else {
-          console.error("Invalid subcategory response format", subcateData.data);
-          setSubCategories([]);
-          return;
-        }
-
-        const mappedSubCategories = subcategoryList.map((subCat) => {
-          const category = categories.find((cat) => cat._id === subCat.categoryId);
-          return {
-            ...subCat,
-            id: subCat.id || subCat._id,
-            _id: subCat._id || subCat.id,
-            categoryName: category ? category.name : "Unknown",
-          };
-        });
-
-        setSubCategories(mappedSubCategories);
-      } catch (error) {
-        console.error("Failed to fetch subcategories:", error);
+      let subcategoryList = [];
+      if (Array.isArray(subcateData.data)) {
+        subcategoryList = subcateData.data;
+      } else if (Array.isArray(subcateData.data.data)) {
+        subcategoryList = subcateData.data.data;
+      } else {
+        console.error("Invalid subcategory response format", subcateData.data);
         setSubCategories([]);
+        return;
       }
+
+      const mappedSubCategories = subcategoryList.map((subCat) => {
+        const category = categoriesData.find((cat) => cat._id === subCat.categoryId);
+        return {
+          ...subCat,
+          id: subCat.id || subCat._id,
+          _id: subCat._id || subCat.id,
+          categoryName: category ? category.name : "Unknown",
+        };
+      });
+
+      setSubCategories(mappedSubCategories);
+    } catch (error) {
+      console.error("Failed to fetch subcategories:", error);
+      setSubCategories([]);
+    }
+  };
+
+  // Initial data loading - removed categories from dependency array
+  useEffect(() => {
+    const loadInitialData = async () => {
+      // Fetch categories first, then use the result to fetch subcategories
+      const categoriesData = await fetchCategories();
+      await fetchSubCategories(categoriesData);
     };
 
-    fetchCategories();
-    fetchSubCategories();
-  }, [categories]); // Add categories dependency to re-fetch subcategories when categories change
+    loadInitialData();
+  }, []); // Empty dependency array - only run on mount
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -147,27 +158,8 @@ export const SubCategoryPage = () => {
           }
         );
 
-        // Refresh the subcategories list
-        const subcateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
-
-        let subcategoryList = [];
-        if (Array.isArray(subcateData.data)) {
-          subcategoryList = subcateData.data;
-        } else if (Array.isArray(subcateData.data.data)) {
-          subcategoryList = subcateData.data.data;
-        }
-
-        const mappedSubCategories = subcategoryList.map((subCat) => {
-          const category = categories.find((cat) => cat._id === subCat.categoryId);
-          return {
-            ...subCat,
-            id: subCat.id || subCat._id,
-            _id: subCat._id || subCat.id,
-            categoryName: category ? category.name : "Unknown",
-          };
-        });
-
-        setSubCategories(mappedSubCategories);
+        // Refresh the subcategories list using existing categories
+        await fetchSubCategories(categories);
 
         // Reset form and close dialog
         setSubCategoryForm({ categoryId: '', name: '', description: '' });
@@ -210,27 +202,8 @@ export const SubCategoryPage = () => {
           }
         );
 
-        // Refresh the list after successful update
-        const subcateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
-
-        let subcategoryList = [];
-        if (Array.isArray(subcateData.data)) {
-          subcategoryList = subcateData.data;
-        } else if (Array.isArray(subcateData.data.data)) {
-          subcategoryList = subcateData.data.data;
-        }
-
-        const mappedSubCategories = subcategoryList.map((subCat) => {
-          const category = categories.find((cat) => cat._id === subCat.categoryId);
-          return {
-            ...subCat,
-            id: subCat.id || subCat._id,
-            _id: subCat._id || subCat.id,
-            categoryName: category ? category.name : "Unknown",
-          };
-        });
-
-        setSubCategories(mappedSubCategories);
+        // Refresh the list after successful update using existing categories
+        await fetchSubCategories(categories);
 
         // Reset form and close dialog
         setSubCategoryForm({ categoryId: '', name: '', description: '' });

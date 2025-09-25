@@ -21,10 +21,14 @@ interface RideCost {
   _id?: string;
   category: string | { _id?: string; id?: string; name: string };
   subcategory: string | { _id?: string; id?: string; name: string };
+  subSubCategory?: string | { _id?: string; id?: string; name: string };
   priceCategory: string | { _id?: string; id?: string; priceCategoryName: string };
   weight?: number;
-  chargePerKm: number;
-  chargePerMinute: number;
+  baseFare: number;
+  includedKm: number;
+  includedMinutes: number;
+  extraChargePerKm: number;
+  extraChargePerMinute: number;
   pickCharges: number;
   nightCharges: number;
   cancellationFee: number;
@@ -52,13 +56,32 @@ interface PriceCategory {
   priceCategoryName: string;
 }
 
+interface ParcelVehicle {
+  _id: string;
+  vehicleName: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+interface SubSubCategory {
+  _id?: string;
+  id?: string;
+  name: string;
+  categoryId: string;
+  subCategoryId: string;
+}
+
 export const RideCostPage = () => {
   const [rideCosts, setRideCosts] = useState<RideCost[]>([]);
   const [filteredRideCosts, setFilteredRideCosts] = useState<RideCost[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>([]);
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
+  const [parcelVehicles, setParcelVehicles] = useState<ParcelVehicle[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
+  const [filteredSubSubCategories, setFilteredSubSubCategories] = useState<SubSubCategory[]>([]);
   const [filteredPriceCategories, setFilteredPriceCategories] = useState<PriceCategory[]>([]);
 
   // Filter states
@@ -69,10 +92,14 @@ export const RideCostPage = () => {
   const [rideCostForm, setRideCostForm] = useState({
     category: '',
     subcategory: '',
+    subSubCategory: '',
     priceCategory: '',
     weight: '',
-    chargePerKm: '',
-    chargePerMinute: '',
+    baseFare: '',
+    includedKm: '',
+    includedMinutes: '',
+    extraChargePerKm: '',
+    extraChargePerMinute: '',
     pickCharges: '',
     nightCharges: '',
     cancellationFee: '',
@@ -106,8 +133,18 @@ export const RideCostPage = () => {
     return selectedCategory ? selectedCategory.name : '';
   };
 
+  // Helper function to get selected subcategory name from form
+  const getSelectedSubCategoryName = () => {
+    const selectedSubCategory = subcategories.find(sub => (sub.id || sub._id) === rideCostForm.subcategory);
+    return selectedSubCategory ? selectedSubCategory.name : '';
+  };
+
   const isFormParcelCategory = () => {
     return getSelectedCategoryName().toLowerCase() === 'parcel';
+  };
+
+  const isOutstationSubCategory = () => {
+    return getSelectedSubCategoryName().toLowerCase() === 'outstation';
   };
 
   useEffect(() => {
@@ -119,23 +156,52 @@ export const RideCostPage = () => {
     if (rideCostForm.category) {
       const filtered = subcategories.filter(sub => sub.categoryId === rideCostForm.category);
       setFilteredSubcategories(filtered);
-      setRideCostForm(prev => ({ ...prev, subcategory: '', priceCategory: '' }));
+      setRideCostForm(prev => ({ ...prev, subcategory: '', subSubCategory: '', priceCategory: '' }));
+      setFilteredSubSubCategories([]);
       setFilteredPriceCategories([]);
     } else {
       setFilteredSubcategories([]);
+      setFilteredSubSubCategories([]);
       setFilteredPriceCategories([]);
     }
   }, [rideCostForm.category, subcategories]);
 
-  // Show all price categories when subcategory is selected in form
+  // Filter sub-subcategories when subcategory changes in form
   useEffect(() => {
     if (rideCostForm.subcategory) {
-      setFilteredPriceCategories(priceCategories);
-      setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      const filtered = subSubCategories.filter(subSub =>
+        subSub.categoryId === rideCostForm.category &&
+        subSub.subCategoryId === rideCostForm.subcategory
+      );
+      setFilteredSubSubCategories(filtered);
+      setRideCostForm(prev => ({ ...prev, subSubCategory: '', priceCategory: '' }));
+
+      // Show price categories if not outstation or if outstation and subSubCategory selected
+      if (!isOutstationSubCategory()) {
+        setFilteredPriceCategories(priceCategories);
+      } else {
+        setFilteredPriceCategories([]);
+      }
     } else {
+      setFilteredSubSubCategories([]);
       setFilteredPriceCategories([]);
     }
-  }, [rideCostForm.subcategory, priceCategories]);
+  }, [rideCostForm.subcategory, subSubCategories, priceCategories]);
+
+  // Show price categories when sub-subcategory is selected for outstation
+  useEffect(() => {
+    if (rideCostForm.subSubCategory && isOutstationSubCategory()) {
+      setFilteredPriceCategories(priceCategories);
+      setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+    }
+  }, [rideCostForm.subSubCategory, priceCategories]);
+
+  // Fetch parcel vehicles when category is parcel
+  useEffect(() => {
+    if (isFormParcelCategory()) {
+      fetchParcelVehicles();
+    }
+  }, [rideCostForm.category]);
 
   // Filter subcategories for filter dropdown
   useEffect(() => {
@@ -173,21 +239,32 @@ export const RideCostPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [rideCostsRes, categoriesRes, subcategoriesRes, priceCategoriesRes] = await Promise.all([
+      const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/api/ride-costs`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/categories`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`)
       ]);
 
       setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
       setCategories(categoriesRes.data);
       setSubcategories(subcategoriesRes.data);
+      setSubSubCategories(subSubCategoriesRes.data);
       setPriceCategories(priceCategoriesRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchParcelVehicles = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicles`);
+      setParcelVehicles(response.data);
+    } catch (error) {
+      console.error('Error fetching parcel vehicles:', error);
     }
   };
 
@@ -198,10 +275,14 @@ export const RideCostPage = () => {
     const payload = {
       category: rideCostForm.category,
       subcategory: rideCostForm.subcategory,
+      ...(rideCostForm.subSubCategory && { subSubCategory: rideCostForm.subSubCategory }),
       priceCategory: rideCostForm.priceCategory,
       ...(isFormParcelCategory() && { weight: parseFloat(rideCostForm.weight) || 0 }),
-      chargePerKm: parseFloat(rideCostForm.chargePerKm) || 0,
-      chargePerMinute: parseFloat(rideCostForm.chargePerMinute) || 0,
+      baseFare: parseFloat(rideCostForm.baseFare) || 0,
+      includedKm: rideCostForm.includedKm.trim(),
+      includedMinutes: rideCostForm.includedMinutes.trim(),
+      extraChargePerKm: parseFloat(rideCostForm.extraChargePerKm) || 0,
+      extraChargePerMinute: parseFloat(rideCostForm.extraChargePerMinute) || 0,
       pickCharges: parseFloat(rideCostForm.pickCharges) || 0,
       nightCharges: parseFloat(rideCostForm.nightCharges) || 0,
       cancellationFee: parseFloat(rideCostForm.cancellationFee) || 0,
@@ -234,11 +315,18 @@ export const RideCostPage = () => {
 
     const categoryId = extractId(rideCost.category);
     const subcategoryId = extractId(rideCost.subcategory);
+    const subSubCategoryId = rideCost.subSubCategory ? extractId(rideCost.subSubCategory) : '';
     const priceCategoryId = extractId(rideCost.priceCategory);
 
     // Set filtered subcategories first
     const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
     setFilteredSubcategories(filteredSubs);
+
+    // Set filtered sub-subcategories
+    const filteredSubSubs = subSubCategories.filter(subSub =>
+      subSub.categoryId === categoryId && subSub.subCategoryId === subcategoryId
+    );
+    setFilteredSubSubCategories(filteredSubSubs);
 
     // Set filtered price categories - show all when subcategory is selected
     setFilteredPriceCategories(priceCategories);
@@ -246,10 +334,14 @@ export const RideCostPage = () => {
     setRideCostForm({
       category: categoryId,
       subcategory: subcategoryId,
+      subSubCategory: subSubCategoryId,
       priceCategory: priceCategoryId,
       weight: rideCost.weight?.toString() || '',
-      chargePerKm: rideCost.chargePerKm.toString(),
-      chargePerMinute: rideCost.chargePerMinute.toString(),
+      baseFare: rideCost.baseFare.toString(),
+      includedKm: rideCost.includedKm || '',
+      includedMinutes: rideCost.includedMinutes || '',
+      extraChargePerKm: rideCost.extraChargePerKm.toString(),
+      extraChargePerMinute: rideCost.extraChargePerMinute.toString(),
       pickCharges: rideCost.pickCharges.toString(),
       nightCharges: rideCost.nightCharges.toString(),
       cancellationFee: rideCost.cancellationFee.toString(),
@@ -279,10 +371,14 @@ export const RideCostPage = () => {
     setRideCostForm({
       category: '',
       subcategory: '',
+      subSubCategory: '',
       priceCategory: '',
       weight: '',
-      chargePerKm: '',
-      chargePerMinute: '',
+      baseFare: '',
+      includedKm: '',
+      includedMinutes: '',
+      extraChargePerKm: '',
+      extraChargePerMinute: '',
       pickCharges: '',
       nightCharges: '',
       cancellationFee: '',
@@ -298,11 +394,17 @@ export const RideCostPage = () => {
     setFilterSubcategory('all');
   };
 
-  const getName = (item: string | { name?: string; priceCategoryName?: string }): string => {
-    if (typeof item === 'string') return 'Unknown';
+  // Fixed getName function with proper null checking
+  const getName = (item: string | { name?: string; priceCategoryName?: string } | null | undefined): string => {
+    // Handle null, undefined, or empty string cases
+    if (!item || item === '') return 'Unknown';
+
+    // Handle string case
+    if (typeof item === 'string') return item;
+
+    // Handle object case
     return item.name || item.priceCategoryName || 'Unknown';
   };
-
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -361,27 +463,111 @@ export const RideCostPage = () => {
                     </SelectContent>
                   </Select>
 
-                  <div className="col-span-2">
-                    <Select
-                      value={rideCostForm.priceCategory}
-                      onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
-                      disabled={!rideCostForm.subcategory}
-                      required
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Driver Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredPriceCategories.map((pc) => (
-                          <SelectItem key={pc._id} value={pc._id}>
-                            {pc.priceCategoryName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
 
-                  </div>
 
+                  {/* Sub-Sub Category and Driver Category - Two column layout for outstation */}
+                  {isOutstationSubCategory() && (
+                    <div className="grid grid-cols-2 gap-4 col-span-2">
+                      <Select
+                        value={rideCostForm.subSubCategory}
+                        onValueChange={(value) => setRideCostForm(prev => ({ ...prev, subSubCategory: value }))}
+                        disabled={!rideCostForm.subcategory}
+                        required
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Sub-Sub Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {filteredSubSubCategories.map((subSub) => (
+                            <SelectItem key={subSub.id || subSub._id} value={subSub.id || subSub._id}>
+                              {subSub.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {isFormParcelCategory() ? (
+                        <Select
+                          value={rideCostForm.priceCategory}
+                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                          disabled={!rideCostForm.subcategory || (isOutstationSubCategory() && !rideCostForm.subSubCategory)}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Parcel Vehicle" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {parcelVehicles.map((vehicle) => (
+                              <SelectItem key={vehicle._id} value={vehicle._id}>
+                                {vehicle.vehicleName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select
+                          value={rideCostForm.priceCategory}
+                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                          disabled={!rideCostForm.subcategory || (isOutstationSubCategory() && !rideCostForm.subSubCategory)}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Driver Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredPriceCategories.map((pc) => (
+                              <SelectItem key={pc._id} value={pc._id}>
+                                {pc.priceCategoryName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+
+                  {/* For non-outstation subcategories, show only the driver category dropdown spanning 2 columns */}
+                  {!isOutstationSubCategory() && rideCostForm.subcategory && (
+                    <div className="col-span-2">
+                      {isFormParcelCategory() ? (
+                        <Select
+                          value={rideCostForm.priceCategory}
+                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                          disabled={!rideCostForm.subcategory}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Parcel Vehicle" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {parcelVehicles.map((vehicle) => (
+                              <SelectItem key={vehicle._id} value={vehicle._id}>
+                                {vehicle.vehicleName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select
+                          value={rideCostForm.priceCategory}
+                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                          disabled={!rideCostForm.subcategory}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Driver Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredPriceCategories.map((pc) => (
+                              <SelectItem key={pc._id} value={pc._id}>
+                                {pc.priceCategoryName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
                   {isFormParcelCategory() && (
                     <Input
                       type="number"
@@ -397,17 +583,39 @@ export const RideCostPage = () => {
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="Charge per km"
-                    value={rideCostForm.chargePerKm}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, chargePerKm: e.target.value }))}
+                    placeholder="Base Fare (₹)"
+                    value={rideCostForm.baseFare}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, baseFare: e.target.value }))}
+                    required
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Included KM (e.g., 10 km, Unlimited)"
+                    value={rideCostForm.includedKm}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, includedKm: e.target.value }))}
+                    required
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Included Minutes (e.g., 60 min, Unlimited)"
+                    value={rideCostForm.includedMinutes}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, includedMinutes: e.target.value }))}
                     required
                   />
                   <Input
                     type="number"
                     step="0.01"
-                    placeholder="Charge per minute"
-                    value={rideCostForm.chargePerMinute}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, chargePerMinute: e.target.value }))}
+                    placeholder="Extra Charge per KM (₹)"
+                    value={rideCostForm.extraChargePerKm}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargePerKm: e.target.value }))}
+                    required
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Extra Charge per Minute (₹)"
+                    value={rideCostForm.extraChargePerMinute}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargePerMinute: e.target.value }))}
                     required
                   />
                   <Input
@@ -542,9 +750,13 @@ export const RideCostPage = () => {
               <TableRow>
                 <TableHead>Category</TableHead>
                 <TableHead>Subcategory</TableHead>
+                <TableHead>Sub-Sub Category</TableHead>
                 <TableHead>Driver Category</TableHead>
-                <TableHead>Per Km</TableHead>
-                <TableHead>Per Min</TableHead>
+                <TableHead>Base Fare</TableHead>
+                <TableHead>Incl. KM</TableHead>
+                <TableHead>Incl. Min</TableHead>
+                <TableHead>Extra/Km</TableHead>
+                <TableHead>Extra/Min</TableHead>
                 {/* Show Weight column header if any filtered ride cost is from parcel category */}
                 {filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) && (
                   <TableHead>Weight (kg)</TableHead>
@@ -555,11 +767,11 @@ export const RideCostPage = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 7 : 6} className="text-center py-6">Loading...</TableCell>
+                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 11 : 10} className="text-center py-6">Loading...</TableCell>
                 </TableRow>
               ) : filteredRideCosts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 7 : 6} className="text-center py-6">
+                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 11 : 10} className="text-center py-6">
                     {rideCosts.length === 0
                       ? "No ride cost models found. Create your first one!"
                       : "No models match the selected filters."
@@ -571,9 +783,13 @@ export const RideCostPage = () => {
                   <TableRow key={rideCost._id}>
                     <TableCell>{getName(rideCost.category)}</TableCell>
                     <TableCell>{getName(rideCost.subcategory)}</TableCell>
+                    <TableCell>{rideCost.subSubCategory ? getName(rideCost.subSubCategory) : '-'}</TableCell>
                     <TableCell>{getName(rideCost.priceCategory)}</TableCell>
-                    <TableCell>₹{rideCost.chargePerKm}</TableCell>
-                    <TableCell>₹{rideCost.chargePerMinute}</TableCell>
+                    <TableCell>₹{rideCost.baseFare}</TableCell>
+                    <TableCell>{rideCost.includedKm}</TableCell>
+                    <TableCell>{rideCost.includedMinutes}</TableCell>
+                    <TableCell>₹{rideCost.extraChargePerKm}</TableCell>
+                    <TableCell>₹{rideCost.extraChargePerMinute}</TableCell>
                     {/* Show Weight column data if any filtered ride cost is from parcel category */}
                     {filteredRideCosts.some(rc => isParcelCategory(rc.category)) && (
                       <TableCell>
@@ -646,7 +862,13 @@ export const RideCostPage = () => {
                   <label className="text-sm font-medium">Subcategory</label>
                   <p className="text-sm text-gray-600">{getName(viewingRideCost.subcategory)}</p>
                 </div>
-                <div className="col-span-2">
+                {viewingRideCost.subSubCategory && (
+                  <div>
+                    <label className="text-sm font-medium">Sub-Sub Category</label>
+                    <p className="text-sm text-gray-600">{getName(viewingRideCost.subSubCategory)}</p>
+                  </div>
+                )}
+                <div className={viewingRideCost.subSubCategory ? "" : "col-span-2"}>
                   <label className="text-sm font-medium">Driver Category</label>
                   <p className="text-sm text-gray-600">{getName(viewingRideCost.priceCategory)}</p>
                 </div>
@@ -656,6 +878,26 @@ export const RideCostPage = () => {
                     <p className="text-sm text-gray-600">{viewingRideCost.weight || 0} kg</p>
                   </div>
                 )}
+                <div>
+                  <label className="text-sm font-medium">Base Fare</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.baseFare}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Included KM</label>
+                  <p className="text-sm text-gray-600">{viewingRideCost.includedKm}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Included Minutes</label>
+                  <p className="text-sm text-gray-600">{viewingRideCost.includedMinutes}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Extra Charge per KM</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.extraChargePerKm}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Extra Charge per Minute</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.extraChargePerMinute}</p>
+                </div>
                 <div>
                   <label className="text-sm font-medium">Pick Charges</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.pickCharges}</p>

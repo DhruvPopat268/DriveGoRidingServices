@@ -5,8 +5,10 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const categoryRoutes = require('./routes/categoryRoutes');
 const subCategoryRoutes = require('./routes/subCategoryRoutes');
+const subSubCategoryRoutes = require('./routes/subSubCategoryRoutes');
 const vehicleCategories = require('./routes/vehicleCategory')
 const priceCategoryRoutes = require('./routes/priceCategoryRoutes');
+const parcelVehicleRoutes = require('./routes/parcelVehicleRoutes');
 const rideCostRoutes = require('./routes/rideCostRoutes');
 const peakRoutes = require('./routes/peakRoutes');
 const instructionRoutes = require('./routes/instructionRoutes');
@@ -47,8 +49,10 @@ connectToDb()
 // Routes
 app.use('/api/categories', categoryRoutes);
 app.use('/api/subcategories', subCategoryRoutes);
+app.use('/api/subsubcategories', subSubCategoryRoutes);
 app.use('/api/vehiclecategories', vehicleCategories)
 app.use('/api/price-categories', priceCategoryRoutes);
+app.use('/api/parcel-vehicles', parcelVehicleRoutes);
 app.use('/api/ride-costs', rideCostRoutes);
 app.use('/api/peaks', peakRoutes);
 app.use('/api/instructions', instructionRoutes);

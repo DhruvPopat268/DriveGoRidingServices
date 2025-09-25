@@ -6,6 +6,7 @@ const peakHours = require('../models/Peak')
 const pricecategories = require('../models/PriceCategory')
 const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
+const SubSubCategory = require('../models/SubSubCategory');
 
 router.post('/', async (req, res) => {
   try {
@@ -14,6 +15,7 @@ router.post('/', async (req, res) => {
     const populated = await RideCost.findById(saved._id)
       .populate('category', 'name')
       .populate('subcategory', 'name')
+      .populate('subSubCategory', 'name')
       .populate('priceCategory', 'priceCategoryName');
     res.status(201).json({
       success: true,
@@ -34,6 +36,7 @@ router.get('/', async (req, res) => {
     const rideCosts = await RideCost.find()
       .populate('category', 'name')
       .populate('subcategory', 'name')
+      .populate('subSubCategory', 'name')
       .populate('priceCategory', 'priceCategoryName')
       .sort({ createdAt: -1 });
     res.status(200).json({
@@ -162,21 +165,33 @@ router.post('/calculation', async (req, res) => {
 
       let driverCharges = 0;
 
+      // Calculate base fare and extra charges
+      let baseFare = model.baseFare || 0;
+      let extraCharges = 0;
+      
       if (formattedSubcategory === 'hourly') {
         // Hourly → usage already converted to minutes above
-        driverCharges = usageValue * model.chargePerMinute;
+        const extraMinutes = Math.max(0, usageValue - (model.includedMinutes || 0));
+        extraCharges = extraMinutes * (model.extraChargePerMinute || 0);
       } else if (formattedSubcategory === 'weekly') {
         // Weekly → usageValue * perMinute * 60 * 7 * numberOfWeeks
         const weeks = parseInt(numberOfWeeks) || 1;
-        driverCharges = usageValue * model.chargePerMinute * 60 * 7 * weeks;
+        const totalMinutes = usageValue * 60 * 7 * weeks;
+        const extraMinutes = Math.max(0, totalMinutes - (model.includedMinutes || 0));
+        extraCharges = extraMinutes * (model.extraChargePerMinute || 0);
       } else if (formattedSubcategory === 'monthly') {
         // Monthly → usageValue * perMinute * 60 * 30 * numberOfMonths
         const months = parseInt(numberOfMonths) || 1;
-        driverCharges = usageValue * model.chargePerMinute * 60 * 30 * months;
+        const totalMinutes = usageValue * 60 * 30 * months;
+        const extraMinutes = Math.max(0, totalMinutes - (model.includedMinutes || 0));
+        extraCharges = extraMinutes * (model.extraChargePerMinute || 0);
       } else {
         // Default → per Km
-        driverCharges = usageValue * model.chargePerKm;
+        const extraKm = Math.max(0, usageValue - (model.includedKm || 0));
+        extraCharges = extraKm * (model.extraChargePerKm || 0);
       }
+      
+      driverCharges = baseFare + extraCharges;
 
       const modelPickCharges = model.pickCharges || pickCharges;
       const modelNightCharges = (hour >= 22 || hour < 6) ? model.nightCharges || 0 : 0;

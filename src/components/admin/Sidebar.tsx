@@ -19,7 +19,8 @@ import {
   UserCheck,
   Package,
   Bike,
-  Gift
+  Gift,
+  Layers3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +34,10 @@ const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
   { icon: Tags, label: "Category", key: "category" },
   { icon: FolderTree, label: "Sub Category", key: "subcategory" },
+  { icon: Layers3, label: "Sub-Sub Category", key: "subsubcategory" },
   { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
   { icon: DollarSign, label: "Driver Category", key: "pricecategory" },
+  { icon: Package, label: "Parcel Vehicle", key: "parcelvehicle" },
   { icon: Calculator, label: "Ride Cost", key: "ridecost" },
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
   { icon: BookOpen, label: "T & C", key: "instructions" },

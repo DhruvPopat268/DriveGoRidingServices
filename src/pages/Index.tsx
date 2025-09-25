@@ -12,8 +12,10 @@ import { RidersPage } from "@/components/admin/pages/RidersPage";
 import { RidesPage } from "@/components/admin/pages/RidesPage";
 import { CategoryPage } from "@/components/admin/pages/CategoryPage";
 import { SubCategoryPage } from "@/components/admin/pages/SubCategoryPage";
+import { SubSubCategoryPage } from "@/components/admin/pages/SubSubCategoryPage";
 import { VehicleCategoryPage } from "@/components/admin/pages/VehicleCategoryPage";
 import { PriceCategoryPage } from "@/components/admin/pages/PriceCategoryPage";
+import { ParcelVehiclePage } from "@/components/admin/pages/ParcelVehiclePage";
 import { RideCostPage } from "@/components/admin/pages/RideCostPage";
 import { PeakHoursPage } from "@/components/admin/pages/PeakHoursPage";
 import { PaymentsPage } from "@/components/admin/pages/PaymentsPage";
@@ -61,10 +63,14 @@ const Index = () => {
         return <CategoryPage />;
       case "subcategory":
         return <SubCategoryPage />;
+      case "subsubcategory":
+        return <SubSubCategoryPage />;
       case "vehiclecategory":
         return <VehicleCategoryPage />;
       case "pricecategory":
         return <PriceCategoryPage />;
+      case "parcelvehicle":
+        return <ParcelVehiclePage />;
       case "ridecost":
         return <RideCostPage />;
       case "peakhours":
