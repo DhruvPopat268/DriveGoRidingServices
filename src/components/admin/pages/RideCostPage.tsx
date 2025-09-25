@@ -405,6 +405,20 @@ export const RideCostPage = () => {
     // Handle object case
     return item.name || item.priceCategoryName || 'Unknown';
   };
+
+  // Helper function to format minutes display for hourly subcategory
+  const formatMinutesDisplay = (minutes: string | number, subcategoryItem: string | { name?: string }) => {
+    const subcategoryName = getName(subcategoryItem);
+    if (subcategoryName.toLowerCase() === 'hourly') {
+      const minutesNum = typeof minutes === 'string' ? parseInt(minutes) : minutes;
+      if (!isNaN(minutesNum) && minutesNum >= 60 && minutesNum % 60 === 0) {
+        const hours = minutesNum / 60;
+        return `${minutes} (${hours}h)`;
+      }
+    }
+    return minutes.toString();
+  };
+  
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -787,7 +801,7 @@ export const RideCostPage = () => {
                     <TableCell>{getName(rideCost.priceCategory)}</TableCell>
                     <TableCell>₹{rideCost.baseFare}</TableCell>
                     <TableCell>{rideCost.includedKm}</TableCell>
-                    <TableCell>{rideCost.includedMinutes}</TableCell>
+                    <TableCell>{formatMinutesDisplay(rideCost.includedMinutes, rideCost.subcategory)}</TableCell>
                     <TableCell>₹{rideCost.extraChargePerKm}</TableCell>
                     <TableCell>₹{rideCost.extraChargePerMinute}</TableCell>
                     {/* Show Weight column data if any filtered ride cost is from parcel category */}
