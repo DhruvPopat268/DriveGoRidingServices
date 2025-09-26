@@ -149,7 +149,7 @@ router.post('/calculation', async (req, res) => {
       const modelPickCharges = model.pickCharges || 0;
       const modelNightCharges = isNight ? model.nightCharges || 0 : 0;
       const modelInsurance = includeInsurance ? model.insurance || 0 : 0;
-      const cancellationCharges = model.cancellationFee || 0;
+      // const cancellationCharges = model.cancellationFee || 0;
 
       const baseTotal = driverCharges + modelPickCharges + peakCharges + modelNightCharges;
 
@@ -160,7 +160,9 @@ router.post('/calculation', async (req, res) => {
       console.log("gst", model.gst);
       const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
       console.log("gstCharges", gstCharges);
-      const totalPayable = Math.round(subtotal + gstCharges + modelInsurance + cancellationCharges);
+      const totalPayable = Math.round(subtotal + gstCharges + modelInsurance 
+        //  cancellationCharges
+        );
 
       result.push({
         category: priceCategory?.priceCategoryName || "Unknown",
@@ -172,7 +174,7 @@ router.post('/calculation', async (req, res) => {
         adminCommissionOriginal: adminCommission,
         adminCommissionAdjusted: adjustedAdminCommission,
         discountApplied: model.discount || 0,
-        cancellationCharges: Math.round(cancellationCharges),
+        // cancellationCharges: Math.round(cancellationCharges),
         gstCharges,
         subtotal: Math.round(subtotal),
         totalPayable
