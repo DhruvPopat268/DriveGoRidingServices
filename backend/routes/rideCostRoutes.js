@@ -156,11 +156,11 @@ router.post('/calculation', async (req, res) => {
       const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
       const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
 
-      const subtotal = baseTotal + adjustedAdminCommission;
+      const subtotal = baseTotal + adminCommission
       console.log("gst", model.gst);
       const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
       console.log("gstCharges", gstCharges);
-      const totalPayable = Math.round(subtotal + gstCharges + modelInsurance 
+      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance 
         //  cancellationCharges
         );
 
