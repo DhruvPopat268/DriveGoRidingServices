@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
-}); 
+});
 
 router.post("/book", authMiddleware, async (req, res) => {
   try {
@@ -24,6 +24,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       subcategoryName,
       carType,
       fromLocation,
+      fromLocationData,
       toLocation,
       includeInsurance,
       notes,
@@ -54,6 +55,27 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     const { riderId, mobile } = req.rider;
 
+    // Handle location data - convert string to object if needed
+    // const processLocation = (location) => {
+    //   if (typeof location === "string") {
+    //     return {
+    //       address: location,
+    //       lat: 0,
+    //       lng: 0,
+    //       address_components: [],
+    //       place_id: ""
+    //     };
+    //   }
+    //   return {
+    //     address: location.address || "",
+    //     lat: Number(location.lat) || 0,
+    //     lng: Number(location.lng) || 0,
+    //     address_components: location.address_components || [],
+    //     place_id: location.place_id || ""
+    //   };
+    // };
+
+
     const newRide = new Ride({
       riderId,
       riderMobile: mobile,
@@ -62,8 +84,8 @@ router.post("/book", authMiddleware, async (req, res) => {
         subcategoryId,
         subcategoryName,
         carType,
-        fromLocation,
-        toLocation,
+        fromLocation: fromLocationData,
+        toLocation: toLocation && toLocation !== '' ? toLocation : undefined,
         includeInsurance,
         notes,
         selectedCategory,

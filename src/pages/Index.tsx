@@ -26,6 +26,8 @@ import { SafetyPage } from "@/components/admin/pages/SafetyPage";
 import { SettingsPage } from "@/components/admin/pages/SettingsPage";
 import { InstructionsPage } from "@/components/admin/pages/InstructionsPage";
 import  ReferEarnPage  from "@/components/admin/pages/ReferEarnPage";
+import { StatesPage } from "@/components/admin/pages/StatesPage";
+import { CitiesPage } from "@/components/admin/pages/CitiesPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -53,6 +55,10 @@ const Index = () => {
             </div>
           </div>
         );
+      case "states":
+        return <StatesPage />;
+      case "cities":
+        return <CitiesPage />;
       case "drivers":
         return <DriversPage />;
       case "riders":

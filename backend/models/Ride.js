@@ -1,26 +1,32 @@
 const mongoose = require("mongoose");
 
+const locationSchema = new mongoose.Schema({
+  address: { type: String, required: true },
+  address_components: { type: Array }, // optional, store Google Place components
+  lat: { type: Number, required: true },
+  lng: { type: Number, required: true },
+  place_id: { type: String },
+}, { _id: false });
+
 const rideSchema = new mongoose.Schema({
   riderId: { type: mongoose.Schema.Types.ObjectId, ref: "Rider", required: true },
   riderMobile: { type: String, required: true },
 
-  // all ride details grouped into rideInfo
   rideInfo: {
     categoryId: { type: String, required: true },
     subcategoryId: { type: String },
     subcategoryName: { type: String },
     carType: { type: String },
-    fromLocation: { type: String },
-    toLocation: { type: String },
+    fromLocation: locationSchema, // store as object
+    toLocation: locationSchema,   // store as object
     includeInsurance: { type: Boolean, default: false },
     notes: { type: String },
-    selectedCategory: { type: String }, // just category name e.g. "Prime"
+    selectedCategory: { type: String },
     selectedDate: { type: Date },
     selectedTime: { type: String },
     selectedUsage: { type: String },
     transmissionType: { type: String },
 
-    // charge fields (all amounts in rupees)
     insuranceCharges: { type: Number, default: 0 },
     cancellationCharges: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
@@ -28,18 +34,19 @@ const rideSchema = new mongoose.Schema({
     subtotal: { type: Number, default: 0 },
     adminCharges: { type: Number, default: 0 },
   },
-  // to check if referral earning is applied for this ride
-  referralEarning: { type: Boolean, default: false },
-  referralBalance: { type: Number, default: 0 }, // amount used from referral balance (in rupees)
 
-  totalPayable: { type: Number, required: true }, // amount in rupees
+  referralEarning: { type: Boolean, default: false },
+  referralBalance: { type: Number, default: 0 },
+
+  totalPayable: { type: Number, required: true },
   paymentType: { type: String, enum: ["cash", "wallet"], required: true },
 
   status: {
     type: String,
     enum: ["BOOKED", "CONFIRMED", "ONGOING", "COMPLETED", "CANCELLED"],
-    default: "BOOKED"
+    default: "BOOKED",
   },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Ride", rideSchema);
+

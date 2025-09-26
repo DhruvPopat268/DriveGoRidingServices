@@ -12,6 +12,8 @@ const parcelVehicleRoutes = require('./routes/parcelVehicleRoutes');
 const rideCostRoutes = require('./routes/rideCostRoutes');
 const peakRoutes = require('./routes/peakRoutes');
 const instructionRoutes = require('./routes/instructionRoutes');
+const stateRoutes = require('./routes/stateRoutes');
+const cityRoutes = require('./routes/cityRoutes');
 
 const riderAuthRoutes = require('./routes/riderAuth_otp_Routes');
 const connectToDb = require('./database/db');
@@ -56,6 +58,8 @@ app.use('/api/parcel-vehicles', parcelVehicleRoutes);
 app.use('/api/ride-costs', rideCostRoutes);
 app.use('/api/peaks', peakRoutes);
 app.use('/api/instructions', instructionRoutes);
+app.use('/api/states', stateRoutes);
+app.use('/api/cities', cityRoutes);
 
 // Rider routes
 app.use("/api/rider-auth", riderAuthRoutes);
