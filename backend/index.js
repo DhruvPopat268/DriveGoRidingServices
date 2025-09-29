@@ -29,9 +29,7 @@ app.use(cors({
     "http://localhost:8081",
     "http://localhost:8080",
     "https://journey-cost-estimator.vercel.app",
-    "https://drivego-admin.vercel.app",
-    "https://driver-go-admin-frontend.onrender.com",
-    "https://drive-go-frontend.onrender.com"
+    "https://drive-go-riding-services.vercel.app"
   ],
   credentials: true
 }));
