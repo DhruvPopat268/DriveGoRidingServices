@@ -84,7 +84,8 @@ router.post('/calculation', async (req, res) => {
       selectedUsage,
       subcategoryId,
       numberOfWeeks,
-      numberOfMonths
+      numberOfMonths,
+      subSubcategoryId
     } = req.body;
 
     // 1. Get category
@@ -95,23 +96,26 @@ router.post('/calculation', async (req, res) => {
     const subcategory = await SubCategory.findById(subcategoryId);
     if (!subcategory) return res.status(404).json({ error: 'Subcategory not found' });
 
+    const subSubCategory = subSubcategoryId ? await SubSubCategory.findById(subSubcategoryId) : null;
+    if (subSubcategoryId && !subSubCategory) return res.status(404).json({ error: 'Sub-Subcategory not found' });
+
     let usageValue = parseFloat(selectedUsage) || 0;
     const formattedSubcategory = subcategory.name.toLowerCase();
+    const formattedSubSubCategory = subSubCategory ? subSubCategory.name.toLowerCase() : null;
 
     // Convert hours to minutes if hourly
-    if (formattedSubcategory === 'hourly') {
+    if (formattedSubcategory === 'hourly' || formattedSubSubCategory === 'roundtrip') {
       usageValue = usageValue * 60;
     }
 
     // 3. Fetch all ride cost models
-    let rideCostQuery = { category: categoryId, subcategory: subcategoryId };
+    let rideCostQuery = { category: categoryId, subcategory: subcategoryId , subSubCategory: subSubcategoryId };
 
-    if (formattedSubcategory === 'hourly') {
+    if (formattedSubcategory === 'hourly' || formattedSubSubCategory === 'roundtrip') {
       rideCostQuery.includedMinutes = usageValue.toString();
     } else {
       rideCostQuery.includedKm = usageValue.toString();
     }
-
 
     const rideCostModels = await RideCost.find(rideCostQuery);
 
@@ -199,7 +203,6 @@ router.post('/calculation', async (req, res) => {
   }
 });
 
-
 // GET BY MODEL TYPE - Retrieve ride cost models by type
 router.get('/type/:modelType', async (req, res) => {
   try {
@@ -282,7 +285,7 @@ router.delete('/:id', async (req, res) => {
 
 router.post("/get-included-data", async (req, res) => {
   try {
-    const { categoryId, subcategoryId } = req.body;
+    const { categoryId, subcategoryId , subSubcategoryId} = req.body;
 
     if (!categoryId || !subcategoryId) {
       return res.status(400).json({
@@ -295,12 +298,14 @@ router.post("/get-included-data", async (req, res) => {
     const includedKm = await RideCost.distinct("includedKm", {
       category: categoryId,
       subcategory: subcategoryId,
+      subSubCategory: subSubcategoryId
     });
 
     // Get distinct includedMinutes
     const includedMinutes = await RideCost.distinct("includedMinutes", {
       category: categoryId,
       subcategory: subcategoryId,
+      subSubCategory: subSubcategoryId
     });
 
     // If nothing found
