@@ -67,7 +67,16 @@ router.put('/:id', async (req, res) => {
     
     if (name !== undefined) updateData.name = name.trim();
     if (state !== undefined) updateData.state = state;
-    if (status !== undefined) updateData.status = status;
+    if (status !== undefined) {
+      // Check if trying to enable city when state is disabled
+      if (status === true) {
+        const stateDoc = await State.findById(state || (await City.findById(req.params.id)).state);
+        if (stateDoc && !stateDoc.status) {
+          return res.status(400).json({ success: false, message: 'Cannot enable city when state is disabled' });
+        }
+      }
+      updateData.status = status;
+    }
 
     const city = await City.findByIdAndUpdate(req.params.id, updateData, { new: true }).populate('state', 'name');
     if (!city) return res.status(404).json({ success: false, message: 'City not found' });
@@ -75,6 +84,27 @@ router.put('/:id', async (req, res) => {
     res.json({ success: true, message: 'City updated successfully', data: city });
   } catch (error) {
     console.error('Error updating city:', error);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+});
+
+// TOGGLE CITY STATUS
+router.patch('/:id/toggle-status', async (req, res) => {
+  try {
+    const city = await City.findById(req.params.id).populate('state');
+    if (!city) return res.status(404).json({ success: false, message: 'City not found' });
+
+    // Check if trying to enable city when state is disabled
+    if (!city.status && !city.state.status) {
+      return res.status(400).json({ success: false, message: 'Cannot enable city when state is disabled' });
+    }
+
+    city.status = !city.status;
+    await city.save();
+
+    res.json({ success: true, message: `City ${city.status ? 'enabled' : 'disabled'} successfully`, data: city });
+  } catch (error) {
+    console.error('Error toggling city status:', error);
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 });

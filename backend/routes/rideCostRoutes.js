@@ -104,9 +104,21 @@ router.post('/calculation', async (req, res) => {
     }
 
     // 3. Fetch all ride cost models
-    const rideCostModels = await RideCost.find({ category: categoryId, subcategory: subcategoryId , includedMinutes:usageValue });
-    
-    if (rideCostModels.length === 0) return res.status(404).json({ error: 'No ride cost models found' });
+    let rideCostQuery = { category: categoryId, subcategory: subcategoryId };
+
+    if (formattedSubcategory === 'hourly') {
+      rideCostQuery.includedMinutes = usageValue.toString();
+    } else {
+      rideCostQuery.includedKm = usageValue.toString();
+    }
+
+
+    const rideCostModels = await RideCost.find(rideCostQuery);
+
+    if (rideCostModels.length === 0) {
+      return res.status(404).json({ error: 'No ride cost models found' });
+    }
+
 
     // 4. Peak hours data
     const peakChargesList = await peakHours.find({});
@@ -141,7 +153,7 @@ router.post('/calculation', async (req, res) => {
       const priceCategory = await pricecategories.findById(model.priceCategory);
 
       let driverCharges = model.baseFare || 0;
-      
+
       let extraCharges = 0;
 
       driverCharges += extraCharges;
@@ -157,12 +169,10 @@ router.post('/calculation', async (req, res) => {
       const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
 
       const subtotal = baseTotal + adminCommission
-      console.log("gst", model.gst);
       const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
-      console.log("gstCharges", gstCharges);
-      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance 
+      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance
         //  cancellationCharges
-        );
+      );
 
       result.push({
         category: priceCategory?.priceCategoryName || "Unknown",
@@ -281,14 +291,14 @@ router.post("/get-included-data", async (req, res) => {
       });
     }
 
-    // Get distinct includedMinutes
-    const includedMinutes = await RideCost.distinct("includedMinutes", {
+    // Get distinct includedKm
+    const includedKm = await RideCost.distinct("includedKm", {
       category: categoryId,
       subcategory: subcategoryId,
     });
 
-    // Get distinct includedKm
-    const includedKm = await RideCost.distinct("includedKm", {
+    // Get distinct includedMinutes
+    const includedMinutes = await RideCost.distinct("includedMinutes", {
       category: categoryId,
       subcategory: subcategoryId,
     });
@@ -304,8 +314,8 @@ router.post("/get-included-data", async (req, res) => {
     return res.status(200).json({
       success: true,
       data: {
-        includedMinutes,
         includedKm,
+        includedMinutes,
       },
     });
   } catch (error) {

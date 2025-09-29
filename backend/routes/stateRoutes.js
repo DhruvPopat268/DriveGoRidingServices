@@ -53,9 +53,36 @@ router.put('/:id', async (req, res) => {
     const state = await State.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!state) return res.status(404).json({ success: false, message: 'State not found' });
 
+    // If state status is being updated, update all cities in this state
+    if (status !== undefined) {
+      const City = require('../models/City');
+      await City.updateMany({ state: req.params.id }, { status: status });
+    }
+
     res.json({ success: true, message: 'State updated successfully', data: state });
   } catch (error) {
     console.error('Error updating state:', error);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+});
+
+// TOGGLE STATE STATUS
+router.patch('/:id/toggle-status', async (req, res) => {
+  try {
+    const state = await State.findById(req.params.id);
+    if (!state) return res.status(404).json({ success: false, message: 'State not found' });
+
+    const newStatus = !state.status;
+    state.status = newStatus;
+    await state.save();
+
+    // Update all cities in this state
+    const City = require('../models/City');
+    await City.updateMany({ state: req.params.id }, { status: newStatus });
+
+    res.json({ success: true, message: `State ${newStatus ? 'enabled' : 'disabled'} successfully`, data: state });
+  } catch (error) {
+    console.error('Error toggling state status:', error);
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 });
