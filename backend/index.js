@@ -28,8 +28,8 @@ app.use(cors({
   origin: [
     "http://localhost:8081",
     "http://localhost:8080",
-    "https://journey-cost-estimator.vercel.app/",
     "https://journey-cost-estimator.vercel.app",
+    "https://journey-cost-estimator.vercel.app/",
     "https://drivegoweb.vercel.app/",
     "https://drivegoweb.vercel.app",
     "https://drivego-admin.vercel.app/",
