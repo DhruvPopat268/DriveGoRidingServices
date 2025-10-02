@@ -64,6 +64,20 @@ interface ParcelVehicle {
   __v: number;
 }
 
+interface CarCategory {
+  _id: string;
+  name: string;
+}
+
+interface Car {
+  _id: string;
+  name: string;
+  category: {
+    _id: string;
+    name: string;
+  };
+}
+
 interface SubSubCategory {
   _id?: string;
   id?: string;
@@ -72,7 +86,7 @@ interface SubSubCategory {
   subCategoryId: string;
 }
 
-export const RideCostPage = () => {
+export const CabRideCostPage = () => {
   const [rideCosts, setRideCosts] = useState<RideCost[]>([]);
   const [filteredRideCosts, setFilteredRideCosts] = useState<RideCost[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -80,6 +94,9 @@ export const RideCostPage = () => {
   const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>([]);
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
   const [parcelVehicles, setParcelVehicles] = useState<ParcelVehicle[]>([]);
+  const [carCategories, setCarCategories] = useState<CarCategory[]>([]);
+  const [cars, setCars] = useState<Car[]>([]);
+  const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
   const [filteredSubSubCategories, setFilteredSubSubCategories] = useState<SubSubCategory[]>([]);
   const [filteredPriceCategories, setFilteredPriceCategories] = useState<PriceCategory[]>([]);
@@ -94,6 +111,7 @@ export const RideCostPage = () => {
     subcategory: '',
     subSubCategory: '',
     priceCategory: '',
+    car: '',
     weight: '',
     baseFare: '',
     includedKm: '',
@@ -143,6 +161,10 @@ export const RideCostPage = () => {
     return getSelectedCategoryName().toLowerCase() === 'parcel';
   };
 
+  const isFormCabCategory = () => {
+    return getSelectedCategoryName().toLowerCase() === 'cab';
+  };
+
   const isOutstationSubCategory = () => {
     return getSelectedSubCategoryName().toLowerCase() === 'outstation';
   };
@@ -156,15 +178,28 @@ export const RideCostPage = () => {
     if (rideCostForm.category) {
       const filtered = subcategories.filter(sub => sub.categoryId === rideCostForm.category);
       setFilteredSubcategories(filtered);
-      setRideCostForm(prev => ({ ...prev, subcategory: '', subSubCategory: '', priceCategory: '' }));
+      setRideCostForm(prev => ({ ...prev, subcategory: '', subSubCategory: '', priceCategory: '', car: '' }));
       setFilteredSubSubCategories([]);
       setFilteredPriceCategories([]);
+      setFilteredCars([]);
     } else {
       setFilteredSubcategories([]);
       setFilteredSubSubCategories([]);
       setFilteredPriceCategories([]);
+      setFilteredCars([]);
     }
   }, [rideCostForm.category, subcategories]);
+
+  // Filter cars when cab category changes
+  useEffect(() => {
+    if (rideCostForm.priceCategory) {
+      const filtered = cars.filter(car => car.category._id === rideCostForm.priceCategory);
+      setFilteredCars(filtered);
+      setRideCostForm(prev => ({ ...prev, car: '' }));
+    } else {
+      setFilteredCars([]);
+    }
+  }, [rideCostForm.priceCategory, cars]);
 
   // Filter sub-subcategories when subcategory changes in form
   useEffect(() => {
@@ -239,12 +274,14 @@ export const RideCostPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/api/ride-costs`),
+      const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes, carCategoriesRes, carsRes] = await Promise.all([
+        axios.get(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/categories`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`)
+        axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/car-categories`),
+        axios.get(`${import.meta.env.VITE_API_URL}/api/cars`)
       ]);
 
       setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
@@ -252,6 +289,8 @@ export const RideCostPage = () => {
       setSubcategories(subcategoriesRes.data);
       setSubSubCategories(subSubCategoriesRes.data);
       setPriceCategories(priceCategoriesRes.data);
+      setCarCategories(carCategoriesRes.data.filter((cat: CarCategory & { status: boolean }) => cat.status));
+      setCars(carsRes.data.filter((car: Car & { status: boolean }) => car.status));
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -277,6 +316,7 @@ export const RideCostPage = () => {
       subcategory: rideCostForm.subcategory,
       ...(rideCostForm.subSubCategory && { subSubCategory: rideCostForm.subSubCategory }),
       priceCategory: rideCostForm.priceCategory,
+      car: rideCostForm.car,
       ...(isFormParcelCategory() && { weight: parseFloat(rideCostForm.weight) || 0 }),
       baseFare: parseFloat(rideCostForm.baseFare) || 0,
       includedKm: rideCostForm.includedKm.trim(),
@@ -294,9 +334,9 @@ export const RideCostPage = () => {
 
     try {
       if (editingRideCost) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/ride-costs/${editingRideCost._id}`, payload);
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${editingRideCost._id}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/ride-costs`, payload);
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`, payload);
       }
 
       await fetchData();
@@ -336,6 +376,7 @@ export const RideCostPage = () => {
       subcategory: subcategoryId,
       subSubCategory: subSubCategoryId,
       priceCategory: priceCategoryId,
+      car: rideCost.car ? extractId(rideCost.car) : '',
       weight: rideCost.weight?.toString() || '',
       baseFare: rideCost.baseFare.toString(),
       includedKm: rideCost.includedKm || '',
@@ -357,7 +398,7 @@ export const RideCostPage = () => {
     if (!id) return;
     setLoading(true);
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/ride-costs/${id}`);
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}`);
       await fetchData();
     } catch (error) {
       console.error('Error deleting ride cost:', error);
@@ -373,6 +414,7 @@ export const RideCostPage = () => {
       subcategory: '',
       subSubCategory: '',
       priceCategory: '',
+      car: '',
       weight: '',
       baseFare: '',
       includedKm: '',
@@ -422,18 +464,16 @@ export const RideCostPage = () => {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Ride Cost Management</h1>
+        <h1 className="text-3xl font-bold">Cab Ride Cost Management</h1>
       </div>
 
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Ride Cost Models</h2>
-
+        <div className="flex items-center justify-end mb-1">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm} disabled={loading}>
                 <Plus className="w-4 h-4 mr-2" />
-                Create Ride Cost Model
+                Create Model
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -442,22 +482,27 @@ export const RideCostPage = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    value={rideCostForm.category}
-                    onValueChange={(value) => setRideCostForm(prev => ({ ...prev, category: value }))}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat._id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Select
+                      value={rideCostForm.category}
+                      onValueChange={(value) => setRideCostForm(prev => ({ ...prev, category: value }))}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {rideCostForm.category && !isFormCabCategory() && (
+                      <p className="text-red-500 text-sm mt-1">Only cab category is allowed</p>
+                    )}
+                  </div>
 
                   <Select
                     value={rideCostForm.subcategory}
@@ -526,12 +571,33 @@ export const RideCostPage = () => {
                           required
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select Driver Category" />
+                            <SelectValue placeholder="Select Cab Category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {filteredPriceCategories.map((pc) => (
-                              <SelectItem key={pc._id} value={pc._id}>
-                                {pc.priceCategoryName}
+                            {carCategories.map((cc) => (
+                              <SelectItem key={cc._id} value={cc._id}>
+                                {cc.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {/* Car dropdown for outstation */}
+                      {isFormCabCategory() && rideCostForm.priceCategory && (
+                        <Select
+                          value={rideCostForm.car}
+                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, car: value }))}
+                          disabled={!rideCostForm.priceCategory}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Car" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredCars.map((car) => (
+                              <SelectItem key={car._id} value={car._id}>
+                                {car.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -562,26 +628,50 @@ export const RideCostPage = () => {
                           </SelectContent>
                         </Select>
                       ) : (
-                        <Select
-                          value={rideCostForm.priceCategory}
-                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
-                          disabled={!rideCostForm.subcategory}
-                          required
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Driver Category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filteredPriceCategories.map((pc) => (
-                              <SelectItem key={pc._id} value={pc._id}>
-                                {pc.priceCategoryName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Select
+                            value={rideCostForm.priceCategory}
+                            onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                            disabled={!rideCostForm.subcategory}
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Cab Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {carCategories.map((cc) => (
+                                <SelectItem key={cc._id} value={cc._id}>
+                                  {cc.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {/* Car dropdown for non-outstation */}
+                          {isFormCabCategory() && rideCostForm.priceCategory && (
+                            <Select
+                              value={rideCostForm.car}
+                              onValueChange={(value) => setRideCostForm(prev => ({ ...prev, car: value }))}
+                              disabled={!rideCostForm.priceCategory}
+                              required
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Car" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {filteredCars.map((car) => (
+                                  <SelectItem key={car._id} value={car._id}>
+                                    {car.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
+
                   {isFormParcelCategory() && (
                     <Input
                       type="number"
@@ -683,7 +773,7 @@ export const RideCostPage = () => {
                   />
 
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || (rideCostForm.category && !isFormCabCategory())}>
                   {loading ? 'Saving...' : editingRideCost ? 'Update' : 'Create'}
                 </Button>
               </form>
@@ -712,19 +802,30 @@ export const RideCostPage = () => {
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Filter by Category
               </label>
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat._id} value={cat._id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div>
+                <Select
+                  value={filterCategory}
+                  onValueChange={setFilterCategory}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat._id} value={cat._id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {filterCategory && filterCategory !== 'all' && (() => {
+                  const selectedCategory = categories.find(cat => cat._id === filterCategory);
+                  return selectedCategory && selectedCategory.name.toLowerCase() !== 'cab' && (
+                    <p className="text-red-500 text-sm mt-1">Only cab category is allowed</p>
+                  );
+                })()}
+              </div>
             </div>
 
             <div>
@@ -765,7 +866,8 @@ export const RideCostPage = () => {
                 <TableHead>Category</TableHead>
                 <TableHead>Subcategory</TableHead>
                 <TableHead>Sub-Sub Category</TableHead>
-                <TableHead>Driver Category</TableHead>
+                <TableHead>Cab Category</TableHead>
+                <TableHead>Car</TableHead>
                 <TableHead>Base Fare</TableHead>
                 <TableHead>Incl. KM</TableHead>
                 <TableHead>Incl. Min</TableHead>
@@ -781,11 +883,11 @@ export const RideCostPage = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 11 : 10} className="text-center py-6">Loading...</TableCell>
+                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-6">Loading...</TableCell>
                 </TableRow>
               ) : filteredRideCosts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 11 : 10} className="text-center py-6">
+                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-6">
                     {rideCosts.length === 0
                       ? "No ride cost models found. Create your first one!"
                       : "No models match the selected filters."
@@ -799,6 +901,7 @@ export const RideCostPage = () => {
                     <TableCell>{getName(rideCost.subcategory)}</TableCell>
                     <TableCell>{rideCost.subSubCategory ? getName(rideCost.subSubCategory) : '-'}</TableCell>
                     <TableCell>{getName(rideCost.priceCategory)}</TableCell>
+                    <TableCell>{rideCost.car ? getName(rideCost.car) : '-'}</TableCell>
                     <TableCell>₹{rideCost.baseFare}</TableCell>
                     <TableCell>{rideCost.includedKm}</TableCell>
                     <TableCell>{formatMinutesDisplay(rideCost.includedMinutes, rideCost.subcategory)}</TableCell>
@@ -882,9 +985,13 @@ export const RideCostPage = () => {
                     <p className="text-sm text-gray-600">{getName(viewingRideCost.subSubCategory)}</p>
                   </div>
                 )}
-                <div className={viewingRideCost.subSubCategory ? "" : "col-span-2"}>
-                  <label className="text-sm font-medium">Driver Category</label>
+                <div>
+                  <label className="text-sm font-medium">Cab Category</label>
                   <p className="text-sm text-gray-600">{getName(viewingRideCost.priceCategory)}</p>
+                </div>
+                <div className={viewingRideCost.subSubCategory ? "" : "col-span-1"}>
+                  <label className="text-sm font-medium">Car</label>
+                  <p className="text-sm text-gray-600">{viewingRideCost.car ? getName(viewingRideCost.car) : '-'}</p>
                 </div>
                 {isParcelCategory(viewingRideCost.category) && (
                   <div>

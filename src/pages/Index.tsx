@@ -16,7 +16,8 @@ import { SubSubCategoryPage } from "@/components/admin/pages/SubSubCategoryPage"
 import { VehicleCategoryPage } from "@/components/admin/pages/VehicleCategoryPage";
 import { PriceCategoryPage } from "@/components/admin/pages/PriceCategoryPage";
 import { ParcelVehiclePage } from "@/components/admin/pages/ParcelVehiclePage";
-import { RideCostPage } from "@/components/admin/pages/RideCostPage";
+import { DriverRideCostPage } from "@/components/admin/pages/DriverRideCostPage";
+import { CabRideCostPage } from "@/components/admin/pages/CabRideCostPage";
 import { PeakHoursPage } from "@/components/admin/pages/PeakHoursPage";
 import { PaymentsPage } from "@/components/admin/pages/PaymentsPage";
 import { AnalyticsPage } from "@/components/admin/pages/AnalyticsPage";
@@ -28,6 +29,8 @@ import { InstructionsPage } from "@/components/admin/pages/InstructionsPage";
 import  ReferEarnPage  from "@/components/admin/pages/ReferEarnPage";
 import { StatesPage } from "@/components/admin/pages/StatesPage";
 import { CitiesPage } from "@/components/admin/pages/CitiesPage";
+import { CarCategoryPage } from "@/components/admin/pages/CarCategoryPage";
+import { CarManagementPage } from "@/components/admin/pages/CarManagementPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -78,17 +81,13 @@ const Index = () => {
       case "parcelvehicle":
         return <ParcelVehiclePage />;
       case "ridecost":
-        return <RideCostPage />;
+        return <DriverRideCostPage />;
+      case "cabridecost":
+        return <CabRideCostPage />;
       case "peakhours":
         return <PeakHoursPage />;
       case "instructions":
         return <InstructionsPage />;
-      case "drivercalculation":
-        return <DriverCalculationPage />;
-      case "cabcalculation":
-        return <CabCalculationPage />;
-      case "parcelcalculation":
-        return <ParcelCalculationPage />;
       case "payments":
         return <PaymentsPage />;
       case "analytics":
@@ -103,6 +102,12 @@ const Index = () => {
         return <SettingsPage />;
       case "referearn":
         return <ReferEarnPage />;
+      case "carcategory":
+        return <CarCategoryPage />;
+      case "carmanagement":
+        return <CarManagementPage />;
+      case "cabridecost":
+        return <CabRideCostPage />;
       default:
         return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
     }

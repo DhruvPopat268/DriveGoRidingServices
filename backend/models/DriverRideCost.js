@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const rideCostSchema = new mongoose.Schema({
+const DriverRideCostSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true },
   subcategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubCategory", required: true },
   subSubCategory: { type: mongoose.Schema.Types.ObjectId, ref: "SubSubCategory" },
@@ -17,7 +17,6 @@ const rideCostSchema = new mongoose.Schema({
 
   weight: { type: Number }, // Optional, only required for parcel categories
 
-  
   // Additional charges (amounts in rupees)
   pickCharges: { type: Number, default: 0 },
   nightCharges: { type: Number, default: 0 },
@@ -29,4 +28,4 @@ const rideCostSchema = new mongoose.Schema({
   minimumFare: { type: Number, default: 0 }
 }, { timestamps: true });
 
-module.exports = mongoose.model('RideCost', rideCostSchema);
+module.exports = mongoose.model('RideCost', DriverRideCostSchema);

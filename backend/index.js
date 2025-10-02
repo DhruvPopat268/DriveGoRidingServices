@@ -9,11 +9,15 @@ const subSubCategoryRoutes = require('./routes/subSubCategoryRoutes');
 const vehicleCategories = require('./routes/vehicleCategory')
 const priceCategoryRoutes = require('./routes/priceCategoryRoutes');
 const parcelVehicleRoutes = require('./routes/parcelVehicleRoutes');
-const rideCostRoutes = require('./routes/rideCostRoutes');
+const DriverRideCostRoutes = require('./routes/DriverRideCostRoutes');
 const peakRoutes = require('./routes/peakRoutes');
 const instructionRoutes = require('./routes/instructionRoutes');
 const stateRoutes = require('./routes/stateRoutes');
 const cityRoutes = require('./routes/cityRoutes');
+const carCategoryRoutes = require('./routes/carCategoryRoutes');
+const carRoutes = require('./routes/carRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const CabRideCostRoutes = require('./routes/CabRideCostRoutes');
 
 const riderAuthRoutes = require('./routes/riderAuth_otp_Routes');
 const connectToDb = require('./database/db');
@@ -51,11 +55,15 @@ app.use('/api/subsubcategories', subSubCategoryRoutes);
 app.use('/api/vehiclecategories', vehicleCategories)
 app.use('/api/price-categories', priceCategoryRoutes);
 app.use('/api/parcel-vehicles', parcelVehicleRoutes);
-app.use('/api/ride-costs', rideCostRoutes);
+app.use('/api/DriverRideCosts', DriverRideCostRoutes);
 app.use('/api/peaks', peakRoutes);
 app.use('/api/instructions', instructionRoutes);
 app.use('/api/states', stateRoutes);
 app.use('/api/cities', cityRoutes);
+app.use('/api/car-categories', carCategoryRoutes);
+app.use('/api/cars', carRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/CabRideCosts', CabRideCostRoutes);
 
 // Rider routes
 app.use("/api/rider-auth", riderAuthRoutes);

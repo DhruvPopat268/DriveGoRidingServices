@@ -50,10 +50,29 @@ const menuItems = [
   { icon: Tags, label: "Category", key: "category" },
   { icon: FolderTree, label: "Sub Category", key: "subcategory" },
   { icon: Layers3, label: "Sub-Sub Category", key: "subsubcategory" },
-  { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
-  { icon: DollarSign, label: "Driver Category", key: "pricecategory" },
+  {
+    icon: Users,
+    label: "Driver Management",
+    key: "driver-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
+      { icon: DollarSign, label: "Driver Category", key: "pricecategory" },
+      { icon: Calculator, label: "Driver Ride Cost Management", key: "ridecost" }
+    ]
+  },
+    {
+    icon: Car,
+    label: "Cab Management",
+    key: "cab-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Tags, label: "Car Category", key: "carcategory" },
+      { icon: Car, label: "Car Management", key: "carmanagement" },
+      { icon: Calculator, label: "Cab Ride Cost Management", key: "cabridecost" }
+    ]
+  },
   { icon: Package, label: "Parcel Vehicle", key: "parcelvehicle" },
-  { icon: Calculator, label: "Ride Cost", key: "ridecost" },
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
   { icon: BookOpen, label: "T & C", key: "instructions" },
   { icon: Bike, label: "Rides", key: "rides" },

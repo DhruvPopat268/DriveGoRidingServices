@@ -1,122 +1,152 @@
 const express = require('express');
 const router = express.Router();
-const RideCost = require('../models/RideCost');
+const CabRideCost = require('../models/CabRideCost');
 const Category = require('../models/Category');
 const peakHours = require('../models/Peak')
 const pricecategories = require('../models/PriceCategory')
 const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
 const SubSubCategory = require('../models/SubSubCategory');
+const car = require('../models/Car');
+const CarCategory = require('../models/CarCategory')
+const mongoose = require('mongoose');
+
+// Get all cab ride costs
+router.get('/', async (req, res) => {
+  try {
+    const cabRideCosts = await CabRideCost.find()
+      .populate('category', 'name')
+      .populate('subcategory', 'name')
+      .populate('subSubCategory', 'name')
+      .populate('priceCategory', 'name')
+      .populate('car', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json({ data: cabRideCosts });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 router.post('/', async (req, res) => {
   try {
-    const rideCost = new RideCost(req.body);
-    const saved = await rideCost.save();
-    const populated = await RideCost.findById(saved._id)
+    // Create new CabRideCost
+    const cabRideCost = new CabRideCost(req.body);
+    await cabRideCost.save();
+
+    // Populate related fields including car image
+    const populatedCabRideCost = await CabRideCost.findById(cabRideCost._id)
       .populate('category', 'name')
       .populate('subcategory', 'name')
       .populate('subSubCategory', 'name')
-      .populate('priceCategory', 'priceCategoryName');
-    res.status(201).json({
-      success: true,
-      message: 'Ride cost model created successfully',
-      data: populated
-    });
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      error: err.message
-    });
-  }
-});
-
-// GET ALL - Retrieve all ride cost models
-router.get('/', async (req, res) => {
-  try {
-    const rideCosts = await RideCost.find()
-      .populate('category', 'name')
-      .populate('subcategory', 'name')
-      .populate('subSubCategory', 'name')
-      .populate('priceCategory', 'priceCategoryName')
-      .sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
-      count: rideCosts.length,
-      data: rideCosts
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
-});
-
-// GET BY ID - Retrieve single ride cost model
-router.get('/:id', async (req, res) => {
-  try {
-    const rideCost = await RideCost.findById(req.params.id);
-    if (!rideCost) {
-      return res.status(404).json({
-        success: false,
-        error: 'Ride cost model not found'
+      .populate('priceCategory', 'name')
+      .populate({
+        path: 'car',
+        select: 'name image seater', // include image from Car model
       });
+
+    res.status(201).json(populatedCabRideCost);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Update cab ride cost
+router.put('/:id', async (req, res) => {
+  try {
+    const cabRideCost = await CabRideCost.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    )
+      .populate('category', 'name')
+      .populate('subcategory', 'name')
+      .populate('subSubCategory', 'name')
+      .populate('priceCategory', 'name')
+      .populate('car', 'name');
+
+    if (!cabRideCost) {
+      return res.status(404).json({ message: 'Cab ride cost not found' });
     }
-    res.status(200).json({
-      success: true,
-      data: rideCost
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
+
+    res.json(cabRideCost);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Delete cab ride cost
+router.delete('/:id', async (req, res) => {
+  try {
+    const cabRideCost = await CabRideCost.findByIdAndDelete(req.params.id);
+
+    if (!cabRideCost) {
+      return res.status(404).json({ message: 'Cab ride cost not found' });
+    }
+
+    res.json({ message: 'Cab ride cost deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 
 router.post('/calculation', async (req, res) => {
   try {
     const {
+      carCategoryId,
       categoryId,
       selectedDate,
       selectedTime,
       includeInsurance,
       selectedUsage,
       subcategoryId,
-      numberOfWeeks,
-      numberOfMonths,
       subSubcategoryId,
       durationType,
       durationValue
     } = req.body;
 
-    // 1. Get category
+    // --- validations ---
+    if (!carCategoryId) {
+      return res.status(400).json({ error: 'carCategory is required (Classic / Prime)' });
+    }
+
     const category = await Category.findById(categoryId);
     if (!category) return res.status(404).json({ error: 'Category not found' });
 
-    // 2. Get subcategory
     const subcategory = await SubCategory.findById(subcategoryId);
+
     if (!subcategory) return res.status(404).json({ error: 'Subcategory not found' });
 
     const subSubCategory = subSubcategoryId ? await SubSubCategory.findById(subSubcategoryId) : null;
     if (subSubcategoryId && !subSubCategory) return res.status(404).json({ error: 'Sub-Subcategory not found' });
 
+
+
+    // --- usage conversion ---
     let usageValue = parseFloat(selectedUsage) || 0;
     const formattedSubcategory = subcategory.name.toLowerCase();
     const formattedSubSubCategory = subSubCategory ? subSubCategory.name.toLowerCase() : null;
 
-    // Convert hours to minutes if hourly, roundtrip, weekly or monthly
     if (
       formattedSubcategory === 'hourly' ||
       formattedSubSubCategory === 'roundtrip' ||
       formattedSubcategory === 'monthly' ||
       formattedSubcategory === 'weekly'
     ) {
-      usageValue = usageValue * 60;
+      usageValue = usageValue * 60; // hours → minutes
     }
 
-    // 3. Fetch all ride cost models
-    let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId };
+    // --- ride cost query ---
+    let rideCostQuery = {
+      priceCategory: new mongoose.Types.ObjectId(carCategoryId),
+      category: new mongoose.Types.ObjectId(categoryId),
+      subcategory: new mongoose.Types.ObjectId(subcategoryId)
+
+    };
+    if (subSubcategoryId) {
+      rideCostQuery.subSubCategory = mongoose.Types.ObjectId(subSubcategoryId);
+    }
+
 
     if (
       formattedSubcategory === 'hourly' ||
@@ -129,12 +159,15 @@ router.post('/calculation', async (req, res) => {
       rideCostQuery.includedKm = usageValue.toString();
     }
 
-    const rideCostModels = await RideCost.find(rideCostQuery);
+    const rideCostModels = await CabRideCost.find(rideCostQuery)
+      .populate('category', 'name')
+      .populate('car', 'name');
+
     if (rideCostModels.length === 0) {
-      return res.status(404).json({ error: 'No ride cost models found' });
+      return res.status(404).json({ error: 'No ride cost models found for this car category' });
     }
 
-    // 4. Peak hours data
+    // --- peak hour charges ---
     const peakChargesList = await peakHours.find({});
     const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
 
@@ -155,19 +188,18 @@ router.post('/calculation', async (req, res) => {
       }
     }
 
-    // --- Night charges & insurance ---
+    // --- night charges ---
     const hour = bookingDateTime.hour();
     const isNight = hour >= 22 || hour < 6;
 
-    // Final results for each price category
+    // --- final calculation ---
     const result = [];
-
     for (const model of rideCostModels) {
       const priceCategory = await pricecategories.findById(model.priceCategory);
 
       let driverCharges = model.baseFare || 0;
 
-      // --- New Duration Logic ---
+      // --- duration multiplier ---
       if (durationType && durationValue) {
         switch (durationType.toLowerCase()) {
           case 'day':
@@ -180,12 +212,9 @@ router.post('/calculation', async (req, res) => {
             driverCharges = model.baseFare * durationValue * 30;
             break;
           default:
-            driverCharges = model.baseFare; // fallback
+            driverCharges = model.baseFare;
         }
       }
-
-      let extraCharges = 0;
-      driverCharges += extraCharges;
 
       const modelPickCharges = model.pickCharges || 0;
       const modelNightCharges = isNight ? model.nightCharges || 0 : 0;
@@ -198,12 +227,10 @@ router.post('/calculation', async (req, res) => {
 
       const subtotal = baseTotal + adminCommission;
       const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
-      const totalPayable = Math.round(
-        baseTotal + adjustedAdminCommission + gstCharges + modelInsurance
-      );
+      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance);
 
       result.push({
-        category: priceCategory?.priceCategoryName || "Unknown",
+        category: model.car?.name, // keep price category also if needed
         driverCharges: Math.round(driverCharges),
         pickCharges: Math.round(modelPickCharges),
         peakCharges: Math.round(peakCharges),
@@ -219,95 +246,16 @@ router.post('/calculation', async (req, res) => {
     }
 
     res.json({ success: true, result });
+
   } catch (err) {
     console.error('Error in /calculation route:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
-// GET BY MODEL TYPE - Retrieve ride cost models by type
-router.get('/type/:modelType', async (req, res) => {
-  try {
-    const { modelType } = req.params;
-    const validTypes = ['oneway', 'roundtrip', 'hourly', 'monthly', 'weekly'];
-
-    if (!validTypes.includes(modelType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid model type'
-      });
-    }
-
-    const rideCosts = await RideCost.find({ modelType }).sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
-      count: rideCosts.length,
-      data: rideCosts
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
-});
-
-// UPDATE - Update ride cost model
-router.put('/:id', async (req, res) => {
-  try {
-    const rideCost = await RideCost.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    if (!rideCost) {
-      return res.status(404).json({
-        success: false,
-        error: 'Ride cost model not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Ride cost model updated successfully',
-      data: rideCost
-    });
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      error: err.message
-    });
-  }
-});
-
-// DELETE - Delete ride cost model
-router.delete('/:id', async (req, res) => {
-  try {
-    const rideCost = await RideCost.findByIdAndDelete(req.params.id);
-
-    if (!rideCost) {
-      return res.status(404).json({
-        success: false,
-        error: 'Ride cost model not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Ride cost model deleted successfully'
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
-});
-
 router.post("/get-included-data", async (req, res) => {
   try {
-    const { categoryId, subcategoryId , subSubcategoryId} = req.body;
+    const { categoryId, subcategoryId, subSubcategoryId } = req.body;
 
     if (!categoryId || !subcategoryId) {
       return res.status(400).json({
@@ -316,35 +264,59 @@ router.post("/get-included-data", async (req, res) => {
       });
     }
 
-    // Get distinct includedKm
-    const includedKm = await RideCost.distinct("includedKm", {
-      category: categoryId,
-      subcategory: subcategoryId,
-      subSubCategory: subSubcategoryId
-    });
-
-    // Get distinct includedMinutes
-    const includedMinutes = await RideCost.distinct("includedMinutes", {
-      category: categoryId,
-      subcategory: subcategoryId,
-      subSubCategory: subSubcategoryId
-    });
-
-    // If nothing found
-    if (!includedMinutes.length && !includedKm.length) {
+    // Get subcategory name
+    const subCategory = await SubCategory.findById(subcategoryId).select("name");
+    if (!subCategory) {
       return res.status(404).json({
         success: false,
-        message: "No record found for given category and subcategory",
+        message: "Subcategory not found",
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        includedKm,
-        includedMinutes,
-      },
-    });
+    const subCategoryName = subCategory.name.toLowerCase();
+
+    let includedKm = [];
+    let includedMinutes = [];
+
+    if (subCategoryName === "oneway") {
+      // Get distinct includedKm only
+      includedKm = await CabRideCost.distinct("includedKm", {
+        category: categoryId,
+        subcategory: subcategoryId,
+        subSubCategory: subSubcategoryId,
+      });
+
+      if (!includedKm.length) {
+        return res.status(404).json({
+          success: false,
+          message: "No includedKm found for oneway rides",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: { includedKm },
+      });
+    } else {
+      // Get distinct includedMinutes only
+      includedMinutes = await CabRideCost.distinct("includedMinutes", {
+        category: categoryId,
+        subcategory: subcategoryId,
+        subSubCategory: subSubcategoryId,
+      });
+
+      if (!includedMinutes.length) {
+        return res.status(404).json({
+          success: false,
+          message: "No includedMinutes found for this ride type",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: { includedMinutes },
+      });
+    }
   } catch (error) {
     console.error("Error fetching included data:", error);
     return res.status(500).json({
