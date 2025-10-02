@@ -26,6 +26,7 @@ const rideSchema = new mongoose.Schema({
     selectedTime: { type: String },
     selectedUsage: { type: String },
     transmissionType: { type: String },
+    selectedDates: [{ type: String }], // Array of selected dates for weekly/monthly bookings
 
     insuranceCharges: { type: Number, default: 0 },
     cancellationCharges: { type: Number, default: 0 },
@@ -49,4 +50,3 @@ const rideSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model("Ride", rideSchema);
-

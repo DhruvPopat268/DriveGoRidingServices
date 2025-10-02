@@ -25,7 +25,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       carType,
       fromLocation,
       fromLocationData,
-      toLocation,
+      toLocationData,
       includeInsurance,
       notes,
       selectedCategory,
@@ -38,6 +38,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       totalPayable,
       referralEarning,
       referralBalance,
+      selectedDates, // Add selectedDates to destructuring
     } = req.body;
 
     if (!categoryId || !totalAmount || !paymentType) {
@@ -55,27 +56,6 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     const { riderId, mobile } = req.rider;
 
-    // Handle location data - convert string to object if needed
-    // const processLocation = (location) => {
-    //   if (typeof location === "string") {
-    //     return {
-    //       address: location,
-    //       lat: 0,
-    //       lng: 0,
-    //       address_components: [],
-    //       place_id: ""
-    //     };
-    //   }
-    //   return {
-    //     address: location.address || "",
-    //     lat: Number(location.lat) || 0,
-    //     lng: Number(location.lng) || 0,
-    //     address_components: location.address_components || [],
-    //     place_id: location.place_id || ""
-    //   };
-    // };
-
-
     const newRide = new Ride({
       riderId,
       riderMobile: mobile,
@@ -85,7 +65,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         subcategoryName,
         carType,
         fromLocation: fromLocationData,
-        toLocation: toLocation && toLocation !== '' ? toLocation : undefined,
+        toLocation: toLocationData && toLocationData !== '' ? toLocationData : undefined,
         includeInsurance,
         notes,
         selectedCategory,
@@ -93,6 +73,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedTime,
         selectedUsage,
         transmissionType,
+        selectedDates: selectedDates || [], // Add selectedDates to rideInfo
         insuranceCharges: selectedCategoryData.insuranceCharges || 0,
         cancellationCharges: selectedCategoryData.cancellationCharges || 0,
         discount: selectedCategoryData.discountApplied || 0,
