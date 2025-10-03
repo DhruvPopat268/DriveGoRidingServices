@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
@@ -15,84 +16,88 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card } from '@/components/ui/card';
 import axios from 'axios';
 
-interface ParcelVehicle {
+interface ParcelCategory {
   _id: string;
-  vehicleName: string;
+  categoryName: string;
+  description: string;
 }
 
-export const ParcelVehiclePage = () => {
-  const [parcelVehicles, setParcelVehicles] = useState<ParcelVehicle[]>([]);
-  const [vehicleForm, setVehicleForm] = useState({
-    vehicleName: ''
+export const ParcelCategoryPage = () => {
+  const [parcelCategories, setParcelCategories] = useState<ParcelCategory[]>([]);
+  const [categoryForm, setCategoryForm] = useState({
+    categoryName: '',
+    description: ''
   });
-  const [editingVehicle, setEditingVehicle] = useState<ParcelVehicle | null>(null);
+  const [editingCategory, setEditingCategory] = useState<ParcelCategory | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    fetchParcelVehicles();
+    fetchParcelCategories();
   }, []);
 
-  const fetchParcelVehicles = async () => {
+  const fetchParcelCategories = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicles`);
-      setParcelVehicles(res.data);
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
+      setParcelCategories(res.data);
     } catch (err) {
-      console.error('Failed to fetch parcel vehicles', err);
+      console.error('Failed to fetch parcel categories', err);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      vehicleName: vehicleForm.vehicleName.trim()
+      categoryName: categoryForm.categoryName.trim(),
+      description: categoryForm.description.trim()
     };
 
     try {
-      if (editingVehicle) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/parcel-vehicles/${editingVehicle._id}`, payload);
+      if (editingCategory) {
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/parcel-categories/${editingCategory._id}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/parcel-vehicles`, payload);
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/parcel-categories`, payload);
       }
-      await fetchParcelVehicles();
+      await fetchParcelCategories();
       setDialogOpen(false);
-      setEditingVehicle(null);
-      setVehicleForm({ vehicleName: '' });
+      setEditingCategory(null);
+      setCategoryForm({ categoryName: '', description: '' });
     } catch (err) {
-      console.error('Failed to save parcel vehicle', err);
+      console.error('Failed to save parcel category', err);
     }
   };
 
-  const handleEdit = (vehicle: ParcelVehicle) => {
-    setEditingVehicle(vehicle);
-    setVehicleForm({
-      vehicleName: vehicle.vehicleName
+  const handleEdit = (category: ParcelCategory) => {
+    setEditingCategory(category);
+    setCategoryForm({
+      categoryName: category.categoryName,
+      description: category.description
     });
     setDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/parcel-vehicles/${id}`);
-      fetchParcelVehicles();
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/parcel-categories/${id}`);
+      fetchParcelCategories();
     } catch (err) {
-      console.error('Failed to delete vehicle', err);
+      console.error('Failed to delete category', err);
     }
   };
 
   const resetForm = () => {
-    setEditingVehicle(null);
-    setVehicleForm({ vehicleName: '' });
+    setEditingCategory(null);
+    setCategoryForm({ categoryName: '', description: '' });
   };
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Parcel Vehicle Management</h1>
+        <h1 className="text-3xl font-bold">Parcel Category Management</h1>
       </div>
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Parcel Vehicles</h2>
+          <h2 className="text-xl font-semibold">Parcel Categories</h2>
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -103,17 +108,23 @@ export const ParcelVehiclePage = () => {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingVehicle ? 'Edit Parcel Vehicle' : 'Create Parcel Vehicle'}</DialogTitle>
+                <DialogTitle>{editingCategory ? 'Edit Parcel Category' : 'Create Parcel Category'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
-                  placeholder="Vehicle Name (e.g., Motorcycle, Van, Truck)"
-                  value={vehicleForm.vehicleName}
-                  onChange={(e) => setVehicleForm({ vehicleName: e.target.value })}
+                  placeholder="Category Name (e.g., Documents, Electronics, Food)"
+                  value={categoryForm.categoryName}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, categoryName: e.target.value })}
+                  required
+                />
+                <Textarea
+                  placeholder="Description"
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
                   required
                 />
                 <Button type="submit" className="w-full">
-                  {editingVehicle ? 'Update' : 'Create'}
+                  {editingCategory ? 'Update' : 'Create'}
                 </Button>
               </form>
             </DialogContent>
@@ -123,24 +134,26 @@ export const ParcelVehiclePage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Vehicle Name</TableHead>
+              <TableHead>Category Name</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {parcelVehicles.length === 0 ? (
+            {parcelCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-center">
-                  No parcel vehicles found. Create your first one!
+                <TableCell colSpan={3} className="text-center">
+                  No parcel categories found. Create your first one!
                 </TableCell>
               </TableRow>
             ) : (
-              parcelVehicles.map((vehicle) => (
-                <TableRow key={vehicle._id}>
-                  <TableCell className="font-medium">{vehicle.vehicleName}</TableCell>
+              parcelCategories.map((category) => (
+                <TableRow key={category._id}>
+                  <TableCell className="font-medium">{category.categoryName}</TableCell>
+                  <TableCell>{category.description}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(vehicle)}>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(category)}>
                         <Edit className="w-4 h-4" />
                       </Button>
                       <AlertDialog>
@@ -153,12 +166,12 @@ export const ParcelVehiclePage = () => {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will permanently delete the parcel vehicle. This action cannot be undone.
+                              This will permanently delete the parcel category. This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(vehicle._id)}>
+                            <AlertDialogAction onClick={() => handleDelete(category._id)}>
                               Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>

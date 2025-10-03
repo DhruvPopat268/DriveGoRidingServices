@@ -72,7 +72,17 @@ const menuItems = [
       { icon: Calculator, label: "Cab Ride Cost Management", key: "cabridecost" }
     ]
   },
-  { icon: Package, label: "Parcel Vehicle", key: "parcelvehicle" },
+  {
+    icon: Package,
+    label: "Parcel Management",
+    key: "parcel-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Tags, label: "Parcel Category", key: "parcelcategory" },
+      { icon: Truck, label: "Parcel Vehicle Management", key: "parcelvehicletypes" },
+      { icon: Calculator, label: "Parcel Ride Cost Management", key: "parcelridecost" }
+    ]
+  },
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
   { icon: BookOpen, label: "T & C", key: "instructions" },
   { icon: Bike, label: "Rides", key: "rides" },

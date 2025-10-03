@@ -15,7 +15,6 @@ import { SubCategoryPage } from "@/components/admin/pages/SubCategoryPage";
 import { SubSubCategoryPage } from "@/components/admin/pages/SubSubCategoryPage";
 import { VehicleCategoryPage } from "@/components/admin/pages/VehicleCategoryPage";
 import { PriceCategoryPage } from "@/components/admin/pages/PriceCategoryPage";
-import { ParcelVehiclePage } from "@/components/admin/pages/ParcelVehiclePage";
 import { DriverRideCostPage } from "@/components/admin/pages/DriverRideCostPage";
 import { CabRideCostPage } from "@/components/admin/pages/CabRideCostPage";
 import { PeakHoursPage } from "@/components/admin/pages/PeakHoursPage";
@@ -31,6 +30,9 @@ import { StatesPage } from "@/components/admin/pages/StatesPage";
 import { CitiesPage } from "@/components/admin/pages/CitiesPage";
 import { CarCategoryPage } from "@/components/admin/pages/CarCategoryPage";
 import { CarManagementPage } from "@/components/admin/pages/CarManagementPage";
+import { ParcelCategoryPage } from "@/components/admin/pages/ParcelCategoryPage";
+import { ParcelVehicleManagementPage } from "@/components/admin/pages/ParcelVehicleManagementPage";
+import { ParcelRideCostPage } from "@/components/admin/pages/ParcelRideCostPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -78,10 +80,14 @@ const Index = () => {
         return <VehicleCategoryPage />;
       case "pricecategory":
         return <PriceCategoryPage />;
-      case "parcelvehicle":
-        return <ParcelVehiclePage />;
+      case "parcelcategory":
+        return <ParcelCategoryPage />;
+      case "parcelvehicletypes":
+        return <ParcelVehicleManagementPage />;
+      case "parcelridecost":
+        return <ParcelRideCostPage />;
       case "ridecost":
-        return <DriverRideCostPage />;
+        return <DriverRideCostPage />;  
       case "cabridecost":
         return <CabRideCostPage />;
       case "peakhours":
