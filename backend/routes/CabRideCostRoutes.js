@@ -144,7 +144,7 @@ router.post('/calculation', async (req, res) => {
 
     };
     if (subSubcategoryId) {
-      rideCostQuery.subSubCategory = mongoose.Types.ObjectId(subSubcategoryId);
+      rideCostQuery.subSubCategory = new mongoose.Types.ObjectId(subSubcategoryId);
     }
 
 
