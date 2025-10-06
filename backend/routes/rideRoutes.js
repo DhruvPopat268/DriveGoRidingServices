@@ -21,9 +21,9 @@ router.post("/book", authMiddleware, async (req, res) => {
     const {
       categoryId,
       subcategoryId,
+      categoryName,
       subcategoryName,
       carType,
-      fromLocation,
       fromLocationData,
       toLocationData,
       includeInsurance,
@@ -38,14 +38,15 @@ router.post("/book", authMiddleware, async (req, res) => {
       totalPayable,
       referralEarning,
       referralBalance,
-      selectedDates, // Add selectedDates to destructuring
+      selectedDates,
+      senderDetails,     // ✅ new
+      receiverDetails,   // ✅ new
     } = req.body;
 
     if (!categoryId || !totalAmount || !paymentType) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    // ✅ find charges for the chosen category
     const selectedCategoryData = totalAmount.find(
       (item) => item.category === selectedCategory
     );
@@ -62,10 +63,16 @@ router.post("/book", authMiddleware, async (req, res) => {
       rideInfo: {
         categoryId,
         subcategoryId,
+        categoryName,
         subcategoryName,
         carType,
         fromLocation: fromLocationData,
-        toLocation: toLocationData && toLocationData !== '' ? toLocationData : undefined,
+        toLocation: toLocationData && toLocationData !== "" ? toLocationData : undefined,
+
+        // ✅ store sender & receiver details
+        senderDetails,
+        receiverDetails,
+
         includeInsurance,
         notes,
         selectedCategory,
@@ -73,7 +80,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedTime,
         selectedUsage,
         transmissionType,
-        selectedDates: selectedDates || [], // Add selectedDates to rideInfo
+        selectedDates: selectedDates || [],
         insuranceCharges: selectedCategoryData.insuranceCharges || 0,
         cancellationCharges: selectedCategoryData.cancellationCharges || 0,
         discount: selectedCategoryData.discountApplied || 0,
@@ -90,37 +97,26 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     await newRide.save();
 
-    // ✅ Referral Earnings Update
+    // ✅ Referral earnings logic unchanged
     const rider = await Rider.findById(riderId);
 
     if (rider) {
-      // Case 1: Rider used referral balance
       if (referralEarning && referralBalance > 0) {
-        rider.referralEarning.currentBalance =
-          rider.referralEarning.currentBalance - referralBalance;
-        if (rider.referralEarning.currentBalance < 0) {
+        rider.referralEarning.currentBalance -= referralBalance;
+        if (rider.referralEarning.currentBalance < 0)
           rider.referralEarning.currentBalance = 0;
-        }
         await rider.save();
       }
 
-      // Case 2: Rider was referred by someone → give bonus to referrer
       if (rider.referredBy) {
         const rule = await referralRules.findOne({});
-        if (!rule) {
-          console.log("No referral rules found, skipping commission");
-        } else {
+        if (rule) {
           const { commission, MaxReferrals } = rule;
-
           const referrer = await Rider.findById(rider.referredBy);
           if (referrer) {
             let eligible = false;
-
-            if (MaxReferrals === -1) {
-              // ✅ Unlimited referrals allowed
-              eligible = true;
-            } else {
-              // ✅ Normal case: check referral index
+            if (MaxReferrals === -1) eligible = true;
+            else {
               const referralIndex = referrer.referrals.findIndex(
                 (refId) => refId.toString() === riderId.toString()
               );
@@ -137,12 +133,6 @@ router.post("/book", authMiddleware, async (req, res) => {
                 (referrer.referralEarning.currentBalance || 0) + referralBonus;
 
               await referrer.save();
-
-              console.log(
-                `Commission given: MaxReferrals = ${MaxReferrals}, Commission = ${commission}%`
-              );
-            } else {
-              console.log(`No commission: MaxReferrals = ${MaxReferrals}`);
             }
           }
         }
@@ -158,6 +148,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 });
+
 
 // all rides
 router.post("/my-rides", authMiddleware, async (req, res) => {
