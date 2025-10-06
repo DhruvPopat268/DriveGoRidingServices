@@ -33,6 +33,7 @@ import { CarManagementPage } from "@/components/admin/pages/CarManagementPage";
 import { ParcelCategoryPage } from "@/components/admin/pages/ParcelCategoryPage";
 import { ParcelVehicleManagementPage } from "@/components/admin/pages/ParcelVehicleManagementPage";
 import { ParcelRideCostPage } from "@/components/admin/pages/ParcelRideCostPage";
+import { DriverSubscriptionPage } from "@/components/admin/pages/DriverSubscriptionPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -114,6 +115,8 @@ const Index = () => {
         return <CarManagementPage />;
       case "cabridecost":
         return <CabRideCostPage />;
+      case "driversubscription":
+        return <DriverSubscriptionPage />;
       default:
         return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
     }

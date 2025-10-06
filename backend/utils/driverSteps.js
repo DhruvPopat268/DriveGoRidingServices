@@ -33,11 +33,15 @@ function evaluateDriverProgress(driver) {
     !driver.languageSkillsAndReferences?.references?.length
   ) {
     step = 4;
-  } else if (!isObjectComplete(driver.declaration) || !driver.declaration.agreement) {
+  } else if (
+    !isObjectComplete(driver.declaration) ||
+    !driver.declaration.agreement ||
+    !driver.declaration.signature
+  ) {
     step = 5;
   }
 
-  const status = step === 0 ? "Onreview" : "Pending";
+  const status = step === 0 ? "PendingForPayment" : "Pending";
 
   return { step, status };
 }

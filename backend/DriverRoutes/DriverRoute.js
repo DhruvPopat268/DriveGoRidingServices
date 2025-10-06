@@ -147,7 +147,20 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   try {
     const step = parseInt(req.body.step, 10);
     const mobile = req.driver?.mobile;
-    const data = JSON.parse(req.body.data || "{}");
+    
+    // ✅ Safe JSON parsing with better error handling
+    let data = {};
+    try {
+      data = JSON.parse(req.body.data || "{}");
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError.message);
+      console.error("Received data:", req.body.data);
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid JSON format in data field",
+        error: parseError.message 
+      });
+    }
 
     if (!mobile || !step) {
       return res.status(400).json({ message: "Mobile & step are required" });
@@ -279,7 +292,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const updatedDriver = await Driver.findOneAndUpdate(
       { mobile },
       { $set: updates },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     console.log("Final aadhar array:", updatedDriver.personalInformation.aadhar);
@@ -295,6 +308,24 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     });
   } catch (error) {
     console.error("Update step error:", error);
+
+    // ✅ Handle Mongoose Validation Errors
+    if (error.name === "ValidationError") {
+      const validationErrors = {};
+      
+      // Extract all validation error messages
+      Object.keys(error.errors).forEach((key) => {
+        validationErrors[key] = error.errors[key].message;
+      });
+
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: validationErrors
+      });
+    }
+
+    // Handle other errors
     res.status(500).json({
       success: false,
       message: "Failed to update step",

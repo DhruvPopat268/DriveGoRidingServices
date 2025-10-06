@@ -24,7 +24,8 @@ import {
   Map,
   Building,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -86,7 +87,8 @@ const menuItems = [
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
   { icon: BookOpen, label: "T & C", key: "instructions" },
   { icon: Bike, label: "Rides", key: "rides" },
-  { icon: Gift, label: "Refer Earn", key: "referearn" }
+  { icon: Gift, label: "Refer Earn", key: "referearn" },
+  { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" }
 ];
 
 export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps) => {

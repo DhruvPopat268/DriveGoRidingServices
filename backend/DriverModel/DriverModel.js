@@ -41,11 +41,19 @@ const driverSchema = new mongoose.Schema(
       bankName: { type: String },
       accountNumber: { type: String },
       ifscCode: { type: String },
-
+      upiId: {
+        type: String,
+        validate: {
+          validator: function (v) {
+            return /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(v);
+          },
+          message: 'Invalid UPI ID format. Must be in format: username@provider'
+        }
+      },
       oneTimeRegistrationFee: { type: Number },
-      subscriptionPlan: { type: String, enum: ["Basic", "Standard", "Premium"] },
+      subscriptionPlan: { type: String },
       subscriptionAmount: { type: Number },
-      paymentMode: { type: String, enum: ["UPI", "Bank Transfer", "Cash"] }
+      // paymentMode: { type: String, enum: ["UPI", "Bank Transfer", "Cash"] }
     },
 
     languageSkillsAndReferences: {
@@ -55,12 +63,13 @@ const driverSchema = new mongoose.Schema(
 
     declaration: {
       agreement: { type: Boolean, default: false },
-      signedAt: { type: Date }
+      signedAt: { type: Date },
+      signature: { type: String } // store Cloudinary URL of signature image
     },
 
     status: {
       type: String,
-      enum: ["Pending", "Onreview", "Approved", "Rejected"],
+      enum: ["Pending", "Onreview", "Approved", "Rejected" , "PendingForPayment"],
       default: "Pending"
     }
   },

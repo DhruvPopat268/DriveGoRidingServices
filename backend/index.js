@@ -26,6 +26,8 @@ const connectToDb = require('./database/db');
 const cookieParser = require("cookie-parser");
 const rideRoutes = require("./routes/rideRoutes");
 const referralRulesRoutes = require('./routes/referralRules');
+const registrationFeeRoutes = require('./DriverRoutes/RegistrationFeeRoutes');
+const subscriptionPlanRoutes = require('./DriverRoutes/SubscriptionPlanRoutes');
 
 const app = express();
 
@@ -75,6 +77,8 @@ app.use("/api/rider-auth", riderAuthRoutes);
 app.use("/api/rides", rideRoutes);
 
 app.use('/api/referral-rules', referralRulesRoutes);
+app.use('/api/registration-fees', registrationFeeRoutes);
+app.use('/api/subscription-plans', subscriptionPlanRoutes);
 
 // admin
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));
