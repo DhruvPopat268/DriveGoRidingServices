@@ -35,7 +35,6 @@ function evaluateDriverProgress(driver) {
     step = 4;
   } else if (
     !isObjectComplete(driver.declaration) ||
-    !driver.declaration.agreement ||
     !driver.declaration.signature
   ) {
     step = 5;

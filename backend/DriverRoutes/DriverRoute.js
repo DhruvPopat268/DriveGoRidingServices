@@ -11,6 +11,7 @@ const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
 const cloudinary = require("../config/cloudinary");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
+const DriverSubscriptionPlan = require('../DriverModel/SubscriptionPlan')
 
 // router.post("/send-otp", async (req, res) => {
 //   try {
@@ -53,6 +54,69 @@ const upload = multer({ storage: multer.memoryStorage() });
 //     res.status(500).json({ success: false, message: "Failed to send OTP" });
 //   }
 // });
+
+//approve drivers
+
+router.get("/", async (req, res) => {
+  const drivers = await Driver.find({ status: "Approved" }).sort({ createdAt: -1 })
+  res.status(200).json(drivers)
+})
+
+//Onreview drivers
+router.get("/Onreview", async (req, res) => {
+  const drivers = await Driver.find({ status: "Onreview" }).sort({ createdAt: -1 })
+  res.status(200).json(drivers)
+})
+
+// Approve driver
+router.post("/approve/:driverId", async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const driver = await Driver.findByIdAndUpdate(
+      driverId,
+      { status: "Approved" },
+      { new: true }
+    );
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+    res.json({ success: true, message: "Driver approved successfully", driver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to approve driver" });
+  }
+});
+
+// Reject driver
+router.post("/reject/:driverId", async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const driver = await Driver.findByIdAndUpdate(
+      driverId,
+      { status: "Rejected" },
+      { new: true }
+    );
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+    res.json({ success: true, message: "Driver rejected successfully", driver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to reject driver" });
+  }
+});
+
+// Get driver by ID
+router.get("/:driverId", async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+    res.json(driver);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch driver" });
+  }
+});
 
 router.post("/send-otp", async (req, res) => {
   try {
@@ -99,11 +163,13 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
 
+    // Find latest OTP session
     const otpSession = await DriverOtpSession.findOne({ mobile, otp }).sort({ createdAt: -1 });
     if (!otpSession) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
+    // Check expiry
     if (new Date() > otpSession.otpExpiresAt) {
       return res.status(400).json({ message: "OTP expired" });
     }
@@ -113,7 +179,7 @@ router.post("/verify-otp", async (req, res) => {
 
     const driver = await Driver.findOne({ mobile });
 
-    const isNew = !driver?.personalInformation?.mobileNumber;
+    const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
     // Generate JWT
     const token = jwt.sign(
@@ -124,19 +190,29 @@ router.post("/verify-otp", async (req, res) => {
 
     await createSession(mobile, token);
 
-    // ✅ Use helper function
-    const { step, status } = evaluateDriverProgress(driver);
+    // Evaluate profile progress
+    const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
-    driver.status = status;
-    await driver.save();
+    // Update only if still pending or payment pending
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      driver.status = progressStatus;
+      await driver.save();
+    }
 
-    res.json({
+    // Prepare response
+    const response = {
       success: true,
       token,
       isNew,
-      step,
-      status
-    });
+      status: driver.status
+    };
+
+    // ✅ Add step ONLY if status is Pending or PendingForPayment
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      response.step = step;
+    }
+
+    res.json(response);
   } catch (error) {
     console.error("Verify OTP error:", error);
     res.status(500).json({ success: false, message: "OTP verification failed" });
@@ -147,7 +223,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   try {
     const step = parseInt(req.body.step, 10);
     const mobile = req.driver?.mobile;
-    
+
     // ✅ Safe JSON parsing with better error handling
     let data = {};
     try {
@@ -155,10 +231,10 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     } catch (parseError) {
       console.error("JSON parse error:", parseError.message);
       console.error("Received data:", req.body.data);
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         message: "Invalid JSON format in data field",
-        error: parseError.message 
+        error: parseError.message
       });
     }
 
@@ -224,9 +300,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    console.log("Request files:", req.files?.map(f => ({ fieldname: f.fieldname, size: f.size })));
-    console.log("Upload results:", uploadResults);
-
     // 🚀 Step 2: Process uploads - Group by fieldname for array fields
     const fileGroups = {};
     const singleFiles = {};
@@ -249,9 +322,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       }
     });
 
-    console.log("File groups (arrays):", fileGroups);
-    console.log("Single files:", singleFiles);
-
     // Handle single file uploads (panCard, passportPhoto, etc.)
     Object.entries(singleFiles).forEach(([fieldname, url]) => {
       data[fieldname] = url;
@@ -267,13 +337,10 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
         const allUrls = [...existingUrls, ...urls];
         const uniqueUrls = [...new Set(allUrls)];
         fieldData[fieldName] = uniqueUrls;
-        console.log(`Updated ${fieldName} with URLs:`, uniqueUrls);
       }
     });
 
     const updates = { [field]: fieldData };
-
-    console.log("Final updates object:", updates);
 
     // 🚀 Step 3: Evaluate progress (keep your existing evaluateDriverProgress logic)
     const tempDriver = {
@@ -295,9 +362,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       { new: true, runValidators: true }
     );
 
-    console.log("Final aadhar array:", updatedDriver.personalInformation.aadhar);
-    console.log("Final drivingLicense array:", updatedDriver.personalInformation.drivingLicense);
-
     // 🚀 Step 5: Send response
     res.json({
       success: true,
@@ -312,7 +376,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // ✅ Handle Mongoose Validation Errors
     if (error.name === "ValidationError") {
       const validationErrors = {};
-      
+
       // Extract all validation error messages
       Object.keys(error.errors).forEach((key) => {
         validationErrors[key] = error.errors[key].message;
@@ -331,6 +395,56 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       message: "Failed to update step",
       error: process.env.NODE_ENV === "development" ? error.message : undefined
     });
+  }
+});
+
+router.get('/planPayment', DriverAuthMiddleware, async (req, res) => {
+
+  const mobile = req.driver?.mobile;
+  const driver = await Driver.findOne({ mobile });
+  const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan
+
+  const currentPlan = await DriverSubscriptionPlan.findById(subscriptionPlan)
+
+  res.json({
+    success: true,
+    message: "Plan fetched successfully",
+    plan: currentPlan
+  });
+
+})
+
+router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const { paymentId, status } = req.body;
+    const mobile = req.driver?.mobile;
+
+    if (!mobile || !paymentId || !status) {
+      return res.status(400).json({ message: "Mobile, paymentId, status, and plan are required" });
+    }
+
+    const driver = await Driver.findOne({ mobile });
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan
+
+    const currentPlan = await DriverSubscriptionPlan.findById(subscriptionPlan)
+
+    const amount = currentPlan?.amount
+
+    driver.purchasedPlans.push({ paymentId, status, plan: subscriptionPlan, amount });
+    await driver.save();
+
+    res.json({
+      success: true,
+      message: "Purchased plan added successfully",
+      purchasedPlans: driver.purchasedPlans
+    });
+  } catch (error) {
+    console.error("Add purchased plan error:", error);
+    res.status(500).json({ success: false, message: "Failed to add purchased plan" });
   }
 });
 

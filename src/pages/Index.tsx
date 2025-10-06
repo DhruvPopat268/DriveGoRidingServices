@@ -34,10 +34,13 @@ import { ParcelCategoryPage } from "@/components/admin/pages/ParcelCategoryPage"
 import { ParcelVehicleManagementPage } from "@/components/admin/pages/ParcelVehicleManagementPage";
 import { ParcelRideCostPage } from "@/components/admin/pages/ParcelRideCostPage";
 import { DriverSubscriptionPage } from "@/components/admin/pages/DriverSubscriptionPage";
+import { DriversOnReviewPage } from "@/components/admin/pages/DriversOnReviewPage";
+import { DriverDetailPage } from "@/components/admin/pages/DriverDetailPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -117,6 +120,17 @@ const Index = () => {
         return <CabRideCostPage />;
       case "driversubscription":
         return <DriverSubscriptionPage />;
+      case "drivers-onreview":
+        return selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)} 
+          />
+        ) : (
+          <DriversOnReviewPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
       default:
         return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
     }

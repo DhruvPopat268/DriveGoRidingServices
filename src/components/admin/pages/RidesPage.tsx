@@ -216,12 +216,12 @@ export const RidesPage = () => {
                       <div className="space-y-1">
                         <div className="flex items-center space-x-1 text-sm">
                           <MapPin className="w-3 h-3 text-green-500" />
-                          <span className="capitalize">{ride.rideInfo.fromLocation}</span>
+                          <span className="capitalize">{ride.rideInfo.fromLocation?.address || "N/A"}</span>
                         </div>
                         {ride.rideInfo.toLocation && (
                           <div className="flex items-center space-x-1 text-sm">
                             <MapPin className="w-3 h-3 text-red-500" />
-                            <span className="capitalize">{ride.rideInfo.toLocation}</span>
+                            <span className="capitalize">{ride.rideInfo.toLocation?.address || "N/A"}</span>
                           </div>
                         )}
                         {!ride.rideInfo.toLocation && (

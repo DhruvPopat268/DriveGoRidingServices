@@ -52,7 +52,7 @@ const driverSchema = new mongoose.Schema(
       },
       oneTimeRegistrationFee: { type: Number },
       subscriptionPlan: { type: String },
-      subscriptionAmount: { type: Number },
+      // subscriptionAmount: { type: Number },
       // paymentMode: { type: String, enum: ["UPI", "Bank Transfer", "Cash"] }
     },
 
@@ -62,16 +62,23 @@ const driverSchema = new mongoose.Schema(
     },
 
     declaration: {
-      agreement: { type: Boolean, default: false },
-      signedAt: { type: Date },
+      signedAt: { type: Date, default: Date.now },
       signature: { type: String } // store Cloudinary URL of signature image
     },
 
     status: {
       type: String,
-      enum: ["Pending", "Onreview", "Approved", "Rejected" , "PendingForPayment"],
+      enum: ["Pending", "Onreview", "Approved", "Rejected", "PendingForPayment"],
       default: "Pending"
-    }
+    },
+
+    purchasedPlans: [{
+      paymentId: { type: String, required: true },
+      status: { type: String, enum: ["Success", "Failed", "Pending"]},
+      plan: { type: String, required: true },
+      amount: { type: Number },
+      purchasedAt: { type: Date, default: Date.now }
+    }]
   },
   { timestamps: true }
 );

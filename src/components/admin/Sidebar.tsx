@@ -53,7 +53,7 @@ const menuItems = [
   { icon: Layers3, label: "Sub-Sub Category", key: "subsubcategory" },
   {
     icon: Users,
-    label: "Driver Management",
+    label: "Driver Category Management",
     key: "driver-management",
     isDropdown: true,
     subItems: [
@@ -64,7 +64,7 @@ const menuItems = [
   },
     {
     icon: Car,
-    label: "Cab Management",
+    label: "Cab Category Management",
     key: "cab-management",
     isDropdown: true,
     subItems: [
@@ -75,7 +75,7 @@ const menuItems = [
   },
   {
     icon: Package,
-    label: "Parcel Management",
+    label: "Parcel Category Management",
     key: "parcel-management",
     isDropdown: true,
     subItems: [
@@ -85,6 +85,15 @@ const menuItems = [
     ]
   },
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
+  {
+    icon: UserCheck,
+    label: "Drivers Management",
+    key: "drivers-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Users, label: "OnReview Registration Requests", key: "drivers-onreview" }
+    ]
+  },
   { icon: BookOpen, label: "T & C", key: "instructions" },
   { icon: Bike, label: "Rides", key: "rides" },
   { icon: Gift, label: "Refer Earn", key: "referearn" },
