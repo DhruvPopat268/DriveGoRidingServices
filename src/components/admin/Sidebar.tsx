@@ -3,11 +3,6 @@ import {
   Car, 
   Users, 
   MapPin, 
-  BarChart3, 
-  Settings, 
-  HeadphonesIcon,
-  Wallet,
-  Bell,
   Shield,
   Tags,
   FolderTree,
@@ -27,8 +22,7 @@ import {
   ChevronRight,
   CreditCard
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -54,7 +48,7 @@ const menuItems = [
   {
     icon: Users,
     label: "Driver Category Management",
-    key: "driver-management",
+    key: "driver-category-management",
     isDropdown: true,
     subItems: [
       { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
@@ -62,10 +56,10 @@ const menuItems = [
       { icon: Calculator, label: "Driver Ride Cost Management", key: "ridecost" }
     ]
   },
-    {
+  {
     icon: Car,
     label: "Cab Category Management",
-    key: "cab-management",
+    key: "cab-category-management",
     isDropdown: true,
     subItems: [
       { icon: Tags, label: "Car Category", key: "carcategory" },
@@ -76,7 +70,7 @@ const menuItems = [
   {
     icon: Package,
     label: "Parcel Category Management",
-    key: "parcel-management",
+    key: "parcel-category-management",
     isDropdown: true,
     subItems: [
       { icon: Tags, label: "Parcel Category", key: "parcelcategory" },
@@ -94,14 +88,71 @@ const menuItems = [
       { icon: Users, label: "OnReview Registration Requests", key: "drivers-onreview" }
     ]
   },
-  { icon: BookOpen, label: "T & C", key: "instructions" },
+  { icon: BookOpen, label: "T & C", key: "t&c" },
   { icon: Bike, label: "Rides", key: "rides" },
   { icon: Gift, label: "Refer Earn", key: "referearn" },
+  { icon: Shield, label: "Role Management", key: "rolemanagement" },
   { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" }
 ];
 
+const cn = (...classes: (string | boolean | undefined)[]) => {
+  return classes.filter(Boolean).join(' ');
+};
+
 export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps) => {
   const [openDropdowns, setOpenDropdowns] = useState<{ [key: string]: boolean }>({});
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const adminToken = localStorage.getItem('adminToken');
+        if (!adminToken) return;
+
+        const response = await fetch('http://localhost:5000/api/auth/permissions', {
+          headers: {
+            'Authorization': `Bearer ${adminToken}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUserPermissions(data.permissions);
+        }
+      } catch (error) {
+        console.error('Error fetching permissions:', error);
+      }
+    };
+
+    fetchPermissions();
+  }, []);
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (userPermissions.includes('all')) {
+      return true;
+    }
+    if (item.isDropdown && item.subItems) {
+      const hasPermission = item.subItems.some(subItem => userPermissions.includes(subItem.key));
+      return hasPermission;
+    }
+    return userPermissions.includes(item.key);
+  });
+
+  useEffect(() => {
+    if (userPermissions.length > 0 && filteredMenuItems.length > 0 && !activeSection) {
+      const firstItem = filteredMenuItems[0];
+      if (firstItem.isDropdown && firstItem.subItems) {
+        const firstSubItem = firstItem.subItems.find(subItem => 
+          userPermissions.includes('all') || userPermissions.includes(subItem.key)
+        );
+        if (firstSubItem) {
+          onSectionChange(firstSubItem.key);
+        }
+      } else {
+        onSectionChange(firstItem.key);
+      }
+    }
+  }, [userPermissions, filteredMenuItems, onSectionChange, activeSection]);
 
   const toggleDropdown = (key: string) => {
     setOpenDropdowns(prev => ({ ...prev, [key]: !prev[key] }));
@@ -130,8 +181,8 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
       </div>
 
       {/* Navigation */}
-      <nav className="p-4 space-y-2">
-        {menuItems.map((item, index) => (
+      <nav className="p-4 space-y-2 overflow-y-auto" style={{ height: 'calc(100vh - 88px)', paddingBottom: '2rem' }}>
+        {filteredMenuItems.map((item, index) => (
           <div key={index}>
             {item.isDropdown ? (
               <>
@@ -156,7 +207,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
                 </button>
                 {isOpen && openDropdowns[item.key] && item.subItems && (
                   <div className="ml-6 mt-2 space-y-1">
-                    {item.subItems.map((subItem, subIndex) => (
+                    {item.subItems.filter(subItem => userPermissions.includes('all') || userPermissions.includes(subItem.key)).map((subItem, subIndex) => (
                       <button
                         key={subIndex}
                         onClick={() => onSectionChange(subItem.key)}
@@ -194,3 +245,40 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
     </div>
   );
 };
+
+// Demo usage
+export default function App() {
+  const [isOpen, setIsOpen] = useState(true);
+  const [activeSection, setActiveSection] = useState("dashboard");
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Sidebar 
+        isOpen={isOpen} 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection}
+      />
+      
+      {/* Main content area */}
+      <div className={cn("transition-all duration-300", isOpen ? "ml-64" : "ml-16")}>
+        <div className="p-8">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Toggle Sidebar
+          </button>
+          
+          <div className="mt-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Active Section: {activeSection}
+            </h2>
+            <p className="text-gray-600">
+              Click on sidebar items to navigate. The sidebar now properly scrolls without cutting off menu items.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

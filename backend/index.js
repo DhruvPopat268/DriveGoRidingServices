@@ -85,6 +85,12 @@ app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));
 
 app.use('/api/payments', require('./routes/Payment&Wallet'));
 
+// RBAC routes
+app.use('/api/rbac', require('./routes/rbacRoutes'));
+
+// Auth routes
+app.use('/api/auth', require('./routes/authRoutes'));
+
 //Driver Mobile Application Routes
 app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
 

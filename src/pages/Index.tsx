@@ -36,10 +36,11 @@ import { ParcelRideCostPage } from "@/components/admin/pages/ParcelRideCostPage"
 import { DriverSubscriptionPage } from "@/components/admin/pages/DriverSubscriptionPage";
 import { DriversOnReviewPage } from "@/components/admin/pages/DriversOnReviewPage";
 import { DriverDetailPage } from "@/components/admin/pages/DriverDetailPage";
+import { RBACManagementPage } from "@/components/admin/pages/RBACManagementPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const [activeSection, setActiveSection] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
 
   const renderContent = () => {
@@ -96,7 +97,7 @@ const Index = () => {
         return <CabRideCostPage />;
       case "peakhours":
         return <PeakHoursPage />;
-      case "instructions":
+      case "t&c":
         return <InstructionsPage />;
       case "payments":
         return <PaymentsPage />;
@@ -112,6 +113,10 @@ const Index = () => {
         return <SettingsPage />;
       case "referearn":
         return <ReferEarnPage />;
+      case "rbac":
+        return <RBACManagementPage />;
+      case "rolemanagement":
+        return <RBACManagementPage />;
       case "carcategory":
         return <CarCategoryPage />;
       case "carmanagement":
@@ -120,6 +125,12 @@ const Index = () => {
         return <CabRideCostPage />;
       case "driversubscription":
         return <DriverSubscriptionPage />;
+      case "payments":
+        return <PaymentsPage />;
+      case "riders":
+        return <RidersPage />;
+      case "support":
+        return <SupportPage />;
       case "drivers-onreview":
         return selectedDriverId ? (
           <DriverDetailPage 

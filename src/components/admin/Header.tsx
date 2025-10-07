@@ -1,7 +1,9 @@
-import { Menu, Search, Bell, User, LogOut } from "lucide-react";
+import { Menu, Search, Bell, User, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +18,13 @@ interface HeaderProps {
 
 export const Header = ({ onToggleSidebar }: HeaderProps) => {
   const { toggleTheme } = useTheme();
+  const { logout, user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
@@ -30,6 +39,15 @@ export const Header = ({ onToggleSidebar }: HeaderProps) => {
           >
             <Menu className="w-5 h-5" />
           </Button>
+          
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search..."
+              className="pl-10 w-80 bg-gray-50 border-gray-200 focus:bg-white"
+            />
+          </div>
         </div>
 
         {/* Right side */}
@@ -46,6 +64,15 @@ export const Header = ({ onToggleSidebar }: HeaderProps) => {
             </span>
           </Button>
 
+          {/* Settings */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-black hover:text-black hover:bg-gray-100"
+          >
+            <Settings className="w-5 h-5" />
+          </Button>
+
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -56,7 +83,7 @@ export const Header = ({ onToggleSidebar }: HeaderProps) => {
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
                 </div>
-                <span>Admin</span>
+                <span>{user?.name || 'Admin'}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -68,7 +95,10 @@ export const Header = ({ onToggleSidebar }: HeaderProps) => {
                 Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-gray-200" />
-              <DropdownMenuItem className="text-black hover:text-black hover:bg-gray-100">
+              <DropdownMenuItem 
+                className="text-black hover:text-black hover:bg-gray-100 cursor-pointer"
+                onClick={handleLogout}
+              >
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </DropdownMenuItem>
