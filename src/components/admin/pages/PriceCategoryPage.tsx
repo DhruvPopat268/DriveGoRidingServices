@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,6 +26,7 @@ export const PriceCategoryPage = () => {
   });
   const [editingCategory, setEditingCategory] = useState<PriceCategory | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchPriceCategories();
@@ -33,10 +34,13 @@ export const PriceCategoryPage = () => {
 
   const fetchPriceCategories = async () => {
     try {
+      setLoading(true);
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`);
       setPriceCategories(res.data);
     } catch (err) {
       console.error('Failed to fetch price categories', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,7 +131,16 @@ export const PriceCategoryPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {priceCategories.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <Loader className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading driver categories...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : priceCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2} className="text-center">
                   No driver categories found. Create your first one!

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, Trash2, Key, Users, Mail, Phone, Shield, UserCheck, Plus } from "lucide-react";
+import { Edit, Trash2, Key, Users, Mail, Phone, Shield, UserCheck, Plus, Loader } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -266,14 +266,14 @@ export const RBACManagementPage = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">RBAC Management</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Role Management</h1>
         <p className="text-gray-600 mt-2">Manage permissions, roles, and user access control</p>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
+          {/* <TabsTrigger value="permissions">Permissions</TabsTrigger> */}
           <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>
@@ -330,9 +330,18 @@ export const RBACManagementPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {permissions.length === 0 ? (
+                  {loading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={4} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader className="w-6 h-6 animate-spin mr-2" />
+                          <span>Loading permissions...</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : permissions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                         No permissions found!
                       </TableCell>
                     </TableRow>
@@ -452,9 +461,18 @@ export const RBACManagementPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {roles.length === 0 ? (
+                  {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader className="w-6 h-6 animate-spin mr-2" />
+                          <span>Loading roles...</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : roles.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         No roles found!
                       </TableCell>
                     </TableRow>
@@ -623,9 +641,18 @@ export const RBACManagementPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.length === 0 ? (
+                  {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader className="w-6 h-6 animate-spin mr-2" />
+                          <span>Loading users...</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         No users found!
                       </TableCell>
                     </TableRow>

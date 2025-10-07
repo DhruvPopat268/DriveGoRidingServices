@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Axis3DIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Axis3DIcon, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -32,6 +32,7 @@ export const SubCategoryPage = () => {
   const [subCategoryDialogOpen, setSubCategoryDialogOpen] = useState(false);
   const [editingSubCategory, setEditingSubCategory] = useState<SubCategory | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [subCategoryForm, setSubCategoryForm] = useState({
     categoryId: '',
@@ -58,6 +59,7 @@ export const SubCategoryPage = () => {
   // Fetch categories
   const fetchCategories = async () => {
     try {
+      setLoading(true);
       const cateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
       const categoryList = cateData.data;
 
@@ -71,6 +73,8 @@ export const SubCategoryPage = () => {
     } catch (error) {
       console.error("Failed to fetch categories:", error);
       return [];
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -418,7 +422,16 @@ export const SubCategoryPage = () => {
           </TableHeader>
 
           <TableBody>
-            {filteredSubCategories.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <Loader className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading subcategories...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredSubCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-gray-500 py-6">
                   {selectedCategoryFilter === 'all' 

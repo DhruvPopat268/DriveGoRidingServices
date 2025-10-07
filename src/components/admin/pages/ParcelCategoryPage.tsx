@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +30,7 @@ export const ParcelCategoryPage = () => {
   });
   const [editingCategory, setEditingCategory] = useState<ParcelCategory | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchParcelCategories();
@@ -37,10 +38,13 @@ export const ParcelCategoryPage = () => {
 
   const fetchParcelCategories = async () => {
     try {
+      setLoading(true);
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
       setParcelCategories(res.data);
     } catch (err) {
       console.error('Failed to fetch parcel categories', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,7 +144,16 @@ export const ParcelCategoryPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {parcelCategories.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <Loader className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading parcel categories...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : parcelCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} className="text-center">
                   No parcel categories found. Create your first one!

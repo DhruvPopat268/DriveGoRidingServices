@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Plus, Edit, Trash2, Eye, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, X, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -883,7 +883,12 @@ export const CabRideCostPage = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-6">Loading...</TableCell>
+                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-8">
+                    <div className="flex justify-center items-center">
+                      <Loader className="w-6 h-6 animate-spin mr-2" />
+                      <span>Loading cab ride costs...</span>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ) : filteredRideCosts.length === 0 ? (
                 <TableRow>

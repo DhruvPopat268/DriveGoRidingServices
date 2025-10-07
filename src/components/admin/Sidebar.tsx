@@ -173,7 +173,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
           </div>
           {isOpen && (
             <div>
-              <h1 className="text-lg font-bold text-black">RideAdmin</h1>
+              <h1 className="text-lg font-bold text-black">DriveGo</h1>
               <p className="text-xs text-gray-500">Admin Panel</p>
             </div>
           )}

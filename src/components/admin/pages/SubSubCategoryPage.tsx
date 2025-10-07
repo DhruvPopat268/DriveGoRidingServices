@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -51,6 +51,7 @@ export const SubSubCategoryPage = () => {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Filter sub-subcategories based on selected filters
   useEffect(() => {
@@ -100,11 +101,14 @@ export const SubSubCategoryPage = () => {
 
     const fetchSubSubCategories = async () => {
       try {
+        setLoading(true);
         const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
         setSubSubCategories(response.data);
       } catch (error) {
         console.error("Failed to fetch sub-subcategories:", error);
         setSubSubCategories([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -448,7 +452,16 @@ export const SubSubCategoryPage = () => {
           </TableHeader>
 
           <TableBody>
-            {filteredSubSubCategories.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <Loader className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading sub-sub categories...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredSubSubCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-gray-500 py-6">
                   No sub-sub categories found. Please add first.

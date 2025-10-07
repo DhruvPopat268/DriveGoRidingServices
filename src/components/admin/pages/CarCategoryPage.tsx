@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import axios from 'axios';
 
 interface CarCategory {
@@ -148,7 +148,12 @@ export const CarCategoryPage = () => {
           </Dialog>
         </div>
 
-        {categories.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader className="w-6 h-6 animate-spin mr-2" />
+            <span>Loading car categories...</span>
+          </div>
+        ) : categories.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 text-lg">No data found! Add first category.</p>
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -41,6 +41,7 @@ interface VehicleCategory {
 
 export const VehicleCategoryPage = () => {
   const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>([]);
+  const [loading, setLoading] = useState(false);
  
 
   const [vehicleCategoryForm, setVehicleCategoryForm] = useState({
@@ -57,10 +58,13 @@ export const VehicleCategoryPage = () => {
   useEffect(() => {
     const fetchVehicleCategories = async () => {
       try {
+        setLoading(true);
         const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`);
         setVehicleCategories(res.data?.data || []);
       } catch (error) {
         console.error('Error fetching vehicle categories:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -254,7 +258,16 @@ export const VehicleCategoryPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {vehicleCategories.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <Loader className="w-6 h-6 animate-spin mr-2" />
+                    <span>Loading vehicle categories...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : vehicleCategories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No vehicle category found. Create your first vehicle category!

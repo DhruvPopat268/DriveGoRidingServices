@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import axios from 'axios';
 
 interface Car {
@@ -281,7 +281,12 @@ export const CarManagementPage = () => {
           </Dialog>
         </div>
 
-        {filteredCars.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center items-center py-8">
+            <Loader className="w-6 h-6 animate-spin mr-2" />
+            <span>Loading cars...</span>
+          </div>
+        ) : filteredCars.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500 text-lg">{cars.length === 0 ? 'No data found! Add first car.' : 'No cars found for selected category.'}</p>
           </div>
