@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const Permission = require('../models/Permission');
 const Role = require('../models/Role');
 const User = require('../models/User');
-const { sendWelcomeEmail } = require('../services/emailService');
+const { sendWelcomeEmail } = require('../Services/emailService');
 
 // Permission routes
 router.get('/permissions', async (req, res) => {
