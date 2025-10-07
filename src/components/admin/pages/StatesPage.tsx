@@ -305,7 +305,7 @@ export const StatesPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Index</TableHead>
+                <TableHead>#</TableHead>
                 <TableHead>State</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>

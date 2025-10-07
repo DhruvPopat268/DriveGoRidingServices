@@ -62,8 +62,8 @@ const menuItems = [
     key: "cab-category-management",
     isDropdown: true,
     subItems: [
-      { icon: Tags, label: "Car Category", key: "carcategory" },
-      { icon: Car, label: "Car Management", key: "carmanagement" },
+      { icon: Tags, label: "Cab Category", key: "carcategory" },
+      { icon: Car, label: "Cab Management", key: "carmanagement" },
       { icon: Calculator, label: "Cab Ride Cost Management", key: "cabridecost" }
     ]
   },
@@ -131,10 +131,6 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
     if (userPermissions.includes('all')) {
       return true;
     }
-    if (item.isDropdown && item.subItems) {
-      const hasPermission = item.subItems.some(subItem => userPermissions.includes(subItem.key));
-      return hasPermission;
-    }
     return userPermissions.includes(item.key);
   });
 
@@ -142,12 +138,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
     if (userPermissions.length > 0 && filteredMenuItems.length > 0 && !activeSection) {
       const firstItem = filteredMenuItems[0];
       if (firstItem.isDropdown && firstItem.subItems) {
-        const firstSubItem = firstItem.subItems.find(subItem => 
-          userPermissions.includes('all') || userPermissions.includes(subItem.key)
-        );
-        if (firstSubItem) {
-          onSectionChange(firstSubItem.key);
-        }
+        onSectionChange(firstItem.subItems[0].key);
       } else {
         onSectionChange(firstItem.key);
       }
@@ -207,7 +198,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
                 </button>
                 {isOpen && openDropdowns[item.key] && item.subItems && (
                   <div className="ml-6 mt-2 space-y-1">
-                    {item.subItems.filter(subItem => userPermissions.includes('all') || userPermissions.includes(subItem.key)).map((subItem, subIndex) => (
+                    {item.subItems.map((subItem, subIndex) => (
                       <button
                         key={subIndex}
                         onClick={() => onSectionChange(subItem.key)}

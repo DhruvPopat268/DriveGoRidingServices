@@ -249,8 +249,7 @@ export const VehicleCategoryPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Image</TableHead>
+              <TableHead>#</TableHead>
               <TableHead>Vehicle Name</TableHead>
               <TableHead>Per Km Charge</TableHead>
               <TableHead>Per Minute Charge</TableHead>
@@ -274,16 +273,10 @@ export const VehicleCategoryPage = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              vehicleCategories.map((vehicle) => (
+              vehicleCategories.map((vehicle,index) => (
                 <TableRow key={vehicle._id}>
-                  <TableCell>{vehicle._id}</TableCell>
-                  <TableCell>
-                    <img
-                      src={vehicle.image || '/placeholder.svg'}
-                      alt={vehicle.vehicleName}
-                      className="w-10 h-10 rounded object-cover"
-                    />
-                  </TableCell>
+                  <TableCell>{index+1}</TableCell>
+                 
                   <TableCell>{vehicle.vehicleName}</TableCell>
                   <TableCell>₹{vehicle.perKmCharge}</TableCell>
                   <TableCell>₹{vehicle.perMinuteCharge}</TableCell>

@@ -17,7 +17,7 @@ interface Car {
   category: {
     _id: string;
     name: string;
-  };
+  } | null;
   image: string;
   seater: number;
   status: boolean;
@@ -64,7 +64,7 @@ export const CarManagementPage = () => {
     if (filterCategory === 'all') {
       setFilteredCars(cars);
     } else {
-      setFilteredCars(cars.filter(car => car.category._id === filterCategory));
+      setFilteredCars(cars.filter(car => car.category?._id === filterCategory));
     }
   }, [cars, filterCategory]);
 
@@ -144,7 +144,7 @@ export const CarManagementPage = () => {
     setCarForm({
       name: car.name,
       description: car.description,
-      category: car.category._id,
+      category: car.category?._id || '',
       image: null,
       seater: car.seater.toString(),
       existingImageUrl: car.image
@@ -294,7 +294,8 @@ export const CarManagementPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Image</TableHead>
+                {/* <TableHead>Image</TableHead> */}
+                <TableHead>#</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Seater</TableHead>
@@ -305,15 +306,16 @@ export const CarManagementPage = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredCars.map((car) => (
+              {filteredCars.map((car,index) => (
                 <TableRow key={car._id}>
-                  <TableCell>
+                  {/* <TableCell>
                     {car.image && (
                       <img src={car.image} alt={car.name} className="w-12 h-12 object-cover rounded" />
                     )}
-                  </TableCell>
+                  </TableCell> */}
+                  <TableCell>{index+1}</TableCell>
                   <TableCell className="font-medium">{car.name}</TableCell>
-                  <TableCell>{car.category.name}</TableCell>
+                  <TableCell>{car.category?.name || 'No Category'}</TableCell>
                   <TableCell>{car.seater}</TableCell>
                   <TableCell>{car.description}</TableCell>
                   <TableCell>

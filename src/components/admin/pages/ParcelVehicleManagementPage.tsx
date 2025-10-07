@@ -187,6 +187,7 @@ export const ParcelVehicleManagementPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>#</TableHead>
               <TableHead>Parcel Category</TableHead>
               <TableHead>Vehicle Name</TableHead>
               <TableHead>Weight (kg)</TableHead>
@@ -211,8 +212,9 @@ export const ParcelVehicleManagementPage = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              parcelVehicleTypes.map((vehicleType) => (
+              parcelVehicleTypes.map((vehicleType,index) => (
                 <TableRow key={vehicleType._id}>
+                  <TableCell>{index + 1}</TableCell>
                   <TableCell className="font-medium">{vehicleType.parcelCategory.categoryName}</TableCell>
                   <TableCell>{vehicleType.name}</TableCell>
                   <TableCell>{vehicleType.weight} kg</TableCell>

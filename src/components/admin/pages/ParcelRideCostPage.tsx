@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Plus, Edit, Trash2, Eye, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, X, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -103,6 +103,11 @@ export const ParcelRideCostPage = () => {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
   const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<Subcategory[]>([]);
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [paginatedRideCosts, setPaginatedRideCosts] = useState<RideCost[]>([]);
 
   const [rideCostForm, setRideCostForm] = useState({
     category: '',
@@ -270,7 +275,20 @@ export const ParcelRideCostPage = () => {
     }
 
     setFilteredRideCosts(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
   }, [rideCosts, filterCategory, filterSubcategory]);
+
+  // Pagination logic
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    setPaginatedRideCosts(filteredRideCosts.slice(startIndex, endIndex));
+  }, [filteredRideCosts, currentPage, recordsPerPage]);
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(filteredRideCosts.length / recordsPerPage);
+  const startRecord = filteredRideCosts.length === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
+  const endRecord = Math.min(currentPage * recordsPerPage, filteredRideCosts.length);
 
   const fetchData = async () => {
     setLoading(true);
@@ -460,6 +478,15 @@ export const ParcelRideCostPage = () => {
     setFilterSubcategory('all');
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
+
   // Fixed getName function with proper null checking
   const getName = (item: string | { name?: string; priceCategoryName?: string; categoryName?: string } | null | undefined): string => {
     // Handle null, undefined, or empty string cases
@@ -612,9 +639,6 @@ export const ParcelRideCostPage = () => {
                       </div>
                     </div>
                   )}
-
-
-
 
                   <Input
                     type="number"
@@ -785,9 +809,28 @@ export const ParcelRideCostPage = () => {
 
             <div className="flex items-end">
               <div className="text-sm text-gray-600">
-                Showing {filteredRideCosts.length} of {rideCosts.length} models
+                Showing {startRecord}-{endRecord} of {filteredRideCosts.length} models
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Records per page selector */}
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Show</span>
+            <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-600">records</span>
           </div>
         </div>
 
@@ -795,24 +838,28 @@ export const ParcelRideCostPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>#</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Subcategory</TableHead>
                 <TableHead>Parcel Category</TableHead>
                 <TableHead>Parcel Vehicle</TableHead>
-
                 <TableHead>Base Fare</TableHead>
                 <TableHead>Incl. KM</TableHead>
                 <TableHead>Incl. Min</TableHead>
                 <TableHead>Extra/Km</TableHead>
                 <TableHead>Extra/Min</TableHead>
-
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-6">Loading...</TableCell>
+                  <TableCell colSpan={12} className="text-center py-8">
+                    <div className="flex justify-center items-center">
+                      <Loader className="w-6 h-6 animate-spin mr-2" />
+                      <span>Loading parcel ride costs...</span>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ) : filteredRideCosts.length === 0 ? (
                 <TableRow>
@@ -824,8 +871,9 @@ export const ParcelRideCostPage = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredRideCosts.map((rideCost) => (
+                paginatedRideCosts.map((rideCost, index) => (
                   <TableRow key={rideCost._id}>
+                    <TableCell>{(currentPage - 1) * recordsPerPage + index + 1}</TableCell>
                     <TableCell>{getName(rideCost.category)}</TableCell>
                     <TableCell>{getName(rideCost.subcategory)}</TableCell>
                     <TableCell>{rideCost.parcelCategory ? getName(rideCost.parcelCategory) : '-'}</TableCell>
@@ -886,6 +934,63 @@ export const ParcelRideCostPage = () => {
             </TableBody>
           </Table>
         </ScrollArea>
+
+        {/* Pagination Controls */}
+        {filteredRideCosts.length > 0 && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {startRecord} to {endRecord} of {filteredRideCosts.length} entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + i;
+                  } else {
+                    pageNumber = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* View Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>

@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Loader } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { DeleteConfirmation } from "@/components/ui/delete-confirmation";
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -49,6 +50,11 @@ export const InstructionsPage = () => {
   const [selectedSubCategory, setSelectedSubCategory] = useState("");
   const [selectedDriverCategory, setSelectedDriverCategory] = useState("");
   const [instructions, setInstructions] = useState("");
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [paginatedInstructions, setPaginatedInstructions] = useState([]);
 
   const queryClient = useQueryClient();
 
@@ -210,9 +216,7 @@ export const InstructionsPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this instruction?")) {
-      deleteMutation.mutate(id);
-    }
+    deleteMutation.mutate(id);
   };
 
   const openAddDialog = () => {
@@ -223,6 +227,27 @@ export const InstructionsPage = () => {
   const handleCategoryChange = (value: string) => {
     setSelectedCategory(value);
     setSelectedSubCategory(""); // Reset subcategory when category changes
+  };
+
+  // Pagination logic
+  useEffect(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
+    const endIndex = startIndex + recordsPerPage;
+    setPaginatedInstructions(instructionsData.slice(startIndex, endIndex));
+  }, [instructionsData, currentPage, recordsPerPage]);
+
+  // Calculate pagination info
+  const totalPages = Math.ceil(instructionsData.length / recordsPerPage);
+  const startRecord = instructionsData.length === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
+  const endRecord = Math.min(currentPage * recordsPerPage, instructionsData.length);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
   };
 
   return (
@@ -345,14 +370,37 @@ export const InstructionsPage = () => {
       {/* Instructions Table */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6">
-          <h2 className="text-lg font-semibold mb-4">T & C List</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">T & C List</h2>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Show</span>
+              <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">records</span>
+            </div>
+          </div>
           {isLoading ? (
-            <div className="text-center py-4">Loading...</div>
+            <div className="text-center py-8">
+              <div className="flex justify-center items-center">
+                <Loader className="w-6 h-6 animate-spin mr-2" />
+                <span>Loading instructions...</span>
+              </div>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>#</TableHead>
                     <TableHead className="text-gray-600">Category</TableHead>
                     <TableHead className="text-gray-600">Sub Category</TableHead>
                     <TableHead className="text-gray-600">Driver Category</TableHead>
@@ -363,13 +411,14 @@ export const InstructionsPage = () => {
                 <TableBody>
                   {instructionsData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-gray-500">
+                      <TableCell colSpan={6} className="text-center text-gray-500">
                         No T & C found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    instructionsData.map((instruction: Instruction) => (
+                    paginatedInstructions.map((instruction: Instruction, index) => (
                       <TableRow key={instruction._id}>
+                        <TableCell>{(currentPage - 1) * recordsPerPage + index + 1}</TableCell>
                         <TableCell>{instruction.categoryName}</TableCell>
                         <TableCell>{instruction.subCategoryName}</TableCell>
                         <TableCell>{instruction.driverCategoryName}</TableCell>
@@ -385,13 +434,11 @@ export const InstructionsPage = () => {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDelete(instruction._id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <DeleteConfirmation
+                              onDelete={() => handleDelete(instruction._id)}
+                              itemName="instruction"
+                              buttonVariant="outline"
+                            />
                           </div>
                         </TableCell>
                       </TableRow>
@@ -399,6 +446,63 @@ export const InstructionsPage = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          
+          {/* Pagination Controls */}
+          {instructionsData.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-600">
+                Showing {startRecord} to {endRecord} of {instructionsData.length} entries
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           )}
         </div>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, Trash2, Key, Users, Mail, Phone, Shield, UserCheck, Plus, Loader } from "lucide-react";
+import { Edit, Trash2, Key, Users, Mail, Phone, Shield, UserCheck, Plus, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const API_BASE = 'http://localhost:5000/api/rbac';
 
 export const RBACManagementPage = () => {
-  const [activeTab, setActiveTab] = useState("permissions");
+  const [activeTab, setActiveTab] = useState("roles");
   const [permissions, setPermissions] = useState([]);
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
@@ -31,6 +31,17 @@ export const RBACManagementPage = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [editType, setEditType] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Pagination states for each tab
+  const [permissionsPage, setPermissionsPage] = useState(1);
+  const [permissionsPerPage, setPermissionsPerPage] = useState(10);
+  const [rolesPage, setRolesPage] = useState(1);
+  const [rolesPerPage, setRolesPerPage] = useState(10);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersPerPage, setUsersPerPage] = useState(10);
+  const [paginatedPermissions, setPaginatedPermissions] = useState([]);
+  const [paginatedRoles, setPaginatedRoles] = useState([]);
+  const [paginatedUsers, setPaginatedUsers] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -260,6 +271,139 @@ export const RBACManagementPage = () => {
     return status === "Active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800";
   };
 
+  // Pagination logic for permissions
+  useEffect(() => {
+    const startIndex = (permissionsPage - 1) * permissionsPerPage;
+    const endIndex = startIndex + permissionsPerPage;
+    setPaginatedPermissions(permissions.slice(startIndex, endIndex));
+  }, [permissions, permissionsPage, permissionsPerPage]);
+
+  // Pagination logic for roles
+  useEffect(() => {
+    const startIndex = (rolesPage - 1) * rolesPerPage;
+    const endIndex = startIndex + rolesPerPage;
+    setPaginatedRoles(roles.slice(startIndex, endIndex));
+  }, [roles, rolesPage, rolesPerPage]);
+
+  // Pagination logic for users
+  useEffect(() => {
+    const startIndex = (usersPage - 1) * usersPerPage;
+    const endIndex = startIndex + usersPerPage;
+    setPaginatedUsers(users.slice(startIndex, endIndex));
+  }, [users, usersPage, usersPerPage]);
+
+  // Pagination handlers
+  const handlePermissionsPageChange = (page: number) => setPermissionsPage(page);
+  const handlePermissionsPerPageChange = (value: string) => {
+    setPermissionsPerPage(parseInt(value));
+    setPermissionsPage(1);
+  };
+
+  const handleRolesPageChange = (page: number) => setRolesPage(page);
+  const handleRolesPerPageChange = (value: string) => {
+    setRolesPerPage(parseInt(value));
+    setRolesPage(1);
+  };
+
+  const handleUsersPageChange = (page: number) => setUsersPage(page);
+  const handleUsersPerPageChange = (value: string) => {
+    setUsersPerPage(parseInt(value));
+    setUsersPage(1);
+  };
+
+  // Calculate pagination info
+  const permissionsTotalPages = Math.ceil(permissions.length / permissionsPerPage);
+  const permissionsStartRecord = permissions.length === 0 ? 0 : (permissionsPage - 1) * permissionsPerPage + 1;
+  const permissionsEndRecord = Math.min(permissionsPage * permissionsPerPage, permissions.length);
+
+  const rolesTotalPages = Math.ceil(roles.length / rolesPerPage);
+  const rolesStartRecord = roles.length === 0 ? 0 : (rolesPage - 1) * rolesPerPage + 1;
+  const rolesEndRecord = Math.min(rolesPage * rolesPerPage, roles.length);
+
+  const usersTotalPages = Math.ceil(users.length / usersPerPage);
+  const usersStartRecord = users.length === 0 ? 0 : (usersPage - 1) * usersPerPage + 1;
+  const usersEndRecord = Math.min(usersPage * usersPerPage, users.length);
+
+  // Records per page dropdown component
+  const RecordsPerPageDropdown = ({ recordsPerPage, onRecordsPerPageChange }) => (
+    <div className="flex items-center justify-end mb-4">
+      <div className="flex items-center space-x-2">
+        <span className="text-sm text-gray-600">Show</span>
+        <Select value={recordsPerPage.toString()} onValueChange={onRecordsPerPageChange}>
+          <SelectTrigger className="w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="25">25</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-gray-600">records</span>
+      </div>
+    </div>
+  );
+
+  // Pagination controls component
+  const PaginationControls = ({ currentPage, totalPages, onPageChange, startRecord, endRecord, totalRecords }) => (
+    totalRecords > 0 && (
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-gray-600">
+          Showing {startRecord} to {endRecord} of {totalRecords} entries
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          
+          <div className="flex items-center space-x-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNumber;
+              if (totalPages <= 5) {
+                pageNumber = i + 1;
+              } else if (currentPage <= 3) {
+                pageNumber = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNumber = totalPages - 4 + i;
+              } else {
+                pageNumber = currentPage - 2 + i;
+              }
+              
+              return (
+                <Button
+                  key={pageNumber}
+                  variant={currentPage === pageNumber ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onPageChange(pageNumber)}
+                  className="w-8 h-8 p-0"
+                >
+                  {pageNumber}
+                </Button>
+              );
+            })}
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    )
+  );
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -319,6 +463,16 @@ export const RBACManagementPage = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
+              <PaginationControls
+                currentPage={permissionsPage}
+                totalPages={permissionsTotalPages}
+                onPageChange={handlePermissionsPageChange}
+                startRecord={permissionsStartRecord}
+                endRecord={permissionsEndRecord}
+                totalRecords={permissions.length}
+                recordsPerPage={permissionsPerPage}
+                onRecordsPerPageChange={handlePermissionsPerPageChange}
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -346,9 +500,9 @@ export const RBACManagementPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    permissions.map((permission, index) => (
+                    paginatedPermissions.map((permission, index) => (
                       <TableRow key={permission._id}>
-                        <TableCell className="text-center">{index + 1}</TableCell>
+                        <TableCell className="text-center">{(permissionsPage - 1) * permissionsPerPage + index + 1}</TableCell>
                         <TableCell className="text-center">
                           <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                             <Key className="w-3 h-3 mr-1" />
@@ -372,6 +526,16 @@ export const RBACManagementPage = () => {
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls
+                currentPage={permissionsPage}
+                totalPages={permissionsTotalPages}
+                onPageChange={handlePermissionsPageChange}
+                startRecord={permissionsStartRecord}
+                endRecord={permissionsEndRecord}
+                totalRecords={permissions.length}
+                recordsPerPage={permissionsPerPage}
+                onRecordsPerPageChange={handlePermissionsPerPageChange}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -447,6 +611,10 @@ export const RBACManagementPage = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
+              <RecordsPerPageDropdown
+                recordsPerPage={rolesPerPage}
+                onRecordsPerPageChange={handleRolesPerPageChange}
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -477,9 +645,9 @@ export const RBACManagementPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    roles.map((role, index) => (
+                    paginatedRoles.map((role, index) => (
                       <TableRow key={role._id}>
-                        <TableCell className="text-center">{index + 1}</TableCell>
+                        <TableCell className="text-center">{(rolesPage - 1) * rolesPerPage + index + 1}</TableCell>
                         <TableCell className="text-center">{role.name}</TableCell>
                         <TableCell className="text-center">{role.description}</TableCell>
                         <TableCell className="text-center">
@@ -519,6 +687,14 @@ export const RBACManagementPage = () => {
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls
+                currentPage={rolesPage}
+                totalPages={rolesTotalPages}
+                onPageChange={handleRolesPageChange}
+                startRecord={rolesStartRecord}
+                endRecord={rolesEndRecord}
+                totalRecords={roles.length}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -626,6 +802,10 @@ export const RBACManagementPage = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
+              <RecordsPerPageDropdown
+                recordsPerPage={usersPerPage}
+                onRecordsPerPageChange={handleUsersPerPageChange}
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -657,9 +837,9 @@ export const RBACManagementPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    users.map((user, index) => (
+                    paginatedUsers.map((user, index) => (
                       <TableRow key={user._id}>
-                        <TableCell className="text-center">{index + 1}</TableCell>
+                        <TableCell className="text-center">{(usersPage - 1) * usersPerPage + index + 1}</TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center space-x-3 justify-center">
                             <div className="relative">
@@ -713,6 +893,14 @@ export const RBACManagementPage = () => {
                   )}
                 </TableBody>
               </Table>
+              <PaginationControls
+                currentPage={usersPage}
+                totalPages={usersTotalPages}
+                onPageChange={handleUsersPageChange}
+                startRecord={usersStartRecord}
+                endRecord={usersEndRecord}
+                totalRecords={users.length}
+              />
             </CardContent>
           </Card>
         </TabsContent>

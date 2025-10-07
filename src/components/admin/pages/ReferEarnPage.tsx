@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Edit, Trash2, } from 'lucide-react';
+import { DeleteConfirmation } from '@/components/ui/delete-confirmation';
 
 
 interface ReferralRule {
@@ -77,14 +78,12 @@ const ReferEarnPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this rule?')) {
-      try {
-        await axios.delete(`/api/referral-rules/${id}`);
-        fetchRules();
-      } catch (error) {
-        console.error('Error deleting rule:', error);
-        setError('Failed to delete rule');
-      }
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/referral-rules/${id}`);
+      fetchRules();
+    } catch (error) {
+      console.error('Error deleting rule:', error);
+      setError('Failed to delete rule');
     }
   };
 
@@ -162,13 +161,14 @@ const ReferEarnPage: React.FC = () => {
                     >
                       <Edit size={18} />
                     </button>
-                    <button
-                      onClick={() => handleDelete(rule._id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="inline-block">
+                      <DeleteConfirmation
+                        onDelete={() => handleDelete(rule._id)}
+                        itemName="rule"
+                        buttonSize="sm"
+                        buttonVariant="outline"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))

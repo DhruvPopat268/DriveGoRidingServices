@@ -506,7 +506,7 @@ export const CategoryPage = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Index</TableHead>
+                <TableHead>#</TableHead>
                 <TableHead>Image</TableHead>
                 <TableHead>Category Name</TableHead>
                 <TableHead>Description</TableHead>

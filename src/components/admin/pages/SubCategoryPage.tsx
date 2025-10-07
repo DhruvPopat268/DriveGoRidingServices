@@ -3,10 +3,10 @@ import { Plus, Edit, Trash2, Axis3DIcon, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { DeleteConfirmation } from '@/components/ui/delete-confirmation';
 import axios from 'axios'
 
 interface Category {
@@ -176,7 +176,7 @@ export const SubCategoryPage = () => {
 
       } catch (error) {
         console.error('Failed to add subcategory:', error);
-        alert('Error adding subcategory. Please try again.');
+        console.error('Error adding subcategory. Please try again.');
       }
     }
   };
@@ -221,7 +221,7 @@ export const SubCategoryPage = () => {
 
       } catch (error) {
         console.error('Failed to update subcategory:', error);
-        alert('Error updating subcategory. Please try again.');
+        console.error('Error updating subcategory. Please try again.');
       }
     }
   };
@@ -249,7 +249,7 @@ export const SubCategoryPage = () => {
       }
     } catch (err: any) {
       console.error('Error deleting subcategory:', err.response?.data || err.message);
-      alert('Error deleting subcategory. Please try again.');
+      console.error('Error deleting subcategory. Please try again.');
     }
   };
 
@@ -412,7 +412,7 @@ export const SubCategoryPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order</TableHead>
+              <TableHead>#</TableHead>
               <TableHead>Image</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Sub Category Name</TableHead>
@@ -465,27 +465,11 @@ export const SubCategoryPage = () => {
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete "{subCategory.name}"? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(subCategory)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <DeleteConfirmation
+                        onDelete={() => handleDelete(subCategory)}
+                        itemName={subCategory.name}
+                        buttonVariant="outline"
+                      />
                     </div>
                   </TableCell>
                 </TableRow>
