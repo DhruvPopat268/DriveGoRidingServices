@@ -43,7 +43,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       receiverDetails,   // ✅ new
     } = req.body;
 
-    if (!categoryId || !totalAmount || !paymentType) {
+    if (!categoryId || !totalAmount || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
@@ -148,7 +148,6 @@ router.post("/book", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error", error });
   }
 });
-
 
 // all rides
 router.post("/my-rides", authMiddleware, async (req, res) => {
