@@ -3,6 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const http = require('http');
+const socketIo = require('socket.io');
 const categoryRoutes = require('./routes/categoryRoutes');
 const subCategoryRoutes = require('./routes/subCategoryRoutes');
 const subSubCategoryRoutes = require('./routes/subSubCategoryRoutes');
@@ -30,6 +32,21 @@ const registrationFeeRoutes = require('./DriverRoutes/RegistrationFeeRoutes');
 const subscriptionPlanRoutes = require('./DriverRoutes/SubscriptionPlanRoutes');
 
 const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    // origin: [
+    //   "http://localhost:8081",
+    //   "http://localhost:8080",
+    //   "https://journey-cost-estimator.vercel.app",
+    //   "https://drive-go-riding-services.vercel.app"
+    // ],
+    origin: "*",
+    credentials: true
+  }
+});
+
+app.set('io', io);
 
 // Middleware
 app.use(cors({
@@ -96,8 +113,23 @@ app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Socket connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  // Join driver room when driver connects
+  socket.on('join-driver-room', () => {
+    socket.join('drivers');
+    console.log('Driver joined room:', socket.id);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
 });
 
 module.exports = app;

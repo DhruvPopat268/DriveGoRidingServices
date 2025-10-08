@@ -3,6 +3,7 @@ const Ride = require('../models/Ride'); // Ensure this path is correct
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const router = express.Router();
 const Rider = require("../models/Rider");
+const Driver = require("../DriverModel/DriverModel");
 const axios = require("axios");
 const referralRules = require("../models/ReferralRule");
 
@@ -96,6 +97,14 @@ router.post("/book", authMiddleware, async (req, res) => {
     });
 
     await newRide.save();
+
+    // Emit socket event to drivers
+    // const io = req.app.get('io');
+    // if (io) {
+    //   io.to('drivers').emit('new-ride', {
+    //     newRide
+    //   });
+    // }
 
     // ✅ Referral earnings logic unchanged
     const rider = await Rider.findById(riderId);
