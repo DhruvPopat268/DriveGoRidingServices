@@ -121,8 +121,8 @@ router.post("/book", authMiddleware, async (req, res) => {
       console.log('🚗 New ride emitted to drivers room:', newRide._id);
 
       // Also emit to all connected clients as fallback
-      io.emit('new-ride', rideData);
-      console.log('📡 New ride emitted to all clients:', newRide._id);
+      // io.emit('new-ride', rideData);
+      // console.log('📡 New ride emitted to all clients:', newRide._id);
 
       // Log connected clients count
       console.log('👥 Total connected clients:', io.engine.clientsCount);
