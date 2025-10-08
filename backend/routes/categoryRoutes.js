@@ -141,4 +141,15 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+router.get("/all", async (req, res) => {
+  try {
+    const categories = await Category.find().sort({ createdAt: -1 });
+    res.status(200).json({success:true,data:categories});
+  } catch (error) {
+    res.status(500).json({ success:false,message: "Error fetching categories", error: error.message });
+  }
+});
+
 module.exports = router;

@@ -138,7 +138,7 @@ router.post("/by-category", driverAuthMiddleware, async (req, res) => {
     const subcategories = await SubCategory.find({ categoryId }).populate("categoryId", "name");
     res.status(200).json({
       success: true,
-      subcategories
+      data:subcategories
     }
     );
   } catch (err) {

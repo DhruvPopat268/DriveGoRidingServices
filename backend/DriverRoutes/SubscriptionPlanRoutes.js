@@ -6,17 +6,9 @@ const SubscriptionPlan = require('../DriverModel/SubscriptionPlan');
 router.get('/', async (req, res) => {
   try {
     const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
-    res.json({
-      success: true,
-      data: {
-        plans
-      }
-    });
+    res.json(plans);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -91,6 +83,26 @@ router.delete('/:id', async (req, res) => {
     res.json({ success: true, message: 'Subscription plan deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// Get all subscription plans
+router.get('/all', async (req, res) => {
+  try {
+    const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      data: {
+        plans
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
