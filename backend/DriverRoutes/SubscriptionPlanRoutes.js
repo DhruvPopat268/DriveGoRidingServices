@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const SubscriptionPlan = require('../DriverModel/SubscriptionPlan');
+const driverAuthMiddleware = require('../middleware/driverAuthMiddleware')
+
 
 // Get all subscription plans
 router.get('/', async (req, res) => {
@@ -89,7 +91,7 @@ router.delete('/:id', async (req, res) => {
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Get all subscription plans
-router.get('/all', async (req, res) => {
+router.get('/all',driverAuthMiddleware, async (req, res) => {
   try {
     const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
 
