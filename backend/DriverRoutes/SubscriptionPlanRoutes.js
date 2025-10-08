@@ -6,9 +6,17 @@ const SubscriptionPlan = require('../DriverModel/SubscriptionPlan');
 router.get('/', async (req, res) => {
   try {
     const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
-    res.json(plans);
+    res.json({
+      success: true,
+      data: {
+        plans
+      }
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 

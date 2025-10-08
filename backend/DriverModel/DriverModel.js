@@ -30,10 +30,10 @@ const driverSchema = new mongoose.Schema(
 
     drivingDetails: {
       category:{type:String},
-      subCategory:{type:String},
+      subCategory:[{type:String}],
       drivingExperienceYears: { type: Number },
       licenseType: { type: String, enum: ["LMV", "HMV", "Commercial", "Others"] },
-      vehicleType: [{ type: String, enum: ["Manual", "Automatic"] }],
+      vehicleType: [{ type: String, enum: ["Manual", "Automatic","Electric"] }],
       canDrive: [{ type: String }], // Hatchback, Sedan, SUV, Luxury Cars
       preferredWork: { type: String, enum: ["Full-Time", "Part-Time", "Guest/On-Call"] }
     },

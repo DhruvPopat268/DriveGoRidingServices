@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const SubCategory = require("../models/SubCategory");
 const Category = require("../models/Category");
 const { ObjectId } = mongoose.Types;
+const driverAuthMiddleware = require('../middleware/driverAuthMiddleware')
 
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
@@ -18,8 +19,6 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
-// ================= ROUTES ================= //
 
 // ✅ Get all subcategories
 router.get("/", async (req, res) => {
@@ -127,6 +126,26 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Deleted successfully" });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// ✅ Get subcategories by categoryId
+router.post("/by-category", driverAuthMiddleware, async (req, res) => {
+  try {
+    const { categoryId } = req.body;
+    const subcategories = await SubCategory.find({ categoryId }).populate("categoryId", "name");
+    res.status(200).json({
+      success: true,
+      subcategories
+    }
+    );
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 });
 
