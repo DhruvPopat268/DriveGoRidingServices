@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const SubscriptionPlan = require('../DriverModel/SubscriptionPlan');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware')
-
+const registration = require('../DriverModel/RegistrationFee')
 
 // Get all subscription plans
 router.get('/', async (req, res) => {
@@ -94,9 +94,12 @@ router.delete('/:id', async (req, res) => {
 router.get('/all',driverAuthMiddleware, async (req, res) => {
   try {
     const plans = await SubscriptionPlan.find();
+    const registrationFee = await registration.find({ status: true });
+    const fee = registrationFee[0].fee
 
     res.json({
       success: true,
+      registrationFee: fee,
       data: plans, // directly return array instead of wrapping in { plans }
     });
   } catch (error) {
@@ -106,6 +109,5 @@ router.get('/all',driverAuthMiddleware, async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;
