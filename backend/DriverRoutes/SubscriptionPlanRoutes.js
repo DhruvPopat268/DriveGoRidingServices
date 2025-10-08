@@ -92,18 +92,18 @@ router.delete('/:id', async (req, res) => {
 router.get('/all', async (req, res) => {
   try {
     const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
+
     res.json({
       success: true,
-      data: {
-        plans
-      }
+      data: plans, // directly return array instead of wrapping in { plans }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 });
+
 
 module.exports = router;
