@@ -295,9 +295,9 @@ router.post("/confirm", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
-    // Find and update the ride
-    const updatedRide = await Ride.findByIdAndUpdate(
-      rideId,
+    // Find and update the ride only if status is not CONFIRMED
+    const updatedRide = await Ride.findOneAndUpdate(
+      { _id: rideId, status: { $ne: "CONFIRMED" } }, // condition: status != CONFIRMED
       {
         status: "CONFIRMED",
         driverId: driverId
@@ -306,7 +306,7 @@ router.post("/confirm", driverAuthMiddleware, async (req, res) => {
     );
 
     if (!updatedRide) {
-      return res.status(404).json({ message: "Ride not found" });
+      return res.status(400).json({ message: "Ride is already confirmed or not found" });
     }
 
     console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
