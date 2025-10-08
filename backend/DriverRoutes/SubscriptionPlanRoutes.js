@@ -93,7 +93,7 @@ router.delete('/:id', async (req, res) => {
 // Get all subscription plans
 router.get('/all',driverAuthMiddleware, async (req, res) => {
   try {
-    const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
+    const plans = await SubscriptionPlan.find();
 
     res.json({
       success: true,
