@@ -98,13 +98,36 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     await newRide.save();
 
+    console.log('📱 New ride booked:', newRide._id);
+    
     // Emit socket event to drivers
-    // const io = req.app.get('io');
-    // if (io) {
-    //   io.to('drivers').emit('new-ride', {
-    //     newRide
-    //   });
-    // }
+    const io = req.app.get('io');
+    if (io) {
+      const rideData = {
+        rideId: newRide._id,
+        categoryName: categoryName,
+        fromLocation: fromLocationData,
+        toLocation: toLocationData,
+        selectedDate: selectedDate,
+        selectedTime: selectedTime,
+        totalPayable: totalPayable,
+        status: 'BOOKED'
+      };
+      
+      // Emit to drivers room
+      io.to('drivers').emit('new-ride', rideData);
+      console.log('🚗 New ride emitted to drivers room:', newRide._id);
+      
+      // Also emit to all connected clients as fallback
+      io.emit('new-ride', rideData);
+      console.log('📡 New ride emitted to all clients:', newRide._id);
+      
+      // Log connected clients count
+      console.log('👥 Total connected clients:', io.engine.clientsCount);
+      console.log('🚛 Drivers in room:', io.sockets.adapter.rooms.get('drivers')?.size || 0);
+    } else {
+      console.log('❌ Socket.io not available');
+    }
 
     // ✅ Referral earnings logic unchanged
     const rider = await Rider.findById(riderId);

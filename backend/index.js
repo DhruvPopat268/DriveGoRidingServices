@@ -119,16 +119,25 @@ server.listen(PORT, () => {
 
 // Socket connection handling
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('🔗 Client connected:', socket.id);
+  console.log('📊 Total clients:', io.engine.clientsCount);
   
   // Join driver room when driver connects
   socket.on('join-driver-room', () => {
     socket.join('drivers');
-    console.log('Driver joined room:', socket.id);
+    console.log('🚛 Driver joined room:', socket.id);
+    console.log('🚛 Drivers in room:', io.sockets.adapter.rooms.get('drivers')?.size || 0);
+  });
+  
+  // Test event for debugging
+  socket.on('test-connection', () => {
+    console.log('🧪 Test connection from:', socket.id);
+    socket.emit('test-response', { message: 'Connection working!', socketId: socket.id });
   });
   
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    console.log('🔌 Client disconnected:', socket.id);
+    console.log('📊 Remaining clients:', io.engine.clientsCount);
   });
 });
 
