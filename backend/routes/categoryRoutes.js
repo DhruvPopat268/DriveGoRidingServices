@@ -4,6 +4,8 @@ const router = express.Router();
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const Category = require('../models/Category');
+const driverAuthMiddleware = require('../middleware/driverAuthMiddleware')
+
 
 // Multer for file upload
 const storage = multer.memoryStorage();
@@ -143,7 +145,7 @@ router.delete('/:id', async (req, res) => {
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-router.get("/all", async (req, res) => {
+router.get("/all",driverAuthMiddleware, async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
     res.status(200).json({success:true,data:categories});
