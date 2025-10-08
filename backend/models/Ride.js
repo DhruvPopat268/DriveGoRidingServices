@@ -23,6 +23,7 @@ const rideSchema = new mongoose.Schema(
   {
     riderId: { type: mongoose.Schema.Types.ObjectId, ref: "Rider", required: true },
     riderMobile: { type: String, required: true },
+    driverId: { type: mongoose.Schema.Types.ObjectId, ref: "Driver" },
 
     rideInfo: {
       categoryId: { type: String, required: true },

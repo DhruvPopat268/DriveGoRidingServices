@@ -6,6 +6,7 @@ const Rider = require("../models/Rider");
 const Driver = require("../DriverModel/DriverModel");
 const axios = require("axios");
 const referralRules = require("../models/ReferralRule");
+const driverAuthMiddleware = require("../middleware/driverAuthMiddleware");
 
 // Save new ride booking
 router.get('/', async (req, res) => {
@@ -99,7 +100,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     await newRide.save();
 
     console.log('📱 New ride booked:', newRide._id);
-    
+
     // Emit socket event to drivers
     const io = req.app.get('io');
     if (io) {
@@ -113,15 +114,16 @@ router.post("/book", authMiddleware, async (req, res) => {
         totalPayable: totalPayable,
         status: 'BOOKED'
       };
-      
+      console.log("ridedata",rideData)
+
       // Emit to drivers room
       io.to('drivers').emit('new-ride', rideData);
       console.log('🚗 New ride emitted to drivers room:', newRide._id);
-      
+
       // Also emit to all connected clients as fallback
       io.emit('new-ride', rideData);
       console.log('📡 New ride emitted to all clients:', newRide._id);
-      
+
       // Log connected clients count
       console.log('👥 Total connected clients:', io.engine.clientsCount);
       console.log('🚛 Drivers in room:', io.sockets.adapter.rooms.get('drivers')?.size || 0);
@@ -277,6 +279,54 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error("Error cancelling booking:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// Confirm ride by driver
+router.post("/confirm", driverAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId } = req.body;
+    const driverId = req.driver?.driverId;
+
+    console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
+
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    // Find and update the ride
+    const updatedRide = await Ride.findByIdAndUpdate(
+      rideId,
+      {
+        status: "CONFIRMED",
+        driverId: driverId
+      },
+      { new: true }
+    );
+
+    if (!updatedRide) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
+
+    // Emit socket event to remove ride from all drivers
+    const io = req.app.get('io');
+    if (io) {
+      io.to('drivers').emit('ride-assigned', {
+        rideId: rideId,
+        driverId: driverId
+      });
+      console.log('🚗 Ride assigned event emitted:', rideId);
+    }
+
+    res.json({
+      message: "Ride confirmed successfully",
+      ride: updatedRide,
+    });
+  } catch (error) {
+    console.error("Error confirming ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });

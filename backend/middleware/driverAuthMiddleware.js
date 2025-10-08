@@ -28,7 +28,8 @@ const authMiddleware = async (req, res, next) => {
     }
 
     // ✅ Attach user info to request object
-    req.driver = decoded; // contains { riderId, mobile }
+    req.driver = decoded;
+    console.log(req.driver) // contains { riderId, mobile }
     
     next();
   } catch (error) {
