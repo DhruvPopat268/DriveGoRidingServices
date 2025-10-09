@@ -394,4 +394,143 @@ router.post("/driver/ride/id", driverAuthMiddleware, async (req, res) => {
   }
 });
 
+router.post("/rides/confirmed", driverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID is missing" });
+    }
+
+    // Find all rides for this driver that are CONFIRMED
+    const confirmedRides = await Ride.find({
+      driverId,
+      status: "CONFIRMED"
+    }).sort({ createdAt: -1 }); // latest first (optional)
+
+    const count = confirmedRides.length;
+
+    if (count === 0) {
+      return res.status(200).json({ message: "No confirmed rides found" });
+    }
+
+    res.json({
+      success: true,
+      count,
+      data: confirmedRides
+    });
+  } catch (error) {
+    console.error("Error fetching confirmed rides:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
+router.post("/rides/ongoing", driverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID is missing" });
+    }
+
+    // Find all rides for this driver that are CONFIRMED
+    const confirmedRides = await Ride.find({
+      driverId,
+      status: "ONGOING"
+    }).sort({ createdAt: -1 }); // latest first (optional)
+
+    const count = confirmedRides.length;
+
+    if (count === 0) {
+      return res.status(200).json({ message: "No ongoing rides found" });
+    }
+
+    res.json({
+      success: true,
+      count,
+      data: confirmedRides
+    });
+  } catch (error) {
+    console.error("Error fetching confirmed rides:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
+router.post("/rides/completed", driverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID is missing" });
+    }
+
+    // Find all rides for this driver that are CONFIRMED
+    const confirmedRides = await Ride.find({
+      driverId,
+      status: "COMPLETED"
+    }).sort({ createdAt: -1 }); // latest first (optional)
+
+    const count = confirmedRides.length;
+
+    if (count === 0) {
+      return res.status(200).json({ message: "No completed rides found" });
+    }
+
+    res.json({
+      success: true,
+      count,
+      data: confirmedRides
+    });
+  } catch (error) {
+    console.error("Error fetching confirmed rides:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
+router.post("/rides/cancelled", driverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID is missing" });
+    }
+
+    // Find all rides for this driver that are CONFIRMED
+    const confirmedRides = await Ride.find({
+      driverId,
+      status: "CANCELLED"
+    }).sort({ createdAt: -1 }); // latest first (optional)
+
+    const count = confirmedRides.length;
+
+    if (count === 0) {
+      return res.status(200).json({ message: "No cancelled rides found" });
+    }
+
+    res.json({
+      success: true,
+      count,
+      data: confirmedRides
+    });
+  } catch (error) {
+    console.error("Error fetching confirmed rides:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
 module.exports = router;
