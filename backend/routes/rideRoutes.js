@@ -59,9 +59,15 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     const { riderId, mobile } = req.rider;
 
+    const riderData = await Rider.findOne({mobile})
+    const riderName = riderData.name
+
     const newRide = new Ride({
       riderId,
-      riderMobile: mobile,
+      riderInfo: {
+        riderName,
+        riderMobile: mobile
+      },
       rideInfo: {
         categoryId,
         subcategoryId,
@@ -310,12 +316,18 @@ router.get("/driver/info", driverAuthMiddleware, async (req, res) => {
 });
 
 // Confirm ride by driver
-router.post("/confirm", driverAuthMiddleware, async (req, res) => {
+router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
   try {
     const { rideId } = req.body;
     const driverId = req.driver?.driverId;
+    const driverMobile = req.driver?.mobile;
 
     console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
+
+    const driverInfo = await Driver.findById(driverId);
+
+    console.log(driverInfo)
+    const driverName = driverInfo.personalInformation?.fullName
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -326,7 +338,11 @@ router.post("/confirm", driverAuthMiddleware, async (req, res) => {
       { _id: rideId, status: { $ne: "CONFIRMED" } }, // condition: status != CONFIRMED
       {
         status: "CONFIRMED",
-        driverId: driverId
+        driverId: driverId,
+        driverInfo: {
+          driverName,
+          driverMobile
+        }
       },
       { new: true }
     );
