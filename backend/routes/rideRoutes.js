@@ -394,7 +394,7 @@ router.post("/driver/ride/id", driverAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post("/rides/confirmed", driverAuthMiddleware, async (req, res) => {
+router.get("/rides/confirmed", driverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
 
@@ -429,7 +429,7 @@ router.post("/rides/confirmed", driverAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post("/rides/ongoing", driverAuthMiddleware, async (req, res) => {
+router.get("/rides/ongoing", driverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
 
@@ -464,7 +464,7 @@ router.post("/rides/ongoing", driverAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post("/rides/completed", driverAuthMiddleware, async (req, res) => {
+router.get("/rides/completed", driverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
 
@@ -499,7 +499,7 @@ router.post("/rides/completed", driverAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post("/rides/cancelled", driverAuthMiddleware, async (req, res) => {
+router.get("/rides/cancelled", driverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
 
