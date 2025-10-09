@@ -101,9 +101,11 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     console.log('📱 New ride booked:', newRide._id);
 
-    // Emit socket event to drivers
+    // Emit socket event to eligible drivers only
     const io = req.app.get('io');
-    if (io) {
+    const onlineDrivers = req.app.get('onlineDrivers');
+    
+    if (io && onlineDrivers) {
       const rideData = {
         rideId: newRide._id,
         categoryName: categoryName,
@@ -114,21 +116,24 @@ router.post("/book", authMiddleware, async (req, res) => {
         totalPayable: totalPayable,
         status: 'BOOKED'
       };
-      console.log("ridedata",rideData)
 
-      // Emit to drivers room
-      io.to('drivers').emit('new-ride', rideData);
-      console.log('🚗 New ride emitted to drivers room:', newRide._id);
+      // Filter drivers who are NOT in EXTENDED status
+      const eligibleDrivers = Object.entries(onlineDrivers)
+        .filter(([driverId, driverData]) => driverData.status !== 'EXTENDED')
+        .map(([driverId, driverData]) => ({ driverId, ...driverData }));
 
-      // Also emit to all connected clients as fallback
-      // io.emit('new-ride', rideData);
-      // console.log('📡 New ride emitted to all clients:', newRide._id);
+      console.log(`🎯 Found ${eligibleDrivers.length} eligible drivers (not EXTENDED)`);
 
-      // Log connected clients count
-      console.log('👥 Total connected clients:', io.engine.clientsCount);
-      console.log('🚛 Drivers in room:', io.sockets.adapter.rooms.get('drivers')?.size || 0);
+      // Send to each eligible driver
+      let sentCount = 0;
+      eligibleDrivers.forEach(({ driverId, socketId }) => {
+        io.to(socketId).emit('new-ride', rideData);
+        sentCount++;
+      });
+
+      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} drivers`);
     } else {
-      console.log('❌ Socket.io not available');
+      console.log('❌ Socket.io or onlineDrivers not available');
     }
 
     // ✅ Referral earnings logic unchanged
@@ -280,6 +285,26 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Error cancelling booking:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// Get driver info
+router.get("/driver/info", driverAuthMiddleware, async (req, res) => {
+  try {
+    const { driverId } = req.driver;
+
+    const driver = await Driver.findById(driverId);
+
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    res.json({ success:true , data: driver });
+  } catch (error) {
+    console.error("Get driver info error:", error);
+    res.status(500).json({ success:false,message: "Server error", error });
   }
 });
 

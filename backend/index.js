@@ -111,6 +111,9 @@ app.use('/api/auth', require('./routes/authRoutes'));
 //Driver Mobile Application Routes
 app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
 
+// Global object to store online drivers
+const onlineDrivers = {};
+
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
@@ -122,11 +125,52 @@ io.on('connection', (socket) => {
   console.log('🔗 Client connected:', socket.id);
   console.log('📊 Total clients:', io.engine.clientsCount);
   
-  // Join driver room when driver connects
-  socket.on('join-driver-room', () => {
-    socket.join('drivers');
-    console.log('🚛 Driver joined room:', socket.id);
-    console.log('🚛 Drivers in room:', io.sockets.adapter.rooms.get('drivers')?.size || 0);
+  // Register driver when they connect
+  socket.on('register-driver', async (data) => {
+    const { driverId } = data;
+    if (driverId) {
+      onlineDrivers[driverId] = {
+        socketId: socket.id,
+        status: 'WAITING' // default status
+      };
+      socket.join('drivers');
+      console.log(`🚗 Driver registered: ${driverId} with status WAITING`);
+      console.log(`📊 Online drivers count: ${Object.keys(onlineDrivers).length}`);
+      
+      // Send all available BOOKED rides to newly connected driver
+      try {
+        const Ride = require('./models/Ride');
+        const availableRides = await Ride.find({ status: 'BOOKED' }).sort({ createdAt: -1 });
+        
+        if (availableRides.length > 0) {
+          availableRides.forEach(ride => {
+            const rideData = {
+              rideId: ride._id,
+              categoryName: ride.rideInfo.categoryName,
+              fromLocation: ride.rideInfo.fromLocation,
+              toLocation: ride.rideInfo.toLocation,
+              selectedDate: ride.rideInfo.selectedDate,
+              selectedTime: ride.rideInfo.selectedTime,
+              totalPayable: ride.totalPayable,
+              status: 'BOOKED'
+            };
+            socket.emit('new-ride', rideData);
+          });
+          console.log(`📤 Sent ${availableRides.length} available rides to new driver ${driverId}`);
+        }
+      } catch (error) {
+        console.error('Error sending available rides to new driver:', error);
+      }
+    }
+  });
+  
+  // Update driver status
+  socket.on('update-driver-status', (data) => {
+    const { driverId, status } = data;
+    if (driverId && onlineDrivers[driverId]) {
+      onlineDrivers[driverId].status = status;
+      console.log(`🔄 Driver ${driverId} status updated to: ${status}`);
+    }
   });
   
   // Test event for debugging
@@ -136,9 +180,21 @@ io.on('connection', (socket) => {
   });
   
   socket.on('disconnect', () => {
+    // Remove driver from onlineDrivers when they disconnect
+    for (const [driverId, driverData] of Object.entries(onlineDrivers)) {
+      if (driverData.socketId === socket.id) {
+        delete onlineDrivers[driverId];
+        console.log(`🚗 Driver ${driverId} removed from online drivers`);
+        break;
+      }
+    }
     console.log('🔌 Client disconnected:', socket.id);
     console.log('📊 Remaining clients:', io.engine.clientsCount);
+    console.log(`📊 Online drivers count: ${Object.keys(onlineDrivers).length}`);
   });
 });
+
+// Make onlineDrivers accessible globally
+app.set('onlineDrivers', onlineDrivers);
 
 module.exports = app;
