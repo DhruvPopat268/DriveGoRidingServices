@@ -124,7 +124,7 @@ server.listen(PORT, () => {
 io.on('connection', (socket) => {
   console.log('🔗 Client connected:', socket.id);
   console.log('📊 Total clients:', io.engine.clientsCount);
-  
+
   // Register driver when they connect
   socket.on('register-driver', async (data) => {
     const { driverId } = data;

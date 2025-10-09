@@ -83,6 +83,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedUsage,
         transmissionType,
         selectedDates: selectedDates || [],
+        driverCharges: selectedCategoryData.driverCharges || 0,
         insuranceCharges: selectedCategoryData.insuranceCharges || 0,
         cancellationCharges: selectedCategoryData.cancellationCharges || 0,
         discount: selectedCategoryData.discountApplied || 0,
@@ -353,6 +354,27 @@ router.post("/confirm", driverAuthMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Error confirming ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+router.post("/driver/ride/id", driverAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId } = req.body;
+
+    if (!rideId) {
+      return res.status(400).json({ message: "ride ID is required" });
+    }
+
+    const ride = await Ride.findById(rideId);
+
+    if (!ride) {
+      return res.status(404).json({ message: "ride not found" });
+    }
+
+    res.json({ success:true, data:ride });
+  } catch (error) {
+    console.error("Error fetching booking:", error);
+    res.status(500).json({ success:false,message: "Server error", error: error.message });
   }
 });
 
