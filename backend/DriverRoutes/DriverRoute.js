@@ -178,6 +178,8 @@ router.post("/verify-otp", async (req, res) => {
     await otpSession.save();
 
     const driver = await Driver.findOne({ mobile });
+    const driverId = driver._id.toString()
+
 
     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
@@ -202,6 +204,7 @@ router.post("/verify-otp", async (req, res) => {
     // Prepare response
     const response = {
       success: true,
+      driverId,
       token,
       isNew,
       status: driver.status

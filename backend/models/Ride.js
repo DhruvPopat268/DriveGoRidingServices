@@ -14,7 +14,7 @@ const locationSchema = new mongoose.Schema(
 
 const personSchema = new mongoose.Schema(
   {
-    name: { type: String},
+    name: { type: String },
     phone: { type: String },
   },
   { _id: false }
@@ -53,7 +53,7 @@ const rideSchema = new mongoose.Schema(
       selectedUsage: { type: String },
       transmissionType: { type: String },
       selectedDates: [{ type: String }],
-      driverCharges:{type:Number, default:0},
+      driverCharges: { type: Number, default: 0 },
       insuranceCharges: { type: Number, default: 0 },
       cancellationCharges: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },
