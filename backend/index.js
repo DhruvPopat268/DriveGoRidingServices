@@ -54,7 +54,6 @@ app.use(cors({
     "http://localhost:8081",
     "http://localhost:8080",
     "https://journey-cost-estimator.vercel.app",
-    "https://drive-go-riding-services.vercel.app/",
     "https://drive-go-riding-services.vercel.app"
   ],
   credentials: true
@@ -136,12 +135,12 @@ io.on('connection', (socket) => {
       socket.join('drivers');
       console.log(`🚗 Driver registered: ${driverId}`);
       console.log(`📊 Online drivers count: ${Object.keys(onlineDrivers).length}`);
-      
+
       // Send all available BOOKED rides to newly connected driver
       try {
         const Ride = require('./models/Ride');
         const availableRides = await Ride.find({ status: 'BOOKED' }).sort({ createdAt: -1 });
-        
+
         if (availableRides.length > 0) {
           availableRides.forEach(ride => {
             const rideData = {
@@ -163,13 +162,13 @@ io.on('connection', (socket) => {
       }
     }
   });
-  
+
   // Test event for debugging
   socket.on('test-connection', () => {
     console.log('🧪 Test connection from:', socket.id);
     socket.emit('test-response', { message: 'Connection working!', socketId: socket.id });
   });
-  
+
   socket.on('disconnect', () => {
     // Remove driver from onlineDrivers when they disconnect
     for (const [driverId, driverData] of Object.entries(onlineDrivers)) {
