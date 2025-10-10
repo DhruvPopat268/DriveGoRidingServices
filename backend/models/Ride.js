@@ -37,6 +37,8 @@ const rideSchema = new mongoose.Schema(
       subcategoryId: { type: String },
       categoryName: { type: String },
       subcategoryName: { type: String },
+      subSubcategoryName: { type: String },
+      subSubcategoryId: { type: String },
       carType: { type: String },
       fromLocation: locationSchema,
       toLocation: locationSchema,

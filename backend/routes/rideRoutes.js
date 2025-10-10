@@ -27,8 +27,10 @@ router.post("/book", authMiddleware, async (req, res) => {
     const {
       categoryId,
       subcategoryId,
+      subSubcategoryId,
       categoryName,
       subcategoryName,
+      subSubcategoryName,
       carType,
       fromLocationData,
       toLocationData,
@@ -75,8 +77,10 @@ router.post("/book", authMiddleware, async (req, res) => {
       rideInfo: {
         categoryId,
         subcategoryId,
+        subSubcategoryId,
         categoryName,
         subcategoryName,
+        subSubcategoryName,
         carType,
         fromLocation: fromLocationData,
         toLocation: toLocationData && toLocationData !== "" ? toLocationData : undefined,
@@ -120,6 +124,11 @@ router.post("/book", authMiddleware, async (req, res) => {
       const rideData = {
         rideId: newRide._id,
         categoryName: categoryName,
+        subcategoryName: subcategoryName,
+        subSubcategoryName: subSubcategoryName,
+        carType: carType,
+        transmissionType: transmissionType,
+        selectedUsage: selectedUsage,
         fromLocation: fromLocationData,
         toLocation: toLocationData,
         selectedDate: selectedDate,
@@ -831,36 +840,38 @@ router.post("/count-extra-charges", async (req, res) => {
     const extraKmCharges = extraKm * extraChargePerKm;
     const extraMinutesCharges = extraMinutes * extraChargePerMinute;
 
-    includeInsurance: ride.rideInfo.includeInsurance,
-      driverCharges = ride.rideInfo.driverCharges + extraKmCharges + extraMinutesCharges,
+    const discount = ride.rideInfo.discount
+
+    driverCharges = ride.rideInfo.driverCharges + extraKmCharges + extraMinutesCharges,
       gstCharges = ride.rideInfo.gstCharges,
       adminCharges = ride.rideInfo.adminCharges,
-      subtotal = driverCharges * adminCharges / 100
-      insuranceCharges = ride.rideInfo.insuranceCharges,
-      cancellationCharges = ride.rideInfo.cancellationCharges,
-      discount = ride.rideInfo.discount,
+      adjustedAdminCharges = driverCharges * adminCharges / 100 - discount
+    subtotal = driverCharges + adjustedAdminCharges
+    gstCharges = subtotal * gst / 100
 
-      totalPayable,
+    cancellationCharges = ride.rideInfo.cancellationCharges,
 
-      res.json({
-        success: true,
-        data: {
-          rideId,
-          categoryId,
-          categoryName,
-          subcategoryId,
-          subcategoryName,
-          extraKmCharges,
-          extraMinutesCharges,
+      totalPayable = subtotal + gstCharges
 
-          extraMinutes,
-          extraKm,
-          extraChargePerKm,
-          extraChargePerMinute,
-          extraChargesFromAdmin,
-          gst
-        }
-      });
+    res.json({
+      success: true,
+      data: {
+        rideId,
+        categoryId,
+        categoryName,
+        subcategoryId,
+        subcategoryName,
+        extraKmCharges,
+        extraMinutesCharges,
+
+        extraMinutes,
+        extraKm,
+        extraChargePerKm,
+        extraChargePerMinute,
+        extraChargesFromAdmin,
+        gst
+      }
+    });
 
   } catch (error) {
     console.error("Error counting extra charges:", error);
