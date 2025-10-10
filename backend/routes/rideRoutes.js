@@ -504,14 +504,18 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
 
-    const driverInfo = await Driver.findById(driverId);
-
-    console.log(driverInfo)
-    const driverName = driverInfo.personalInformation?.fullName
-
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
     }
+
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const driverName = driverInfo.personalInformation?.fullName
+
+    console.log('🚗 Driver name:', driverName)
 
     // Find and update the ride only if status is BOOKED
     const updatedRide = await Ride.findOneAndUpdate(
@@ -530,6 +534,9 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
     if (!updatedRide) {
       return res.status(400).json({ message: "Ride is already confirmed or not found" });
     }
+
+    // Update driver rideStatus to CONFIRMED
+    await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
 
     console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
 
@@ -562,18 +569,20 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 
     console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
 
-    const driverInfo = await Driver.findById(driverId);
-
-    console.log(driverInfo)
-    const driverName = driverInfo.personalInformation?.fullName
-
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
-    // Find and update the ride only if status is BOOKED
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const driverName = driverInfo.personalInformation?.fullName
+
+    // Find and update the ride only if status is CONFIRMED
     const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: "CONFIRMED" }, // only if ride is BOOKED
+      { _id: rideId, status: "CONFIRMED" }, // only if ride is CONFIRMED
       {
         status: "ONGOING",
         driverId: driverId,
@@ -589,7 +598,10 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride is already ongoing or not found" });
     }
 
-    console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
+    // Update driver rideStatus to ONGOING
+    await Driver.findByIdAndUpdate(driverId, { rideStatus: "ONGOING" });
+
+    console.log('✅ Ride ongoing by driver:', driverId, 'for ride:', rideId);
 
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
@@ -619,18 +631,20 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
-
-    const driverInfo = await Driver.findById(driverId);
-
-    console.log(driverInfo)
-    const driverName = driverInfo.personalInformation?.fullName
+    console.log('🚗 Driver cancelling ride:', driverId, 'for ride:', rideId);
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
-    // Find and update the ride only if status is BOOKED
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const driverName = driverInfo.personalInformation?.fullName
+
+    // Find and update the ride only if status is BOOKED or CONFIRMED
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: { $in: ["BOOKED", "CONFIRMED"] } }, // ✅ only if ride is BOOKED or CONFIRMED
       {
@@ -649,7 +663,10 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride is already cancelled or not found" });
     }
 
-    console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
+    // Update driver rideStatus to WAITING
+    await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
+
+    console.log('✅ Ride cancelled by driver:', driverId, 'for ride:', rideId);
 
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
@@ -666,7 +683,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       ride: updatedRide,
     });
   } catch (error) {
-    console.error("Error confirming ride:", error);
+    console.error("Error cancelling ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -678,20 +695,22 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
-
-    const driverInfo = await Driver.findById(driverId);
-
-    console.log(driverInfo)
-    const driverName = driverInfo.personalInformation?.fullName
+    console.log('🚗 Driver extending ride:', driverId, 'for ride:', rideId);
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
-    // Find and update the ride only if status is BOOKED
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const driverName = driverInfo.personalInformation?.fullName
+
+    // Find and update the ride only if status is ONGOING
     const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: "ONGOING" }, // only if ride is BOOKED
+      { _id: rideId, status: "ONGOING" }, // only if ride is ONGOING
       {
         status: "EXTENDED",
         driverId: driverId,
@@ -707,7 +726,10 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride is already extended or not found" });
     }
 
-    console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
+    // Update driver rideStatus to EXTENDED
+    await Driver.findByIdAndUpdate(driverId, { rideStatus: "EXTENDED" });
+
+    console.log('✅ Ride extended by driver:', driverId, 'for ride:', rideId);
 
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
@@ -724,7 +746,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       ride: updatedRide,
     });
   } catch (error) {
-    console.error("Error confirming ride:", error);
+    console.error("Error extending ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -736,20 +758,22 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
-
-    const driverInfo = await Driver.findById(driverId);
-
-    console.log(driverInfo)
-    const driverName = driverInfo.personalInformation?.fullName
+    console.log('🚗 Driver completing ride:', driverId, 'for ride:', rideId);
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
-    // Find and update the ride only if status is BOOKED
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const driverName = driverInfo.personalInformation?.fullName
+
+    // Find and update the ride only if status is ONGOING or EXTENDED
     const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: { $in: ["ONGOING", "EXTENDED"] } }, // only if ride is BOOKED
+      { _id: rideId, status: { $in: ["ONGOING", "EXTENDED"] } }, // only if ride is ONGOING or EXTENDED
       {
         status: "COMPLETED",
         driverId: driverId,
@@ -765,7 +789,10 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride is already completed or not found" });
     }
 
-    console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
+    // Update driver rideStatus to WAITING
+    await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
+
+    console.log('✅ Ride completed by driver:', driverId, 'for ride:', rideId);
 
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
@@ -782,15 +809,16 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       ride: updatedRide,
     });
   } catch (error) {
-    console.error("Error confirming ride:", error);
+    console.error("Error completing ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
 // count extra charges
-router.post("/count-extra-charges", async (req, res) => {
+router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
   try {
     const { rideId, extraMinutes, extraKm } = req.body;
+    const driverId = req.driver?.driverId;
 
     if (!rideId || extraMinutes === undefined || extraKm === undefined) {
       return res.status(400).json({
@@ -808,7 +836,7 @@ router.post("/count-extra-charges", async (req, res) => {
     }
 
     const { categoryId, categoryName, subcategoryId, subcategoryName } = ride.rideInfo;
-    const totalPayable = ride.totalPayable;
+    // let totalPayable = ride.totalPayable;
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
@@ -820,38 +848,56 @@ router.post("/count-extra-charges", async (req, res) => {
       const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId);
       extraChargePerKm = driverData.extraChargePerKm;
       extraChargePerMinute = driverData.extraChargePerMinute;
-      extraChargesFromAdmin = driverData.extraChargesFromAdmin;
-      gst = driverData.gst;
+      adminChargesInPercentage = driverData.extraChargesFromAdmin
+      gstChargesInPercentage = driverData.gst
     } else if (catNameLower === "cab") {
       const cabData = await getCabRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId);
       extraChargePerKm = cabData.extraChargePerKm;
       extraChargePerMinute = cabData.extraChargePerMinute;
-      extraChargesFromAdmin = driverData.extraChargesFromAdmin;
-      gst = driverData.gst;
+      adminChargesInPercentage = driverData.extraChargesFromAdmin
+      gstChargesInPercentage = driverData.gst
     } else if (catNameLower === "parcel") {
       const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId);
       extraChargePerKm = parcelData.extraChargePerKm;
       extraChargePerMinute = parcelData.extraChargePerMinute;
-      extraChargesFromAdmin = driverData.extraChargesFromAdmin;
-      gst = driverData.gst;
+      adminChargesInPercentage = driverData.extraChargesFromAdmin
+      gstChargesInPercentage = driverData.gst
     }
+
+    //included calculation
+
+    let driverCharges = ride.rideInfo?.driverCharges;
+    let adminCharges = ride.rideInfo?.adminCharges;
+    let insuranceCharges = ride.rideInfo?.insuranceCharges;
+    let cancellationCharges = ride.rideInfo?.cancellationCharges;
+    let discount = ride.rideInfo?.discount;
+    let subtotal = ride.rideInfo?.subtotal;
+    let gstCharges = ride.rideInfo?.gstCharges;
+    let totalPayable = ride.totalPayable;
+
+    // extra charges 
 
     // Calculate extra charges
     const extraKmCharges = extraKm * extraChargePerKm;
     const extraMinutesCharges = extraMinutes * extraChargePerMinute;
 
-    const discount = ride.rideInfo.discount
+    const extraCharges = extraKmCharges + extraMinutesCharges;
 
-    driverCharges = ride.rideInfo.driverCharges + extraKmCharges + extraMinutesCharges,
-      gstCharges = ride.rideInfo.gstCharges,
-      adminCharges = ride.rideInfo.adminCharges,
-      adjustedAdminCharges = driverCharges * adminCharges / 100 - discount
-    subtotal = driverCharges + adjustedAdminCharges
-    gstCharges = subtotal * gst / 100
+    driverCharges += extraCharges;
 
-    cancellationCharges = ride.rideInfo.cancellationCharges,
+    let adminChargesOnExtraCharges = Math.ceil(extraCharges * adminChargesInPercentage / 100)
+    adminCharges += adminChargesOnExtraCharges;
 
-      totalPayable = subtotal + gstCharges
+    let subTotalOfExtra = extraCharges + adminChargesOnExtraCharges
+    subtotal += subTotalOfExtra;
+
+    let gstOnExtraCharges = Math.ceil(subTotalOfExtra * gstChargesInPercentage / 100)
+    gstCharges += gstOnExtraCharges;
+
+    let totalPayableOfExtra = subTotalOfExtra + gstOnExtraCharges
+    totalPayable += totalPayableOfExtra;
+
+
 
     res.json({
       success: true,
@@ -861,15 +907,35 @@ router.post("/count-extra-charges", async (req, res) => {
         categoryName,
         subcategoryId,
         subcategoryName,
+
+        extraChargePerKm,
+        extraChargePerMinute,
+
         extraKmCharges,
         extraMinutesCharges,
 
-        extraMinutes,
-        extraKm,
-        extraChargePerKm,
-        extraChargePerMinute,
-        extraChargesFromAdmin,
-        gst
+        includeInsurance: ride.rideInfo.includeInsurance,
+
+        driverCharges,
+        // extraCharges,
+
+        adminCharges,
+        // adminChargesOnExtraCharges,
+
+        subtotal,
+        // subTotalOfExtra,
+
+        insuranceCharges,
+        cancellationCharges,
+
+        gstCharges,
+        // gstOnExtraCharges,
+
+        discount,
+
+        totalPayable,
+        // totalPayableOfExtra,
+
       }
     });
 
