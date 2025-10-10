@@ -54,6 +54,7 @@ app.use(cors({
     "http://localhost:8081",
     "http://localhost:8080",
     "https://journey-cost-estimator.vercel.app",
+    "https://drive-go-riding-services.vercel.app/",
     "https://drive-go-riding-services.vercel.app"
   ],
   credentials: true
