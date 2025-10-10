@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const API_BASE = 'http://localhost:5000/api/rbac';
+const import.meta.env.VITE_API_URL = 'http://localhost:5000/api/rbac';
 
 export const RBACManagementPage = () => {
   const [activeTab, setActiveTab] = useState("roles");
@@ -50,9 +50,9 @@ export const RBACManagementPage = () => {
   const fetchData = async () => {
     try {
       const [permissionsRes, rolesRes, usersRes] = await Promise.all([
-        fetch(`${API_BASE}/permissions`),
-        fetch(`${API_BASE}/roles`),
-        fetch(`${API_BASE}/users`)
+        fetch(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`),
+        fetch(`${import.meta.env.VITE_API_URL}/api/rbac/roles`),
+        fetch(`${import.meta.env.VITE_API_URL}/api/rbac/users`)
       ]);
       setPermissions(await permissionsRes.json());
       setRoles(await rolesRes.json());
@@ -66,7 +66,7 @@ export const RBACManagementPage = () => {
 
   const addPermission = async () => {
     try {
-      const res = await fetch(`${API_BASE}/permissions`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/permissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPermission)
@@ -89,7 +89,7 @@ export const RBACManagementPage = () => {
 
   const addRole = async () => {
     try {
-      const res = await fetch(`${API_BASE}/roles`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/roles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRole)
@@ -115,7 +115,7 @@ export const RBACManagementPage = () => {
 
   const addUser = async () => {
     try {
-      const res = await fetch(`${API_BASE}/users`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser)
@@ -159,7 +159,7 @@ export const RBACManagementPage = () => {
 
   const updatePermission = async () => {
     try {
-      const res = await fetch(`${API_BASE}/permissions/${editingItem._id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/permissions/${editingItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPermission)
@@ -174,7 +174,7 @@ export const RBACManagementPage = () => {
 
   const updateRole = async () => {
     try {
-      const res = await fetch(`${API_BASE}/roles/${editingItem._id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/roles/${editingItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRole)
@@ -189,7 +189,7 @@ export const RBACManagementPage = () => {
 
   const updateUser = async () => {
     try {
-      const res = await fetch(`${API_BASE}/users/${editingItem._id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/users/${editingItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser)
@@ -233,7 +233,7 @@ export const RBACManagementPage = () => {
 
   const deletePermission = async (id) => {
     try {
-      await fetch(`${API_BASE}/permissions/${id}`, { method: 'DELETE' });
+      await fetch(`${import.meta.env.VITE_API_URL}/permissions/${id}`, { method: 'DELETE' });
       setPermissions(permissions.filter(p => p._id !== id));
     } catch (error) {
       console.error('Error deleting permission:', error);
@@ -242,7 +242,7 @@ export const RBACManagementPage = () => {
 
   const deleteRole = async (id) => {
     try {
-      await fetch(`${API_BASE}/roles/${id}`, { method: 'DELETE' });
+      await fetch(`${import.meta.env.VITE_API_URL}/roles/${id}`, { method: 'DELETE' });
       setRoles(roles.filter(r => r._id !== id));
     } catch (error) {
       console.error('Error deleting role:', error);
@@ -251,7 +251,7 @@ export const RBACManagementPage = () => {
 
   const deleteUser = async (id) => {
     try {
-      await fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' });
+      await fetch(`${import.meta.env.VITE_API_URL}/users/${id}`, { method: 'DELETE' });
       setUsers(users.filter(u => u._id !== id));
     } catch (error) {
       console.error('Error deleting user:', error);
