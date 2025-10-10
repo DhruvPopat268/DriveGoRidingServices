@@ -109,7 +109,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
         const adminToken = localStorage.getItem('adminToken');
         if (!adminToken) return;
 
-        const response = await fetch('http://localhost:5000/api/auth/permissions', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/permissions`, {
           headers: {
             'Authorization': `Bearer ${adminToken}`
           }
