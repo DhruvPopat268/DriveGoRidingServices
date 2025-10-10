@@ -7,6 +7,10 @@ const Driver = require("../DriverModel/DriverModel");
 const axios = require("axios");
 const referralRules = require("../models/ReferralRule");
 const driverAuthMiddleware = require("../middleware/driverAuthMiddleware");
+const driverRideCost = require("../models/DriverRideCost");
+const cabRideCost = require("../models/CabRideCost");
+const parcelRideCost = require("../models/ParcelRideCost");
+const { getDriverRideIncludedData, getCabRideIncludedData, getParcelRideIncludedData } = require("../Services/rideCostService")
 
 // Save new ride booking
 router.get('/', async (req, res) => {
@@ -108,7 +112,7 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     console.log('📱 New ride booked:', newRide._id);
 
-    // Emit socket event to eligible drivers only
+    // Emit socket event to drivers with EXTENDED rides only
     const io = req.app.get('io');
     const onlineDrivers = req.app.get('onlineDrivers');
 
@@ -124,21 +128,22 @@ router.post("/book", authMiddleware, async (req, res) => {
         status: 'BOOKED'
       };
 
-      // Filter drivers who are NOT in EXTENDED status
-      const eligibleDrivers = Object.entries(onlineDrivers)
-        .filter(([driverId, driverData]) => driverData.status == 'EXTENDED')
-        .map(([driverId, driverData]) => ({ driverId, ...driverData }));
+      // Get drivers with rideStatus 'WAITING' (available drivers)
+      const waitingDrivers = await Driver.find({ rideStatus: 'WAITING' }).select('_id');
+      const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
+      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
 
-      console.log(`🎯 Found ${eligibleDrivers.length} eligible drivers (not EXTENDED)`);
-
-      // Send to each eligible driver
+      // Send to online drivers who have WAITING rideStatus
       let sentCount = 0;
-      eligibleDrivers.forEach(({ driverId, socketId }) => {
-        io.to(socketId).emit('new-ride', rideData);
-        sentCount++;
+      Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
+        // Only send to drivers with WAITING status
+        if (waitingDriverIds.includes(driverId)) {
+          io.to(driverSocketData.socketId).emit('new-ride', rideData);
+          sentCount++;
+        }
       });
 
-      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} drivers`);
+      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status)`);
     } else {
       console.log('❌ Socket.io or onlineDrivers not available');
     }
@@ -589,7 +594,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 
     res.json({
       message: "Ride ongoing successfully",
-      success:true,
+      success: true,
       data: updatedRide
     });
   } catch (error) {
@@ -770,6 +775,100 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Error confirming ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// count extra charges
+router.post("/count-extra-charges", async (req, res) => {
+  try {
+    const { rideId, extraMinutes, extraKm } = req.body;
+
+    if (!rideId || extraMinutes === undefined || extraKm === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "rideId, extraMinutes, and extraKm are required"
+      });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        message: "Ride not found"
+      });
+    }
+
+    const { categoryId, categoryName, subcategoryId, subcategoryName } = ride.rideInfo;
+    const totalPayable = ride.totalPayable;
+
+    // Determine extra charges based on category
+    let extraChargePerKm = 0;
+    let extraChargePerMinute = 0;
+
+    const catNameLower = categoryName.toLowerCase();
+
+    if (catNameLower === "driver") {
+      const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId);
+      extraChargePerKm = driverData.extraChargePerKm;
+      extraChargePerMinute = driverData.extraChargePerMinute;
+      extraChargesFromAdmin = driverData.extraChargesFromAdmin;
+      gst = driverData.gst;
+    } else if (catNameLower === "cab") {
+      const cabData = await getCabRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId);
+      extraChargePerKm = cabData.extraChargePerKm;
+      extraChargePerMinute = cabData.extraChargePerMinute;
+      extraChargesFromAdmin = driverData.extraChargesFromAdmin;
+      gst = driverData.gst;
+    } else if (catNameLower === "parcel") {
+      const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId);
+      extraChargePerKm = parcelData.extraChargePerKm;
+      extraChargePerMinute = parcelData.extraChargePerMinute;
+      extraChargesFromAdmin = driverData.extraChargesFromAdmin;
+      gst = driverData.gst;
+    }
+
+    // Calculate extra charges
+    const extraKmCharges = extraKm * extraChargePerKm;
+    const extraMinutesCharges = extraMinutes * extraChargePerMinute;
+
+    includeInsurance: ride.rideInfo.includeInsurance,
+      driverCharges = ride.rideInfo.driverCharges + extraKmCharges + extraMinutesCharges,
+      gstCharges = ride.rideInfo.gstCharges,
+      adminCharges = ride.rideInfo.adminCharges,
+      subtotal = driverCharges * adminCharges / 100
+      insuranceCharges = ride.rideInfo.insuranceCharges,
+      cancellationCharges = ride.rideInfo.cancellationCharges,
+      discount = ride.rideInfo.discount,
+
+      totalPayable,
+
+      res.json({
+        success: true,
+        data: {
+          rideId,
+          categoryId,
+          categoryName,
+          subcategoryId,
+          subcategoryName,
+          extraKmCharges,
+          extraMinutesCharges,
+
+          extraMinutes,
+          extraKm,
+          extraChargePerKm,
+          extraChargePerMinute,
+          extraChargesFromAdmin,
+          gst
+        }
+      });
+
+  } catch (error) {
+    console.error("Error counting extra charges:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
   }
 });
 

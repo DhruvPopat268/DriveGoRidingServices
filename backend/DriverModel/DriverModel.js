@@ -29,11 +29,11 @@ const driverSchema = new mongoose.Schema(
     },
 
     drivingDetails: {
-      category:{type:String},
-      subCategory:[{type:String}],
+      category: { type: String },
+      subCategory: [{ type: String }],
       drivingExperienceYears: { type: Number },
       licenseType: { type: String, enum: ["LMV", "HMV", "Commercial", "Others"] },
-      vehicleType: [{ type: String, enum: ["Manual", "Automatic","Electric"] }],
+      vehicleType: [{ type: String, enum: ["Manual", "Automatic", "Electric"] }],
       canDrive: [{ type: String }], // Hatchback, Sedan, SUV, Luxury Cars
       preferredWork: { type: String, enum: ["Full-Time", "Part-Time", "Guest/On-Call"] }
     },
@@ -75,9 +75,15 @@ const driverSchema = new mongoose.Schema(
       default: "Pending"
     },
 
+    rideStatus: {
+      type: String,
+      enum: ["WAITING", "ONGOING", "CONFIRMED", "EXTENDED"],
+      default: "WAITING"
+    },
+
     purchasedPlans: [{
       paymentId: { type: String, required: true },
-      status: { type: String, enum: ["Success", "Failed", "Pending"]},
+      status: { type: String, enum: ["Success", "Failed", "Pending"] },
       plan: { type: String, required: true },
       amount: { type: Number },
       purchasedAt: { type: Date, default: Date.now }

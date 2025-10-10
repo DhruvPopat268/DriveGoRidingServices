@@ -130,11 +130,10 @@ io.on('connection', (socket) => {
     const { driverId } = data;
     if (driverId) {
       onlineDrivers[driverId] = {
-        socketId: socket.id,
-        status: 'WAITING' // default status
+        socketId: socket.id
       };
       socket.join('drivers');
-      console.log(`🚗 Driver registered: ${driverId} with status WAITING`);
+      console.log(`🚗 Driver registered: ${driverId}`);
       console.log(`📊 Online drivers count: ${Object.keys(onlineDrivers).length}`);
       
       // Send all available BOOKED rides to newly connected driver
@@ -161,15 +160,6 @@ io.on('connection', (socket) => {
       } catch (error) {
         console.error('Error sending available rides to new driver:', error);
       }
-    }
-  });
-  
-  // Update driver status
-  socket.on('update-driver-status', (data) => {
-    const { driverId, status } = data;
-    if (driverId && onlineDrivers[driverId]) {
-      onlineDrivers[driverId].status = status;
-      console.log(`🔄 Driver ${driverId} status updated to: ${status}`);
     }
   });
   
