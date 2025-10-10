@@ -374,7 +374,7 @@ export const CabRideCostPage = () => {
     const categoryId = extractId(rideCost.category);
     const subcategoryId = extractId(rideCost.subcategory);
     const subSubCategoryId = rideCost.subSubCategory ? extractId(rideCost.subSubCategory) : '';
-    const priceCategoryId = extractId(rideCost.priceCategory);
+    const priceCategoryId = rideCost.priceCategory ? extractId(rideCost.priceCategory) : '';
 
     // Set filtered subcategories first
     const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
