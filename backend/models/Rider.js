@@ -20,7 +20,10 @@ const riderSchema = new mongoose.Schema(
     referralEarning: {
       totalEarnings: { type: Number, default: 0 },   // lifetime earnings
       currentBalance: { type: Number, default: 0 }   // available balance
-    }
+    },
+    
+    // 🔹 Cancellation charges
+    cancellationCharges: { type: Number, default: 0 }
   },
   { timestamps: true }
 );

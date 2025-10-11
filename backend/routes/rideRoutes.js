@@ -4,12 +4,17 @@ const authMiddleware = require('../middleware/authMiddleware'); // Ensure this p
 const router = express.Router();
 const Rider = require("../models/Rider");
 const Driver = require("../DriverModel/DriverModel");
+const { Wallet } = require("../models/Wallet");
+const Payment = require("../models/Payment");
 const axios = require("axios");
 const referralRules = require("../models/ReferralRule");
 const driverAuthMiddleware = require("../middleware/driverAuthMiddleware");
-const driverRideCost = require("../models/DriverRideCost");
-const cabRideCost = require("../models/CabRideCost");
-const parcelRideCost = require("../models/ParcelRideCost");
+const DriverRideCost = require("../models/DriverRideCost");
+const CabRideCost = require("../models/CabRideCost");
+const ParcelRideCost = require("../models/ParcelRideCost");
+const driverRideCost = DriverRideCost;
+const cabRideCost = CabRideCost;
+const parcelRideCost = ParcelRideCost;
 const { getDriverRideIncludedData, getCabRideIncludedData, getParcelRideIncludedData } = require("../Services/rideCostService")
 
 // Save new ride booking
@@ -283,6 +288,7 @@ router.post("/booking/id", authMiddleware, async (req, res) => {
 router.post("/booking/cancel", authMiddleware, async (req, res) => {
   try {
     const { bookingId } = req.body;
+    const riderId = req.rider?.riderId;
 
     if (!bookingId) {
       return res.status(400).json({ message: "Booking ID is required" });
@@ -299,6 +305,160 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
     if (!updatedBooking) {
       return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Extract required data from updatedBooking
+    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime } = updatedBooking.rideInfo;
+    const bookingDriverId = updatedBooking.driverId;
+    
+    // Check category and fetch cancellation details from appropriate model
+    const categoryNameLower = categoryName.toLowerCase();
+    let cancellationDetails = null;
+    
+    try {
+      if (categoryNameLower === 'driver') {
+        cancellationDetails = await driverRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('cancellationFee cancellationBufferTime');
+      } else if (categoryNameLower === 'cab') {
+        cancellationDetails = await cabRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('cancellationFee cancellationBufferTime');
+      } else if (categoryNameLower === 'parcel') {
+        cancellationDetails = await parcelRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('cancellationFee cancellationBufferTime');
+      }
+      
+      const cancellationFee = cancellationDetails?.cancellationFee || 0;
+      const cancellationBufferTime = cancellationDetails?.cancellationBufferTime || 0;
+      
+      // Function to handle cancellation charges
+      const applyCancellationCharges = async (description) => {
+        const wallet = await Wallet.findOne({ riderId: riderId.toString() });
+        
+        if (wallet) {
+          const currentBalance = wallet.balance;
+          
+          if (currentBalance >= cancellationFee) {
+            // Create Payment record for full deduction
+            const payment = new Payment({
+              riderId: riderId.toString(),
+              orderId: `cancel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              razorpayOrderId: `cancel_${Date.now()}`,
+              amount: cancellationFee,
+              status: 'paid',
+              type: 'spend',
+              description: description,
+              paidAt: new Date()
+            });
+            await payment.save();
+            
+            // Deduct full cancellation fee from wallet
+            wallet.balance -= cancellationFee;
+            wallet.totalSpent += cancellationFee;
+            wallet.lastTransactionAt = new Date();
+            await wallet.save();
+            
+            console.log(`Deducted full cancellation fee: ${cancellationFee} from wallet`);
+          } else {
+            // Create Payment record for partial deduction
+            if (currentBalance > 0) {
+              const payment = new Payment({
+                riderId: riderId.toString(),
+                orderId: `cancel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                razorpayOrderId: `cancel_${Date.now()}`,
+                amount: currentBalance,
+                status: 'paid',
+                type: 'spend',
+                description: `${description} (Partial payment)`,
+                paidAt: new Date()
+              });
+              await payment.save();
+            }
+            
+            // Partial deduction from wallet, store remaining in rider model
+            const remainingCharges = cancellationFee - currentBalance;
+            
+            // Deduct available balance from wallet
+            wallet.totalSpent += currentBalance;
+            wallet.balance = 0;
+            wallet.lastTransactionAt = new Date();
+            await wallet.save();
+            
+            // Store remaining charges in rider model
+            const rider = await Rider.findById(riderId);
+            if (rider) {
+              rider.cancellationCharges += remainingCharges;
+              await rider.save();
+            }
+            
+            console.log(`Deducted ${currentBalance} from wallet, stored ${remainingCharges} as pending charges`);
+          }
+        } else {
+          // No wallet found, store full amount in rider model
+          const rider = await Rider.findById(riderId);
+          if (rider) {
+            rider.cancellationCharges += cancellationFee;
+            await rider.save();
+          }
+          
+          console.log(`No wallet found, stored ${cancellationFee} as pending charges`);
+        }
+      };
+      
+      // Check conditions for applying cancellation charges
+      let shouldApplyCharges = false;
+      let chargeReason = '';
+      
+      if (cancellationFee > 0) {
+        // Check if driver has reached location
+        if (bookingDriverId) {
+          const driver = await Driver.findById(bookingDriverId);
+          if (driver && driver.rideStatus === 'REACHED') {
+            shouldApplyCharges = true;
+            chargeReason = 'Cancellation fee - Driver already reached pickup location';
+          }
+        }
+        
+        // Check if cancellation is outside buffer time window
+        if (!shouldApplyCharges && cancellationBufferTime > 0) {
+          const rideDateTime = new Date(selectedDate);
+          const [hours, minutes] = selectedTime.split(':');
+          rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          
+          const bufferEndTime = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
+          const currentTime = new Date();
+          
+          if (currentTime > bufferEndTime) {
+            shouldApplyCharges = true;
+            chargeReason = `Cancellation fee - Late cancellation (${cancellationBufferTime} min window exceeded)`;
+          }
+        }
+        
+        // Apply charges if conditions are met
+        if (shouldApplyCharges) {
+          await applyCancellationCharges(chargeReason);
+          console.log(`Cancellation charges applied: ${chargeReason}`);
+        }
+      }
+      
+      console.log('Cancellation Details:', {
+        categoryName,
+        categoryId,
+        subcategoryId,
+        driverId: bookingDriverId,
+        cancellationFee,
+        cancellationBufferTime,
+        shouldApplyCharges,
+        chargeReason
+      });
+      
+    } catch (modelError) {
+      console.error('Error processing cancellation:', modelError);
     }
 
     res.json({
@@ -559,6 +719,35 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Error confirming ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// update driver ride status to reached
+router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    const driver = await Driver.findOneAndUpdate(
+      { _id: driverId, rideStatus: "CONFIRMED" },
+      { rideStatus: "REACHED" },
+      { new: true }
+    );
+
+    if (!driver) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Driver not found or ride status is not CONFIRMED" 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Ride status updated to REACHED successfully",
+      rideStatus: driver.rideStatus
+    });
+  } catch (error) {
+    console.error("Update ride status error:", error);
+    res.status(500).json({ success: false, message: "Failed to update ride status" });
   }
 });
 
@@ -899,10 +1088,22 @@ router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
     let totalPayableOfExtra = subTotalOfExtra + gstOnExtraCharges
     totalPayable += totalPayableOfExtra;
 
-
+    // Update the ride model with new calculated charges
+    const updatedRide = await Ride.findByIdAndUpdate(
+      rideId,
+      {
+        'rideInfo.driverCharges': driverCharges,
+        'rideInfo.adminCharges': adminCharges,
+        'rideInfo.subtotal': subtotal,
+        'rideInfo.gstCharges': gstCharges,
+        totalPayable: totalPayable
+      },
+      { new: true }
+    );
 
     res.json({
       success: true,
+      message: "Extra charges calculated and ride updated successfully",
       data: {
         rideId,
         categoryId,
@@ -919,25 +1120,13 @@ router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
         includeInsurance: ride.rideInfo.includeInsurance,
 
         driverCharges,
-        // extraCharges,
-
         adminCharges,
-        // adminChargesOnExtraCharges,
-
         subtotal,
-        // subTotalOfExtra,
-
         insuranceCharges,
         cancellationCharges,
-
         gstCharges,
-        // gstOnExtraCharges,
-
         discount,
-
-        totalPayable,
-        // totalPayableOfExtra,
-
+        totalPayable
       }
     });
 

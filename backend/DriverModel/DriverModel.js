@@ -77,7 +77,7 @@ const driverSchema = new mongoose.Schema(
 
     rideStatus: {
       type: String,
-      enum: ["WAITING", "ONGOING", "CONFIRMED", "EXTENDED"],
+      enum: ["WAITING", "ONGOING", "CONFIRMED", "EXTENDED", "REACHED"],
       default: "WAITING"
     },
 

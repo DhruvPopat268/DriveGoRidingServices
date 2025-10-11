@@ -7,6 +7,9 @@ const pricecategories = require('../models/PriceCategory')
 const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
 const SubSubCategory = require('../models/SubSubCategory');
+const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
+const Rider = require('../models/Rider');
+
 
 router.post('/', async (req, res) => {
   try {
@@ -74,7 +77,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/calculation', async (req, res) => {
+router.post('/calculation',authMiddleware, async (req, res) => {
   try {
     const {
       categoryId,
@@ -89,6 +92,12 @@ router.post('/calculation', async (req, res) => {
       durationType,
       durationValue
     } = req.body;
+
+    const riderId = req.rider?.riderId
+
+    // Get rider document
+    const rider = await Rider.findById(riderId);
+    if (!rider) return res.status(404).json({ error: 'Rider not found' });
 
     // 1. Get category
     const category = await Category.findById(categoryId);
@@ -198,8 +207,9 @@ router.post('/calculation', async (req, res) => {
 
       const subtotal = baseTotal + adminCommission;
       const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
+      const cancellationCharges = rider.cancellationCharges || 0;
       const totalPayable = Math.round(
-        baseTotal + adjustedAdminCommission + gstCharges + modelInsurance
+        baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges
       );
 
       result.push({
@@ -214,7 +224,8 @@ router.post('/calculation', async (req, res) => {
         discountApplied: model.discount || 0,
         gstCharges,
         subtotal: Math.round(subtotal),
-        totalPayable
+        totalPayable,
+        cancellationCharges
       });
     }
 
