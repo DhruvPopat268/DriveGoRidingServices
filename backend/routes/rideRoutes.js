@@ -295,6 +295,8 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       { new: true } // return updated doc
     );
 
+    console.log(updatedBooking)
+
     if (!updatedBooking) {
       return res.status(404).json({ message: "Booking not found" });
     }

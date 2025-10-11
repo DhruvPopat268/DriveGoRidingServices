@@ -32,6 +32,7 @@ interface RideCost {
   pickCharges: number;
   nightCharges: number;
   cancellationFee: number;
+  cancellationBufferTime: number;
   insurance: number;
   extraChargesFromAdmin: number;
   gst: number;
@@ -108,7 +109,7 @@ export const DriverRideCostPage = () => {
     pickCharges: '',
     nightCharges: '',
     cancellationFee: '',
-    insurance: '',
+    cancellationBufferTime: '',    insurance: '',
     extraChargesFromAdmin: '',
     gst: '',
     discount: ''
@@ -304,6 +305,7 @@ export const DriverRideCostPage = () => {
       pickCharges: parseFloat(rideCostForm.pickCharges) || 0,
       nightCharges: parseFloat(rideCostForm.nightCharges) || 0,
       cancellationFee: parseFloat(rideCostForm.cancellationFee) || 0,
+      cancellationBufferTime: parseInt(rideCostForm.cancellationBufferTime) || 0,
       insurance: parseFloat(rideCostForm.insurance) || 0,
       extraChargesFromAdmin: parseFloat(rideCostForm.extraChargesFromAdmin) || 0,
       gst: parseFloat(rideCostForm.gst) || 0,
@@ -363,6 +365,7 @@ export const DriverRideCostPage = () => {
       pickCharges: rideCost.pickCharges.toString(),
       nightCharges: rideCost.nightCharges.toString(),
       cancellationFee: rideCost.cancellationFee.toString(),
+      cancellationBufferTime: rideCost.cancellationBufferTime.toString(),
       insurance: rideCost.insurance.toString(),
       extraChargesFromAdmin: rideCost.extraChargesFromAdmin.toString(),
       gst: rideCost.gst.toString(),
@@ -400,6 +403,7 @@ export const DriverRideCostPage = () => {
       pickCharges: '',
       nightCharges: '',
       cancellationFee: '',
+      cancellationBufferTime: '',
       insurance: '',
       extraChargesFromAdmin: '',
       gst: '',
@@ -671,12 +675,18 @@ export const DriverRideCostPage = () => {
                     value={rideCostForm.nightCharges}
                     onChange={(e) => setRideCostForm(prev => ({ ...prev, nightCharges: e.target.value }))}
                   />
-                  <Input
+                <Input
                     type="number"
                     step="0.01"
                     placeholder="Cancellation Fee"
                     value={rideCostForm.cancellationFee}
                     onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationFee: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Cancellation Buffer Time (minutes)"
+                    value={rideCostForm.cancellationBufferTime}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationBufferTime: e.target.value }))}
                   />
                   <Input
                     type="number"
@@ -1035,13 +1045,17 @@ export const DriverRideCostPage = () => {
                   <label className="text-sm font-medium">Pick Charges</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.pickCharges}</p>
                 </div>
-                <div>
+              <div>
                   <label className="text-sm font-medium">Night Charges</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.nightCharges}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Cancellation Fee</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.cancellationFee}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Cancellation Buffer Time</label>
+                  <p className="text-sm text-gray-600">{viewingRideCost.cancellationBufferTime} minutes</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Insurance</label>

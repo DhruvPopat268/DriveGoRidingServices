@@ -52,7 +52,10 @@ const parcelRideCostSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  insurance: {
+  cancellationBufferTime: {
+    type: Number,
+    default: 0
+  },  insurance: {
     type: Number,
     default: 0
   },

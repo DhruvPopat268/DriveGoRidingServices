@@ -21,6 +21,7 @@ const DriverRideCostSchema = new mongoose.Schema({
   pickCharges: { type: Number, default: 0 },
   nightCharges: { type: Number, default: 0 },
   cancellationFee: { type: Number, default: 0 },
+  cancellationBufferTime: { type: Number, default: 0 },
   insurance: { type: Number, default: 0 },
   extraChargesFromAdmin: { type: Number, default: 0 }, // percentage
   gst: { type: Number, default: 0 }, // percentage

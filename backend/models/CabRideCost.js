@@ -61,6 +61,10 @@ const cabRideCostSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  cancellationBufferTime: {
+    type: Number,
+    default: 0
+  },
   insurance: {
     type: Number,
     default: 0
