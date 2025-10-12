@@ -1,125 +1,135 @@
-import moment from "moment";
-import mongoose from "mongoose";
-import Rider from "../models/Rider.js";
-import Category from "../models/Category.js";
-import SubCategory from "../models/SubCategory.js";
-import SubSubCategory from "../models/SubSubCategory.js";
-import DriverRideCost from "../models/DriverRideCost.js";
-import CabRideCost from "../models/CabRideCost.js";
-import peakHours from "../models/PeakHours.js";
-import pricecategories from "../models/PriceCategories.js";
+const moment = require("moment");
+const mongoose = require("mongoose");
+const Rider = require("../models/Rider");
+const Category = require("../models/Category");
+const SubCategory = require("../models/SubCategory");
+const SubSubCategory = require("../models/SubSubCategory");
+const DriverRideCost = require("../models/DriverRideCost");
+const CabRideCost = require("../models/CabRideCost");
+const peakHours = require("../models/Peak");
+const pricecategories = require("../models/PriceCategory");
 
-// 🧮 1️⃣ Function for Rider-based Calculation
-export const calculateDriverRideCharges = async ({
-  riderId,
-  categoryId,
-  selectedDate,
-  selectedTime,
-  includeInsurance,
-  selectedUsage,
-  subcategoryId,
-  subSubcategoryId,
-  durationType,
-  durationValue,
+// 🧮 1️⃣ Function for Rider-based Calculation (specific category only)
+const calculateDriverRideCharges = async ({
+    riderId,
+    categoryId,
+    selectedDate,
+    selectedTime,
+    includeInsurance,
+    selectedUsage,
+    subcategoryId,
+    subSubcategoryId,
+    durationType,
+    NoOfDays,
+    selectedCategoryId // ✅ new param for specific price category
 }) => {
-  const rider = await Rider.findById(riderId);
-  if (!rider) throw new Error("Rider not found");
+    console.log('🔍 calculateDriverRideCharges - Input params:', {
+        riderId, categoryId, selectedDate, selectedTime, includeInsurance,
+        selectedUsage, subcategoryId, subSubcategoryId, durationType, NoOfDays, selectedCategoryId
+    });
 
-  const category = await Category.findById(categoryId);
-  if (!category) throw new Error("Category not found");
+    const rider = await Rider.findById(riderId);
+    console.log('👤 Rider found:', rider ? 'Yes' : 'No');
+    if (!rider) throw new Error("Rider not found");
 
-  const subcategory = await SubCategory.findById(subcategoryId);
-  if (!subcategory) throw new Error("Subcategory not found");
+    const category = await Category.findById(categoryId);
+    if (!category) throw new Error("Category not found");
 
-  const subSubCategory = subSubcategoryId
-    ? await SubSubCategory.findById(subSubcategoryId)
-    : null;
-  if (subSubcategoryId && !subSubCategory)
-    throw new Error("Sub-Subcategory not found");
+    const subcategory = await SubCategory.findById(subcategoryId);
+    if (!subcategory) throw new Error("Subcategory not found");
 
-  // usage conversion
-  let usageValue = parseFloat(selectedUsage) || 0;
-  const formattedSubcategory = subcategory.name.toLowerCase();
-  const formattedSubSubCategory = subSubCategory
-    ? subSubCategory.name.toLowerCase()
-    : null;
+    const subSubCategory = subSubcategoryId
+        ? await SubSubCategory.findById(subSubcategoryId)
+        : null;
+    if (subSubcategoryId && !subSubCategory)
+        throw new Error("Sub-Subcategory not found");
 
-  if (
-    formattedSubcategory === "hourly" ||
-    formattedSubSubCategory === "roundtrip" ||
-    formattedSubcategory === "monthly" ||
-    formattedSubcategory === "weekly"
-  ) {
-    usageValue = usageValue * 60; // hours → minutes
-  }
+    // usage conversion
+    let usageValue = parseFloat(selectedUsage) || 0;
+    const formattedSubcategory = subcategory.name.toLowerCase();
+    const formattedSubSubCategory = subSubCategory
+        ? subSubCategory.name.toLowerCase()
+        : null;
 
-  // query ride costs
-  let rideCostQuery = {
-    category: categoryId,
-    subcategory: subcategoryId,
-    subSubCategory: subSubcategoryId,
-  };
-
-  if (
-    formattedSubcategory === "hourly" ||
-    formattedSubSubCategory === "roundtrip" ||
-    formattedSubcategory === "monthly" ||
-    formattedSubcategory === "weekly"
-  ) {
-    rideCostQuery.includedMinutes = usageValue.toString();
-  } else {
-    rideCostQuery.includedKm = usageValue.toString();
-  }
-
-  const rideCostModels = await DriverRideCost.find(rideCostQuery);
-  if (rideCostModels.length === 0)
-    throw new Error("No ride cost models found");
-
-  // peak hour logic
-  const peakChargesList = await peakHours.find({});
-  const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, "YYYY-MM-DD HH:mm");
-  let peakCharges = 0;
-
-  for (const peak of peakChargesList) {
-    if (peak.type === "peak_dates") {
-      const startDateTime = moment(`${peak.startDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
-      const endDateTime = moment(`${peak.endDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
-      if (bookingDateTime.isBetween(startDateTime, endDateTime, null, "[]")) {
-        peakCharges += peak.price;
-      }
-    } else if (peak.type === "peak_hours") {
-      const startTime = moment(`${selectedDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
-      const endTime = moment(`${selectedDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
-      if (bookingDateTime.isBetween(startTime, endTime, null, "[]")) {
-        peakCharges += peak.price;
-      }
+    if (
+        formattedSubcategory === "hourly" ||
+        formattedSubSubCategory === "roundtrip" ||
+        formattedSubcategory === "monthly" ||
+        formattedSubcategory === "weekly"
+    ) {
+        usageValue = usageValue * 60;
     }
-  }
 
-  const hour = bookingDateTime.hour();
-  const isNight = hour >= 22 || hour < 6;
+    // query ride costs (specific selectedCategoryId only)
+    let rideCostQuery = {
+        category: categoryId,
+        subcategory: subcategoryId,
+        subSubCategory: subSubcategoryId,
+        priceCategory: new mongoose.Types.ObjectId(selectedCategoryId)
+    };
 
-  const result = [];
+    if (
+        formattedSubcategory === "hourly" ||
+        formattedSubSubCategory === "roundtrip" ||
+        formattedSubcategory === "monthly" ||
+        formattedSubcategory === "weekly"
+    ) {
+        rideCostQuery.includedMinutes = usageValue.toString();
+    } else {
+        rideCostQuery.includedKm = usageValue.toString();
+    }
 
-  for (const model of rideCostModels) {
+    console.log('🔍 Driver rideCostQuery:', rideCostQuery);
+    const model = await DriverRideCost.findOne(rideCostQuery);
+    console.log('📊 Driver model found:', model ? 'Yes' : 'No', model ? model._id : 'None');
+    if (!model) throw new Error("No ride cost model found for this category");
+
+    // peak hour logic
+    const peakChargesList = await peakHours.find({});
+    const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, "YYYY-MM-DD HH:mm");
+    let peakCharges = 0;
+
+    for (const peak of peakChargesList) {
+        if (peak.type === "peak_dates") {
+            const startDateTime = moment(`${peak.startDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
+            const endDateTime = moment(`${peak.endDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
+            if (bookingDateTime.isBetween(startDateTime, endDateTime, null, "[]")) {
+                peakCharges += peak.price;
+            }
+        } else if (peak.type === "peak_hours") {
+            const startTime = moment(`${selectedDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
+            const endTime = moment(`${selectedDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
+            if (bookingDateTime.isBetween(startTime, endTime, null, "[]")) {
+                peakCharges += peak.price;
+            }
+        }
+    }
+
+    const hour = bookingDateTime.hour();
+    const isNight = hour >= 22 || hour < 6;
+    console.log('🌙 Night time check:', { hour, isNight });
+    console.log('📈 Peak charges calculated:', peakCharges);
+
     const priceCategory = await pricecategories.findById(model.priceCategory);
+    console.log('🏷️ Price category:', priceCategory?.priceCategoryName);
     let driverCharges = model.baseFare || 0;
+    console.log('💰 Base fare:', driverCharges);
 
     // apply duration logic
-    if (durationType && durationValue) {
-      switch (durationType.toLowerCase()) {
-        case "day":
-          driverCharges = model.baseFare * durationValue;
-          break;
-        case "week":
-          driverCharges = model.baseFare * durationValue * 7;
-          break;
-        case "month":
-          driverCharges = model.baseFare * durationValue * 30;
-          break;
-        default:
-          driverCharges = model.baseFare;
-      }
+    if (durationType && NoOfDays) {
+        switch (durationType.toLowerCase()) {
+            case "day":
+                driverCharges = model.baseFare * NoOfDays;
+                break;
+            case "week":
+                driverCharges = model.baseFare * NoOfDays * 7;
+                break;
+            case "month":
+                driverCharges = model.baseFare * NoOfDays * 30;
+                break;
+            default:
+                driverCharges = model.baseFare;
+        }
     }
 
     const modelPickCharges = model.pickCharges || 0;
@@ -134,142 +144,146 @@ export const calculateDriverRideCharges = async ({
     const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
     const cancellationCharges = rider.cancellationCharges || 0;
     const totalPayable = Math.round(
-      baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges
+        baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges
     );
 
-    result.push({
-      category: priceCategory?.priceCategoryName || "Unknown",
-      driverCharges: Math.round(driverCharges),
-      pickCharges: Math.round(modelPickCharges),
-      peakCharges: Math.round(peakCharges),
-      insuranceCharges: Math.round(modelInsurance),
-      nightCharges: Math.round(modelNightCharges),
-      adminCommissionOriginal: adminCommission,
-      adminCommissionAdjusted: adjustedAdminCommission,
-      discountApplied: model.discount || 0,
-      gstCharges,
-      subtotal: Math.round(subtotal),
-      totalPayable,
-      cancellationCharges,
+    console.log('📊 Driver Final calculations:', {
+        baseTotal, adminCommission, adjustedAdminCommission, gstCharges,
+        cancellationCharges, totalPayable
     });
-  }
 
-  return result;
+    return {
+        categoryId: priceCategory?._id,
+        category: priceCategory?.priceCategoryName || "Unknown",
+        driverCharges: Math.round(driverCharges),
+        pickCharges: Math.round(modelPickCharges),
+        peakCharges: Math.round(peakCharges),
+        insuranceCharges: Math.round(modelInsurance),
+        nightCharges: Math.round(modelNightCharges),
+        adminCommissionOriginal: adminCommission,
+        adminCommissionAdjusted: adjustedAdminCommission,
+        discountApplied: model.discount || 0,
+        gstCharges,
+        subtotal: Math.round(subtotal),
+        totalPayable,
+        cancellationCharges,
+    };
 };
 
-// 🚗 2️⃣ Function for Cab-based Calculation
-export const calculateCabRideCharges = async ({
-  carCategoryId,
-  categoryId,
-  selectedDate,
-  selectedTime,
-  includeInsurance,
-  selectedUsage,
-  subcategoryId,
-  subSubcategoryId,
-  durationType,
-  durationValue,
+// 🚗 2️⃣ Function for Cab-based Calculation (specific category only)
+const calculateCabRideCharges = async ({
+    categoryId,
+    selectedDate,
+    selectedTime,
+    includeInsurance,
+    selectedUsage,
+    subcategoryId,
+    subSubcategoryId,
+    durationType,
+    NoOfDays,
+    selectedCategoryId // ✅ added here too
 }) => {
-  if (!carCategoryId) throw new Error("carCategoryId is required");
+    console.log('🚗 calculateCabRideCharges - Input params:', {
+        categoryId, selectedDate, selectedTime, includeInsurance,
+        selectedUsage, subcategoryId, subSubcategoryId, durationType, NoOfDays, selectedCategoryId
+    });
 
-  const category = await Category.findById(categoryId);
-  if (!category) throw new Error("Category not found");
+    const category = await Category.findById(categoryId);
+    if (!category) throw new Error("Category not found");
 
-  const subcategory = await SubCategory.findById(subcategoryId);
-  if (!subcategory) throw new Error("Subcategory not found");
+    const subcategory = await SubCategory.findById(subcategoryId);
+    if (!subcategory) throw new Error("Subcategory not found");
 
-  const subSubCategory = subSubcategoryId
-    ? await SubSubCategory.findById(subSubcategoryId)
-    : null;
-  if (subSubcategoryId && !subSubCategory)
-    throw new Error("Sub-Subcategory not found");
+    const subSubCategory = subSubcategoryId
+        ? await SubSubCategory.findById(subSubcategoryId)
+        : null;
+    if (subSubcategoryId && !subSubCategory)
+        throw new Error("Sub-Subcategory not found");
 
-  let usageValue = parseFloat(selectedUsage) || 0;
-  const formattedSubcategory = subcategory.name.toLowerCase();
-  const formattedSubSubCategory = subSubCategory
-    ? subSubCategory.name.toLowerCase()
-    : null;
+    let usageValue = parseFloat(selectedUsage) || 0;
+    const formattedSubcategory = subcategory.name.toLowerCase();
+    const formattedSubSubCategory = subSubCategory
+        ? subSubCategory.name.toLowerCase()
+        : null;
 
-  if (
-    formattedSubcategory === "hourly" ||
-    formattedSubSubCategory === "roundtrip" ||
-    formattedSubcategory === "monthly" ||
-    formattedSubcategory === "weekly"
-  ) {
-    usageValue = usageValue * 60;
-  }
-
-  let rideCostQuery = {
-    priceCategory: new mongoose.Types.ObjectId(carCategoryId),
-    category: new mongoose.Types.ObjectId(categoryId),
-    subcategory: new mongoose.Types.ObjectId(subcategoryId),
-  };
-
-  if (subSubcategoryId) {
-    rideCostQuery.subSubCategory = new mongoose.Types.ObjectId(subSubcategoryId);
-  }
-
-  if (
-    formattedSubcategory === "hourly" ||
-    formattedSubSubCategory === "roundtrip" ||
-    formattedSubcategory === "monthly" ||
-    formattedSubcategory === "weekly"
-  ) {
-    rideCostQuery.includedMinutes = usageValue.toString();
-  } else {
-    rideCostQuery.includedKm = usageValue.toString();
-  }
-
-  const rideCostModels = await CabRideCost.find(rideCostQuery)
-    .populate("category", "name")
-    .populate("car", "name");
-
-  if (rideCostModels.length === 0)
-    throw new Error("No ride cost models found for this car category");
-
-  const peakChargesList = await peakHours.find({});
-  const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, "YYYY-MM-DD HH:mm");
-
-  let peakCharges = 0;
-  for (const peak of peakChargesList) {
-    if (peak.type === "peak_dates") {
-      const startDateTime = moment(`${peak.startDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
-      const endDateTime = moment(`${peak.endDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
-      if (bookingDateTime.isBetween(startDateTime, endDateTime, null, "[]")) {
-        peakCharges += peak.price;
-      }
-    } else if (peak.type === "peak_hours") {
-      const startTime = moment(`${selectedDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
-      const endTime = moment(`${selectedDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
-      if (bookingDateTime.isBetween(startTime, endTime, null, "[]")) {
-        peakCharges += peak.price;
-      }
+    if (
+        formattedSubcategory === "hourly" ||
+        formattedSubSubCategory === "roundtrip" ||
+        formattedSubcategory === "monthly" ||
+        formattedSubcategory === "weekly"
+    ) {
+        usageValue = usageValue * 60;
     }
-  }
 
-  const hour = bookingDateTime.hour();
-  const isNight = hour >= 22 || hour < 6;
+    let rideCostQuery = {
+        category: new mongoose.Types.ObjectId(categoryId),
+        subcategory: new mongoose.Types.ObjectId(subcategoryId),
+        car: new mongoose.Types.ObjectId(selectedCategoryId),
+    };
 
-  const result = [];
-  for (const model of rideCostModels) {
+    if (subSubcategoryId) {
+        rideCostQuery.subSubCategory = new mongoose.Types.ObjectId(subSubcategoryId);
+    }
+
+    if (
+        formattedSubcategory === "hourly" ||
+        formattedSubSubCategory === "roundtrip" ||
+        formattedSubcategory === "monthly" ||
+        formattedSubcategory === "weekly"
+    ) {
+        rideCostQuery.includedMinutes = usageValue.toString();
+    } else {
+        rideCostQuery.includedKm = usageValue.toString();
+    }
+
+    console.log('🚗 Cab rideCostQuery:', rideCostQuery);
+    const model = await CabRideCost.findOne(rideCostQuery)
+        .populate("category", "name")
+        .populate("car", "name");
+
+    console.log('📊 Cab model found:', model ? 'Yes' : 'No', model ? model._id : 'None');
+    if (!model) throw new Error("No ride cost model found for this car category");
+
+    const peakChargesList = await peakHours.find({});
+    const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, "YYYY-MM-DD HH:mm");
+
+    let peakCharges = 0;
+    for (const peak of peakChargesList) {
+        if (peak.type === "peak_dates") {
+            const startDateTime = moment(`${peak.startDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
+            const endDateTime = moment(`${peak.endDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
+            if (bookingDateTime.isBetween(startDateTime, endDateTime, null, "[]")) {
+                peakCharges += peak.price;
+            }
+        } else if (peak.type === "peak_hours") {
+            const startTime = moment(`${selectedDate} ${peak.startTime}`, "YYYY-MM-DD HH:mm");
+            const endTime = moment(`${selectedDate} ${peak.endTime}`, "YYYY-MM-DD HH:mm");
+            if (bookingDateTime.isBetween(startTime, endTime, null, "[]")) {
+                peakCharges += peak.price;
+            }
+        }
+    }
+
+    const hour = bookingDateTime.hour();
+    const isNight = hour >= 22 || hour < 6;
+
     const priceCategory = await pricecategories.findById(model.priceCategory);
-
     let driverCharges = model.baseFare || 0;
 
-    if (durationType && durationValue) {
-      switch (durationType.toLowerCase()) {
-        case "day":
-          driverCharges = model.baseFare * durationValue;
-          break;
-        case "week":
-          driverCharges = model.baseFare * durationValue * 7;
-          break;
-        case "month":
-          driverCharges = model.baseFare * durationValue * 30;
-          break;
-        default:
-          driverCharges = model.baseFare;
-      }
+    if (durationType && NoOfDays) {
+        switch (durationType.toLowerCase()) {
+            case "day":
+                driverCharges = model.baseFare * NoOfDays;
+                break;
+            case "week":
+                driverCharges = model.baseFare * NoOfDays * 7;
+                break;
+            case "month":
+                driverCharges = model.baseFare * NoOfDays * 30;
+                break;
+            default:
+                driverCharges = model.baseFare;
+        }
     }
 
     const modelPickCharges = model.pickCharges || 0;
@@ -284,21 +298,44 @@ export const calculateCabRideCharges = async ({
     const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
     const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance);
 
-    result.push({
-      category: model.car?.name,
-      driverCharges: Math.round(driverCharges),
-      pickCharges: Math.round(modelPickCharges),
-      peakCharges: Math.round(peakCharges),
-      insuranceCharges: Math.round(modelInsurance),
-      nightCharges: Math.round(modelNightCharges),
-      adminCommissionOriginal: adminCommission,
-      adminCommissionAdjusted: adjustedAdminCommission,
-      discountApplied: model.discount || 0,
-      gstCharges,
-      subtotal: Math.round(subtotal),
-      totalPayable,
+    console.log('📊 Cab Final calculations:', {
+        baseTotal, adminCommission, adjustedAdminCommission, gstCharges, totalPayable
     });
-  }
 
-  return result;
+    return {
+        categoryId: model.car?._id || null,
+        category: model.car?.name,
+        driverCharges: Math.round(driverCharges),
+        pickCharges: Math.round(modelPickCharges),
+        peakCharges: Math.round(peakCharges),
+        insuranceCharges: Math.round(modelInsurance),
+        nightCharges: Math.round(modelNightCharges),
+        adminCommissionOriginal: adminCommission,
+        adminCommissionAdjusted: adjustedAdminCommission,
+        discountApplied: model.discount || 0,
+        gstCharges,
+        subtotal: Math.round(subtotal),
+        totalPayable,
+    };
+};
+
+// return {
+//     categoryId: model.car?._id || null,
+//     category: model.car?.name,
+//     driverCharges: Math.round(driverCharges),
+//     pickCharges: Math.round(modelPickCharges),
+//     peakCharges: Math.round(peakCharges),
+//     insuranceCharges: Math.round(modelInsurance),
+//     nightCharges: Math.round(modelNightCharges),
+//     adminCommissionOriginal: adminCommission,
+//     adminCommissionAdjusted: adjustedAdminCommission,
+//     discountApplied: model.discount || 0,
+//     gstCharges,
+//     subtotal: Math.round(subtotal),
+//     totalPayable,
+// };
+
+module.exports = {
+    calculateDriverRideCharges,
+    calculateCabRideCharges
 };
