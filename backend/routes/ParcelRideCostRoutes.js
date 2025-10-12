@@ -6,6 +6,8 @@ const peakHours = require('../models/Peak')
 const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
 const mongoose = require('mongoose');
+const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
+
 
 // Get all parcel ride costs
 router.get('/', async (req, res) => {
@@ -87,7 +89,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.post('/calculation', async (req, res) => {
+router.post('/calculation', authMiddleware, async (req, res) => {
   try {
     const {
       parcelCategoryId,
@@ -101,6 +103,12 @@ router.post('/calculation', async (req, res) => {
       durationType,
       durationValue
     } = req.body;
+
+    const riderId = req.rider?.riderId
+
+    // Get rider document
+    const rider = await Rider.findById(riderId);
+    if (!rider) return res.status(404).json({ error: 'Rider not found' });
 
     // --- validations ---
     if (!parcelCategoryId) {
@@ -213,9 +221,11 @@ router.post('/calculation', async (req, res) => {
       const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
       const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
 
+      const cancellationCharges = rider.cancellationCharges || 0;
+
       const subtotal = baseTotal + adminCommission;
       const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
-      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance);
+      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges);
 
       result.push({
         category: model.parcelVehicleType?.name, // keep price category also if needed
@@ -229,7 +239,8 @@ router.post('/calculation', async (req, res) => {
         discountApplied: model.discount || 0,
         gstCharges,
         subtotal: Math.round(subtotal),
-        totalPayable
+        totalPayable,
+        cancellationCharges
       });
     }
 
@@ -243,7 +254,7 @@ router.post('/calculation', async (req, res) => {
 
 router.post("/get-included-data", async (req, res) => {
   try {
-    const { categoryId, subcategoryId} = req.body;
+    const { categoryId, subcategoryId } = req.body;
 
     if (!categoryId || !subcategoryId) {
       return res.status(400).json({
@@ -284,7 +295,7 @@ router.post("/get-included-data", async (req, res) => {
         success: true,
         data: { includedKm },
       });
-    } 
+    }
   } catch (error) {
     console.error("Error fetching included data:", error);
     return res.status(500).json({

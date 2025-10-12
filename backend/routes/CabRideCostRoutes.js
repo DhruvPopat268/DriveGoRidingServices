@@ -10,6 +10,7 @@ const SubSubCategory = require('../models/SubSubCategory');
 const car = require('../models/Car');
 const CarCategory = require('../models/CarCategory')
 const mongoose = require('mongoose');
+const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 
 // Get all cab ride costs
 router.get('/', async (req, res) => {
@@ -90,7 +91,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.post('/calculation', async (req, res) => {
+router.post('/calculation', authMiddleware, async (req, res) => {
   try {
     const {
       carCategoryId,
@@ -105,6 +106,12 @@ router.post('/calculation', async (req, res) => {
       durationValue
     } = req.body;
 
+    const riderId = req.rider?.riderId
+
+    // Get rider document
+    const rider = await Rider.findById(riderId);
+    if (!rider) return res.status(404).json({ error: 'Rider not found' });
+    
     // --- validations ---
     if (!carCategoryId) {
       return res.status(400).json({ error: 'carCategory is required (Classic / Prime)' });
@@ -224,10 +231,11 @@ router.post('/calculation', async (req, res) => {
 
       const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
       const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
+      const cancellationCharges = rider.cancellationCharges || 0;
 
       const subtotal = baseTotal + adminCommission;
       const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
-      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance);
+      const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges);
 
       result.push({
         categoryId: model.car?._id || null,
@@ -242,7 +250,8 @@ router.post('/calculation', async (req, res) => {
         discountApplied: model.discount || 0,
         gstCharges,
         subtotal: Math.round(subtotal),
-        totalPayable
+        totalPayable,
+        cancellationCharges
       });
     }
 
