@@ -77,7 +77,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/calculation',authMiddleware, async (req, res) => {
+router.post('/calculation', authMiddleware, async (req, res) => {
   try {
     const {
       categoryId,
@@ -173,6 +173,7 @@ router.post('/calculation',authMiddleware, async (req, res) => {
 
     for (const model of rideCostModels) {
       const priceCategory = await pricecategories.findById(model.priceCategory);
+      console.log(priceCategory)
 
       let driverCharges = model.baseFare || 0;
 
@@ -213,6 +214,7 @@ router.post('/calculation',authMiddleware, async (req, res) => {
       );
 
       result.push({
+        categoryId: priceCategory?._id || null,
         category: priceCategory?.priceCategoryName || "Unknown",
         driverCharges: Math.round(driverCharges),
         pickCharges: Math.round(modelPickCharges),
@@ -227,6 +229,7 @@ router.post('/calculation',authMiddleware, async (req, res) => {
         totalPayable,
         cancellationCharges
       });
+
     }
 
     res.json({ success: true, result });
@@ -318,7 +321,7 @@ router.delete('/:id', async (req, res) => {
 
 router.post("/get-included-data", async (req, res) => {
   try {
-    const { categoryId, subcategoryId , subSubcategoryId} = req.body;
+    const { categoryId, subcategoryId, subSubcategoryId } = req.body;
 
     if (!categoryId || !subcategoryId) {
       return res.status(400).json({

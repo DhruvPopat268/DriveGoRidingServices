@@ -49,6 +49,7 @@ const rideSchema = new mongoose.Schema(
 
       includeInsurance: { type: Boolean, default: false },
       notes: { type: String },
+      selectedCategoryId : { type: String },
       selectedCategory: { type: String },
       selectedDate: { type: Date },
       selectedTime: { type: String },
@@ -58,6 +59,8 @@ const rideSchema = new mongoose.Schema(
       transmissionType: { type: String },
       selectedDates: [{ type: String }],
 
+      //for extended 
+      extended : {type:Boolean , default:false},
       //extra ride
       extraKm:{ type: Number, default: 0 },
       extraMinutes:{ type: Number, default: 0 },

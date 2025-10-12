@@ -42,6 +42,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       includeInsurance,
       notes,
       selectedCategory,
+      selectedCategoryId,
       selectedDate,
       selectedTime,
       selectedUsage,
@@ -56,6 +57,8 @@ router.post("/book", authMiddleware, async (req, res) => {
       senderDetails,     // ✅ new
       receiverDetails,   // ✅ new
     } = req.body;
+
+    console.log('selected category id',selectedCategoryId)
 
     if (!categoryId || !totalAmount || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
@@ -97,6 +100,7 @@ router.post("/book", authMiddleware, async (req, res) => {
 
         includeInsurance,
         notes,
+        selectedCategoryId,
         selectedCategory,
         selectedDate,
         selectedTime,
@@ -623,6 +627,7 @@ router.get("/driver/rides/completed", driverAuthMiddleware, async (req, res) => 
   }
 });
 
+// fetch extended rides by driver
 router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
@@ -636,6 +641,8 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
       driverId,
       status: "EXTENDED"
     }).sort({ createdAt: -1 }); // latest first (optional)
+
+    console.log('🚗 Extended rides:', confirmedRides)
 
     const count = confirmedRides.length;
 
@@ -1090,14 +1097,14 @@ router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
       const cabData = await getCabRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId);
       extraChargePerKm = cabData.extraChargePerKm;
       extraChargePerMinute = cabData.extraChargePerMinute;
-      adminChargesInPercentage = driverData.extraChargesFromAdmin
-      gstChargesInPercentage = driverData.gst
+      adminChargesInPercentage = cabData.extraChargesFromAdmin
+      gstChargesInPercentage = cabData.gst
     } else if (catNameLower === "parcel") {
       const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId);
       extraChargePerKm = parcelData.extraChargePerKm;
       extraChargePerMinute = parcelData.extraChargePerMinute;
-      adminChargesInPercentage = driverData.extraChargesFromAdmin
-      gstChargesInPercentage = driverData.gst
+      adminChargesInPercentage = parcelData.extraChargesFromAdmin
+      gstChargesInPercentage = parcelData.gst
     }
 
     //included calculation
@@ -1143,6 +1150,7 @@ router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
         'rideInfo.adminCharges': adminCharges,
         'rideInfo.subtotal': subtotal,
         'rideInfo.gstCharges': gstCharges,
+        "rideInfo.extended":true,
         totalPayable: totalPayable
       },
       { new: true }

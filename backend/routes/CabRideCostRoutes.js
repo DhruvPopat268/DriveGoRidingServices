@@ -195,7 +195,7 @@ router.post('/calculation', async (req, res) => {
     // --- final calculation ---
     const result = [];
     for (const model of rideCostModels) {
-      const priceCategory = await pricecategories.findById(model.priceCategory);
+      console.log(model)
 
       let driverCharges = model.baseFare || 0;
 
@@ -230,6 +230,7 @@ router.post('/calculation', async (req, res) => {
       const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance);
 
       result.push({
+        categoryId: model.car?._id || null,
         category: model.car?.name, // keep price category also if needed
         driverCharges: Math.round(driverCharges),
         pickCharges: Math.round(modelPickCharges),
