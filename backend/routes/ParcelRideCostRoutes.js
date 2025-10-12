@@ -7,6 +7,8 @@ const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
 const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
+const Rider = require('../models/Rider');
+
 
 
 // Get all parcel ride costs

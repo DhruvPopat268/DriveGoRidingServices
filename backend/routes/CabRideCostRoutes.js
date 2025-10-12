@@ -11,6 +11,8 @@ const car = require('../models/Car');
 const CarCategory = require('../models/CarCategory')
 const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
+const Rider = require('../models/Rider');
+
 
 // Get all cab ride costs
 router.get('/', async (req, res) => {
