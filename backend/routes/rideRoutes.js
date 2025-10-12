@@ -45,13 +45,14 @@ router.post("/book", authMiddleware, async (req, res) => {
       selectedDate,
       selectedTime,
       selectedUsage,
+      durationValue,
+      selectedDates,
       transmissionType,
       totalAmount,
       paymentType,
       totalPayable,
       referralEarning,
       referralBalance,
-      selectedDates,
       senderDetails,     // ✅ new
       receiverDetails,   // ✅ new
     } = req.body;
@@ -101,6 +102,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedTime,
         selectedUsage,
         transmissionType,
+        NoOfDays: durationValue ,
         selectedDates: selectedDates || [],
         driverCharges: selectedCategoryData.driverCharges || 0,
         insuranceCharges: selectedCategoryData.insuranceCharges || 0,
@@ -621,6 +623,41 @@ router.get("/driver/rides/completed", driverAuthMiddleware, async (req, res) => 
   }
 });
 
+router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    if (!driverId) {
+      return res.status(400).json({ message: "Driver ID is missing" });
+    }
+
+    // Find all rides for this driver that are CONFIRMED
+    const confirmedRides = await Ride.find({
+      driverId,
+      status: "EXTENDED"
+    }).sort({ createdAt: -1 }); // latest first (optional)
+
+    const count = confirmedRides.length;
+
+    if (count === 0) {
+      return res.status(200).json({ message: "No extended rides found" });
+    }
+
+    res.json({
+      success: true,
+      count,
+      data: confirmedRides
+    });
+  } catch (error) {
+    console.error("Error fetching confirmed rides:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+  }
+});
+
 // fetch cancelled rides by driver
 router.get("/driver/rides/cancelled", driverAuthMiddleware, async (req, res) => {
   try {
@@ -818,7 +855,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 // update status to cancel
 router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
   try {
-    const { rideId } = req.body;
+    const { rideId , NoOfDays , selectedDates } = req.body;
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
@@ -839,16 +876,13 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: { $in: ["BOOKED", "CONFIRMED"] } }, // ✅ only if ride is BOOKED or CONFIRMED
       {
-        status: "CANCELLED",
-        driverId: driverId,
-        driverInfo: {
-          driverName,
-          driverMobile
-        }
+        status: "BOOKED",
+        $unset: { driverId: 1, driverInfo: 1 } // Clear driver assignment
       },
       { new: true }
     );
 
+    console.log("updtaed ride",updatedRide)
 
     if (!updatedRide) {
       return res.status(400).json({ message: "Ride is already cancelled or not found" });
@@ -859,14 +893,25 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     console.log('✅ Ride cancelled by driver:', driverId, 'for ride:', rideId);
 
-    // Emit socket event to remove ride from all drivers
+    // Emit new-ride event to make ride available to all drivers again
     const io = req.app.get('io');
     if (io) {
-      io.to('drivers').emit('ride-assigned', {
-        rideId: rideId,
-        driverId: driverId
+      io.to('drivers').emit('new-ride', {
+        rideId: updatedRide._id,
+        categoryName: updatedRide.rideInfo.categoryName,
+        subcategoryName : updatedRide.rideInfo.subcategoryName,
+        subSubcategoryName : updatedRide.rideInfo.subSubcategoryName,
+        carType: updatedRide.rideInfo.carType,
+        transmissionType: updatedRide.rideInfo.transmissionType,
+        selectedUsage: updatedRide.rideInfo.selectedUsage,
+        fromLocation: updatedRide.rideInfo.fromLocation,
+        toLocation: updatedRide.rideInfo.toLocation,
+        selectedDate: updatedRide.rideInfo.selectedDate,
+        selectedTime: updatedRide.rideInfo.selectedTime,
+        totalPayable: updatedRide.totalPayable,
+        status: 'BOOKED',
       });
-      console.log('🚗 Ride assigned event emitted:', rideId);
+      console.log('🚗 New ride event emitted for cancelled ride:', rideId);
     }
 
     res.json({
@@ -1092,6 +1137,8 @@ router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
     const updatedRide = await Ride.findByIdAndUpdate(
       rideId,
       {
+        'rideInfo.extraKm': extraKm,
+        'rideInfo.extraMinutes': extraMinutes,
         'rideInfo.driverCharges': driverCharges,
         'rideInfo.adminCharges': adminCharges,
         'rideInfo.subtotal': subtotal,

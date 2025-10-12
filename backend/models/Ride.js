@@ -53,8 +53,14 @@ const rideSchema = new mongoose.Schema(
       selectedDate: { type: Date },
       selectedTime: { type: String },
       selectedUsage: { type: String },
+      NoOfDays : {type: String},
+      selectedDates : [{type: String}],
       transmissionType: { type: String },
       selectedDates: [{ type: String }],
+
+      //extra ride
+      extraKm:{ type: Number, default: 0 },
+      extraMinutes:{ type: Number, default: 0 },
       driverCharges: { type: Number, default: 0 },
       insuranceCharges: { type: Number, default: 0 },
       cancellationCharges: { type: Number, default: 0 },
