@@ -136,47 +136,39 @@ io.on('connection', (socket) => {
       console.log(`🚗 Driver registered: ${driverId}`);
       console.log(`📊 Online drivers count: ${Object.keys(onlineDrivers).length}`);
 
-      // Send all available BOOKED rides to newly connected driver
+      // Send all available BOOKED rides to newly connected driver (only if driver has WAITING status)
       try {
-        const Ride = require('./models/Ride');
-        const availableRides = await Ride.find({ status: 'BOOKED' }).sort({ createdAt: -1 });
+        const Driver = require('./DriverModel/DriverModel');
+        const driver = await Driver.findById(driverId);
+        
+        // Only send rides if driver has WAITING status
+        if (driver && driver.rideStatus === 'WAITING') {
+          const Ride = require('./models/Ride');
+          const availableRides = await Ride.find({ status: 'BOOKED' }).sort({ createdAt: -1 });
 
-        if (availableRides.length > 0) {
-          availableRides.forEach(ride => {
-            // const rideData = {
-            //   rideId: ride._id,
-            //   categoryName: categoryName,
-            //   subcategoryName: subcategoryName,
-            //   subSubcategoryName: subSubcategoryName,
-            //   carType: carType,
-            //   transmissionType: transmissionType,
-            //   selectedUsage: selectedUsage,
-            //   fromLocation: fromLocationData,
-            //   toLocation: toLocationData,
-            //   selectedDate: selectedDate,
-            //   selectedTime: selectedTime,
-            //   totalPayable: totalPayable,
-            //   status: 'BOOKED'
-            // };
-
-            const rideData = {
-              rideId: ride._id,
-              categoryName: ride.rideInfo.categoryName,
-              subcategoryName: ride.rideInfo.subcategoryName,
-              subSubcategoryName: ride.rideInfo.subSubcategoryName,
-              carType: ride.rideInfo.carType,
-              transmissionType: ride.rideInfo.transmissionType,
-              selectedUsage: ride.rideInfo.selectedUsage,
-              fromLocation: ride.rideInfo.fromLocation,
-              toLocation: ride.rideInfo.toLocation,
-              selectedDate: ride.rideInfo.selectedDate,
-              selectedTime: ride.rideInfo.selectedTime,
-              totalPayable: ride.totalPayable,
-              status: 'BOOKED'
-            };
-            socket.emit('new-ride', rideData);
-          });
-          console.log(`📤 Sent ${availableRides.length} available rides to new driver ${driverId}`);
+          if (availableRides.length > 0) {
+            availableRides.forEach(ride => {
+              const rideData = {
+                rideId: ride._id,
+                categoryName: ride.rideInfo.categoryName,
+                subcategoryName: ride.rideInfo.subcategoryName,
+                subSubcategoryName: ride.rideInfo.subSubcategoryName,
+                carType: ride.rideInfo.carType,
+                transmissionType: ride.rideInfo.transmissionType,
+                selectedUsage: ride.rideInfo.selectedUsage,
+                fromLocation: ride.rideInfo.fromLocation,
+                toLocation: ride.rideInfo.toLocation,
+                selectedDate: ride.rideInfo.selectedDate,
+                selectedTime: ride.rideInfo.selectedTime,
+                totalPayable: ride.totalPayable,
+                status: 'BOOKED'
+              };
+              socket.emit('new-ride', rideData);
+            });
+            console.log(`📤 Sent ${availableRides.length} available rides to new driver ${driverId} (WAITING status)`);
+          }
+        } else {
+          console.log(`🚫 Driver ${driverId} does not have WAITING status, no rides sent`);
         }
       } catch (error) {
         console.error('Error sending available rides to new driver:', error);
