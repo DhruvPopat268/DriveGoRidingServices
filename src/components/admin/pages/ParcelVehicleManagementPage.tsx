@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Loader } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,8 +32,11 @@ interface ParcelVehicleType {
 }
 
 export const ParcelVehicleManagementPage = () => {
+  const navigate = useNavigate();
   const [parcelVehicleTypes, setParcelVehicleTypes] = useState<ParcelVehicleType[]>([]);
   const [parcelCategories, setParcelCategories] = useState<ParcelCategory[]>([]);
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filteredVehicleTypes, setFilteredVehicleTypes] = useState<ParcelVehicleType[]>([]);
   const [vehicleTypeForm, setVehicleTypeForm] = useState({
     parcelCategory: '',
     name: '',
@@ -47,6 +51,14 @@ export const ParcelVehicleManagementPage = () => {
     fetchParcelVehicleTypes();
     fetchParcelCategories();
   }, []);
+
+  useEffect(() => {
+    if (filterCategory === 'all') {
+      setFilteredVehicleTypes(parcelVehicleTypes);
+    } else {
+      setFilteredVehicleTypes(parcelVehicleTypes.filter(vehicle => vehicle.parcelCategory._id === filterCategory));
+    }
+  }, [parcelVehicleTypes, filterCategory]);
 
   const fetchParcelVehicleTypes = async () => {
     try {
@@ -118,6 +130,12 @@ export const ParcelVehicleManagementPage = () => {
     setVehicleTypeForm({ parcelCategory: '', name: '', description: '', weight: '' });
   };
 
+  const handleViewDrivers = (category: ParcelCategory) => {
+    navigate(`/admin/category-assignment/parcel/${category._id}`, {
+      state: { categoryName: category.categoryName }
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -126,7 +144,22 @@ export const ParcelVehicleManagementPage = () => {
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Parcel Vehicles</h2>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-xl font-semibold">Parcel Vehicles</h2>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {parcelCategories.map((category) => (
+                  <SelectItem key={category._id} value={category._id}>
+                    {category.categoryName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -205,14 +238,14 @@ export const ParcelVehicleManagementPage = () => {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : parcelVehicleTypes.length === 0 ? (
+            ) : filteredVehicleTypes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  No parcel vehicles found. Create your first one!
+                <TableCell colSpan={6} className="text-center">
+                  {parcelVehicleTypes.length === 0 ? 'No parcel vehicles found. Create your first one!' : 'No vehicles found for selected category.'}
                 </TableCell>
               </TableRow>
             ) : (
-              parcelVehicleTypes.map((vehicleType,index) => (
+              filteredVehicleTypes.map((vehicleType,index) => (
                 <TableRow key={vehicleType._id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell className="font-medium">{vehicleType.parcelCategory.categoryName}</TableCell>
@@ -221,6 +254,13 @@ export const ParcelVehicleManagementPage = () => {
                   <TableCell>{vehicleType.description}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDrivers(vehicleType.parcelCategory)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(vehicleType)}>
                         <Edit className="w-4 h-4" />
                       </Button>

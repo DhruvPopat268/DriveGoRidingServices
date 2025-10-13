@@ -59,7 +59,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       receiverDetails,   // ✅ new
     } = req.body;
 
-    console.log('selected category id',selectedCategoryId)
+    console.log('selected category id', selectedCategoryId)
 
     if (!categoryId || !totalAmount || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
@@ -107,7 +107,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedTime,
         selectedUsage,
         transmissionType,
-        NoOfDays: durationValue ,
+        NoOfDays: durationValue,
         selectedDates: selectedDates || [],
         driverCharges: selectedCategoryData.driverCharges || 0,
         insuranceCharges: selectedCategoryData.insuranceCharges || 0,
@@ -317,11 +317,11 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     // Extract required data from updatedBooking
     const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime } = updatedBooking.rideInfo;
     const bookingDriverId = updatedBooking.driverId;
-    
+
     // Check category and fetch cancellation details from appropriate model
     const categoryNameLower = categoryName.toLowerCase();
     let cancellationDetails = null;
-    
+
     try {
       if (categoryNameLower === 'driver') {
         cancellationDetails = await driverRideCost.findOne({
@@ -339,17 +339,17 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
           subcategory: subcategoryId
         }).select('cancellationFee cancellationBufferTime');
       }
-      
+
       const cancellationFee = cancellationDetails?.cancellationFee || 0;
       const cancellationBufferTime = cancellationDetails?.cancellationBufferTime || 0;
-      
+
       // Function to handle cancellation charges
       const applyCancellationCharges = async (description) => {
         const wallet = await Wallet.findOne({ riderId: riderId.toString() });
-        
+
         if (wallet) {
           const currentBalance = wallet.balance;
-          
+
           if (currentBalance >= cancellationFee) {
             // Create Payment record for full deduction
             const payment = new Payment({
@@ -363,13 +363,13 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               paidAt: new Date()
             });
             await payment.save();
-            
+
             // Deduct full cancellation fee from wallet
             wallet.balance -= cancellationFee;
             wallet.totalSpent += cancellationFee;
             wallet.lastTransactionAt = new Date();
             await wallet.save();
-            
+
             console.log(`Deducted full cancellation fee: ${cancellationFee} from wallet`);
           } else {
             // Create Payment record for partial deduction
@@ -386,23 +386,23 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               });
               await payment.save();
             }
-            
+
             // Partial deduction from wallet, store remaining in rider model
             const remainingCharges = cancellationFee - currentBalance;
-            
+
             // Deduct available balance from wallet
             wallet.totalSpent += currentBalance;
             wallet.balance = 0;
             wallet.lastTransactionAt = new Date();
             await wallet.save();
-            
+
             // Store remaining charges in rider model
             const rider = await Rider.findById(riderId);
             if (rider) {
               rider.cancellationCharges += remainingCharges;
               await rider.save();
             }
-            
+
             console.log(`Deducted ${currentBalance} from wallet, stored ${remainingCharges} as pending charges`);
           }
         } else {
@@ -412,15 +412,15 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             rider.cancellationCharges += cancellationFee;
             await rider.save();
           }
-          
+
           console.log(`No wallet found, stored ${cancellationFee} as pending charges`);
         }
       };
-      
+
       // Check conditions for applying cancellation charges
       let shouldApplyCharges = false;
       let chargeReason = '';
-      
+
       if (cancellationFee > 0) {
         // Check if driver has reached location
         if (bookingDriverId) {
@@ -430,29 +430,29 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             chargeReason = 'Cancellation fee - Driver already reached pickup location';
           }
         }
-        
+
         // Check if cancellation is outside buffer time window
         if (!shouldApplyCharges && cancellationBufferTime > 0) {
           const rideDateTime = new Date(selectedDate);
           const [hours, minutes] = selectedTime.split(':');
           rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-          
+
           const bufferEndTime = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
           const currentTime = new Date();
-          
+
           if (currentTime > bufferEndTime) {
             shouldApplyCharges = true;
             chargeReason = `Cancellation fee - Late cancellation (${cancellationBufferTime} min window exceeded)`;
           }
         }
-        
+
         // Apply charges if conditions are met
         if (shouldApplyCharges) {
           await applyCancellationCharges(chargeReason);
           console.log(`Cancellation charges applied: ${chargeReason}`);
         }
       }
-      
+
       console.log('Cancellation Details:', {
         categoryName,
         categoryId,
@@ -463,7 +463,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
         shouldApplyCharges,
         chargeReason
       });
-      
+
     } catch (modelError) {
       console.error('Error processing cancellation:', modelError);
     }
@@ -771,7 +771,30 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
+    const { rideId } = req.body;
 
+    // ✅ Get current time in HH:MM:SS format
+    const driverReachTime = new Date().toLocaleTimeString("en-GB");
+
+    // ✅ Update the ride only if status is BOOKED
+    const updatedRide = await Ride.findOneAndUpdate(
+      { _id: rideId, status: "CONFIRMED" },
+      {
+        "rideInfo.driverReachTime": driverReachTime,
+        status: "REACHED",
+        driverId: driverId,
+      },
+      { new: true }
+    );
+
+    if (!updatedRide) {
+      return res.status(404).json({
+        success: false,
+        message: "Ride not found or not in BOOKED status",
+      });
+    }
+
+    // ✅ Update driver status only if it was CONFIRMED
     const driver = await Driver.findOneAndUpdate(
       { _id: driverId, rideStatus: "CONFIRMED" },
       { rideStatus: "REACHED" },
@@ -779,20 +802,25 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
     );
 
     if (!driver) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Driver not found or ride status is not CONFIRMED" 
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found or ride status is not CONFIRMED",
       });
     }
 
     res.json({
       success: true,
       message: "Ride status updated to REACHED successfully",
-      rideStatus: driver.rideStatus
+      rideStatus: driver.rideStatus,
+      driverReachTime: updatedRide.rideInfo.driverReachTime,
     });
   } catch (error) {
     console.error("Update ride status error:", error);
-    res.status(500).json({ success: false, message: "Failed to update ride status" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update ride status",
+      error: error.message,
+    });
   }
 });
 
@@ -804,6 +832,9 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     const driverMobile = req.driver?.mobile;
 
     console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
+
+    // ✅ Get current time in HH:MM:SS format
+    const ridseStartTime = new Date().toLocaleTimeString("en-GB");
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -818,14 +849,10 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 
     // Find and update the ride only if status is CONFIRMED
     const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: "CONFIRMED" }, // only if ride is CONFIRMED
+      { _id: rideId, status: "REACHED" }, // only if ride is CONFIRMED
       {
+        "rideInfo.ridseStartTime": ridseStartTime,
         status: "ONGOING",
-        driverId: driverId,
-        driverInfo: {
-          driverName,
-          driverMobile
-        }
       },
       { new: true }
     );
@@ -852,6 +879,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     res.json({
       message: "Ride ongoing successfully",
       success: true,
+      ridseStartTime: updatedRide.rideInfo?.ridseStartTime,
       data: updatedRide
     });
   } catch (error) {
@@ -889,15 +917,15 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     // Check if this is a partial cancellation (multi-day ride)
     if (NoOfDays && selectedDates && selectedDates.length > 0) {
       console.log('🔄 Processing partial cancellation...');
-      
+
       // Calculate remaining days
       const originalDates = currentRide.rideInfo.selectedDates || [];
       const originalNoOfDays = parseInt(currentRide.rideInfo.NoOfDays) || 1;
       const cancelDays = parseInt(NoOfDays);
-      
+
       const remainingDates = originalDates.filter(date => !selectedDates.includes(date));
       const remainingNoOfDays = originalNoOfDays - cancelDays;
-      
+
       console.log('📈 Calculation:', {
         originalDates, originalNoOfDays, cancelDays, remainingDates, remainingNoOfDays
       });
@@ -908,12 +936,12 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       } else {
         // Partial cancellation - update current ride with remaining days
         console.log('✂️ Partial cancellation - updating current ride');
-        
+
         try {
           // Calculate new charges for remaining days
           let newCharges;
           const { categoryName, categoryId, subcategoryId, subSubcategoryId, selectedCategory, selectedCategoryId } = currentRide.rideInfo;
-          
+
           if (categoryName.toLowerCase() === 'driver') {
             newCharges = await calculateDriverRideCharges({
               riderId: currentRide.riderId,
@@ -1105,7 +1133,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     // Full cancellation logic (existing code)
     console.log('🚫 Processing full cancellation...');
-    
+
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: { $in: ["BOOKED", "CONFIRMED"] } },
       {
@@ -1279,19 +1307,21 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
 });
 
 // count extra charges
-router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
+router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
   try {
-    const { rideId, extraMinutes, extraKm } = req.body;
+    const { rideId, extraKm } = req.body;
     const driverId = req.driver?.driverId;
 
-    if (!rideId || extraMinutes === undefined || extraKm === undefined) {
+    if (!rideId) {
       return res.status(400).json({
         success: false,
-        message: "rideId, extraMinutes, and extraKm are required"
+        message: "rideId is required"
       });
     }
 
+    const rideEndTime = new Date().toLocaleTimeString("en-GB");
     const ride = await Ride.findById(rideId);
+
     if (!ride) {
       return res.status(404).json({
         success: false,
@@ -1299,111 +1329,144 @@ router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const { categoryId, categoryName, subcategoryId, subcategoryName } = ride.rideInfo;
-    // let totalPayable = ride.totalPayable;
+    const { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime } = ride.rideInfo;
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
     let extraChargePerMinute = 0;
+    let includedMinutes = 0;
+    let adminChargesInPercentage = 0;
+    let gstChargesInPercentage = 0;
 
     const catNameLower = categoryName.toLowerCase();
 
     if (catNameLower === "driver") {
       const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId);
+      includedMinutes = driverData.includedMinutes;
       extraChargePerKm = driverData.extraChargePerKm;
       extraChargePerMinute = driverData.extraChargePerMinute;
-      adminChargesInPercentage = driverData.extraChargesFromAdmin
-      gstChargesInPercentage = driverData.gst
+      adminChargesInPercentage = driverData.extraChargesFromAdmin;
+      gstChargesInPercentage = driverData.gst;
     } else if (catNameLower === "cab") {
       const cabData = await getCabRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId);
+      includedMinutes = cabData.includedMinutes;
       extraChargePerKm = cabData.extraChargePerKm;
       extraChargePerMinute = cabData.extraChargePerMinute;
-      adminChargesInPercentage = cabData.extraChargesFromAdmin
-      gstChargesInPercentage = cabData.gst
+      adminChargesInPercentage = cabData.extraChargesFromAdmin;
+      gstChargesInPercentage = cabData.gst;
     } else if (catNameLower === "parcel") {
       const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId);
+      includedMinutes = parcelData.includedMinutes;
       extraChargePerKm = parcelData.extraChargePerKm;
       extraChargePerMinute = parcelData.extraChargePerMinute;
-      adminChargesInPercentage = parcelData.extraChargesFromAdmin
-      gstChargesInPercentage = parcelData.gst
+      adminChargesInPercentage = parcelData.extraChargesFromAdmin;
+      gstChargesInPercentage = parcelData.gst;
     }
 
-    //included calculation
+    let driverCharges = ride.rideInfo?.driverCharges || 0;
+    let adminCharges = ride.rideInfo?.adminCharges || 0;
+    let insuranceCharges = ride.rideInfo?.insuranceCharges || 0;
+    let cancellationCharges = ride.rideInfo?.cancellationCharges || 0;
+    let discount = ride.rideInfo?.discount || 0;
+    let subtotal = ride.rideInfo?.subtotal || 0;
+    let gstCharges = ride.rideInfo?.gstCharges || 0;
+    let totalPayable = ride.totalPayable || 0;
 
-    let driverCharges = ride.rideInfo?.driverCharges;
-    let adminCharges = ride.rideInfo?.adminCharges;
-    let insuranceCharges = ride.rideInfo?.insuranceCharges;
-    let cancellationCharges = ride.rideInfo?.cancellationCharges;
-    let discount = ride.rideInfo?.discount;
-    let subtotal = ride.rideInfo?.subtotal;
-    let gstCharges = ride.rideInfo?.gstCharges;
-    let totalPayable = ride.totalPayable;
+    // Helper to convert "HH:MM:SS" string to minutes
+    function timeToMinutes(timeStr) {
+      if (!timeStr || typeof timeStr !== 'string') return 0;
+      const parts = timeStr.split(":");
+      if (parts.length !== 3) return 0;
+      const [hours, minutes, seconds] = parts.map(Number);
+      return hours * 60 + minutes + seconds / 60;
+    }
 
-    // extra charges 
+    const startMinutes = timeToMinutes(ride.rideInfo.ridseStartTime);
+    const endMinutes = timeToMinutes(rideEndTime);
 
-    // Calculate extra charges
-    const extraKmCharges = extraKm * extraChargePerKm;
-    const extraMinutesCharges = extraMinutes * extraChargePerMinute;
+    let diffOfMinutes = endMinutes - startMinutes;
+    if (diffOfMinutes < 0) diffOfMinutes += 24 * 60; // handle overnight rides
 
-    const extraCharges = extraKmCharges + extraMinutesCharges;
+    const safeIncludedMinutes = Number(includedMinutes) || 0;
+    const extraMinutes = Math.max(0, Math.ceil(diffOfMinutes - safeIncludedMinutes));
 
-    driverCharges += extraCharges;
+    // Calculate extra charges only if extraKm is provided
+    let extraKmCharges = 0;
+    if (extraKm !== undefined && extraKm !== null) {
+      extraKmCharges = extraKm * extraChargePerKm;
+      const extraKmAdminCharges = extraKmCharges * adminChargesInPercentage / 100;
+      const extraKmGstCharges = extraKmCharges * gstChargesInPercentage / 100;
+      extraKmCharges = Math.ceil(extraKmCharges + extraKmAdminCharges + extraKmGstCharges);
+    }
 
-    let adminChargesOnExtraCharges = Math.ceil(extraCharges * adminChargesInPercentage / 100)
-    adminCharges += adminChargesOnExtraCharges;
+    // Calculate extraMinutes charges
+    let extraMinutesCharges = 0;
+    if (extraMinutes > 0) {
+      extraMinutesCharges = extraMinutes * extraChargePerMinute;
+      const extraMinutesAdminCharges = extraMinutesCharges * adminChargesInPercentage / 100;
+      const extraMinutesGstCharges = extraMinutesCharges * gstChargesInPercentage / 100;
+      extraMinutesCharges = Math.ceil(extraMinutesCharges + extraMinutesAdminCharges + extraMinutesGstCharges);
+    }
 
-    let subTotalOfExtra = extraCharges + adminChargesOnExtraCharges
-    subtotal += subTotalOfExtra;
+    // Add to totalPayable
+    totalPayable += extraKmCharges + extraMinutesCharges;
 
-    let gstOnExtraCharges = Math.ceil(subTotalOfExtra * gstChargesInPercentage / 100)
-    gstCharges += gstOnExtraCharges;
+    // Prepare update data dynamically
+    const updateData = {
+      'rideInfo.extraMinutes': extraMinutes,
+      'rideInfo.driverCharges': driverCharges,
+      'rideInfo.adminCharges': adminCharges,
+      'rideInfo.subtotal': subtotal,
+      'rideInfo.gstCharges': gstCharges,
+      'rideInfo.extended': true,
+      'rideInfo.rideEndTime': rideEndTime,
+      totalPayable
+    };
 
-    let totalPayableOfExtra = subTotalOfExtra + gstOnExtraCharges
-    totalPayable += totalPayableOfExtra;
+    if (extraKm !== undefined && extraKm !== null) {
+      updateData['rideInfo.extraKm'] = extraKm;
+    }
 
-    // Update the ride model with new calculated charges
-    const updatedRide = await Ride.findByIdAndUpdate(
+    const updatedRide = await Ride.findByIdAndUpdate(rideId, updateData, { new: true });
+
+    // Prepare response data dynamically
+    const responseData = {
       rideId,
-      {
-        'rideInfo.extraKm': extraKm,
-        'rideInfo.extraMinutes': extraMinutes,
-        'rideInfo.driverCharges': driverCharges,
-        'rideInfo.adminCharges': adminCharges,
-        'rideInfo.subtotal': subtotal,
-        'rideInfo.gstCharges': gstCharges,
-        "rideInfo.extended":true,
-        totalPayable: totalPayable
-      },
-      { new: true }
-    );
+      categoryId,
+      categoryName,
+      subcategoryId,
+      subcategoryName,
+      includeInsurance: ride.rideInfo.includeInsurance,
+      driverCharges,
+      adminCharges,
+      subtotal,
+      insuranceCharges,
+      cancellationCharges,
+      gstCharges,
+      discount,
+    };
+
+    // Include KM fields first if provided
+    if (extraKm !== undefined && extraKm !== null) {
+      responseData.extraKm = extraKm;
+      responseData.extraChargePerKm = extraChargePerKm;
+      responseData.extraKmCharges = extraKmCharges;
+    }
+
+    // Then include Minutes fields
+    responseData.extraMinutes = extraMinutes;
+    responseData.extraChargePerMinute = extraChargePerMinute;
+    responseData.extraMinutesCharges = extraMinutesCharges;
+
+    // Finally totalPayable
+    responseData.totalPayable = totalPayable;
+
 
     res.json({
       success: true,
       message: "Extra charges calculated and ride updated successfully",
-      data: {
-        rideId,
-        categoryId,
-        categoryName,
-        subcategoryId,
-        subcategoryName,
-
-        extraChargePerKm,
-        extraChargePerMinute,
-
-        extraKmCharges,
-        extraMinutesCharges,
-
-        includeInsurance: ride.rideInfo.includeInsurance,
-
-        driverCharges,
-        adminCharges,
-        subtotal,
-        insuranceCharges,
-        cancellationCharges,
-        gstCharges,
-        discount,
-        totalPayable
-      }
+      rideEndTime: updatedRide.rideInfo.rideEndTime,
+      data: responseData
     });
 
   } catch (error) {
@@ -1415,5 +1478,6 @@ router.post("/count-extra-charges",driverAuthMiddleware, async (req, res) => {
     });
   }
 });
+
 
 module.exports = router;

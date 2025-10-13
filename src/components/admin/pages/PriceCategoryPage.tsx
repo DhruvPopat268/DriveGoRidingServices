@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Loader } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,6 +21,7 @@ interface PriceCategory {
 }
 
 export const PriceCategoryPage = () => {
+  const navigate = useNavigate();
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
   const [priceCategoryForm, setPriceCategoryForm] = useState({
     priceCategoryName: ''
@@ -87,6 +89,12 @@ export const PriceCategoryPage = () => {
     setPriceCategoryForm({ priceCategoryName: '' });
   };
 
+  const handleViewDrivers = (category: PriceCategory) => {
+    navigate(`/admin/category-assignment/driver/${category._id}`, {
+      state: { categoryName: category.priceCategoryName }
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -152,6 +160,9 @@ export const PriceCategoryPage = () => {
                   <TableCell className="font-medium">{priceCategory.priceCategoryName}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleViewDrivers(priceCategory)}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(priceCategory)}>
                         <Edit className="w-4 h-4" />
                       </Button>

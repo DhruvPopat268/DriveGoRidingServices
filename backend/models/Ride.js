@@ -64,6 +64,11 @@ const rideSchema = new mongoose.Schema(
       //extra ride
       extraKm:{ type: Number, default: 0 },
       extraMinutes:{ type: Number, default: 0 },
+
+      driverReachTime: { type: String },
+      ridseStartTime: { type: String },
+      rideEndTime : { type: String },
+
       driverCharges: { type: Number, default: 0 },
       insuranceCharges: { type: Number, default: 0 },
       cancellationCharges: { type: Number, default: 0 },
@@ -81,7 +86,7 @@ const rideSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["BOOKED", "CONFIRMED", "ONGOING", "COMPLETED", "CANCELLED", "EXTENDED"],
+      enum: ["BOOKED", "CONFIRMED", "ONGOING", "COMPLETED", "CANCELLED", "EXTENDED" , "REACHED"],
       default: "BOOKED",
     },
   },

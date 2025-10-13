@@ -58,9 +58,154 @@ const DriverSubscriptionPlan = require('../DriverModel/SubscriptionPlan')
 //approve drivers
 
 router.get("/", async (req, res) => {
-  const drivers = await Driver.find({ status: "Approved" }).sort({ createdAt: -1 })
+  const drivers = await Driver.find({ status: "Approved" })
+    .populate('driverCategory')
+    .populate('carCategory')
+    .populate('parcelCategory')
+    .populate('assignedCar')
+    .sort({ createdAt: -1 })
   res.status(200).json(drivers)
 })
+
+// Assign drivers to price category
+router.put("/assign-category", async (req, res) => {
+  try {
+    const { categoryId, driverIds } = req.body;
+    
+    if (!categoryId || !Array.isArray(driverIds)) {
+      return res.status(400).json({ message: "Category ID and driver IDs array are required" });
+    }
+
+    // Update selected drivers with the category
+    await Driver.updateMany(
+      { _id: { $in: driverIds } },
+      { driverCategory: categoryId }
+    );
+
+    // Remove category from drivers not in the selection for this category
+    await Driver.updateMany(
+      { 
+        _id: { $nin: driverIds },
+        driverCategory: categoryId 
+      },
+      { $unset: { driverCategory: 1 } }
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Driver categories updated successfully",
+      updatedCount: driverIds.length
+    });
+  } catch (error) {
+    console.error("Assign category error:", error);
+    res.status(500).json({ success: false, message: "Failed to assign categories" });
+  }
+});
+
+// Assign drivers to car category
+router.put("/assign-car-category", async (req, res) => {
+  try {
+    const { categoryId, driverIds } = req.body;
+    
+    if (!categoryId || !Array.isArray(driverIds)) {
+      return res.status(400).json({ message: "Category ID and driver IDs array are required" });
+    }
+
+    // Update selected drivers with the car category
+    await Driver.updateMany(
+      { _id: { $in: driverIds } },
+      { carCategory: categoryId }
+    );
+
+    // Remove car category from drivers not in the selection for this category
+    await Driver.updateMany(
+      { 
+        _id: { $nin: driverIds },
+        carCategory: categoryId 
+      },
+      { $unset: { carCategory: 1 } }
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Car categories updated successfully",
+      updatedCount: driverIds.length
+    });
+  } catch (error) {
+    console.error("Assign car category error:", error);
+    res.status(500).json({ success: false, message: "Failed to assign car categories" });
+  }
+});
+
+// Assign drivers to parcel category
+router.put("/assign-parcel-category", async (req, res) => {
+  try {
+    const { categoryId, driverIds } = req.body;
+    
+    if (!categoryId || !Array.isArray(driverIds)) {
+      return res.status(400).json({ message: "Category ID and driver IDs array are required" });
+    }
+
+    // Update selected drivers with the parcel category
+    await Driver.updateMany(
+      { _id: { $in: driverIds } },
+      { parcelCategory: categoryId }
+    );
+
+    // Remove parcel category from drivers not in the selection for this category
+    await Driver.updateMany(
+      { 
+        _id: { $nin: driverIds },
+        parcelCategory: categoryId 
+      },
+      { $unset: { parcelCategory: 1 } }
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Parcel categories updated successfully",
+      updatedCount: driverIds.length
+    });
+  } catch (error) {
+    console.error("Assign parcel category error:", error);
+    res.status(500).json({ success: false, message: "Failed to assign parcel categories" });
+  }
+});
+
+// Assign drivers to specific car
+router.put("/assign-car", async (req, res) => {
+  try {
+    const { carId, driverIds } = req.body;
+    
+    if (!carId || !Array.isArray(driverIds)) {
+      return res.status(400).json({ message: "Car ID and driver IDs array are required" });
+    }
+
+    // Update selected drivers with the car
+    await Driver.updateMany(
+      { _id: { $in: driverIds } },
+      { assignedCar: carId }
+    );
+
+    // Remove car from drivers not in the selection for this car
+    await Driver.updateMany(
+      { 
+        _id: { $nin: driverIds },
+        assignedCar: carId 
+      },
+      { $unset: { assignedCar: 1 } }
+    );
+
+    res.json({ 
+      success: true, 
+      message: "Car assignments updated successfully",
+      updatedCount: driverIds.length
+    });
+  } catch (error) {
+    console.error("Assign car error:", error);
+    res.status(500).json({ success: false, message: "Failed to assign car" });
+  }
+});
 
 //Onreview drivers
 router.get("/Onreview", async (req, res) => {

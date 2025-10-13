@@ -87,7 +87,31 @@ const driverSchema = new mongoose.Schema(
       plan: { type: String, required: true },
       amount: { type: Number },
       purchasedAt: { type: Date, default: Date.now }
-    }]
+    }],
+
+    driverCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PriceCategory',
+      default: null
+    },
+
+    carCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CarCategory',
+      default: null
+    },
+
+    parcelCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ParcelCategory',
+      default: null
+    },
+
+    assignedCar: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Car',
+      default: null
+    }
   },
   { timestamps: true }
 );
