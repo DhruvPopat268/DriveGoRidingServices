@@ -1349,7 +1349,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime } = ride.rideInfo;
+    const { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime ,  selectedUsage} = ride.rideInfo;
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
@@ -1407,7 +1407,10 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     let diffOfMinutes = endMinutes - startMinutes;
     if (diffOfMinutes < 0) diffOfMinutes += 24 * 60; // handle overnight rides
 
+    console.log("included minutes",includedMinutes)
+
     const safeIncludedMinutes = Number(includedMinutes) || 0;
+    console.log("safeIncludedMinutes", safeIncludedMinutes)
     const extraMinutes = Math.max(0, Math.ceil(diffOfMinutes - safeIncludedMinutes));
 
     // Calculate extra charges only if extraKm is provided

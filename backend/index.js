@@ -144,13 +144,18 @@ io.on('connection', (socket) => {
         if (availableRides.length > 0) {
           availableRides.forEach(ride => {
             const rideData = {
-              rideId: ride._id,
-              categoryName: ride.rideInfo.categoryName,
-              fromLocation: ride.rideInfo.fromLocation,
-              toLocation: ride.rideInfo.toLocation,
-              selectedDate: ride.rideInfo.selectedDate,
-              selectedTime: ride.rideInfo.selectedTime,
-              totalPayable: ride.totalPayable,
+              rideId: newRide._id,
+              categoryName: categoryName,
+              subcategoryName: subcategoryName,
+              subSubcategoryName: subSubcategoryName,
+              carType: carType,
+              transmissionType: transmissionType,
+              selectedUsage: selectedUsage,
+              fromLocation: fromLocationData,
+              toLocation: toLocationData,
+              selectedDate: selectedDate,
+              selectedTime: selectedTime,
+              totalPayable: totalPayable,
               status: 'BOOKED'
             };
             socket.emit('new-ride', rideData);

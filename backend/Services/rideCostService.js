@@ -7,7 +7,7 @@ const SubCategory = require("../models/SubCategory");
 /**
  * Get includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst from DriverRideCost
  */
-async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId) {
+async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId , selectedUsage , subcategoryName) {
   const records = await DriverRideCost.find({
     category: categoryId,
     subcategory: subcategoryId,
