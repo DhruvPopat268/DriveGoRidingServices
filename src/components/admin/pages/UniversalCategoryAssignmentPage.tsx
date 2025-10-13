@@ -17,7 +17,6 @@ interface Driver {
   mobile: string;
   status: string;
   driverCategory?: { _id: string; priceCategoryName: string; };
-  carCategory?: { _id: string; name: string; };
   parcelCategory?: { _id: string; categoryName: string; };
   assignedCar?: { _id: string; name: string; };
 }
@@ -28,12 +27,6 @@ const categoryConfig = {
     endpoint: '/api/driver/assign-category',
     displayField: 'priceCategoryName',
     title: 'Driver Category'
-  },
-  car: {
-    field: 'carCategory', 
-    endpoint: '/api/driver/assign-car-category',
-    displayField: 'name',
-    title: 'Cab Category'
   },
   parcel: {
     field: 'parcelCategory',
@@ -77,11 +70,21 @@ export const UniversalCategoryAssignmentPage = () => {
       setLoading(true);
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/driver`);
       
-      // Filter drivers: no category OR current category
-      const filteredDrivers = res.data.filter((driver: Driver) => 
-        !driver[config.field as keyof Driver] || 
-        (driver[config.field as keyof Driver] as any)?._id === categoryId
-      );
+      // Filter drivers: no assignments OR current assignment only
+      const filteredDrivers = res.data.filter((driver: Driver) => {
+        const hasDriverCategory = driver.driverCategory;
+        const hasParcelCategory = driver.parcelCategory;
+        const hasAssignedCar = driver.assignedCar;
+        
+        // Count existing assignments
+        const assignmentCount = [hasDriverCategory, hasParcelCategory, hasAssignedCar].filter(Boolean).length;
+        
+        // Allow if no assignments OR only has current assignment
+        if (assignmentCount === 0) return true;
+        if (assignmentCount === 1 && (driver[config.field as keyof Driver] as any)?._id === categoryId) return true;
+        
+        return false;
+      });
       
       setDrivers(filteredDrivers);
       

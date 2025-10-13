@@ -95,12 +95,6 @@ const driverSchema = new mongoose.Schema(
       default: null
     },
 
-    carCategory: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'CarCategory',
-      default: null
-    },
-
     parcelCategory: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'ParcelCategory',
