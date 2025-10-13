@@ -144,7 +144,7 @@ io.on('connection', (socket) => {
         if (availableRides.length > 0) {
           availableRides.forEach(ride => {
             const rideData = {
-              rideId: newRide._id,
+              rideId: ride._id,
               categoryName: categoryName,
               subcategoryName: subcategoryName,
               subSubcategoryName: subSubcategoryName,
