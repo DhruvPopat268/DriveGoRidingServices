@@ -143,19 +143,35 @@ io.on('connection', (socket) => {
 
         if (availableRides.length > 0) {
           availableRides.forEach(ride => {
+            // const rideData = {
+            //   rideId: ride._id,
+            //   categoryName: categoryName,
+            //   subcategoryName: subcategoryName,
+            //   subSubcategoryName: subSubcategoryName,
+            //   carType: carType,
+            //   transmissionType: transmissionType,
+            //   selectedUsage: selectedUsage,
+            //   fromLocation: fromLocationData,
+            //   toLocation: toLocationData,
+            //   selectedDate: selectedDate,
+            //   selectedTime: selectedTime,
+            //   totalPayable: totalPayable,
+            //   status: 'BOOKED'
+            // };
+
             const rideData = {
               rideId: ride._id,
-              categoryName: categoryName,
-              subcategoryName: subcategoryName,
-              subSubcategoryName: subSubcategoryName,
-              carType: carType,
-              transmissionType: transmissionType,
-              selectedUsage: selectedUsage,
-              fromLocation: fromLocationData,
-              toLocation: toLocationData,
-              selectedDate: selectedDate,
-              selectedTime: selectedTime,
-              totalPayable: totalPayable,
+              categoryName: ride.rideInfo.categoryName,
+              subcategoryName: ride.rideInfo.subcategoryName,
+              subSubcategoryName: ride.rideInfo.subSubcategoryName,
+              carType: ride.rideInfo.carType,
+              transmissionType: ride.rideInfo.transmissionType,
+              selectedUsage: ride.rideInfo.selectedUsage,
+              fromLocation: ride.rideInfo.fromLocation,
+              toLocation: ride.rideInfo.toLocation,
+              selectedDate: ride.rideInfo.selectedDate,
+              selectedTime: ride.rideInfo.selectedTime,
+              totalPayable: ride.totalPayable,
               status: 'BOOKED'
             };
             socket.emit('new-ride', rideData);
