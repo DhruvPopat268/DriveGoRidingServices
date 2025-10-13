@@ -90,6 +90,7 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     // Convert selectedDate to Date object before saving
     let rideDate = selectedDate ? new Date(selectedDate) : null;
+    console.log('📅 Ride date:', rideDate);
 
     // In rideInfo
     const newRide = new Ride({
@@ -134,7 +135,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       paymentType,
       status: "BOOKED",
     });
-    
+
     await newRide.save();
 
     console.log('📱 New ride booked:', newRide._id);
