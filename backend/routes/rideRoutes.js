@@ -940,7 +940,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         try {
           // Calculate new charges for remaining days
           let newCharges;
-          const { categoryName, categoryId, subcategoryId, subSubcategoryId, selectedCategory, selectedCategoryId } = currentRide.rideInfo;
+          const { categoryName, categoryId, subcategoryName, subcategoryId, subSubcategoryId, selectedCategory, selectedCategoryId } = currentRide.rideInfo;
 
           if (categoryName.toLowerCase() === 'driver') {
             newCharges = await calculateDriverRideCharges({
@@ -974,19 +974,26 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           console.log('💰 New charges calculated:', newCharges);
 
           // Update current ride with remaining days and new charges
+          const updateFields = {
+            'rideInfo.driverCharges': newCharges.driverCharges,
+            'rideInfo.adminCharges': newCharges.adminCommissionAdjusted,
+            'rideInfo.subtotal': newCharges.subtotal,
+            'rideInfo.gstCharges': newCharges.gstCharges,
+            'rideInfo.insuranceCharges': newCharges.insuranceCharges,
+            'rideInfo.cancellationCharges': newCharges.cancellationCharges || 0,
+            totalPayable: newCharges.totalPayable
+          };
+
+          // Only include NoOfDays and selectedDates for weekly/monthly
+          const subCatLower = subcategoryName.toLowerCase();
+          if (subCatLower.includes('weekly') || subCatLower.includes('monthly')) {
+            updateFields['rideInfo.NoOfDays'] = remainingNoOfDays.toString();
+            updateFields['rideInfo.selectedDates'] = remainingDates;
+          }
+
           const updatedCurrentRide = await Ride.findByIdAndUpdate(
             rideId,
-            {
-              'rideInfo.NoOfDays': remainingNoOfDays.toString(),
-              'rideInfo.selectedDates': remainingDates,
-              'rideInfo.driverCharges': newCharges.driverCharges,
-              'rideInfo.adminCharges': newCharges.adminCommissionAdjusted,
-              'rideInfo.subtotal': newCharges.subtotal,
-              'rideInfo.gstCharges': newCharges.gstCharges,
-              'rideInfo.insuranceCharges': newCharges.insuranceCharges,
-              'rideInfo.cancellationCharges': newCharges.cancellationCharges || 0,
-              totalPayable: newCharges.totalPayable
-            },
+            updateFields,
             { new: true }
           );
 
@@ -1478,6 +1485,5 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;
