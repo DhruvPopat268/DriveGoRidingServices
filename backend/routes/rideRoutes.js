@@ -1443,6 +1443,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       'rideInfo.gstCharges': gstCharges,
       'rideInfo.extended': true,
       'rideInfo.rideEndTime': rideEndTime,
+      "rideInfo.extraKmCharges":extraKmCharges,
+      "rideInfo.extraMinutesCharges":extraMinutesCharges,
       totalPayable
     };
 
