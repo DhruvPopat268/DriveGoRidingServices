@@ -529,11 +529,12 @@ router.get("/driver/rides/confirmed", driverAuthMiddleware, async (req, res) => 
       return res.status(400).json({ message: "Driver ID is missing" });
     }
 
-    // Find all rides for this driver that are CONFIRMED
+    // Find all rides for this driver that are CONFIRMED or REACHED
     const confirmedRides = await Ride.find({
       driverId,
-      status: "CONFIRMED"
+      status: { $in: ["CONFIRMED", "REACHED"] }
     }).sort({ createdAt: -1 }); // latest first (optional)
+
 
     const count = confirmedRides.length;
 

@@ -49,25 +49,25 @@ const rideSchema = new mongoose.Schema(
 
       includeInsurance: { type: Boolean, default: false },
       notes: { type: String },
-      selectedCategoryId : { type: String },
+      selectedCategoryId: { type: String },
       selectedCategory: { type: String },
       selectedDate: { type: Date },
       selectedTime: { type: String },
       selectedUsage: { type: String },
-      NoOfDays : {type: String},
-      selectedDates : [{type: String}],
+      NoOfDays: { type: String },
+      selectedDates: [{ type: String }],
       transmissionType: { type: String },
       selectedDates: [{ type: String }],
 
       //for extended 
-      extended : {type:Boolean , default:false},
+      extended: { type: Boolean, default: false },
       //extra ride
-      extraKm:{ type: Number, default: 0 },
-      extraMinutes:{ type: Number, default: 0 },
+      extraKm: { type: Number, default: 0 },
+      extraMinutes: { type: Number, default: 0 },
 
       driverReachTime: { type: String },
       ridseStartTime: { type: String },
-      rideEndTime : { type: String },
+      rideEndTime: { type: String },
 
       driverCharges: { type: Number, default: 0 },
       insuranceCharges: { type: Number, default: 0 },
@@ -86,7 +86,7 @@ const rideSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["BOOKED", "CONFIRMED", "ONGOING", "COMPLETED", "CANCELLED", "EXTENDED" , "REACHED"],
+      enum: ["BOOKED", "CONFIRMED", "ONGOING", "COMPLETED", "CANCELLED", "EXTENDED", "REACHED"],
       default: "BOOKED",
     },
   },
