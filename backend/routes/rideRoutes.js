@@ -88,7 +88,10 @@ router.post("/book", authMiddleware, async (req, res) => {
       formattedSelectedDate = `${day} ${month} ${year}`;
     }
 
-    // Then in your rideInfo
+    // Convert selectedDate to Date object before saving
+    let rideDate = selectedDate ? new Date(selectedDate) : null;
+
+    // In rideInfo
     const newRide = new Ride({
       riderId,
       riderInfo: {
@@ -111,7 +114,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         notes,
         selectedCategoryId,
         selectedCategory,
-        selectedDate: formattedSelectedDate, // ✅ formatted date
+        selectedDate: rideDate, // ✅ store as Date
         selectedTime,
         selectedUsage,
         transmissionType,
@@ -131,7 +134,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       paymentType,
       status: "BOOKED",
     });
-
+    
     await newRide.save();
 
     console.log('📱 New ride booked:', newRide._id);
