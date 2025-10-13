@@ -78,6 +78,17 @@ router.post("/book", authMiddleware, async (req, res) => {
     const riderData = await Rider.findOne({ mobile })
     const riderName = riderData.name
 
+    // Format selectedDate to "dd mm yy"
+    let formattedSelectedDate = selectedDate;
+    if (selectedDate) {
+      const dateObj = new Date(selectedDate);
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0'); // months are 0-indexed
+      const year = String(dateObj.getFullYear()).slice(-2); // last 2 digits of year
+      formattedSelectedDate = `${day} ${month} ${year}`;
+    }
+
+    // Then in your rideInfo
     const newRide = new Ride({
       riderId,
       riderInfo: {
@@ -94,16 +105,13 @@ router.post("/book", authMiddleware, async (req, res) => {
         carType,
         fromLocation: fromLocationData,
         toLocation: toLocationData && toLocationData !== "" ? toLocationData : undefined,
-
-        // ✅ store sender & receiver details
         senderDetails,
         receiverDetails,
-
         includeInsurance,
         notes,
         selectedCategoryId,
         selectedCategory,
-        selectedDate,
+        selectedDate: formattedSelectedDate, // ✅ formatted date
         selectedTime,
         selectedUsage,
         transmissionType,

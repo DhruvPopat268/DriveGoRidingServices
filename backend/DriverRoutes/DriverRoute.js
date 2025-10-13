@@ -559,7 +559,6 @@ router.get('/planPayment', DriverAuthMiddleware, async (req, res) => {
     message: "Plan fetched successfully",
     plan: currentPlan
   });
-
 })
 
 router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
