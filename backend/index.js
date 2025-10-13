@@ -140,7 +140,7 @@ io.on('connection', (socket) => {
       try {
         const Driver = require('./DriverModel/DriverModel');
         const driver = await Driver.findById(driverId);
-        
+
         // Only send rides if driver has WAITING status
         if (driver && driver.rideStatus === 'WAITING') {
           const Ride = require('./models/Ride');
