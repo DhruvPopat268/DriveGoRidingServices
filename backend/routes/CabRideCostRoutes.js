@@ -276,59 +276,35 @@ router.post("/get-included-data", async (req, res) => {
       });
     }
 
-    // Get subcategory name
-    const subCategory = await SubCategory.findById(subcategoryId).select("name");
-    if (!subCategory) {
+    // Get distinct includedKm
+    const includedKm = await CabRideCost.distinct("includedKm", {
+      category: categoryId,
+      subcategory: subcategoryId,
+      subSubCategory: subSubcategoryId
+    });
+
+    // Get distinct includedMinutes
+    const includedMinutes = await CabRideCost.distinct("includedMinutes", {
+      category: categoryId,
+      subcategory: subcategoryId,
+      subSubCategory: subSubcategoryId
+    });
+
+    // If nothing found
+    if (!includedMinutes.length && !includedKm.length) {
       return res.status(404).json({
         success: false,
-        message: "Subcategory not found",
+        message: "No record found for given category and subcategory",
       });
     }
 
-    const subCategoryName = subCategory.name.toLowerCase();
-
-    let includedKm = [];
-    let includedMinutes = [];
-
-    if (subCategoryName === "oneway") {
-      // Get distinct includedKm only
-      includedKm = await CabRideCost.distinct("includedKm", {
-        category: categoryId,
-        subcategory: subcategoryId,
-        subSubCategory: subSubcategoryId,
-      });
-
-      if (!includedKm.length) {
-        return res.status(404).json({
-          success: false,
-          message: "No includedKm found for oneway rides",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: { includedKm },
-      });
-    } else {
-      // Get distinct includedMinutes only
-      includedMinutes = await CabRideCost.distinct("includedMinutes", {
-        category: categoryId,
-        subcategory: subcategoryId,
-        subSubCategory: subSubcategoryId,
-      });
-
-      if (!includedMinutes.length) {
-        return res.status(404).json({
-          success: false,
-          message: "No includedMinutes found for this ride type",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        data: { includedMinutes },
-      });
-    }
+    return res.status(200).json({
+      success: true,
+      data: {
+        includedKm,
+        includedMinutes,
+      },
+    });
   } catch (error) {
     console.error("Error fetching included data:", error);
     return res.status(500).json({

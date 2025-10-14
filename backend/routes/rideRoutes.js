@@ -78,6 +78,16 @@ router.post("/book", authMiddleware, async (req, res) => {
     const riderData = await Rider.findOne({ mobile })
     const riderName = riderData.name
 
+    // Calculate unpaid cancellation charges to add to totalPayable
+    const unpaidCancellationCharges = riderData.cancellationCharges - riderData.unclearedCancellationCharges;
+    const adjustedTotalPayable = totalPayable + unpaidCancellationCharges;
+
+    // Update unclearedCancellationCharges to reflect the applied amount
+    if (unpaidCancellationCharges > 0) {
+      riderData.unclearedCancellationCharges = riderData.cancellationCharges;
+      await riderData.save();
+    }
+
     // Format selectedDate to "dd mm yy"
     let formattedSelectedDate = selectedDate;
     if (selectedDate) {
@@ -131,7 +141,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       },
       referralEarning: referralEarning || false,
       referralBalance: referralEarning ? referralBalance : 0,
-      totalPayable,
+      totalPayable: adjustedTotalPayable,
       paymentType,
       status: "BOOKED",
     });
@@ -157,7 +167,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         toLocation: toLocationData,
         selectedDate: selectedDate,
         selectedTime: selectedTime,
-        totalPayable: totalPayable,
+        totalPayable: adjustedTotalPayable,
         status: 'BOOKED'
       };
 
@@ -411,7 +421,9 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             // Store remaining charges in rider model
             const rider = await Rider.findById(riderId);
             if (rider) {
-              rider.cancellationCharges += remainingCharges;
+              // Reset unclearedCancellationCharges since ride is cancelled
+              rider.cancellationCharges = rider.cancellationCharges - rider.unclearedCancellationCharges + remainingCharges;
+              rider.unclearedCancellationCharges = 0;
               await rider.save();
             }
 
@@ -421,7 +433,9 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
           // No wallet found, store full amount in rider model
           const rider = await Rider.findById(riderId);
           if (rider) {
-            rider.cancellationCharges += cancellationFee;
+            // Reset unclearedCancellationCharges since ride is cancelled
+            rider.cancellationCharges = rider.cancellationCharges - rider.unclearedCancellationCharges + cancellationFee;
+            rider.unclearedCancellationCharges = 0;
             await rider.save();
           }
 
@@ -1375,6 +1389,14 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
 
     // Update driver rideStatus to WAITING
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
+
+    // Handle unclearedCancellationCharges payment
+    const rider = await Rider.findById(updatedRide.riderId);
+    if (rider && rider.unclearedCancellationCharges > 0) {
+      rider.cancellationCharges -= rider.unclearedCancellationCharges;
+      rider.unclearedCancellationCharges = 0;
+      await rider.save();
+    }
 
     console.log('✅ Ride completed by driver:', driverId, 'for ride:', rideId);
 
