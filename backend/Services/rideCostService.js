@@ -34,7 +34,10 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
 }
 
-async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId) {
+async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId) {
+
+  console.log(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId)
+
   const subCategory = await SubCategory.findById(subcategoryId).select("name");
   if (!subCategory) throw new Error("Subcategory not found");
 

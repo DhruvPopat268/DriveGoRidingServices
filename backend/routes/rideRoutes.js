@@ -1355,7 +1355,9 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime, selectedUsage, selectedCategoryId } = ride.rideInfo;
+    const { categoryId, categoryName, subcategoryId, subcategoryName, subSubcategoryId , ridseStartTime, selectedUsage, selectedCategoryId ,  } = ride.rideInfo;
+
+    console.log("Ride info:", { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime, selectedUsage, selectedCategoryId });
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
@@ -1368,14 +1370,14 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     const subcategoryNameLower = subcategoryName.toLowerCase();
 
     if (catNameLower === "driver") {
-      const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
+      const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
       includedMinutes = driverData.includedMinutes;
       extraChargePerKm = driverData.extraChargePerKm;
       extraChargePerMinute = driverData.extraChargePerMinute;
       adminChargesInPercentage = driverData.extraChargesFromAdmin;
       gstChargesInPercentage = driverData.gst;
     } else if (catNameLower === "cab") {
-      const cabData = await getCabRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
+      const cabData = await getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
       extraChargePerKm = cabData.extraChargePerKm;
       extraChargePerMinute = cabData.extraChargePerMinute;
       adminChargesInPercentage = cabData.extraChargesFromAdmin;
