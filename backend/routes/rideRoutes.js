@@ -787,7 +787,9 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
     const { rideId } = req.body;
 
     // ✅ Get current time in HH:MM:SS format
-    const driverReachTime = new Date().toLocaleTimeString("en-GB");
+    const driverReachTime = new Date().toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata",
+    });
 
     // ✅ Update the ride only if status is BOOKED
     const updatedRide = await Ride.findOneAndUpdate(
@@ -847,7 +849,9 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
 
     // ✅ Get current time in HH:MM:SS format
-    const ridseStartTime = new Date().toLocaleTimeString("en-GB");
+    const rideStartTime = new Date().toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata",
+    });
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -1339,7 +1343,9 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const rideEndTime = new Date().toLocaleTimeString("en-GB");
+    const rideEndTime = new Date().toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata",
+    });
     const ride = await Ride.findById(rideId);
 
     if (!ride) {
@@ -1349,7 +1355,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime ,  selectedUsage , selectedCategoryId} = ride.rideInfo;
+    const { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime, selectedUsage, selectedCategoryId } = ride.rideInfo;
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
@@ -1362,20 +1368,20 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     const subcategoryNameLower = subcategoryName.toLowerCase();
 
     if (catNameLower === "driver") {
-      const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId , selectedUsage , subcategoryNameLower , selectedCategoryId);
+      const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
       includedMinutes = driverData.includedMinutes;
       extraChargePerKm = driverData.extraChargePerKm;
       extraChargePerMinute = driverData.extraChargePerMinute;
       adminChargesInPercentage = driverData.extraChargesFromAdmin;
       gstChargesInPercentage = driverData.gst;
     } else if (catNameLower === "cab") {
-      const cabData = await getCabRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId , selectedUsage , subcategoryNameLower , selectedCategoryId);
+      const cabData = await getCabRideIncludedData(categoryId, subcategoryId, ride.rideInfo.subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
       extraChargePerKm = cabData.extraChargePerKm;
       extraChargePerMinute = cabData.extraChargePerMinute;
       adminChargesInPercentage = cabData.extraChargesFromAdmin;
       gstChargesInPercentage = cabData.gst;
     } else if (catNameLower === "parcel") {
-      const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId , selectedUsage , subcategoryNameLower , selectedCategoryId);
+      const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
       extraChargePerKm = parcelData.extraChargePerKm;
       extraChargePerMinute = parcelData.extraChargePerMinute;
       adminChargesInPercentage = parcelData.extraChargesFromAdmin;
@@ -1406,7 +1412,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     let diffOfMinutes = endMinutes - startMinutes;
     if (diffOfMinutes < 0) diffOfMinutes += 24 * 60; // handle overnight rides
 
-    console.log("included minutes",includedMinutes)
+    console.log("included minutes", includedMinutes)
 
     const safeIncludedMinutes = Number(includedMinutes) || 0;
     console.log("safeIncludedMinutes", safeIncludedMinutes)
@@ -1443,8 +1449,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       'rideInfo.gstCharges': gstCharges,
       'rideInfo.extended': true,
       'rideInfo.rideEndTime': rideEndTime,
-      "rideInfo.extraKmCharges":extraKmCharges,
-      "rideInfo.extraMinutesCharges":extraMinutesCharges,
+      "rideInfo.extraKmCharges": extraKmCharges,
+      "rideInfo.extraMinutesCharges": extraMinutesCharges,
       totalPayable
     };
 
@@ -1490,8 +1496,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       success: true,
       message: "Extra charges calculated and ride updated successfully",
       rideEndTime: updatedRide.rideInfo.rideEndTime,
-      diffOfMinutes : diffOfMinutes,
-      includedMinutes : safeIncludedMinutes,
+      diffOfMinutes: diffOfMinutes,
+      includedMinutes: safeIncludedMinutes,
       data: responseData
     });
 
