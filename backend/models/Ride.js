@@ -86,6 +86,7 @@ const rideSchema = new mongoose.Schema(
 
     totalPayable: { type: Number, required: true },
     paymentType: { type: String, enum: ["cash", "wallet"], required: true },
+    driverReason: { type: String },
 
     status: {
       type: String,

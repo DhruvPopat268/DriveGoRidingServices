@@ -908,7 +908,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 // update status to cancel
 router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
   try {
-    const { rideId, NoOfDays, selectedDates } = req.body;
+    const { rideId, NoOfDays, selectedDates, reason } = req.body;
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
@@ -1162,6 +1162,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       { _id: rideId, status: { $in: ["BOOKED", "CONFIRMED"] } },
       {
         status: "BOOKED",
+        driverReason: reason,
         $unset: { driverId: 1, driverInfo: 1 }
       },
       { new: true }
