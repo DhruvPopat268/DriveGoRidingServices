@@ -1159,7 +1159,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     console.log('🚫 Processing full cancellation...');
 
     const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: { $in: ["BOOKED", "CONFIRMED"] } },
+      { _id: rideId, status: { $in: [ "CONFIRMED"] } },
       {
         status: "CANCELLED",
         driverReason: reason

@@ -144,7 +144,8 @@ const calculateDriverRideCharges = async ({
     const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
     // const cancellationCharges = rider.cancellationCharges || 0;
     const totalPayable = Math.round(
-        baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges
+        baseTotal + adjustedAdminCommission + gstCharges + modelInsurance 
+        // + cancellationCharges
     );
 
     console.log('📊 Driver Final calculations:', {
