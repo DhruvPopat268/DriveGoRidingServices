@@ -1161,9 +1161,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: { $in: ["BOOKED", "CONFIRMED"] } },
       {
-        status: "BOOKED",
-        driverReason: reason,
-        $unset: { driverId: 1, driverInfo: 1 }
+        status: "CANCELLED",
+        driverReason: reason
       },
       { new: true }
     );
@@ -1172,25 +1171,93 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride is already cancelled or not found" });
     }
 
-    await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
-
-    const io = req.app.get('io');
-    if (io) {
-      io.to('drivers').emit('new-ride', {
-        rideId: updatedRide._id,
+    // Create new ride with same details but BOOKED status (following /book route structure)
+    const newRide = new Ride({
+      riderId: updatedRide.riderId,
+      riderInfo: {
+        riderName: updatedRide.riderInfo.riderName,
+        riderMobile: updatedRide.riderInfo.riderMobile
+      },
+      rideInfo: {
+        categoryId: updatedRide.rideInfo.categoryId,
+        subcategoryId: updatedRide.rideInfo.subcategoryId,
+        subSubcategoryId: updatedRide.rideInfo.subSubcategoryId,
         categoryName: updatedRide.rideInfo.categoryName,
         subcategoryName: updatedRide.rideInfo.subcategoryName,
         subSubcategoryName: updatedRide.rideInfo.subSubcategoryName,
         carType: updatedRide.rideInfo.carType,
-        transmissionType: updatedRide.rideInfo.transmissionType,
-        selectedUsage: updatedRide.rideInfo.selectedUsage,
         fromLocation: updatedRide.rideInfo.fromLocation,
         toLocation: updatedRide.rideInfo.toLocation,
+        senderDetails: updatedRide.rideInfo.senderDetails,
+        receiverDetails: updatedRide.rideInfo.receiverDetails,
+        includeInsurance: updatedRide.rideInfo.includeInsurance,
+        notes: updatedRide.rideInfo.notes,
+        selectedCategoryId: updatedRide.rideInfo.selectedCategoryId,
+        selectedCategory: updatedRide.rideInfo.selectedCategory,
         selectedDate: updatedRide.rideInfo.selectedDate,
         selectedTime: updatedRide.rideInfo.selectedTime,
-        totalPayable: updatedRide.totalPayable,
+        selectedUsage: updatedRide.rideInfo.selectedUsage,
+        transmissionType: updatedRide.rideInfo.transmissionType,
+        NoOfDays: updatedRide.rideInfo.NoOfDays,
+        selectedDates: updatedRide.rideInfo.selectedDates || [],
+        driverCharges: updatedRide.rideInfo.driverCharges || 0,
+        insuranceCharges: updatedRide.rideInfo.insuranceCharges || 0,
+        cancellationCharges: updatedRide.rideInfo.cancellationCharges || 0,
+        discount: updatedRide.rideInfo.discount || 0,
+        gstCharges: updatedRide.rideInfo.gstCharges || 0,
+        subtotal: updatedRide.rideInfo.subtotal || 0,
+        adminCharges: updatedRide.rideInfo.adminCharges || 0,
+      },
+      referralEarning: updatedRide.referralEarning || false,
+      referralBalance: updatedRide.referralBalance || 0,
+      totalPayable: updatedRide.totalPayable,
+      paymentType: updatedRide.paymentType,
+      status: "BOOKED"
+    });
+
+    await newRide.save();
+
+    await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
+
+    // Emit socket event following /book route pattern
+    const io = req.app.get('io');
+    const onlineDrivers = req.app.get('onlineDrivers');
+
+    if (io && onlineDrivers) {
+      const rideData = {
+        rideId: newRide._id,
+        categoryName: newRide.rideInfo.categoryName,
+        subcategoryName: newRide.rideInfo.subcategoryName,
+        subSubcategoryName: newRide.rideInfo.subSubcategoryName,
+        carType: newRide.rideInfo.carType,
+        transmissionType: newRide.rideInfo.transmissionType,
+        selectedUsage: newRide.rideInfo.selectedUsage,
+        fromLocation: newRide.rideInfo.fromLocation,
+        toLocation: newRide.rideInfo.toLocation,
+        selectedDate: newRide.rideInfo.selectedDate,
+        selectedTime: newRide.rideInfo.selectedTime,
+        totalPayable: newRide.totalPayable,
         status: 'BOOKED'
+      };
+
+      // Get drivers with rideStatus 'WAITING' (available drivers)
+      const waitingDrivers = await Driver.find({ rideStatus: 'WAITING' }).select('_id');
+      const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
+      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
+
+      // Send to online drivers who have WAITING rideStatus
+      let sentCount = 0;
+      Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
+        // Only send to drivers with WAITING status
+        if (waitingDriverIds.includes(driverId)) {
+          io.to(driverSocketData.socketId).emit('new-ride', rideData);
+          sentCount++;
+        }
       });
+
+      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status)`);
+    } else {
+      console.log('❌ Socket.io or onlineDrivers not available');
     }
 
     res.json({
