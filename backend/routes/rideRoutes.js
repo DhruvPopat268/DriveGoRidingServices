@@ -1532,6 +1532,9 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     // Prepare update data dynamically
     const updateData = {
+      "rideInfo.extraChargePerKm": extraChargePerKm,
+      "rideInfo.extraChargePerMinute": extraChargePerMinute,
+      "rideInfo.extraKm": extraKm,
       'rideInfo.extraMinutes': extraMinutes,
       'rideInfo.driverCharges': driverCharges,
       'rideInfo.adminCharges': adminCharges,
