@@ -69,6 +69,8 @@ const rideSchema = new mongoose.Schema(
       ridseStartTime: { type: String },
       rideEndTime: { type: String },
 
+      extraChargePerKm : { type: Number, default: 0 },
+      extraChargePerMinute : { type: Number, default: 0 },
       extraMinutesCharges : { type: Number, default: 0 },
       extraKmCharges : { type: Number, default: 0 },
       
