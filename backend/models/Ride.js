@@ -54,7 +54,7 @@ const rideSchema = new mongoose.Schema(
       selectedDate: { type: Date },
       selectedTime: { type: String },
       selectedUsage: { type: String },
-      NoOfDays: { type: String },
+      SelectedDays: { type: String },
       selectedDates: [{ type: String }],
       transmissionType: { type: String },
       selectedDates: [{ type: String }],
