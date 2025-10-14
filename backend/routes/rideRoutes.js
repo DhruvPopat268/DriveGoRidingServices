@@ -868,7 +868,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: "REACHED" }, // only if ride is CONFIRMED
       {
-        "rideInfo.ridseStartTime": ridseStartTime,
+        "rideInfo.ridseStartTime": rideStartTime,
         status: "ONGOING",
       },
       { new: true }
