@@ -85,6 +85,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     // Update unclearedCancellationCharges to reflect the applied amount
     if (unpaidCancellationCharges > 0) {
       riderData.unclearedCancellationCharges = riderData.cancellationCharges;
+      riderData.cancellationCharges = 0;
       await riderData.save();
     }
 
@@ -323,12 +324,21 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Booking ID is required" });
     }
 
-    // Find and update the booking
-    const updatedBooking = await Ride.findByIdAndUpdate(
-      bookingId,
+    const updatedBooking = await Ride.findOneAndUpdate(
+      {
+        _id: bookingId,
+        status: { $in: ["BOOKED", "CONFIRMED", "REACHED"] } // only update if status is one of these
+      },
       { status: "CANCELLED" },
-      { new: true } // return updated doc
+      { new: true } // return the updated document
     );
+
+    if (!updatedBooking) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking cannot be cancelled. Current status does not allow cancellation."
+      });
+    }
 
     console.log(updatedBooking)
 
@@ -392,6 +402,14 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             wallet.lastTransactionAt = new Date();
             await wallet.save();
 
+            // Move unclearedCancellationCharges back to cancellationCharges since ride is cancelled
+            const rider = await Rider.findById(riderId);
+            if (rider && rider.unclearedCancellationCharges > 0) {
+              rider.cancellationCharges += rider.unclearedCancellationCharges;
+              rider.unclearedCancellationCharges = 0;
+              await rider.save();
+            }
+
             console.log(`Deducted full cancellation fee: ${cancellationFee} from wallet`);
           } else {
             // Create Payment record for partial deduction
@@ -421,8 +439,8 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             // Store remaining charges in rider model
             const rider = await Rider.findById(riderId);
             if (rider) {
-              // Reset unclearedCancellationCharges since ride is cancelled
-              rider.cancellationCharges = rider.cancellationCharges - rider.unclearedCancellationCharges + remainingCharges;
+              // Move unclearedCancellationCharges back to cancellationCharges and add new charges
+              rider.cancellationCharges += rider.unclearedCancellationCharges + remainingCharges;
               rider.unclearedCancellationCharges = 0;
               await rider.save();
             }
@@ -433,8 +451,8 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
           // No wallet found, store full amount in rider model
           const rider = await Rider.findById(riderId);
           if (rider) {
-            // Reset unclearedCancellationCharges since ride is cancelled
-            rider.cancellationCharges = rider.cancellationCharges - rider.unclearedCancellationCharges + cancellationFee;
+            // Move unclearedCancellationCharges back to cancellationCharges and add new charges
+            rider.cancellationCharges += rider.unclearedCancellationCharges + cancellationFee;
             rider.unclearedCancellationCharges = 0;
             await rider.save();
           }
@@ -1390,10 +1408,9 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to WAITING
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
 
-    // Handle unclearedCancellationCharges payment
+    // Reset unclearedCancellationCharges since ride is completed
     const rider = await Rider.findById(updatedRide.riderId);
-    if (rider && rider.unclearedCancellationCharges > 0) {
-      rider.cancellationCharges -= rider.unclearedCancellationCharges;
+    if (rider) {
       rider.unclearedCancellationCharges = 0;
       await rider.save();
     }
@@ -1485,7 +1502,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       gstChargesInPercentage = parcelData.gst;
     }
 
-    
+
     // Validate inputs and calculate extraKm
     const safeTotalKm = Number(totalKm) || 0;
     console.log("safeTotalKm", safeTotalKm)
