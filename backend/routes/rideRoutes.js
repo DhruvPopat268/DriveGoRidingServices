@@ -180,8 +180,19 @@ router.post("/book", authMiddleware, async (req, res) => {
       };
 
       // Get drivers with rideStatus 'WAITING' (available drivers)
-      const waitingDrivers = await Driver.find({ rideStatus: 'WAITING' }).select('_id');
+      const waitingDrivers = await Driver.find({
+        rideStatus: 'WAITING',
+        $or: [
+          { driverCategory: selectedCategoryId },
+          { parcelCategory: selectedCategoryId },
+          { assignedCar: selectedCategoryId },
+        ],
+      }).select('_id');
+      
+      console.log("waiting drivers",waitingDrivers)
+
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
+
       console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
 
       // Send to online drivers who have WAITING rideStatus
@@ -1434,9 +1445,9 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       (rideInfo.peakCharges || 0) +
       (rideInfo.extraKmCharges || 0) +
       (rideInfo.extraMinutesCharges || 0) +
-      (rideInfo.cancellationCharges || 0) 
+      (rideInfo.cancellationCharges || 0)
 
-      console.log("💰 Calculated driver earning:", driverEarning);
+    console.log("💰 Calculated driver earning:", driverEarning);
 
     if (driverEarning > 0) {
       let wallet = await driverWallet.findOne({ driverId });

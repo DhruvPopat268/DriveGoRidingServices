@@ -61,14 +61,18 @@ const adminAuthMiddleware = require("../middleware/authMiddleware");
 //approve drivers
 
 router.get("/", async (req, res) => {
-  const drivers = await Driver.find({ status: "Approved" })
-    .populate('driverCategory')
-    .populate('carCategory')
-    .populate('parcelCategory')
-    .populate('assignedCar')
-    .sort({ createdAt: -1 })
-  res.status(200).json(drivers)
-})
+  try {
+    const drivers = await Driver.find({ status: "Approved" })
+      .populate('driverCategory')
+      .populate('parcelCategory')
+      .populate('assignedCar')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(drivers);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Assign drivers to price category
 router.put("/assign-category", async (req, res) => {

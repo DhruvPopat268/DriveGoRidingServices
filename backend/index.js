@@ -148,24 +148,34 @@ io.on('connection', (socket) => {
 
           if (availableRides.length > 0) {
             availableRides.forEach(ride => {
-              const rideData = {
-                rideId: ride._id,
-                categoryName: ride.rideInfo.categoryName,
-                subcategoryName: ride.rideInfo.subcategoryName,
-                subSubcategoryName: ride.rideInfo.subSubcategoryName,
-                carType: ride.rideInfo.carType,
-                transmissionType: ride.rideInfo.transmissionType,
-                selectedUsage: ride.rideInfo.selectedUsage,
-                fromLocation: ride.rideInfo.fromLocation,
-                toLocation: ride.rideInfo.toLocation,
-                selectedDate: ride.rideInfo.selectedDate,
-                selectedTime: ride.rideInfo.selectedTime,
-                totalPayable: ride.totalPayable,
-                status: 'BOOKED'
-              };
-              socket.emit('new-ride', rideData);
+              const selectedCategoryId = ride.rideInfo.selectedCategoryId;
+              
+              // Filter rides based on driver's category matching (same logic as /book route)
+              const driverMatches = 
+                driver.driverCategory === selectedCategoryId ||
+                driver.parcelCategory === selectedCategoryId ||
+                driver.assignedCar === selectedCategoryId;
+              
+              if (driverMatches) {
+                const rideData = {
+                  rideId: ride._id,
+                  categoryName: ride.rideInfo.categoryName,
+                  subcategoryName: ride.rideInfo.subcategoryName,
+                  subSubcategoryName: ride.rideInfo.subSubcategoryName,
+                  carType: ride.rideInfo.carType,
+                  transmissionType: ride.rideInfo.transmissionType,
+                  selectedUsage: ride.rideInfo.selectedUsage,
+                  fromLocation: ride.rideInfo.fromLocation,
+                  toLocation: ride.rideInfo.toLocation,
+                  selectedDate: ride.rideInfo.selectedDate,
+                  selectedTime: ride.rideInfo.selectedTime,
+                  totalPayable: ride.totalPayable,
+                  status: 'BOOKED'
+                };
+                socket.emit('new-ride', rideData);
+              }
             });
-            console.log(`📤 Sent ${availableRides.length} available rides to new driver ${driverId} (WAITING status)`);
+            console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status)`);
           }
         } else {
           console.log(`🚫 Driver ${driverId} does not have WAITING status, no rides sent`);
