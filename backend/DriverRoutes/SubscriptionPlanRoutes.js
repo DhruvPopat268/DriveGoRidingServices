@@ -172,4 +172,157 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
+router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const { planId, paymentId, status, amount } = req.body;
+    
+    if (!planId || !paymentId || !status || !amount) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "planId, paymentId, status, and amount are required" 
+      });
+    }
+
+    // ✅ Get driverId from middleware
+    const driverId = req.driver.driverId;
+    console.log("Driver ID from middleware:", driverId);
+
+    // 1️⃣ Fetch subscription plan
+    const plan = await SubscriptionPlan.findById(planId);
+    if (!plan) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Subscription plan not found" 
+      });
+    }
+
+    // 2️⃣ Validate amount
+    if (plan.amount !== amount) {
+      return res.status(400).json({
+        success: false,
+        message: `Amount mismatch. Plan amount is ${plan.amount}`
+      });
+    }
+
+    // 3️⃣ Calculate expiry date (stacking logic)
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Driver not found" 
+      });
+    }
+
+    const now = new Date();
+    let expiryDate;
+    if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
+      expiryDate = new Date(driver.currentPlan.expiryDate);
+      expiryDate.setDate(expiryDate.getDate() + plan.days); // extend from current expiry
+    } else {
+      expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + plan.days); // start from today
+    }
+
+    // 4️⃣ Update driver document
+    driver.paymentAndSubscription.subscriptionPlan = plan._id;
+    driver.currentPlan = { planId: plan._id, expiryDate };
+    driver.purchasedPlans.push({
+      paymentId,
+      status,
+      plan: plan.name || plan._id.toString(),
+      amount
+    });
+
+    await driver.save();
+
+    res.json({ 
+      success: true, 
+      message: "Driver plan updated successfully", 
+      driver 
+    });
+
+  } catch (error) {
+    console.error("Update plan error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to update driver plan" 
+    });
+  }
+});
+
+
+// get current subscription plan and purchased plans array for specific driver
+router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+
+    // Find driver with all subscription details
+    const driver = await Driver.findById(driverId)
+      .populate('currentPlan.planId')
+      .select('currentPlan purchasedPlans paymentAndSubscription')
+      .lean();
+
+    if (!driver) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Driver not found" 
+      });
+    }
+
+    // Process current plan
+    let currentPlanInfo = null;
+    if (driver.currentPlan && driver.currentPlan.planId) {
+      const now = new Date();
+      const isExpired = driver.currentPlan.expiryDate < now;
+      const daysRemaining = isExpired 
+        ? 0 
+        : Math.ceil((driver.currentPlan.expiryDate - now) / (1000 * 60 * 60 * 24));
+
+      currentPlanInfo = {
+        planId: driver.currentPlan.planId._id,
+        planName: driver.currentPlan.planId.name,
+        planType: driver.currentPlan.planId.type,
+        duration: driver.currentPlan.planId.days,
+        price: driver.currentPlan.planId.price,
+        features: driver.currentPlan.planId.features,
+        expiryDate: driver.currentPlan.expiryDate,
+        daysRemaining,
+        isExpired,
+        status: isExpired ? "Expired" : "Active"
+      };
+    }
+
+    // Process purchased plans
+    const purchasedPlans = (driver.purchasedPlans || []).sort((a, b) => 
+      new Date(b.purchasedAt) - new Date(a.purchasedAt)
+    );
+
+    // Calculate statistics
+    const stats = {
+      totalPurchases: purchasedPlans.length,
+      successfulPurchases: purchasedPlans.filter(p => p.status === "Success").length,
+      failedPurchases: purchasedPlans.filter(p => p.status === "Failed").length,
+      pendingPurchases: purchasedPlans.filter(p => p.status === "Pending").length,
+      totalAmountSpent: purchasedPlans
+        .filter(p => p.status === "Success")
+        .reduce((sum, p) => sum + (p.amount || 0), 0)
+    };
+
+    res.json({ 
+      success: true, 
+      message: "Subscription info fetched successfully",
+      currentPlan: currentPlanInfo,
+      purchasedPlans,
+      statistics: stats
+    });
+
+  } catch (error) {
+    console.error("Get subscription info error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch subscription info" 
+    });
+  }
+});
+
 module.exports = router;

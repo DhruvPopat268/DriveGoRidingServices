@@ -287,16 +287,43 @@ router.get("/PendingForPayment", async (req, res) => {
 router.post("/approve/:driverId", async (req, res) => {
   try {
     const { driverId } = req.params;
-    const driver = await Driver.findByIdAndUpdate(
-      driverId,
-      { status: "Approved" },
-      { new: true }
-    );
+
+    // Find driver
+    const driver = await Driver.findById(driverId);
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
-    res.json({ success: true, message: "Driver approved successfully", driver });
+
+    let currentPlanUpdate = {};
+
+    // Check if driver has subscriptionPlan in paymentAndSubscription
+    if (driver.paymentAndSubscription?.subscriptionPlan) {
+      const subscriptionPlan = await DriverSubscriptionPlan.findById(driver.paymentAndSubscription.subscriptionPlan);
+      if (subscriptionPlan) {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days); // Add plan days to today
+        currentPlanUpdate = {
+          currentPlan: {
+            planId: subscriptionPlan._id,
+            expiryDate
+          }
+        };
+      }
+    }
+
+    // Update driver status to Approved and set currentPlan
+    const updatedDriver = await Driver.findByIdAndUpdate(
+      driverId,
+      {
+        status: "Approved",
+        ...currentPlanUpdate
+      },
+      { new: true }
+    );
+
+    res.json({ success: true, message: "Driver approved successfully", driver: updatedDriver });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ success: false, message: "Failed to approve driver" });
   }
 });
@@ -395,7 +422,6 @@ router.post("/verify-otp", async (req, res) => {
     const driver = await Driver.findOne({ mobile });
     const driverId = driver._id.toString()
 
-
     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
     // Generate JWT
@@ -440,6 +466,46 @@ router.post("/verify-otp", async (req, res) => {
     };
 
     // ✅ Add step ONLY if status is Pending or PendingForPayment
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      response.step = step;
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({ success: false, message: "OTP verification failed" });
+  }
+});
+
+router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
+
+
+
+    // Evaluate driver profile progress
+    const { step, status: progressStatus } = evaluateDriverProgress(driver);
+
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      driver.status = progressStatus;
+      await driver.save();
+    }
+
+    // Prepare response
+    const response = {
+      success: true,
+      driverId,
+      isNew,
+      status: driver.status,
+    };
+
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       response.step = step;
     }

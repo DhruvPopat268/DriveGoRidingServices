@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const Session = require("../DriverModel/DriverSession"); // adjust path as needed
+const Driver = require("../DriverModel/DriverModel");
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -17,20 +18,35 @@ const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET_DRIVER);
 
     // ✅ Ensure token exists in Session collection
-    // Instead of just one, we allow multiple tokens per mobileNumber
     const sessions = await Session.find({ mobileNumber: decoded.mobile });
-
-    // Check if the provided token is part of the active sessions
     const isValidSession = sessions.some((s) => s.token === token);
 
     if (!isValidSession) {
       return res.status(401).json({ success: false, message: "Session expired or not found" });
     }
 
+    // ✅ Fetch driver from DB to check plan expiry
+    const driverFromDB = await Driver.findOne({ mobile: decoded.mobile });
+
+    if (!driverFromDB) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    // ✅ Check current plan expiry
+    if (driverFromDB.currentPlan?.expiryDate) {
+      const now = new Date();
+      const expiry = new Date(driverFromDB.currentPlan.expiryDate);
+
+      if (expiry < now) {
+        return res.status(402).json({
+          success: false,
+          message: "Subscription plan expired. Please renew to continue."
+        });
+      }
+    }
+
     // ✅ Attach user info to request object
     req.driver = decoded;
-    console.log(req.driver) // contains { riderId, mobile }
-    
     next();
   } catch (error) {
     console.error("AuthMiddleware error:", error.message);

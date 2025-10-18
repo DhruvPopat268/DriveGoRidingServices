@@ -87,11 +87,9 @@ export const DriverTransactionsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <Loader className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-600" />
-          <p className="text-gray-600 font-medium">Loading transactions...</p>
-        </div>
+      <div className="flex justify-center items-center py-8">
+        <Loader className="w-6 h-6 animate-spin mr-2" />
+        <span>Loading transactions...</span>
       </div>
     );
   }

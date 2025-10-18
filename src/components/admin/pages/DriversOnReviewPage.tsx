@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Check, X, Loader } from "lucide-react";
+import { Eye, Check, X, Loader, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface Driver {
   _id: string;
@@ -30,6 +31,9 @@ interface DriversOnReviewPageProps {
 export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     fetchDrivers();
@@ -53,9 +57,12 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
     onNavigateToDetail?.(driverId);
   };
 
-  const handleApprove = async (driverId: string) => {
+  const handleApprove = async () => {
+    if (!selectedDriverId) return;
+    
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/approve/${driverId}`, {
+      setActionLoading(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/approve/${selectedDriverId}`, {
         method: 'POST'
       });
       if (response.ok) {
@@ -63,10 +70,14 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
         const data = text ? JSON.parse(text) : { success: true };
         if (data.success) {
           fetchDrivers();
+          setShowApproveDialog(false);
+          setSelectedDriverId(null);
         }
       }
     } catch (error) {
       console.error('Error approving driver:', error);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -149,7 +160,10 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
                         <Button
                           size="sm"
                           variant="default"
-                          onClick={() => handleApprove(driver._id)}
+                          onClick={() => {
+                            setSelectedDriverId(driver._id);
+                            setShowApproveDialog(true);
+                          }}
                         >
                           <Check className="w-4 h-4" />
                         </Button>
@@ -170,7 +184,23 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
         </CardContent>
       </Card>
 
-
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Driver Application</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to approve this driver application?</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleApprove} disabled={actionLoading}>
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
