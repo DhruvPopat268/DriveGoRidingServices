@@ -45,6 +45,7 @@ import { RBACManagementPage } from "@/components/admin/pages/RBACManagementPage"
 import { PendingWithdrawalPage } from "@/components/admin/pages/PendingWithdrawalPage";
 import { CompletedWithdrawalPage } from "@/components/admin/pages/CompletedWithdrawalPage";
 import { RejectedWithdrawalPage } from "@/components/admin/pages/RejectedWithdrawalPage";
+import { DriverPurchasedPlansPage } from "@/components/admin/pages/DriverPurchasedPlansPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -202,6 +203,8 @@ const Index = () => {
         return <RejectedWithdrawalPage />;
       case "driver-transactions":
         return <DriverTransactionsPage />;
+      case "driver-purchased-plans":
+        return <DriverPurchasedPlansPage />;
       default:
         return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
     }

@@ -91,6 +91,48 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+router.get("/drivers/purchased-plans", async (req, res) => {
+  try {
+    // Fetch all drivers who have purchased plans
+    const drivers = await Driver.find(
+      { "purchasedPlans.0": { $exists: true } } // only drivers with purchasedPlans
+    )
+    .select("mobile personalInformation purchasedPlans")
+    .populate({
+      path: "purchasedPlans.plan", // populate the plan ObjectId
+      model: "SubscriptionPlan",
+      select: "name" // only fetch the plan name
+    });
+
+    // Transform response to include driver info and plan name
+    const result = drivers.map(driver => {
+      return driver.purchasedPlans.map(plan => ({
+        driverId: driver._id,
+        driverName: driver.personalInformation.fullName,
+        driverMobile: driver.mobile,
+        paymentId: plan.paymentId,
+        planName: plan.plan?.name || plan.plan, // if plan populated, show name
+        amount: plan.amount,
+        status: plan.status,
+        purchasedAt: plan.purchasedAt
+      }));
+    }).flat();
+
+    res.json({
+      success: true,
+      totalPlans: result.length,
+      purchasedPlans: result
+    });
+
+  } catch (error) {
+    console.error("Fetch purchased plans error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch purchased plans"
+    });
+  }
+});
+
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Get all subscription plans
@@ -229,7 +271,7 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
     driver.purchasedPlans.push({
       paymentId,
       status,
-      plan: plan.name || plan._id.toString(),
+      plan: plan._id, // store ObjectId instead of name
       amount
     });
 
@@ -249,7 +291,6 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
     });
   }
 });
-
 
 // get current subscription plan and purchased plans array for specific driver
 router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) => {
