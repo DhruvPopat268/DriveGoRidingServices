@@ -149,10 +149,10 @@ io.on('connection', (socket) => {
           if (availableRides.length > 0) {
             availableRides.forEach(ride => {
               const selectedCategoryId = ride.rideInfo.selectedCategoryId;
-              console.log("Selected Category ID for ride:", selectedCategoryId);
-              console.log("driver category", driver.driverCategory)
-              console.log("car category", driver.assignedCar)
-              console.log("parcel category", driver.parcelCategory)
+              // console.log("Selected Category ID for ride:", selectedCategoryId);
+              // console.log("driver category", driver.driverCategory)
+              // console.log("car category", driver.assignedCar)
+              // console.log("parcel category", driver.parcelCategory)
 
               // Filter rides based on driver's category matching (same logic as /book route)
               const driverMatches =
