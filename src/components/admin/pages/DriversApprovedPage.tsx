@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Eye, Check, X, Loader } from "lucide-react";
+import { Eye, Loader } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -23,11 +23,11 @@ interface Driver {
   createdAt: string;
 }
 
-interface DriversOnReviewPageProps {
+interface DriversApprovedPageProps {
   onNavigateToDetail?: (driverId: string) => void;
 }
 
-export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageProps) => {
+export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,9 +37,8 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
 
   const fetchDrivers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/Onreview`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/Approved`);
       const data = await response.json();
-      console.log(data)
       setDrivers(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('Error fetching drivers:', error);
@@ -51,40 +50,6 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
 
   const handleView = (driverId: string) => {
     onNavigateToDetail?.(driverId);
-  };
-
-  const handleApprove = async (driverId: string) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/approve/${driverId}`, {
-        method: 'POST'
-      });
-      if (response.ok) {
-        const text = await response.text();
-        const data = text ? JSON.parse(text) : { success: true };
-        if (data.success) {
-          fetchDrivers();
-        }
-      }
-    } catch (error) {
-      console.error('Error approving driver:', error);
-    }
-  };
-
-  const handleReject = async (driverId: string) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/reject/${driverId}`, {
-        method: 'POST'
-      });
-      if (response.ok) {
-        const text = await response.text();
-        const data = text ? JSON.parse(text) : { success: true };
-        if (data.success) {
-          fetchDrivers();
-        }
-      }
-    } catch (error) {
-      console.error('Error rejecting driver:', error);
-    }
   };
 
   if (loading) {
@@ -100,7 +65,7 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
     <div className="p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Driver Registration Requests - OnReview</CardTitle>
+          <CardTitle>Driver Registration Requests - Approved</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -138,29 +103,13 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
                       {new Date(driver.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleView(driver._id)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => handleApprove(driver._id)}
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleReject(driver._id)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleView(driver._id)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -169,8 +118,6 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
           </Table>
         </CardContent>
       </Card>
-
-
     </div>
   );
 };

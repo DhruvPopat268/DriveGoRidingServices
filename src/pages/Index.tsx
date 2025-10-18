@@ -35,8 +35,16 @@ import { ParcelVehicleManagementPage } from "@/components/admin/pages/ParcelVehi
 import { ParcelRideCostPage } from "@/components/admin/pages/ParcelRideCostPage";
 import { DriverSubscriptionPage } from "@/components/admin/pages/DriverSubscriptionPage";
 import { DriversOnReviewPage } from "@/components/admin/pages/DriversOnReviewPage";
+import { DriversPendingPage } from "@/components/admin/pages/DriversPendingPage";
+import { DriversApprovedPage } from "@/components/admin/pages/DriversApprovedPage";
+import { DriversPendingForPaymentPage } from "@/components/admin/pages/DriversPendingForPaymentPage";
+import { DriversRejectedPage } from "@/components/admin/pages/DriversRejectedPage";
 import { DriverDetailPage } from "@/components/admin/pages/DriverDetailPage";
+import { DriverTransactionsPage } from "@/components/admin/pages/DriverTransactionsPage";
 import { RBACManagementPage } from "@/components/admin/pages/RBACManagementPage";
+import { PendingWithdrawalPage } from "@/components/admin/pages/PendingWithdrawalPage";
+import { CompletedWithdrawalPage } from "@/components/admin/pages/CompletedWithdrawalPage";
+import { RejectedWithdrawalPage } from "@/components/admin/pages/RejectedWithdrawalPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -142,6 +150,58 @@ const Index = () => {
             onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
           />
         );
+      case "drivers-pending":
+        return selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)} 
+          />
+        ) : (
+          <DriversPendingPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
+      case "drivers-approved":
+        return selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)} 
+          />
+        ) : (
+          <DriversApprovedPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
+      case "drivers-pending-payment":
+        return selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)} 
+          />
+        ) : (
+          <DriversPendingForPaymentPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
+      case "drivers-rejected":
+        return selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)} 
+          />
+        ) : (
+          <DriversRejectedPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
+      case "pending-withdrawals":
+        return <PendingWithdrawalPage />;
+      case "completed-withdrawals":
+        return <CompletedWithdrawalPage />;
+      case "rejected-withdrawals":
+        return <RejectedWithdrawalPage />;
+      case "driver-transactions":
+        return <DriverTransactionsPage />;
       default:
         return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
     }

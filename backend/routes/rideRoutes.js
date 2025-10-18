@@ -18,6 +18,7 @@ const parcelRideCost = ParcelRideCost;
 const { getDriverRideIncludedData, getCabRideIncludedData, getParcelRideIncludedData } = require("../Services/rideCostService")
 const { calculateDriverRideCharges, calculateCabRideCharges } = require("../Services/reAssignRideCharges");
 const driverWallet = require("../DriverModel/driverWallet");
+const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 
 // Save new ride booking
 router.get('/', async (req, res) => {
@@ -1696,6 +1697,42 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       message: "Server error",
       error: error.message
     });
+  }
+});
+
+// 1️⃣ Get all PENDING withdrawal requests
+router.get("/withdrawals/pending", async (req, res) => {
+  try {
+    const pendingRequests = await withdrawalRequest
+      .find({ status: "pending" })
+      .populate("driverId", "mobile personalInformation.fullName personalInformation.currentAddress").sort({ createdAt: -1 });
+    res.json({ success: true, data: pendingRequests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 2️⃣ Get all COMPLETED withdrawal requests
+router.get("/withdrawals/completed", async (req, res) => {
+  try {
+    const completedRequests = await withdrawalRequest
+      .find({ status: "completed" })
+      .populate("driverId", "mobile personalInformation.fullName personalInformation.currentAddress").sort({ createdAt: -1 });;
+    res.json({ success: true, data: completedRequests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 3️⃣ Get all REJECTED withdrawal requests
+router.get("/withdrawals/rejected", async (req, res) => {
+  try {
+    const rejectedRequests = await withdrawalRequest
+      .find({ status: "rejected" })
+      .populate("driverId", "mobile personalInformation.fullName personalInformation.currentAddress").sort({ createdAt: -1 });;
+    res.json({ success: true, data: rejectedRequests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

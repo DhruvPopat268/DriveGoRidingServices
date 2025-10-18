@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Check, X } from "lucide-react";
+import { ArrowLeft, Check, X, Loader } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -112,7 +112,12 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader className="w-6 h-6 animate-spin mr-2" />
+        <span>Loading driver details...</span>
+      </div>
+    );
   }
 
   if (!driver) {

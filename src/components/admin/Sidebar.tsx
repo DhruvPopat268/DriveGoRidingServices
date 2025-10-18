@@ -20,7 +20,10 @@ import {
   Building,
   ChevronDown,
   ChevronRight,
-  CreditCard
+  CreditCard,
+  Wallet,
+  CheckCircle,
+  XCircle
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -81,16 +84,32 @@ const menuItems = [
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
   {
     icon: UserCheck,
-    label: "Drivers Management",
+    label: "Drivers Registration Management",
     key: "drivers-management",
     isDropdown: true,
     subItems: [
-      { icon: Users, label: "OnReview Registration Requests", key: "drivers-onreview" }
+      { icon: Users, label: "OnReview Registration Requests", key: "drivers-onreview" },
+      { icon: Clock, label: "Pending Registration Requests", key: "drivers-pending" },
+      { icon: CheckCircle, label: "Approved Registration Requests", key: "drivers-approved" },
+      { icon: Wallet, label: "Pending For Payment Requests", key: "drivers-pending-payment" },
+      { icon: XCircle, label: "Rejected Registration Requests", key: "drivers-rejected" }
     ]
   },
   { icon: BookOpen, label: "T & C", key: "t&c" },
   { icon: Bike, label: "Rides", key: "rides" },
   { icon: Gift, label: "Refer Earn", key: "referearn" },
+  {
+    icon: Wallet,
+    label: "Payments Management",
+    key: "payments-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Clock, label: "Pending Withdrawal Requests", key: "pending-withdrawals" },
+      { icon: CheckCircle, label: "Completed Withdrawal Requests", key: "completed-withdrawals" },
+      { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rejected-withdrawals" },
+      { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" }
+    ]
+  },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },
   { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" }
 ];

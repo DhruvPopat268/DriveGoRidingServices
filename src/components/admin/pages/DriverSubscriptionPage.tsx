@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import axios from 'axios';
+import { useToast } from "@/components/ui/use-toast";
+
 
 interface RegistrationFee {
   _id: string;
@@ -33,11 +35,13 @@ interface SubscriptionPlan {
 export const DriverSubscriptionPage = () => {
   const [registrationFees, setRegistrationFees] = useState<RegistrationFee[]>([]);
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
-  
+  const { toast } = useToast();
+
+
   // Registration Fee Form
   const [feeForm, setFeeForm] = useState({ fee: '' });
   const [feeDialogOpen, setFeeDialogOpen] = useState(false);
-  
+
   // Subscription Plan Form
   const [planForm, setPlanForm] = useState({
     name: '',
@@ -50,7 +54,7 @@ export const DriverSubscriptionPage = () => {
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
   const [editPlanDialogOpen, setEditPlanDialogOpen] = useState(false);
-  
+
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState<string | null>(null);
@@ -66,12 +70,12 @@ export const DriverSubscriptionPage = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const [feesResponse, plansResponse] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/registration-fees`),
         axios.get(`${API_BASE_URL}/api/subscription-plans`)
       ]);
-      
+
       setRegistrationFees(feesResponse.data || []);
       setSubscriptionPlans(plansResponse.data || []);
     } catch (err) {
@@ -112,13 +116,13 @@ export const DriverSubscriptionPage = () => {
   const toggleFeeStatus = async (id: string, status: boolean) => {
     try {
       setActionLoading({ [`fee-${id}`]: true });
-      
+
       const response = await axios.put(`${API_BASE_URL}/api/registration-fees/${id}/status`, {
         status: !status
       });
 
       if (response.data.success) {
-        setRegistrationFees(registrationFees.map(fee => 
+        setRegistrationFees(registrationFees.map(fee =>
           fee._id === id ? { ...fee, status: !status } : fee
         ));
       }
@@ -132,7 +136,7 @@ export const DriverSubscriptionPage = () => {
   const deleteFee = async (id: string) => {
     try {
       setActionLoading({ [`delete-fee-${id}`]: true });
-      
+
       const response = await axios.delete(`${API_BASE_URL}/api/registration-fees/${id}`);
 
       if (response.data.success) {
@@ -226,7 +230,7 @@ export const DriverSubscriptionPage = () => {
       });
 
       if (response.data.success) {
-        setSubscriptionPlans(subscriptionPlans.map(plan => 
+        setSubscriptionPlans(subscriptionPlans.map(plan =>
           plan._id === editingPlan._id ? response.data.data : plan
         ));
         setPlanForm({ name: '', duration: '', days: 0, description: '', amount: '', customDays: false });
@@ -245,13 +249,13 @@ export const DriverSubscriptionPage = () => {
   const togglePlanStatus = async (id: string, status: boolean) => {
     try {
       setActionLoading({ [`plan-${id}`]: true });
-      
+
       const response = await axios.put(`${API_BASE_URL}/api/subscription-plans/${id}/status`, {
         status: !status
       });
 
       if (response.data.success) {
-        setSubscriptionPlans(subscriptionPlans.map(plan => 
+        setSubscriptionPlans(subscriptionPlans.map(plan =>
           plan._id === id ? { ...plan, status: !status } : plan
         ));
       }
@@ -265,7 +269,7 @@ export const DriverSubscriptionPage = () => {
   const deletePlan = async (id: string) => {
     try {
       setActionLoading({ [`delete-plan-${id}`]: true });
-      
+
       const response = await axios.delete(`${API_BASE_URL}/api/subscription-plans/${id}`);
 
       if (response.data.success) {

@@ -19,6 +19,7 @@ const withdrawalRequestSchema = new mongoose.Schema(
     },
     // Optional bank/UPI details
     bankDetails: {
+      bankAccountHolderName: String,
       accountNumber: String,
       ifscCode: String,
       bankName: String,

@@ -211,10 +211,77 @@ router.put("/assign-car", async (req, res) => {
 });
 
 //Onreview drivers
+router.get("/Pending", async (req, res) => {
+  try {
+    const drivers = await Driver.find({ status: "Pending" }).sort({ createdAt: -1 });
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    res.status(200).json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get("/Onreview", async (req, res) => {
-  const drivers = await Driver.find({ status: "Onreview" }).sort({ createdAt: -1 })
-  res.status(200).json(drivers)
-})
+  try {
+    const drivers = await Driver.find({ status: "Onreview" }).sort({ createdAt: -1 });
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+
+    }
+
+    res.status(200).json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/Approved", async (req, res) => {
+  try {
+    const drivers = await Driver.find({ status: "Approved" }).sort({ createdAt: -1 });
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+
+    }
+
+    res.status(200).json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/Rejected", async (req, res) => {
+  try {
+    const drivers = await Driver.find({ status: "Rejected" }).sort({ createdAt: -1 });
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+
+    }
+
+    res.status(200).json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/PendingForPayment", async (req, res) => {
+  try {
+    const drivers = await Driver.find({ status: "PendingForPayment" }).sort({ createdAt: -1 });
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+    res.status(200).json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Approve driver
 router.post("/approve/:driverId", async (req, res) => {
@@ -563,55 +630,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   }
 });
 
-router.get('/planPayment', DriverAuthMiddleware, async (req, res) => {
-
-  const mobile = req.driver?.mobile;
-  const driver = await Driver.findOne({ mobile });
-  const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan
-
-  const currentPlan = await DriverSubscriptionPlan.findById(subscriptionPlan)
-
-  res.json({
-    success: true,
-    message: "Plan fetched successfully",
-    plan: currentPlan
-  });
-})
-
-router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
-  try {
-    const { paymentId, status } = req.body;
-    const mobile = req.driver?.mobile;
-
-    if (!mobile || !paymentId || !status) {
-      return res.status(400).json({ message: "Mobile, paymentId, status, and plan are required" });
-    }
-
-    const driver = await Driver.findOne({ mobile });
-    if (!driver) {
-      return res.status(404).json({ message: "Driver not found" });
-    }
-
-    const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan
-
-    const currentPlan = await DriverSubscriptionPlan.findById(subscriptionPlan)
-
-    const amount = currentPlan?.amount
-
-    driver.purchasedPlans.push({ paymentId, status, plan: subscriptionPlan, amount });
-    await driver.save();
-
-    res.json({
-      success: true,
-      message: "Purchased plan added successfully",
-      purchasedPlans: driver.purchasedPlans
-    });
-  } catch (error) {
-    console.error("Add purchased plan error:", error);
-    res.status(500).json({ success: false, message: "Failed to add purchased plan" });
-  }
-});
-
 router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
@@ -638,6 +656,7 @@ router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) =
     }
 
     const bankDetails = {
+      bankAccountHolderName: driver.paymentAndSubscription?.bankAccountHolderName || "",
       accountNumber: driver.paymentAndSubscription?.accountNumber || "",
       ifscCode: driver.paymentAndSubscription?.ifscCode || "",
       bankName: driver.paymentAndSubscription?.bankName || "",
@@ -818,8 +837,6 @@ router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
     const wallet = await driverWallet.findOne({ driverId });
     if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
 
-
-
     const transactions = wallet.transactions.filter(txn => txn.status === "failed");
     res.json({ success: true, balance: wallet.balance, data: transactions });
 
@@ -828,4 +845,30 @@ router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Admin >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// Get all transactions across all drivers (admin)
+router.get("/transactions/all", async (req, res) => {
+  try {
+    // Fetch all wallets and populate driver info
+    const wallets = await driverWallet.find()
+      .populate("driverId", "personalInformation.fullName mobile")
+      .sort({ createdAt: -1 });
+
+    // Extract all transactions from all driver wallets
+    const allTransactions = wallets.flatMap(wallet =>
+      wallet.transactions.map(tx => ({
+        ...tx.toObject(),
+        driver: wallet.driverId,
+      }))
+    );
+
+    // Sort transactions by creation date (latest first)
+    allTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.status(200).json({ success: true, data: allTransactions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 module.exports = router;

@@ -81,7 +81,13 @@ const driverSchema = new mongoose.Schema(
       default: "WAITING"
     },
 
+    currentPlan: {
+      planId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
+      expiryDate: { type: Date, default: null }
+    },
+
     purchasedPlans: [{
+      _id: false, // 👈 disables auto _id for each object
       paymentId: { type: String, required: true },
       status: { type: String, enum: ["Success", "Failed", "Pending"] },
       plan: { type: String, required: true },

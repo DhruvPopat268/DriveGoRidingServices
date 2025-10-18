@@ -15,15 +15,20 @@ router.get('/', async (req, res) => {
 // Create registration fee
 router.post('/', async (req, res) => {
   try {
-    const { fee } = req.body;
-    
-    if (!fee || fee < 0) {
+    const { fee, status } = req.body;
+
+    if (fee === undefined || fee < 0) {
       return res.status(400).json({ success: false, message: 'Valid registration fee is required' });
     }
 
-    const registrationFee = new RegistrationFee({ fee });
+    // If new fee has status true, set all others to false
+    if (status === true) {
+      await RegistrationFee.updateMany({ status: true }, { status: false });
+    }
+
+    const registrationFee = new RegistrationFee({ fee, status: !!status });
     await registrationFee.save();
-    
+
     res.status(201).json({ success: true, data: registrationFee });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -34,19 +39,41 @@ router.post('/', async (req, res) => {
 router.put('/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
+
+    // ✅ If setting status to true, check if any other document already has true
+    if (status === true) {
+      const existingTrue = await RegistrationFee.findOne({ status: true, _id: { $ne: req.params.id } });
+      if (existingTrue) {
+        return res.status(400).json({
+          success: false,
+          message: 'Another registration fee already has status set to true. Only one can be true at a time.',
+        });
+      }
+    }
+
+    // ✅ Update the document
     const fee = await RegistrationFee.findByIdAndUpdate(
       req.params.id,
       { status },
       { new: true }
     );
-    
+
     if (!fee) {
-      return res.status(404).json({ success: false, message: 'Registration fee not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Registration fee not found',
+      });
     }
-    
-    res.json({ success: true, data: fee });
+
+    res.json({
+      success: true,
+      data: fee,
+    });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
   }
 });
 
