@@ -75,6 +75,9 @@ const rideSchema = new mongoose.Schema(
       extraKmCharges : { type: Number, default: 0 },
       
       driverCharges: { type: Number, default: 0 },
+      pickCharges : { type: Number, default: 0 },
+      peakCharges : { type: Number, default: 0 },
+      nightCharges : { type: Number, default: 0 },
       insuranceCharges: { type: Number, default: 0 },
       cancellationCharges: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },

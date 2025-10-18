@@ -12,6 +12,9 @@ const cloudinary = require("../config/cloudinary");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 const DriverSubscriptionPlan = require('../DriverModel/SubscriptionPlan')
+const driverWallet = require("../DriverModel/driverWallet");
+const withdrawalRequest = require("../DriverModel/withdrawalRequest");
+const adminAuthMiddleware = require("../middleware/authMiddleware");
 
 // router.post("/send-otp", async (req, res) => {
 //   try {
@@ -71,7 +74,7 @@ router.get("/", async (req, res) => {
 router.put("/assign-category", async (req, res) => {
   try {
     const { categoryId, driverIds } = req.body;
-    
+
     if (!categoryId || !Array.isArray(driverIds)) {
       return res.status(400).json({ message: "Category ID and driver IDs array are required" });
     }
@@ -84,15 +87,15 @@ router.put("/assign-category", async (req, res) => {
 
     // Remove category from drivers not in the selection for this category
     await Driver.updateMany(
-      { 
+      {
         _id: { $nin: driverIds },
-        driverCategory: categoryId 
+        driverCategory: categoryId
       },
       { $unset: { driverCategory: 1 } }
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Driver categories updated successfully",
       updatedCount: driverIds.length
     });
@@ -106,7 +109,7 @@ router.put("/assign-category", async (req, res) => {
 router.put("/assign-car-category", async (req, res) => {
   try {
     const { categoryId, driverIds } = req.body;
-    
+
     if (!categoryId || !Array.isArray(driverIds)) {
       return res.status(400).json({ message: "Category ID and driver IDs array are required" });
     }
@@ -119,15 +122,15 @@ router.put("/assign-car-category", async (req, res) => {
 
     // Remove car category from drivers not in the selection for this category
     await Driver.updateMany(
-      { 
+      {
         _id: { $nin: driverIds },
-        carCategory: categoryId 
+        carCategory: categoryId
       },
       { $unset: { carCategory: 1 } }
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Car categories updated successfully",
       updatedCount: driverIds.length
     });
@@ -141,7 +144,7 @@ router.put("/assign-car-category", async (req, res) => {
 router.put("/assign-parcel-category", async (req, res) => {
   try {
     const { categoryId, driverIds } = req.body;
-    
+
     if (!categoryId || !Array.isArray(driverIds)) {
       return res.status(400).json({ message: "Category ID and driver IDs array are required" });
     }
@@ -154,15 +157,15 @@ router.put("/assign-parcel-category", async (req, res) => {
 
     // Remove parcel category from drivers not in the selection for this category
     await Driver.updateMany(
-      { 
+      {
         _id: { $nin: driverIds },
-        parcelCategory: categoryId 
+        parcelCategory: categoryId
       },
       { $unset: { parcelCategory: 1 } }
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Parcel categories updated successfully",
       updatedCount: driverIds.length
     });
@@ -176,7 +179,7 @@ router.put("/assign-parcel-category", async (req, res) => {
 router.put("/assign-car", async (req, res) => {
   try {
     const { carId, driverIds } = req.body;
-    
+
     if (!carId || !Array.isArray(driverIds)) {
       return res.status(400).json({ message: "Car ID and driver IDs array are required" });
     }
@@ -189,15 +192,15 @@ router.put("/assign-car", async (req, res) => {
 
     // Remove car from drivers not in the selection for this car
     await Driver.updateMany(
-      { 
+      {
         _id: { $nin: driverIds },
-        assignedCar: carId 
+        assignedCar: carId
       },
       { $unset: { assignedCar: 1 } }
     );
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Car assignments updated successfully",
       updatedCount: driverIds.length
     });
@@ -344,6 +347,20 @@ router.post("/verify-otp", async (req, res) => {
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       driver.status = progressStatus;
       await driver.save();
+    }
+
+    // ✅ Ensure wallet exists (create empty if missing)
+    let wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) {
+      await driverWallet.create({
+        driverId,
+        balance: 0,
+        totalEarnings: 0,
+        totalWithdrawn: 0,
+        totalDeductions: 0,
+        transactions: [],
+      });
+      console.log(`✅ Empty wallet created for driver: ${driverId}`);
     }
 
     // Prepare response
@@ -592,6 +609,222 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Add purchased plan error:", error);
     res.status(500).json({ success: false, message: "Failed to add purchased plan" });
+  }
+});
+
+router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+    const { amount, paymentMethod } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid withdrawal amount" });
+    }
+
+    // Fetch wallet
+    const wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
+    if (wallet.balance < amount) {
+      return res.status(400).json({ message: "Insufficient wallet balance" });
+    }
+
+    // Fetch driver bank details from Driver model
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const bankDetails = {
+      accountNumber: driver.paymentAndSubscription?.accountNumber || "",
+      ifscCode: driver.paymentAndSubscription?.ifscCode || "",
+      bankName: driver.paymentAndSubscription?.bankName || "",
+      upiId: driver.paymentAndSubscription?.upiId || "",
+    };
+
+    // Create withdrawal request
+    const withdrawal = await withdrawalRequest.create({
+      driverId,
+      amount,
+      paymentMethod: paymentMethod || "bank_transfer",
+      bankDetails, // automatically populated
+    });
+
+    // Deduct balance and add transaction
+    wallet.balance -= amount;
+    wallet.transactions.push({
+      type: "withdrawal",
+      amount,
+      status: "pending",                // ← now status exists
+      paymentMethod: paymentMethod || "bank_transfer",
+      withdrawalRequestId: withdrawal._id, // ← store reference
+      description: "Withdrawal requested by driver",
+    });
+    await wallet.save();
+
+
+    res.status(200).json({
+      success: true,
+      message: "Withdrawal request submitted successfully",
+      withdrawalRequest: withdrawal,
+    });
+  } catch (error) {
+    console.error("Withdrawal request error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+router.post("/admin/withdrawal/complete", async (req, res) => {
+  try {
+    const { requestId } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ message: "Withdrawal request ID is required" });
+    }
+
+    // Find withdrawal request
+    const withdrawal = await withdrawalRequest.findById(requestId);
+    if (!withdrawal) {
+      return res.status(404).json({ message: "Withdrawal request not found" });
+    }
+
+    if (withdrawal.status !== "pending") {
+      return res.status(400).json({ message: "Withdrawal request already processed" });
+    }
+
+    // Update withdrawal request status to completed
+    withdrawal.status = "completed";
+    await withdrawal.save();
+
+    // Update driver wallet
+    const wallet = await driverWallet.findOne({ driverId: withdrawal.driverId });
+    if (wallet) {
+      // Update the corresponding transaction
+      const txnIndex = wallet.transactions.findIndex(
+        (t) => t.withdrawalRequestId?.toString() === requestId
+      );
+      if (txnIndex !== -1) {
+        wallet.transactions[txnIndex].status = "completed"; // ← now it will update correctly
+      }
+
+      // Increment totalWithdrawn
+      wallet.totalWithdrawn += withdrawal.amount;
+      await wallet.save();
+
+    }
+
+    res.json({
+      success: true,
+      message: "Withdrawal completed successfully",
+      withdrawal,
+    });
+  } catch (error) {
+    console.error("Complete withdrawal error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+router.post("/admin/withdrawal/reject", async (req, res) => {
+  try {
+    const { requestId, adminRemarks } = req.body;
+
+    if (!requestId) {
+      return res.status(400).json({ message: "Withdrawal request ID is required" });
+    }
+
+    const withdrawal = await withdrawalRequest.findById(requestId);
+    if (!withdrawal) {
+      return res.status(404).json({ message: "Withdrawal request not found" });
+    }
+
+    if (withdrawal.status !== "pending") {
+      return res.status(400).json({ message: "Withdrawal request already processed" });
+    }
+
+    // Refund wallet
+    const wallet = await driverWallet.findOne({ driverId: withdrawal.driverId });
+    if (wallet) {
+      wallet.balance += withdrawal.amount; // refund
+
+      // Update original withdrawal transaction as failed
+      const txn = wallet.transactions.find(
+        (t) => t.withdrawalRequestId?.toString() === requestId
+      );
+      if (txn) txn.status = "failed";
+
+      // Add a new transaction for the refunded amount
+      wallet.transactions.push({
+        type: "refunded",
+        amount: withdrawal.amount,
+        status: "completed",
+        description: "Refund for rejected withdrawal",
+      });
+
+      await wallet.save();
+    }
+
+    // Update withdrawal request status
+    withdrawal.status = "rejected";
+    withdrawal.adminRemarks = adminRemarks || "";
+    await withdrawal.save();
+
+    res.json({ success: true, message: "Withdrawal rejected and refunded", withdrawal });
+  } catch (error) {
+    console.error("Reject withdrawal error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+router.get("/transactions/pending", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+    console.log("Driver ID:", driverId);
+
+    const wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
+
+    const transactions = wallet.transactions.filter(txn => txn.status === "pending");
+    res.json({ success: true, balance: wallet.balance, data: transactions });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 2️⃣ Get all COMPLETED transactions
+router.get("/transactions/completed", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    const wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
+
+
+
+    const transactions = wallet.transactions.filter(txn => txn.status === "completed");
+    res.json({ success: true, balance: wallet.balance, data: transactions });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 3️⃣ Get all FAILED transactions
+router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver?.driverId;
+
+    const wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
+
+
+
+    const transactions = wallet.transactions.filter(txn => txn.status === "failed");
+    res.json({ success: true, balance: wallet.balance, data: transactions });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
