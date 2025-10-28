@@ -26,7 +26,9 @@ const DriverRideCostSchema = new mongoose.Schema({
   extraChargesFromAdmin: { type: Number, default: 0 }, // percentage
   gst: { type: Number, default: 0 }, // percentage
   discount: { type: Number, default: 0 },
-  minimumFare: { type: Number, default: 0 }
+  minimumFare: { type: Number, default: 0 },
+  driverCancellationCharges: { type: Number, default: 0 },
+  driverCancellationCredits: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('RideCost', DriverRideCostSchema);

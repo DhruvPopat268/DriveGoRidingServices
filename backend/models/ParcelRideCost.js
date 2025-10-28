@@ -70,6 +70,14 @@ const parcelRideCostSchema = new mongoose.Schema({
   discount: {
     type: Number,
     default: 0
+  },
+  driverCancellationCharges: {
+    type: Number,
+    default: 0
+  },
+  driverCancellationCredits: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

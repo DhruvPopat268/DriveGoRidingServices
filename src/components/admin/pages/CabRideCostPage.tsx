@@ -38,6 +38,8 @@ interface RideCost {
   gst: number;
   discount: number;
   minimumFare: number;
+  driverCancellationCharges: number;
+  driverCancellationCredits: number;
 }
 
 interface Category {
@@ -130,7 +132,9 @@ export const CabRideCostPage = () => {
     insurance: '',
     extraChargesFromAdmin: '',
     gst: '',
-    discount: ''
+    discount: '',
+    driverCancellationCharges: '',
+    driverCancellationCredits: ''
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -349,7 +353,9 @@ export const CabRideCostPage = () => {
       insurance: parseFloat(rideCostForm.insurance) || 0,
       extraChargesFromAdmin: parseFloat(rideCostForm.extraChargesFromAdmin) || 0,
       gst: parseFloat(rideCostForm.gst) || 0,
-      discount: parseFloat(rideCostForm.discount) || 0
+      discount: parseFloat(rideCostForm.discount) || 0,
+      driverCancellationCharges: parseFloat(rideCostForm.driverCancellationCharges) || 0,
+      driverCancellationCredits: parseFloat(rideCostForm.driverCancellationCredits) || 0
     };
 
     try {
@@ -410,7 +416,9 @@ export const CabRideCostPage = () => {
       insurance: rideCost.insurance.toString(),
       extraChargesFromAdmin: rideCost.extraChargesFromAdmin.toString(),
       gst: rideCost.gst.toString(),
-      discount: rideCost.discount.toString()
+      discount: rideCost.discount.toString(),
+      driverCancellationCharges: rideCost.driverCancellationCharges?.toString() || '0',
+      driverCancellationCredits: rideCost.driverCancellationCredits?.toString() || '0'
     });
     setDialogOpen(true);
   };
@@ -448,7 +456,9 @@ export const CabRideCostPage = () => {
       insurance: '',
       extraChargesFromAdmin: '',
       gst: '',
-      discount: ''
+      discount: '',
+      driverCancellationCharges: '',
+      driverCancellationCredits: ''
     });
   };
 
@@ -807,6 +817,20 @@ export const CabRideCostPage = () => {
                     placeholder="Discount"
                     value={rideCostForm.discount}
                     onChange={(e) => setRideCostForm(prev => ({ ...prev, discount: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Driver Cancellation Charges"
+                    value={rideCostForm.driverCancellationCharges}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCharges: e.target.value }))}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Driver Cancellation Credits"
+                    value={rideCostForm.driverCancellationCredits}
+                    onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCredits: e.target.value }))}
                   />
 
                 </div>
@@ -1170,6 +1194,14 @@ export const CabRideCostPage = () => {
                 <div>
                   <label className="text-sm font-medium">Discount</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.discount}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Driver Cancellation Charges</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.driverCancellationCharges || 0}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Driver Cancellation Credits</label>
+                  <p className="text-sm text-gray-600">₹{viewingRideCost.driverCancellationCredits || 0}</p>
                 </div>
               </div>
             )}
