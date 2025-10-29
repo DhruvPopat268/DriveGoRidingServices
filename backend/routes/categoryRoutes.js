@@ -6,7 +6,6 @@ const cloudinary = require('cloudinary').v2;
 const Category = require('../models/Category');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware')
 
-
 // Multer for file upload
 const storage = multer.memoryStorage();
 const upload = multer({ storage });

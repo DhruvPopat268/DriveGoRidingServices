@@ -13,7 +13,7 @@ const driverSchema = new mongoose.Schema(
 
     personalInformation: {
       fullName: { type: String },
-      dateOfBirth: { type: Date },
+      dateOfBirth: { type: String },
       gender: { type: String, enum: ["Male", "Female", "Other"] },
       alternateNumber: { type: String },
       email: { type: String },
