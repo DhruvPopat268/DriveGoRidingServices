@@ -10,6 +10,13 @@ import { LiveMap } from "@/components/admin/LiveMap";
 import { DriversPage } from "@/components/admin/pages/DriversPage";
 import { RidersPage } from "@/components/admin/pages/RidersPage";
 import { RidesPage } from "@/components/admin/pages/RidesPage";
+import { BookedRidesPage } from "@/components/admin/pages/BookedRidesPage";
+import { ConfirmedRidesPage } from "@/components/admin/pages/ConfirmedRidesPage";
+import { OngoingRidesPage } from "@/components/admin/pages/OngoingRidesPage";
+import { CompletedRidesPage } from "@/components/admin/pages/CompletedRidesPage";
+import { CancelledRidesPage } from "@/components/admin/pages/CancelledRidesPage";
+import { ExtendedRidesPage } from "@/components/admin/pages/ExtendedRidesPage";
+import { ReachedRidesPage } from "@/components/admin/pages/ReachedRidesPage";
 import { CategoryPage } from "@/components/admin/pages/CategoryPage";
 import { SubCategoryPage } from "@/components/admin/pages/SubCategoryPage";
 import { SubSubCategoryPage } from "@/components/admin/pages/SubSubCategoryPage";
@@ -46,11 +53,15 @@ import { PendingWithdrawalPage } from "@/components/admin/pages/PendingWithdrawa
 import { CompletedWithdrawalPage } from "@/components/admin/pages/CompletedWithdrawalPage";
 import { RejectedWithdrawalPage } from "@/components/admin/pages/RejectedWithdrawalPage";
 import { DriverPurchasedPlansPage } from "@/components/admin/pages/DriverPurchasedPlansPage";
+import { RideDetailsPage } from "@/components/admin/pages/RideDetailsPage";
+import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/UniversalCategoryAssignmentPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
+  const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string, isCarAssignment?: boolean} | null>(null);
 
   const renderContent = () => {
     switch (activeSection) {
@@ -83,7 +94,93 @@ const Index = () => {
       case "riders":
         return <RidersPage />;
       case "rides":
-        return <RidesPage />;
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <RidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
+      case "booked-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <BookedRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
+      case "confirmed-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <ConfirmedRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
+      case "ongoing-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <OngoingRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
+      case "completed-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <CompletedRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
+      case "cancelled-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <CancelledRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
+      case "extended-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <ExtendedRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
+      case "reached-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <ReachedRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
       case "category":
         return <CategoryPage />;
       case "subcategory":
@@ -93,7 +190,12 @@ const Index = () => {
       case "vehiclecategory":
         return <VehicleCategoryPage />;
       case "pricecategory":
-        return <PriceCategoryPage />;
+        return <PriceCategoryPage 
+          onNavigateToCategoryAssignment={(categoryType, categoryId, categoryName) => {
+            setCategoryAssignment({ categoryType, categoryId, categoryName });
+            setActiveSection('category-assignment');
+          }}
+        />;
       case "parcelcategory":
         return <ParcelCategoryPage />;
       case "parcelvehicletypes":
@@ -129,7 +231,12 @@ const Index = () => {
       case "carcategory":
         return <CarCategoryPage />;
       case "carmanagement":
-        return <CarManagementPage />;
+        return <CarManagementPage 
+          onNavigateToCategoryAssignment={(categoryType, categoryId, categoryName, isCarAssignment) => {
+            setCategoryAssignment({ categoryType, categoryId, categoryName, isCarAssignment });
+            setActiveSection('category-assignment');
+          }}
+        />;
       case "cabridecost":
         return <CabRideCostPage />;
       case "driversubscription":
@@ -205,6 +312,26 @@ const Index = () => {
         return <DriverTransactionsPage />;
       case "driver-purchased-plans":
         return <DriverPurchasedPlansPage />;
+      case "category-assignment":
+        return categoryAssignment ? (
+          <UniversalCategoryAssignmentPage 
+            categoryType={categoryAssignment.categoryType}
+            categoryId={categoryAssignment.categoryId}
+            categoryName={categoryAssignment.categoryName}
+            isCarAssignment={categoryAssignment.isCarAssignment}
+            onBack={() => {
+              setCategoryAssignment(null);
+              // Go back to the previous section based on assignment type
+              if (categoryAssignment.isCarAssignment) {
+                setActiveSection('carmanagement');
+              } else if (categoryAssignment.categoryType === 'driver') {
+                setActiveSection('pricecategory');
+              } else if (categoryAssignment.categoryType === 'parcel') {
+                setActiveSection('parcelcategory');
+              }
+            }}
+          />
+        ) : null;
       default:
         return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
     }

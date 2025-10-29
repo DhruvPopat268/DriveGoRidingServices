@@ -20,15 +20,142 @@ const { calculateDriverRideCharges, calculateCabRideCharges } = require("../Serv
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 
-// Save new ride booking
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// Helper function for pagination and date filtering
+const getPaginatedRides = async (status = null, req) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const dateFilter = req.query.date;
+
+  let query = {};
+  if (status) query.status = status;
+
+  // Date filtering
+  if (dateFilter === 'today') {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    query.createdAt = { $gte: today, $lt: tomorrow };
+  } else if (dateFilter === 'yesterday') {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    const today = new Date(yesterday);
+    today.setDate(today.getDate() + 1);
+    query.createdAt = { $gte: yesterday, $lt: today };
+  }
+
+  const [rides, totalRides] = await Promise.all([
+    Ride.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+    Ride.countDocuments(query)
+  ]);
+
+  return {
+    page,
+    limit,
+    totalRides,
+    totalPages: Math.ceil(totalRides / limit),
+    data: rides
+  };
+};
+
 router.get('/', async (req, res) => {
   try {
-    const rides = (await Ride.find().sort({ createdAt: -1 }));
-    res.json(rides);
+    const result = await getPaginatedRides(null, req);
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
+router.get('/booked', async (req, res) => {
+  try {
+    const result = await getPaginatedRides('BOOKED', req);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/confirmed', async (req, res) => {
+  try {
+    const result = await getPaginatedRides('CONFIRMED', req);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/ongoing', async (req, res) => {
+  try {
+    const result = await getPaginatedRides('ONGOING', req);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/completed', async (req, res) => {
+  try {
+    const result = await getPaginatedRides('COMPLETED', req);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/cancelled', async (req, res) => {
+  try {
+    const result = await getPaginatedRides('CANCELLED', req);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/extended', async (req, res) => {
+  try {
+    const result = await getPaginatedRides('EXTENDED', req);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get('/reached', async (req, res) => {
+  try {
+    const result = await getPaginatedRides('REACHED', req);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/booking/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: "Booking ID is required" });
+    }
+
+    const booking = await Ride.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    console.error("Error fetching booking:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User / Rider                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 router.post("/book", authMiddleware, async (req, res) => {
   try {
@@ -188,8 +315,8 @@ router.post("/book", authMiddleware, async (req, res) => {
           { assignedCar: selectedCategoryId },
         ],
       }).select('_id');
-      
-      console.log("waiting drivers",waitingDrivers)
+
+      console.log("waiting drivers", waitingDrivers)
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
@@ -933,15 +1060,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 
     console.log('✅ Ride ongoing by driver:', driverId, 'for ride:', rideId);
 
-    // Emit socket event to remove ride from all drivers
-    const io = req.app.get('io');
-    if (io) {
-      io.to('drivers').emit('ride-assigned', {
-        rideId: rideId,
-        driverId: driverId
-      });
-      console.log('🚗 Ride assigned event emitted:', rideId);
-    }
+
 
     res.json({
       message: "Ride ongoing successfully",
@@ -1267,6 +1386,94 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     await newRide.save();
 
+    // Extract cancellation details and apply driver charges
+    const { categoryName, categoryId, subcategoryId } = updatedRide.rideInfo;
+    const categoryNameLower = categoryName.toLowerCase();
+    let cancellationDetails = null;
+
+    try {
+      if (categoryNameLower === 'driver') {
+        cancellationDetails = await driverRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('driverCancellationCharges');
+      } else if (categoryNameLower === 'cab') {
+        cancellationDetails = await cabRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('driverCancellationCharges');
+      } else if (categoryNameLower === 'parcel') {
+        cancellationDetails = await parcelRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('driverCancellationCharges');
+      }
+
+      const currentRideCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
+      const driver = await Driver.findById(driverId);
+      const existingUnclearedCharges = driver?.unclearedCancellationCharges || 0;
+      const totalCancellationCharges = currentRideCancellationCharges + existingUnclearedCharges;
+
+      if (currentRideCancellationCharges > 0 || existingUnclearedCharges > 0) {
+        const wallet = await driverWallet.findOne({ driverId });
+
+        if (driver) {
+          // Deduct cancellation ride credit only for current ride cancellation
+          if (currentRideCancellationCharges > 0 && driver.cancellationRideCredits > 0) {
+            driver.cancellationRideCredits -= 1;
+          }
+
+          // Reset unclearedCancellationCharges as we're processing all charges now
+          driver.unclearedCancellationCharges = 0;
+        }
+
+        if (wallet && driver) {
+          const currentBalance = wallet.balance;
+
+          if (currentBalance >= totalCancellationCharges) {
+            // Deduct full amount from wallet
+            wallet.balance -= totalCancellationCharges;
+            wallet.totalDeductions += totalCancellationCharges;
+            wallet.transactions.push({
+              type: "cancellation_charge",
+              amount: -totalCancellationCharges,
+              rideId: updatedRide._id,
+              description: `Ride cancellation charge (Total: ${totalCancellationCharges})`,
+              status: "completed"
+            });
+            await wallet.save();
+            await driver.save();
+          } else {
+            // Partial deduction from wallet, store remaining in unclearedCancellationCharges
+            const remainingCharges = totalCancellationCharges - currentBalance;
+
+            if (currentBalance > 0) {
+              wallet.totalDeductions += currentBalance;
+              wallet.balance = 0;
+              wallet.transactions.push({
+                type: "cancellation_charge",
+                amount: -currentBalance,
+                rideId: updatedRide._id,
+                description: `Ride cancellation charge (Partial: ${currentBalance}/${totalCancellationCharges})`,
+                status: "completed"
+              });
+              await wallet.save();
+            }
+
+            // Store remaining in unclearedCancellationCharges
+            driver.unclearedCancellationCharges = remainingCharges;
+            await driver.save();
+          }
+        } else if (driver) {
+          // No wallet, store full amount in unclearedCancellationCharges
+          driver.unclearedCancellationCharges = totalCancellationCharges;
+          await driver.save();
+        }
+      }
+    } catch (chargeError) {
+      console.error('Error processing driver cancellation charges:', chargeError);
+    }
+
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
 
     // Emit socket event following /book route pattern
@@ -1365,15 +1572,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
 
     console.log('✅ Ride extended by driver:', driverId, 'for ride:', rideId);
 
-    // Emit socket event to remove ride from all drivers
-    const io = req.app.get('io');
-    if (io) {
-      io.to('drivers').emit('ride-assigned', {
-        rideId: rideId,
-        driverId: driverId
-      });
-      console.log('🚗 Ride assigned event emitted:', rideId);
-    }
+
 
     res.json({
       message: "Ride extended successfully",
@@ -1480,19 +1679,61 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       await wallet.save();
 
       console.log("✅ Wallet updated for driver:", driverId);
+
+      // 🔹 Process uncleared cancellation charges
+      const driver = await Driver.findById(driverId);
+      const unclearedCharges = driver?.unclearedCancellationCharges || 0;
+
+      if (unclearedCharges > 0) {
+        const currentBalance = wallet.balance;
+
+        if (currentBalance >= unclearedCharges) {
+          // Deduct full uncleared charges from wallet
+          wallet.balance -= unclearedCharges;
+          wallet.totalDeductions += unclearedCharges;
+          wallet.transactions.push({
+            type: "cancellation_charge",
+            amount: -unclearedCharges,
+            rideId: updatedRide._id,
+            description: `Uncleared cancellation charges deducted`,
+            status: "completed"
+          });
+          await wallet.save();
+
+          // Clear uncleared charges
+          driver.unclearedCancellationCharges = 0;
+          await driver.save();
+
+          console.log(`✅ Deducted full uncleared charges: ${unclearedCharges}`);
+        } else {
+          // Partial deduction from wallet
+          const remainingCharges = unclearedCharges - currentBalance;
+
+          if (currentBalance > 0) {
+            wallet.totalDeductions += currentBalance;
+            wallet.balance = 0;
+            wallet.transactions.push({
+              type: "cancellation_charge",
+              amount: -currentBalance,
+              rideId: updatedRide._id,
+              description: `Partial uncleared cancellation charges deducted`,
+              status: "completed"
+            });
+            await wallet.save();
+          }
+
+          // Update remaining uncleared charges
+          driver.unclearedCancellationCharges = remainingCharges;
+          await driver.save();
+
+          console.log(`✅ Deducted ${currentBalance} from wallet, remaining charges: ${remainingCharges}`);
+        }
+      }
     } else {
       console.log("⚠️ No earning added (amount <= 0)");
     }
 
-    // 🔹 Emit socket event
-    const io = req.app.get("io");
-    if (io) {
-      io.to("drivers").emit("ride-assigned", {
-        rideId,
-        driverId,
-      });
-      console.log("🚗 Ride assigned event emitted:", rideId);
-    }
+
 
     // 🔹 Final response
     res.json({

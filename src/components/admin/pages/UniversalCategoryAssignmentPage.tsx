@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -43,12 +42,21 @@ const carAssignmentConfig = {
   title: 'Assigned Car'
 };
 
-export const UniversalCategoryAssignmentPage = () => {
-  const { categoryType, categoryId } = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const categoryName = location.state?.categoryName || 'Category';
-  const isCarAssignment = location.state?.isCarAssignment || false;
+interface UniversalCategoryAssignmentPageProps {
+  categoryType: string;
+  categoryId: string;
+  categoryName: string;
+  isCarAssignment?: boolean;
+  onBack: () => void;
+}
+
+export const UniversalCategoryAssignmentPage = ({ 
+  categoryType, 
+  categoryId, 
+  categoryName, 
+  isCarAssignment = false, 
+  onBack 
+}: UniversalCategoryAssignmentPageProps) => {
   
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
@@ -59,7 +67,7 @@ export const UniversalCategoryAssignmentPage = () => {
 
   useEffect(() => {
     if (!config) {
-      navigate(-1);
+      onBack();
       return;
     }
     fetchDrivers();
@@ -118,7 +126,7 @@ export const UniversalCategoryAssignmentPage = () => {
         
       await axios.put(`${import.meta.env.VITE_API_URL}${config.endpoint}`, payload);
       
-      navigate(-1);
+      onBack();
     } catch (err) {
       console.error(`Failed to assign drivers to ${isCarAssignment ? 'car' : categoryType + ' category'}`, err);
     } finally {
@@ -137,7 +145,7 @@ export const UniversalCategoryAssignmentPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4 mt-10">
-          <Button variant="outline" className='ml-5' onClick={() => navigate(-1)}>
+          <Button variant="outline" className='ml-5' onClick={onBack}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>

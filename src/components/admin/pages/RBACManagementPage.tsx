@@ -405,7 +405,14 @@ export const RBACManagementPage = () => {
     )
   );
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader className="w-6 h-6 animate-spin mr-2" />
+        <span>Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -97,7 +97,21 @@ const menuItems = [
     ]
   },
   { icon: BookOpen, label: "T & C", key: "t&c" },
-  { icon: Bike, label: "Rides", key: "rides" },
+  {
+    icon: Bike,
+    label: "Rides Management",
+    key: "rides-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Clock, label: "Booked Rides", key: "booked-rides" },
+      { icon: CheckCircle, label: "Confirmed Rides", key: "confirmed-rides" },
+      { icon: Bike, label: "Ongoing Rides", key: "ongoing-rides" },
+      { icon: CheckCircle, label: "Completed Rides", key: "completed-rides" },
+      { icon: XCircle, label: "Cancelled Rides", key: "cancelled-rides" },
+      { icon: Clock, label: "Extended Rides", key: "extended-rides" },
+      { icon: MapPin, label: "Reached Rides", key: "reached-rides" }
+    ]
+  },
   { icon: Gift, label: "Refer Earn", key: "referearn" },
   {
     icon: Wallet,

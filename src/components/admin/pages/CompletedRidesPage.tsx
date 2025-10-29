@@ -1,14 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign, User, Car, Phone, Calendar, CreditCard, Eye } from "lucide-react";
+import { MapPin, Clock, DollarSign, User, Car, Phone, Calendar, CreditCard, Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 
-interface RidesPageProps {
+interface CompletedRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
 }
 
-export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
+export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPageProps) => {
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,8 +23,8 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
     fetchRides();
   }, [currentPage, dateFilter]);
 
-  const handleTodayFilter = () => {
-    setDateFilter(dateFilter === 'today' ? '' : 'today');
+  const handleDateFilter = (filter: string) => {
+    setDateFilter(filter === dateFilter ? '' : filter);
     setCurrentPage(1);
   };
 
@@ -39,9 +40,9 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
         limit: limit.toString(),
         ...(dateFilter && { date: dateFilter })
       });
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides?${params}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/completed?${params}`);
       if (!response.ok) {
-        throw new Error('Failed to fetch rides');
+        throw new Error('Failed to fetch completed rides');
       }
       const data = await response.json();
       setRides(data.data);
@@ -51,22 +52,6 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-600 text-white';
-      case 'ongoing':
-      case 'active':
-        return 'bg-blue-600 text-white';
-      case 'booked':
-        return 'bg-yellow-600 text-white';
-      case 'cancelled':
-        return 'bg-red-600 text-white';
-      default:
-        return 'bg-gray-600 text-white';
     }
   };
 
@@ -89,10 +74,9 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
 
   if (loading) {
     return (
-      <div className="space-y-6 bg-white text-black p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg">Loading rides...</div>
-        </div>
+      <div className="flex justify-center items-center py-8">
+        <Loader className="w-6 h-6 animate-spin mr-2" />
+        <span>Loading completed rides...</span>
       </div>
     );
   }
@@ -109,69 +93,52 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
 
   return (
     <div className="space-y-6 bg-white text-black p-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">
-              {totalRides}
-            </div>
-            <div className="text-sm text-gray-600">Total Rides</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(rides.reduce((sum, ride) => sum + ride.totalPayable, 0))}
-            </div>
-            <div className="text-sm text-gray-600">Page Revenue</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-yellow-600">
-              {rides.filter(ride => ride.status === 'BOOKED').length}
-            </div>
-            <div className="text-sm text-gray-600">Booked (Page)</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white border-gray-200">
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(rides.reduce((sum, ride) => sum + ride.totalPayable, 0) / rides.length || 0)}
-            </div>
-            <div className="text-sm text-gray-600">Average Fare</div>
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-black">Rides Management</h1>
+        <h1 className="text-2xl font-bold text-black">Completed Rides</h1>
         <div className="flex space-x-2">
-          <Button
-            variant={dateFilter === 'today' ? "default" : "outline"}
-            onClick={handleTodayFilter}
-            className={dateFilter === 'today' ? "bg-green-600 hover:bg-green-700" : ""}
-          >
-            {dateFilter === 'today' ? "Show All" : "Today Rides"}
-          </Button>
           <Button variant="outline" onClick={fetchRides}>
             Refresh
           </Button>
-          <Button variant="outline">Filter</Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">Export</Button>
+          <Button 
+            variant={dateFilter === 'today' ? 'default' : 'outline'}
+            onClick={() => handleDateFilter('today')}
+          >
+            Today's Rides
+          </Button>
+          <Button 
+            variant={dateFilter === 'yesterday' ? 'default' : 'outline'}
+            onClick={() => handleDateFilter('yesterday')}
+          >
+            Yesterday's Rides
+          </Button>
         </div>
       </div>
 
       <Card className="bg-white border-gray-200">
         <CardHeader>
           <CardTitle className="text-black">
-            {dateFilter === 'today' ? `Today's Rides (${totalRides})` : `All Rides (${totalRides})`}
+            Completed Rides ({totalRides})
           </CardTitle>
         </CardHeader>
+        <div className="px-6">
+          <div className="flex items-center justify-end mb-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Show</span>
+              <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">records</span>
+            </div>
+          </div>
+        </div>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
@@ -183,8 +150,7 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
-                  <th className="text-left p-3 font-semibold text-gray-700 w-32">Payment Method</th>
-                  <th className="text-left p-3 font-semibold text-gray-700 w-24">Status</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Payment Method</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -222,11 +188,6 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
                             <span className="capitalize">{ride.rideInfo.toLocation?.address || "N/A"}</span>
                           </div>
                         )}
-                        {!ride.rideInfo.toLocation && (
-                          <div className="text-xs text-gray-500">
-                            {ride.rideInfo.selectedUsage}h booking
-                          </div>
-                        )}
                       </div>
                     </td>
 
@@ -254,32 +215,17 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
                           <Clock className="w-3 h-3 text-gray-500" />
                           <span>{formatTime(ride.rideInfo.selectedTime)}</span>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          Created: {formatDate(ride.createdAt)}
-                        </div>
                       </div>
                     </td>
 
                     <td className="p-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-1 text-sm font-semibold text-green-600">
-                          
-                          <span>{formatCurrency(ride.totalPayable)}</span>
-                        </div>
-
-
+                      <div className="flex items-center space-x-1 text-sm font-semibold text-green-600">
+                        <span>{formatCurrency(ride.totalPayable)}</span>
                       </div>
                     </td>
 
-                    <td className="p-3 w-32">
+                    <td className="p-3">
                       <span className="text-sm capitalize">{ride.paymentType}</span>
-                    </td>
-
-                    <td className="p-3 w-24">
-                      <Badge className={getStatusColor(ride.status)}>
-                        {ride.status}
-                      </Badge>
-
                     </td>
 
                     <td className="p-3">
@@ -300,7 +246,9 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
 
           {rides.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              {dateFilter === 'today' ? "No rides found for today" : "No rides found"}
+              {dateFilter === 'today' ? 'No completed rides found for today' : 
+               dateFilter === 'yesterday' ? 'No completed rides found for yesterday' : 
+               'No completed rides found'}
             </div>
           )}
 
@@ -332,8 +280,6 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
           )}
         </CardContent>
       </Card>
-
-
     </div>
   );
 };
