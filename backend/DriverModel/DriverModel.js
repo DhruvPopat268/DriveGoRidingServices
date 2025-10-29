@@ -111,7 +111,9 @@ const driverSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Car',
       default: null
-    }
+    },
+
+    cancellationRideCredits: { type: Number, default: 3 }
   },
   { timestamps: true }
 );
