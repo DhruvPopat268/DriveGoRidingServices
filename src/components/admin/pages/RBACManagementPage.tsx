@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Edit, Trash2, Key, Users, Mail, Phone, Shield, UserCheck, Plus, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -242,7 +243,7 @@ export const RBACManagementPage = () => {
 
   const deleteRole = async (id) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/roles/${id}`, { method: 'DELETE' });
+      await fetch(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${id}`, { method: 'DELETE' });
       setRoles(roles.filter(r => r._id !== id));
     } catch (error) {
       console.error('Error deleting role:', error);
@@ -251,7 +252,7 @@ export const RBACManagementPage = () => {
 
   const deleteUser = async (id) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/users/${id}`, { method: 'DELETE' });
+      await fetch(`${import.meta.env.VITE_API_URL}/api/rbac/users/${id}`, { method: 'DELETE' });
       setUsers(users.filter(u => u._id !== id));
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -677,9 +678,27 @@ export const RBACManagementPage = () => {
                             <Button variant="ghost" size="sm" className="hover:bg-blue-50 hover:text-blue-600" onClick={() => editRole(role)}>
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="hover:bg-red-50 hover:text-red-600" onClick={() => deleteRole(role._id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="hover:bg-red-50 hover:text-red-600">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Role</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the role "{role.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteRole(role._id)} className="bg-red-600 hover:bg-red-700">
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -883,9 +902,27 @@ export const RBACManagementPage = () => {
                             <Button variant="ghost" size="sm" className="hover:bg-blue-50 hover:text-blue-600" onClick={() => editUser(user)}>
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="hover:bg-red-50 hover:text-red-600" onClick={() => deleteUser(user._id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="hover:bg-red-50 hover:text-red-600">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the user "{user.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteUser(user._id)} className="bg-red-600 hover:bg-red-700">
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>

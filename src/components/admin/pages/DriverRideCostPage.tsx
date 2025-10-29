@@ -688,7 +688,7 @@ export const DriverRideCostPage = () => {
                 <Input
                     type="number"
                     step="0.01"
-                    placeholder="Cancellation Fee"
+                    placeholder="User Cancellation Charges"
                     value={rideCostForm.cancellationFee}
                     onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationFee: e.target.value }))}
                   />
@@ -1074,11 +1074,11 @@ export const DriverRideCostPage = () => {
                   <p className="text-sm text-gray-600">₹{viewingRideCost.nightCharges}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Cancellation Fee</label>
+                  <label className="text-sm font-medium">User Cancellation Charges</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.cancellationFee}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Cancellation Buffer Time</label>
+                  <label className="text-sm font-medium">User Cancellation Buffer Time</label>
                   <p className="text-sm text-gray-600">{viewingRideCost.cancellationBufferTime} minutes</p>
                 </div>
                 <div>

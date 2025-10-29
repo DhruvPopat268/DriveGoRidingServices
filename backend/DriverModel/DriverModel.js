@@ -15,7 +15,6 @@ const driverSchema = new mongoose.Schema(
       fullName: { type: String },
       dateOfBirth: { type: Date },
       gender: { type: String, enum: ["Male", "Female", "Other"] },
-      mobileNumber: { type: String },
       alternateNumber: { type: String },
       email: { type: String },
       currentAddress: { type: String },
