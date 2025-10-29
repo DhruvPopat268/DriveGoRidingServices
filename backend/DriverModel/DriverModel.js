@@ -20,6 +20,9 @@ const driverSchema = new mongoose.Schema(
       currentAddress: { type: String },
       permanentAddress: { type: String },
 
+      category: { type: String },
+      subCategory: [{ type: String }],
+
       // ✅ Identity Proofs (Cloudinary URLs)
       aadhar: [{ type: String }],             // array for front & back
       panCard: { type: String },
@@ -28,8 +31,6 @@ const driverSchema = new mongoose.Schema(
     },
 
     drivingDetails: {
-      category: { type: String },
-      subCategory: [{ type: String }],
       drivingExperienceYears: { type: Number },
       licenseType: { type: String, enum: ["LMV", "HMV", "Commercial", "Others"] },
       vehicleType: [{ type: String, enum: ["Manual", "Automatic", "Electric"] }],
