@@ -19,7 +19,7 @@ const FileUploadTest = () => {
     formData.append('image', imageFile);
 
     try {
-      const response = await fetch('http://localhost:5000/api/test-upload/image', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/test-upload/image`, {
         method: 'POST',
         body: formData,
       });
@@ -46,7 +46,7 @@ const FileUploadTest = () => {
     formData.append('file', documentFile);
 
     try {
-      const response = await fetch('http://localhost:5000/api/test-upload/file', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/test-upload/file`, {
         method: 'POST',
         body: formData,
       });
@@ -119,7 +119,7 @@ const FileUploadTest = () => {
                     </div>
                     {imageResult.url && (
                       <img 
-                        src={`http://localhost:5000${imageResult.url}`} 
+                        src={`${import.meta.env.VITE_API_URL}${imageResult.url}`} 
                         alt="Uploaded" 
                         className="max-w-full h-32 object-cover rounded"
                       />
@@ -175,7 +175,7 @@ const FileUploadTest = () => {
                       <p>URL: {fileResult.url}</p>
                     </div>
                     <a 
-                      href={`http://localhost:5000${fileResult.url}`} 
+                      href={`${import.meta.env.VITE_API_URL}${fileResult.url}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
