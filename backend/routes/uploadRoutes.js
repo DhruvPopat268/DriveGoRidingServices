@@ -61,6 +61,11 @@ const serverStorage = multer2.diskStorage({
 
 const serverUpload = multer2({ storage: serverStorage });
 
+// Test route
+router.get('/test-server', (req, res) => {
+  res.json({ message: 'Server upload route is working!', timestamp: new Date().toISOString() });
+});
+
 // Server upload route
 router.post('/server-image', serverUpload.single('image'), async (req, res) => {
   try {
