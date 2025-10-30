@@ -96,6 +96,9 @@ app.use('/testing', express.static('testing'));
 // Serve static files from app/uploads folder
 app.use('/app/uploads', express.static('testing'));
 
+app.use('/app/uploads', express.static('/app/uploads'));
+
+
 // Rider routes
 app.use("/api/rider-auth", riderAuthRoutes);
 
