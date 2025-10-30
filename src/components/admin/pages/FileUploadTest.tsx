@@ -43,7 +43,7 @@ const FileUploadTest = () => {
 
     setFileUploading(true);
     const formData = new FormData();
-    formData.append('file', documentFile);
+    formData.append('image', documentFile);
 
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/upload/image?storage=server`, {
