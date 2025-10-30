@@ -21,6 +21,7 @@ const cityRoutes = require('./routes/cityRoutes');
 const carCategoryRoutes = require('./routes/carCategoryRoutes');
 const carRoutes = require('./routes/carRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const testUploadRoutes = require('./routes/testUploadRoutes');
 const CabRideCostRoutes = require('./routes/CabRideCostRoutes');
 
 const riderAuthRoutes = require('./routes/riderAuth_otp_Routes');
@@ -86,7 +87,13 @@ app.use('/api/cities', cityRoutes);
 app.use('/api/car-categories', carCategoryRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/test-upload', testUploadRoutes);
 app.use('/api/CabRideCosts', CabRideCostRoutes);
+
+// Serve static files from testing folder
+app.use('/testing', express.static('testing'));
+// Serve static files from app/uploads folder
+app.use('/app/uploads', express.static('testing'));
 
 // Rider routes
 app.use("/api/rider-auth", riderAuthRoutes);

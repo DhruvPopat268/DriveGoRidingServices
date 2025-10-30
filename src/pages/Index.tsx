@@ -55,6 +55,7 @@ import { RejectedWithdrawalPage } from "@/components/admin/pages/RejectedWithdra
 import { DriverPurchasedPlansPage } from "@/components/admin/pages/DriverPurchasedPlansPage";
 import { RideDetailsPage } from "@/components/admin/pages/RideDetailsPage";
 import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/UniversalCategoryAssignmentPage";
+import FileUploadTest from "@/components/admin/pages/FileUploadTest";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -312,6 +313,8 @@ const Index = () => {
         return <DriverTransactionsPage />;
       case "driver-purchased-plans":
         return <DriverPurchasedPlansPage />;
+      case "file-upload-test":
+        return <FileUploadTest />;
       case "category-assignment":
         return categoryAssignment ? (
           <UniversalCategoryAssignmentPage 
