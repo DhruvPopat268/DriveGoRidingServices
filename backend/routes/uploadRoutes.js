@@ -21,7 +21,31 @@ router.post('/image', upload.single('image'), async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    // Upload to Cloudinary
+    // Check if server storage is requested
+    if (req.query.storage === 'server') {
+      const path = require('path');
+      const fs = require('fs');
+      
+      // Create testing directory if it doesn't exist
+      const uploadPath = path.join(__dirname, '../testing/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      
+      // Save file to server
+      const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
+      const filePath = path.join(uploadPath, uniqueName);
+      fs.writeFileSync(filePath, req.file.buffer);
+      
+      return res.json({ 
+        message: 'Image uploaded successfully to server',
+        url: `/app/uploads/testing/images/${uniqueName}`,
+        filename: uniqueName,
+        size: req.file.size
+      });
+    }
+
+    // Upload to Cloudinary (default)
     const result = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
         { resource_type: 'image' },
