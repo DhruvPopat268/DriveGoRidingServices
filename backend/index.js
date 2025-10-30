@@ -87,6 +87,7 @@ app.use('/api/cities', cityRoutes);
 app.use('/api/car-categories', carCategoryRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/upload', uploadRoutes);
+console.log('✅ Test upload routes registered at /api/test-upload');
 app.use('/api/test-upload', testUploadRoutes);
 app.use('/api/CabRideCosts', CabRideCostRoutes);
 

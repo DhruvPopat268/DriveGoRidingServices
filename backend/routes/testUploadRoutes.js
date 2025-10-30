@@ -117,4 +117,9 @@ router.get('/uploads', async (req, res) => {
   }
 });
 
+// Test route
+router.get('/test', (req, res) => {
+  res.json({ message: 'Test upload routes working!' });
+});
+
 module.exports = router;
