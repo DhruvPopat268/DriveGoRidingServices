@@ -95,6 +95,8 @@ app.use('/api/CabRideCosts', CabRideCostRoutes);
 app.use('/testing', express.static('testing'));
 // Serve static files from app/uploads folder
 app.use('/app/uploads', express.static('testing'));
+// Ensure documents folder is accessible
+app.use('/app/uploads/testing/documents', express.static('testing/documents'));
 
 app.use('/app/uploads', express.static('/app/uploads'));
 

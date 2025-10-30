@@ -26,8 +26,12 @@ router.post('/image', upload.single('image'), async (req, res) => {
       const path = require('path');
       const fs = require('fs');
       
+      // Determine folder based on file type
+      const isImage = req.file.mimetype.startsWith('image/');
+      const folder = isImage ? 'images' : 'documents';
+      
       // Create testing directory if it doesn't exist
-      const uploadPath = path.join(__dirname, '../testing/images');
+      const uploadPath = path.join(__dirname, `../testing/${folder}`);
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true });
       }
@@ -38,8 +42,8 @@ router.post('/image', upload.single('image'), async (req, res) => {
       fs.writeFileSync(filePath, req.file.buffer);
       
       return res.json({ 
-        message: 'Image uploaded successfully to server',
-        url: `/app/uploads/testing/images/${uniqueName}`,
+        message: `${isImage ? 'Image' : 'File'} uploaded successfully to server`,
+        url: `/app/uploads/testing/${folder}/${uniqueName}`,
         filename: uniqueName,
         size: req.file.size
       });
