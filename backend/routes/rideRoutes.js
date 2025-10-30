@@ -306,9 +306,11 @@ router.post("/book", authMiddleware, async (req, res) => {
         status: 'BOOKED'
       };
 
-      // Get drivers with rideStatus 'WAITING' (available drivers)
+      // Get drivers with rideStatus 'WAITING' and matching categories
       const waitingDrivers = await Driver.find({
         rideStatus: 'WAITING',
+        'personalInformation.category': categoryId,
+        'personalInformation.subCategory': { $in: [subcategoryId] },
         $or: [
           { driverCategory: selectedCategoryId },
           { parcelCategory: selectedCategoryId },
@@ -320,7 +322,7 @@ router.post("/book", authMiddleware, async (req, res) => {
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
-      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
+      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status and matching categories`);
 
       // Send to online drivers who have WAITING rideStatus
       let sentCount = 0;
@@ -332,7 +334,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         }
       });
 
-      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status)`);
+      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
     } else {
       console.log('❌ Socket.io or onlineDrivers not available');
     }

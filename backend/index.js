@@ -149,18 +149,19 @@ io.on('connection', (socket) => {
           if (availableRides.length > 0) {
             availableRides.forEach(ride => {
               const selectedCategoryId = ride.rideInfo.selectedCategoryId;
-              // console.log("Selected Category ID for ride:", selectedCategoryId);
-              // console.log("driver category", driver.driverCategory)
-              // console.log("car category", driver.assignedCar)
-              // console.log("parcel category", driver.parcelCategory)
+              const categoryId = ride.rideInfo.categoryId;
+              const subcategoryId = ride.rideInfo.subcategoryId;
 
-              // Filter rides based on driver's category matching (same logic as /book route)
+              // Filter rides based on driver's category matching AND personal information matching
               const driverMatches =
                 driver.driverCategory?.toString() === selectedCategoryId?.toString() ||
                 driver.parcelCategory?.toString() === selectedCategoryId?.toString() ||
                 driver.assignedCar?.toString() === selectedCategoryId?.toString();
 
-              if (driverMatches) {
+              const categoryMatches = driver.personalInformation?.category === categoryId;
+              const subcategoryMatches = driver.personalInformation?.subCategory?.includes(subcategoryId);
+
+              if (driverMatches && categoryMatches && subcategoryMatches) {
                 const rideData = {
                   rideId: ride._id,
                   categoryName: ride.rideInfo.categoryName,
@@ -179,7 +180,7 @@ io.on('connection', (socket) => {
                 socket.emit('new-ride', rideData);
               }
             });
-            console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status)`);
+            console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status + matching categories)`);
           }
         } else {
           console.log(`🚫 Driver ${driverId} does not have WAITING status, no rides sent`);
