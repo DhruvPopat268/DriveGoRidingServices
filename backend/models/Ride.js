@@ -56,8 +56,11 @@ const rideSchema = new mongoose.Schema(
       selectedUsage: { type: String },
       SelectedDays: { type: String },
       selectedDates: [{ type: String }],
+
+      completedDays: [{ type: String }],
+      completedDates: [{ type: String }],
+      
       transmissionType: { type: String },
-      selectedDates: [{ type: String }],
 
       //for extended 
       extended: { type: Boolean, default: false },

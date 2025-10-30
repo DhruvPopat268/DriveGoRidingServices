@@ -1093,6 +1093,14 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
+    // Check if driver has cancellation credits
+    if (driverInfo.cancellationRideCredits <= 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: "You have 0 credits for cancellation. You Cannot cancel ride."
+      });
+    }
+
     const currentRide = await Ride.findById(rideId);
     if (!currentRide) {
       return res.status(404).json({ message: "Ride not found" });
@@ -1604,6 +1612,29 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
 
     const driverName = driverInfo.personalInformation?.fullName;
 
+    // Get ride data for validation before updating
+    const currentRide = await Ride.findById(rideId);
+    if (!currentRide) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    // Validate selectedDates and completedDates if both exist
+    const selectedDates = currentRide.rideInfo.selectedDates || [];
+    const completedDates = currentRide.rideInfo.completedDates || [];
+    
+    if (selectedDates.length > 0 && completedDates.length > 0) {
+      const sortedSelectedDates = [...selectedDates].sort();
+      const sortedCompletedDates = [...completedDates].sort();
+      
+      if (JSON.stringify(sortedSelectedDates) !== JSON.stringify(sortedCompletedDates)) {
+        return res.status(400).json({ 
+          message: "Cannot complete ride. Selected dates and completed dates must match.",
+          selectedDates: sortedSelectedDates,
+          completedDates: sortedCompletedDates
+        });
+      }
+    }
+
     // 🔹 Update the ride status to COMPLETED (only if ONGOING or EXTENDED)
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: { $in: ["ONGOING", "EXTENDED"] } },
@@ -1732,8 +1763,6 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     } else {
       console.log("⚠️ No earning added (amount <= 0)");
     }
-
-
 
     // 🔹 Final response
     res.json({
@@ -1985,6 +2014,73 @@ router.get("/withdrawals/rejected", async (req, res) => {
     res.json({ success: true, data: rejectedRequests });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update completed days and dates
+router.post("/complete-day",driverAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId } = req.body;
+
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const selectedDates = ride.rideInfo.selectedDates || [];
+    const completedDates = ride.rideInfo.completedDates || [];
+    const completedDays = ride.rideInfo.completedDays || [];
+    const selectedDays = parseInt(ride.rideInfo.SelectedDays) || 0;
+
+    // Check if current date exists in selectedDates
+    if (!selectedDates.includes(currentDate)) {
+      return res.status(400).json({ message: "Current date is not in selected dates" });
+    }
+
+    // Check if already completed
+    if (completedDates.includes(currentDate)) {
+      return res.status(400).json({ message: "This date is already completed" });
+    }
+
+    // Update arrays
+    const updatedCompletedDates = [...completedDates, currentDate];
+    const updatedSelectedDates = selectedDates.filter(date => date !== currentDate);
+    const updatedCompletedDays = [...completedDays, "1"];
+
+    // Check if all days are completed
+    if (updatedCompletedDays.length >= selectedDays) {
+      return res.status(400).json({ message: "All selected days are already completed" });
+    }
+
+    const updatedRide = await Ride.findByIdAndUpdate(
+      rideId,
+      {
+        "rideInfo.completedDates": updatedCompletedDates,
+        "rideInfo.selectedDates": updatedSelectedDates,
+        "rideInfo.completedDays": updatedCompletedDays
+      },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: "Day completed successfully",
+      data: {
+        completedDates: updatedCompletedDates,
+        remainingDates: updatedSelectedDates,
+        completedDays: updatedCompletedDays,
+        totalCompletedDays: updatedCompletedDays.length,
+        totalSelectedDays: selectedDays
+      }
+    });
+  } catch (error) {
+    console.error("Error completing day:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 

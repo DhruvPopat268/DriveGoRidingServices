@@ -17,11 +17,12 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
   const [totalPages, setTotalPages] = useState(1);
   const [totalRides, setTotalRides] = useState(0);
   const [dateFilter, setDateFilter] = useState('');
-  const limit = 10;
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const limit = recordsPerPage;
 
   useEffect(() => {
     fetchRides();
-  }, [currentPage, dateFilter]);
+  }, [currentPage, dateFilter, recordsPerPage]);
 
   const handleDateFilter = (filter: string) => {
     setDateFilter(filter === dateFilter ? '' : filter);
@@ -32,12 +33,17 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
     setCurrentPage(page);
   };
 
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
+
   const fetchRides = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
         page: currentPage.toString(),
-        limit: limit.toString(),
+        limit: recordsPerPage.toString(),
         ...(dateFilter && { date: dateFilter })
       });
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/completed?${params}`);
