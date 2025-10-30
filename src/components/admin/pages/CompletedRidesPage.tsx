@@ -147,13 +147,25 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
         </div>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full table-auto border-collapse">
+            <table className="w-full table-fixed border-collapse">
+              <colgroup>
+                <col style={{ width: '4%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+              </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">#</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Driver Category</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Payment Method</th>
@@ -164,8 +176,8 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
                 {rides.map((ride, index) => (
                   <tr key={ride._id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3">
-                      <div className="font-mono text-sm text-blue-600">
-                        #{ride._id.slice(-6).toUpperCase()}
+                      <div className="font-mono text-sm ">
+                        {index + 1 + (currentPage - 1) * limit}
                       </div>
                     </td>
 
@@ -184,14 +196,18 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
 
                     <td className="p-3">
                       <div className="space-y-1">
-                        <div className="flex items-center space-x-1 text-sm">
-                          <MapPin className="w-3 h-3 text-green-500" />
-                          <span className="capitalize">{ride.rideInfo.fromLocation?.address || "N/A"}</span>
+                        <div className="flex items-center space-x-1 text-sm truncate">
+                          <MapPin className="w-3 h-3 text-green-500 flex-shrink-0" />
+                          <span className="capitalize truncate" title={ride.rideInfo.fromLocation?.address}>
+                            {ride.rideInfo.fromLocation?.address || "N/A"}
+                          </span>
                         </div>
                         {ride.rideInfo.toLocation && (
-                          <div className="flex items-center space-x-1 text-sm">
-                            <MapPin className="w-3 h-3 text-red-500" />
-                            <span className="capitalize">{ride.rideInfo.toLocation?.address || "N/A"}</span>
+                          <div className="flex items-center space-x-1 text-sm truncate">
+                            <MapPin className="w-3 h-3 text-red-500 flex-shrink-0" />
+                            <span className="capitalize truncate" title={ride.rideInfo.toLocation?.address}>
+                              {ride.rideInfo.toLocation?.address || "N/A"}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -200,15 +216,31 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
                     <td className="p-3">
                       <div className="space-y-1">
                         <div className="text-sm font-medium capitalize">
-                          {ride.rideInfo.selectedCategory}
+                          {ride.rideInfo.categoryName}
                         </div>
                         <div className="text-xs text-gray-600 capitalize">
                           {ride.rideInfo.subcategoryName}
                         </div>
-                        <div className="text-xs text-gray-500 capitalize">
-                          {ride.rideInfo.carType} • {ride.rideInfo.transmissionType}
-                        </div>
+
                       </div>
+                    </td>
+
+                    <td className="p-3">
+                      <div className="text-sm font-medium capitalize">
+                        {ride.rideInfo.selectedCategory}
+                      </div>
+
+                      {(ride.rideInfo.carType || ride.rideInfo.transmissionType) && (
+                        <div className="space-y-1">
+                          <div className="text-xs text-gray-600 capitalize">
+                            {ride.rideInfo.carType}
+                          </div>
+                          <div className="text-xs text-gray-600 capitalize">
+                            {ride.rideInfo.transmissionType}
+                          </div>
+
+                        </div>
+                      )}
                     </td>
 
                     <td className="p-3">
@@ -260,7 +292,7 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 mt-6">
+            <div className="flex justify-end items-center space-x-2 mt-6">
               <Button
                 variant="outline"
                 size="sm"

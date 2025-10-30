@@ -232,14 +232,18 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-600">Service Type</label>
-                  <p className="text-lg capitalize">{rideDetails.rideInfo.categoryName} - {rideDetails.rideInfo.selectedCategory}</p>
+                  <p className="text-lg font-medium capitalize">{rideDetails.rideInfo.categoryName}</p>
                   <p className="text-sm text-gray-500 capitalize">{rideDetails.rideInfo.subcategoryName}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Vehicle Category</label>
-                  <p className="text-sm text-gray-500 capitalize">
-                    {rideDetails.rideInfo.carType} • {rideDetails.rideInfo.transmissionType}
-                  </p>
+                  <label className="text-sm font-medium text-gray-600">Driver Category</label>
+                  <p className="text-lg font-medium capitalize">{rideDetails.rideInfo.selectedCategory}</p>
+                  {(rideDetails.rideInfo.carType || rideDetails.rideInfo.transmissionType) && (
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-500 capitalize">{rideDetails.rideInfo.carType}</p>
+                      <p className="text-sm text-gray-500 capitalize">{rideDetails.rideInfo.transmissionType}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
