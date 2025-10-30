@@ -29,48 +29,48 @@ router.get("/", async (req, res) => {
 // CREATE CATEGORY
 router.post('/', upload.single('image'), async (req, res) => {
   try {
-    console.log("➡️ Incoming request body:", req.body);
-    console.log("➡️ Incoming file:", req.file);
+    // console.log("➡️ Incoming request body:", req.body);
+    // console.log("➡️ Incoming file:", req.file);
 
     const { name, description } = req.body;
 
     if (!name || !name.trim()) {
-      console.log("❌ Category name missing");
+      // console.log("❌ Category name missing");
       return res.status(400).json({ success: false, message: 'Category name is required' });
     }
 
     const existingCategory = await Category.findOne({ name: name.trim() });
     if (existingCategory) {
-      console.log("❌ Category already exists:", existingCategory);
+      // console.log("❌ Category already exists:", existingCategory);
       return res.status(400).json({ success: false, message: 'Category already exists' });
     }
 
     // ✅ Upload image to Cloudinary
     let uploadedImage = null;
     if (req.file) {
-      console.log("📤 Uploading image to Cloudinary...");
+      // console.log("📤 Uploading image to Cloudinary...");
 
       uploadedImage = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
           { folder: "categories" },
           (err, result) => {
             if (err) {
-              console.error("❌ Cloudinary upload error:", err);
+              // console.error("❌ Cloudinary upload error:", err);
               return reject(err);
             }
-            console.log("✅ Cloudinary upload success:", result);
+            // console.log("✅ Cloudinary upload success:", result);
             resolve({ public_id: result.public_id, url: result.secure_url });
           }
         );
 
-        console.log("➡️ Writing buffer to Cloudinary stream...");
+        // console.log("➡️ Writing buffer to Cloudinary stream...");
         stream.end(req.file.buffer);
       });
     } else {
-      console.log("⚠️ No file received in request");
+      // console.log("⚠️ No file received in request");
     }
 
-    console.log("📦 Final uploadedImage object:", uploadedImage);
+    // console.log("📦 Final uploadedImage object:", uploadedImage);
 
     // ✅ Save category
     const category = await Category.create({
@@ -79,7 +79,7 @@ router.post('/', upload.single('image'), async (req, res) => {
       image: uploadedImage,
     });
 
-    console.log("✅ Category created in DB:", category);
+    // console.log("✅ Category created in DB:", category);
 
     res.status(201).json({
       success: true,

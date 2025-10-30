@@ -457,7 +457,7 @@ router.post("/verify-otp", async (req, res) => {
         totalDeductions: 0,
         transactions: [],
       });
-      console.log(`✅ Empty wallet created for driver: ${driverId}`);
+      // console.log(`✅ Empty wallet created for driver: ${driverId}`);
     }
 
     // Prepare response
@@ -869,7 +869,7 @@ router.post("/admin/withdrawal/reject", async (req, res) => {
 router.get("/transactions/pending", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
-    console.log("Driver ID:", driverId);
+    // console.log("Driver ID:", driverId);
 
     const wallet = await driverWallet.findOne({ driverId });
     if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });

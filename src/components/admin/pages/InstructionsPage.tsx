@@ -293,7 +293,7 @@ export const InstructionsPage = () => {
                   key={`${selectedCategory}-subcategory`}
                   value={selectedSubCategory || ""}
                   onValueChange={(value) => {
-                    console.log("🟢 SubCategory changed:", value, typeof value);
+                    // console.log("🟢 SubCategory changed:", value, typeof value);
                     setSelectedSubCategory(value);
                   }}
                   disabled={!selectedCategory || filteredSubCategories.length === 0}

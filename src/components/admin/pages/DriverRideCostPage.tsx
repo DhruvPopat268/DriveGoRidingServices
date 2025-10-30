@@ -336,7 +336,7 @@ export const DriverRideCostPage = () => {
   };
 
   const handleEdit = (rideCost: RideCost) => {
-    console.log('Editing ride cost:', rideCost);
+    // console.log('Editing ride cost:', rideCost);
     setEditingRideCost(rideCost);
 
     const categoryId = extractId(rideCost.category);

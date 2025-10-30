@@ -243,7 +243,7 @@ export const SubCategoryPage = () => {
 
       if (response.status === 200) {
         setSubCategories(prev => prev.filter(subCat => subCat.id !== subCategory.id));
-        console.log('Subcategory deleted successfully');
+        // console.log('Subcategory deleted successfully');
       } else {
         console.error('Delete failed:', response.data);
       }

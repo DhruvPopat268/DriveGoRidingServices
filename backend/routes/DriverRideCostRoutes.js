@@ -173,7 +173,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 
     for (const model of rideCostModels) {
       const priceCategory = await pricecategories.findById(model.priceCategory);
-      console.log(priceCategory)
+      // console.log(priceCategory)
 
       let driverCharges = model.baseFare || 0;
 

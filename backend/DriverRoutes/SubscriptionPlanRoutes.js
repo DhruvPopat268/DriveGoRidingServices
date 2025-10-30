@@ -192,11 +192,11 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
 
     const planDuration = await SubscriptionPlan.findById(subscriptionPlan).select('days')
 
-    console.log("Plan Duration:", planDuration);
+    // console.log("Plan Duration:", planDuration);
 
     const currentPlan = await SubscriptionPlan.findById(subscriptionPlan)
 
-    console.log("Current Plan:", currentPlan);
+    // console.log("Current Plan:", currentPlan);
 
     const amount = currentPlan?.amount
 
@@ -227,7 +227,7 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
 
     // ✅ Get driverId from middleware
     const driverId = req.driver.driverId;
-    console.log("Driver ID from middleware:", driverId);
+    // console.log("Driver ID from middleware:", driverId);
 
     // 1️⃣ Fetch subscription plan
     const plan = await SubscriptionPlan.findById(planId);

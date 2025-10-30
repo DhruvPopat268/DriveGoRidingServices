@@ -84,10 +84,6 @@ const cabRideCostSchema = new mongoose.Schema({
   driverCancellationCharges: {
     type: Number,
     default: 0
-  },
-  driverCancellationCredits: {
-    type: Number,
-    default: 0
   }
 }, {
   timestamps: true

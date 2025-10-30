@@ -11,8 +11,8 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   else {
     usageValue = usageValue * 60;
   }
-  console.log('usageValue', usageValue)
-  console.log(selectedCategoryId)
+  // console.log('usageValue', usageValue)
+  // console.log(selectedCategoryId)
   let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId, priceCategory: selectedCategoryId };
   if (
     subcategoryNameLower === 'oneway' || subcategoryNameLower === 'one way' || subcategoryNameLower === 'one-way'
@@ -24,7 +24,7 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   const records = await DriverRideCost.find(
     rideCostQuery
   ).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst");
-  console.log(records)
+  // console.log(records)
   const includedKm = [...new Set(records.map(r => r.includedKm))];
   const includedMinutes = [...new Set(records.map(r => r.includedMinutes))];
   const extraChargePerKm = records[0]?.extraChargePerKm || 0;
@@ -36,7 +36,7 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
 
 async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId) {
 
-  console.log(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId)
+  // console.log(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId)
 
   const subCategory = await SubCategory.findById(subcategoryId).select("name");
   if (!subCategory) throw new Error("Subcategory not found");

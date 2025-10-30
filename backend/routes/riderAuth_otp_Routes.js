@@ -18,7 +18,7 @@ router.get("/auth/check", (req, res) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
-  console.log("Checking auth token from headers:", token);
+  // console.log("Checking auth token from headers:", token);
 
   if (!token) return res.json({ loggedIn: false });
 

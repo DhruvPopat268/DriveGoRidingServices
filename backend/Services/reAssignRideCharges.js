@@ -23,10 +23,10 @@ const calculateDriverRideCharges = async ({
     NoOfDays,
     selectedCategoryId // ✅ new param for specific price category
 }) => {
-    console.log('🔍 calculateDriverRideCharges - Input params:', {
-        riderId, categoryId, selectedDate, selectedTime, includeInsurance,
-        selectedUsage, subcategoryId, subSubcategoryId, durationType, NoOfDays, selectedCategoryId
-    });
+    // console.log('🔍 calculateDriverRideCharges - Input params:', {
+    //     riderId, categoryId, selectedDate, selectedTime, includeInsurance,
+    //     selectedUsage, subcategoryId, subSubcategoryId, durationType, NoOfDays, selectedCategoryId
+    // });
 
     const rider = await Rider.findById(riderId);
     console.log('👤 Rider found:', rider ? 'Yes' : 'No');

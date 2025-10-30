@@ -1675,7 +1675,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride already completed or not found" });
     }
 
-    console.log("Updated ride on completion:", updatedRide);
+    // console.log("Updated ride on completion:", updatedRide);
 
     // 🔹 Update driver's ride status
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
@@ -1702,7 +1702,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       (rideInfo.extraMinutesCharges || 0) +
       (rideInfo.cancellationCharges || 0)
 
-    console.log("💰 Calculated driver earning:", driverEarning);
+    // console.log("💰 Calculated driver earning:", driverEarning);
 
     if (driverEarning > 0) {
       let wallet = await driverWallet.findOne({ driverId });
@@ -1734,7 +1734,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
 
       await wallet.save();
 
-      console.log("✅ Wallet updated for driver:", driverId);
+      // console.log("✅ Wallet updated for driver:", driverId);
 
       // 🔹 Process uncleared cancellation charges
       const driver = await Driver.findById(driverId);
@@ -1760,7 +1760,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           driver.unclearedCancellationCharges = 0;
           await driver.save();
 
-          console.log(`✅ Deducted full uncleared charges: ${unclearedCharges}`);
+          // console.log(`✅ Deducted full uncleared charges: ${unclearedCharges}`);
         } else {
           // Partial deduction from wallet
           const remainingCharges = unclearedCharges - currentBalance;
@@ -1782,11 +1782,11 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           driver.unclearedCancellationCharges = remainingCharges;
           await driver.save();
 
-          console.log(`✅ Deducted ${currentBalance} from wallet, remaining charges: ${remainingCharges}`);
+          // console.log(`✅ Deducted ${currentBalance} from wallet, remaining charges: ${remainingCharges}`);
         }
       }
     } else {
-      console.log("⚠️ No earning added (amount <= 0)");
+      // console.log("⚠️ No earning added (amount <= 0)");
     }
 
     // 🔹 Final response
@@ -1827,7 +1827,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     const { categoryId, categoryName, subcategoryId, subcategoryName, subSubcategoryId, ridseStartTime, selectedUsage, selectedCategoryId, } = ride.rideInfo;
 
-    console.log("Ride info:", { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime, selectedUsage, selectedCategoryId });
+    // console.log("Ride info:", { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime, selectedUsage, selectedCategoryId });
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
@@ -1868,11 +1868,11 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     // Validate inputs and calculate extraKm
     const safeTotalKm = Number(totalKm) || 0;
-    console.log("safeTotalKm", safeTotalKm)
+    // console.log("safeTotalKm", safeTotalKm)
     const safeIncludedKm = Number(includedKm) || 0;
-    console.log("safeIncludedKm", safeIncludedKm)
+    // console.log("safeIncludedKm", safeIncludedKm)
     let extraKm = Math.max(0, safeTotalKm - safeIncludedKm);
-    console.log("extraKm", extraKm)
+    // console.log("extraKm", extraKm)
 
     // console.log("extraKm", extraKm)
 
@@ -1902,10 +1902,10 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     let diffOfMinutes = endMinutes - startMinutes;
     if (diffOfMinutes < 0) diffOfMinutes += 24 * 60; // handle overnight rides
 
-    console.log("included minutes", includedMinutes)
+    // console.log("included minutes", includedMinutes)
 
     const safeIncludedMinutes = Number(includedMinutes) || 0;
-    console.log("safeIncludedMinutes", safeIncludedMinutes)
+    // console.log("safeIncludedMinutes", safeIncludedMinutes)
     let extraMinutes = 0
 
     // Calculate extra charges only if extraKm is provided

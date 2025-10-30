@@ -195,7 +195,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     for (const model of rideCostModels) {
 
       let driverCharges = model.baseFare || 0;
-      console.log(model)
+      // console.log(model)
 
       // --- duration multiplier ---
       if (durationType && durationValue) {
