@@ -19,7 +19,7 @@ const FileUploadTest = () => {
     formData.append('image', imageFile);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/test-upload/image`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/upload/server-image`, {
         method: 'POST',
         body: formData,
       });
@@ -46,7 +46,7 @@ const FileUploadTest = () => {
     formData.append('file', documentFile);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/test-upload/file`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/upload/server-image`, {
         method: 'POST',
         body: formData,
       });

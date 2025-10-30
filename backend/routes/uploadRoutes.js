@@ -39,4 +39,45 @@ router.post('/image', upload.single('image'), async (req, res) => {
   }
 });
 
+// Test upload routes for server storage
+const multer2 = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for server storage
+const serverStorage = multer2.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../testing/images');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueName + path.extname(file.originalname));
+  }
+});
+
+const serverUpload = multer2({ storage: serverStorage });
+
+// Server upload route
+router.post('/server-image', serverUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image uploaded' });
+    }
+
+    res.json({ 
+      message: 'Image uploaded successfully to server',
+      url: `/app/uploads/testing/images/${req.file.filename}`,
+      filename: req.file.filename,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('Server upload error:', error);
+    res.status(500).json({ message: 'Upload failed', error: error.message });
+  }
+});
+
 module.exports = router;
