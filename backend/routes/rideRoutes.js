@@ -1093,13 +1093,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
-    // Check if driver has cancellation credits
-    if (driverInfo.cancellationRideCredits <= 0) {
-      return res.status(400).json({ 
-        success: false,
-        message: "You have 0 credits for cancellation. You Cannot cancel ride."
-      });
-    }
+
 
     const currentRide = await Ride.findById(rideId);
     if (!currentRide) {
@@ -1426,11 +1420,38 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         const wallet = await driverWallet.findOne({ driverId });
 
         if (driver) {
-          // Deduct cancellation ride credit only for current ride cancellation
-          if (currentRideCancellationCharges > 0 && driver.cancellationRideCredits > 0) {
+          // If driver has credits, use one credit and no charges
+          if (driver.cancellationRideCredits > 0) {
             driver.cancellationRideCredits -= 1;
+            // No charges applied when credits are available
+            driver.unclearedCancellationCharges = existingUnclearedCharges;
+            await driver.save();
+            
+            await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
+            
+            return res.json({
+              success: true,
+              message: "Ride cancelled successfully using credit",
+              ride: updatedRide,
+              creditsUsed: true
+            });
           }
-
+          
+          // If no credits, apply charges
+          if (currentRideCancellationCharges === 0) {
+            driver.unclearedCancellationCharges = existingUnclearedCharges;
+            await driver.save();
+            
+            await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
+            
+            return res.json({
+              success: true,
+              message: "Ride cancelled successfully",
+              ride: updatedRide,
+              creditsUsed: false
+            });
+          }
+          
           // Reset unclearedCancellationCharges as we're processing all charges now
           driver.unclearedCancellationCharges = 0;
         }
@@ -1527,8 +1548,10 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     res.json({
       success: true,
-      message: "Ride cancelled successfully",
-      ride: updatedRide
+      message: "Ride cancelled successfully with charges applied",
+      ride: updatedRide,
+      creditsUsed: false,
+      chargesApplied: true
     });
 
   } catch (error) {
@@ -2014,6 +2037,70 @@ router.get("/withdrawals/rejected", async (req, res) => {
     res.json({ success: true, data: rejectedRequests });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get cancellation info for driver
+router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId } = req.body;
+    const driverId = req.driver?.driverId;
+
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    // Get cancellation charges for the ride
+    const { categoryName, categoryId, subcategoryId } = ride.rideInfo;
+    const categoryNameLower = categoryName.toLowerCase();
+    let cancellationDetails = null;
+
+    try {
+      if (categoryNameLower === 'driver') {
+        cancellationDetails = await driverRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('driverCancellationCharges');
+      } else if (categoryNameLower === 'cab') {
+        cancellationDetails = await cabRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('driverCancellationCharges');
+      } else if (categoryNameLower === 'parcel') {
+        cancellationDetails = await parcelRideCost.findOne({
+          category: categoryId,
+          subcategory: subcategoryId
+        }).select('driverCancellationCharges');
+      }
+
+      const currentRideCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
+
+      res.json({
+        success: true,
+        data: {
+          availableCancellationCredits: driver.cancellationRideCredits,
+          currentRideCancellationCharges
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching cancellation details:', error);
+      res.status(500).json({ message: "Error fetching cancellation details" });
+    }
+
+  } catch (error) {
+    console.error("Error getting cancellation info:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
