@@ -91,14 +91,11 @@ console.log('✅ Test upload routes registered at /api/test-upload');
 app.use('/api/test-upload', testUploadRoutes);
 app.use('/api/CabRideCosts', CabRideCostRoutes);
 
-// Serve static files from testing folder
-app.use('/testing', express.static('testing'));
-// Serve static files from app/uploads folder
-app.use('/app/uploads', express.static('testing'));
-// Ensure documents folder is accessible
-app.use('/app/uploads/testing/documents', express.static('testing/documents'));
+const path = require("path");
 
-app.use('/app/uploads', express.static('/app/uploads'));
+// ✅ Serve images & documents inside /cloud folder
+app.use("/cloud/images", express.static(path.join(__dirname, "cloud/images")));
+app.use("/cloud/documents", express.static(path.join(__dirname, "cloud/documents")));
 
 
 // Rider routes

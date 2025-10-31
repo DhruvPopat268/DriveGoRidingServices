@@ -8,7 +8,7 @@ const router = express.Router();
 // Configure multer for images
 const imageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../testing/images');
+    const uploadPath = path.join(__dirname, '../cloud/images');
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
@@ -23,7 +23,7 @@ const imageStorage = multer.diskStorage({
 // Configure multer for files
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../testing/documents');
+    const uploadPath = path.join(__dirname, '../cloud/documents');
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
@@ -61,7 +61,7 @@ router.post('/image', uploadImage.single('image'), async (req, res) => {
     const upload = new Upload({
       filename: req.file.filename,
       originalName: req.file.originalname,
-      path: `/app/uploads/testing/images/${req.file.filename}`,
+      path: `/cloud/images/${req.file.filename}`,
       type: 'image',
       size: req.file.size
     });
@@ -70,7 +70,7 @@ router.post('/image', uploadImage.single('image'), async (req, res) => {
 
     res.json({ 
       message: 'Image uploaded successfully',
-      url: `/app/uploads/testing/images/${req.file.filename}`,
+      url: `/cloud/images/${req.file.filename}`,
       upload
     });
   } catch (error) {
@@ -89,7 +89,7 @@ router.post('/file', uploadFile.single('file'), async (req, res) => {
     const upload = new Upload({
       filename: req.file.filename,
       originalName: req.file.originalname,
-      path: `/app/uploads/testing/files/${req.file.filename}`,
+      path: `/cloud/documents/${req.file.filename}`,
       type: 'file',
       size: req.file.size
     });
@@ -98,7 +98,7 @@ router.post('/file', uploadFile.single('file'), async (req, res) => {
 
     res.json({ 
       message: 'File uploaded successfully',
-      url: `/app/uploads/testing/files/${req.file.filename}`,
+      url: `/cloud/documents/${req.file.filename}`,
       upload
     });
   } catch (error) {
