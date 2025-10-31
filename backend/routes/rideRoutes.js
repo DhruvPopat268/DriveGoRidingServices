@@ -1058,9 +1058,9 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // ✅ Update driver status only if it was CONFIRMED
-    const driver = await Driver.findOneAndUpdate(
-      { _id: driverId, rideStatus: "CONFIRMED" },
+    // ✅ Update driver status to REACHED
+    const driver = await Driver.findByIdAndUpdate(
+      driverId,
       { rideStatus: "REACHED" },
       { new: true }
     );
@@ -1068,7 +1068,7 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
     if (!driver) {
       return res.status(404).json({
         success: false,
-        message: "Driver not found or ride status is not CONFIRMED",
+        message: "Driver not found",
       });
     }
 
