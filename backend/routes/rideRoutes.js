@@ -1170,486 +1170,176 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 // update status to cancel
 router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
   try {
-    const { rideId, NoOfDays, selectedDates, reason } = req.body;
+    let { rideId, NoOfDays, selectedDates, reason } = req.body;
     const driverId = req.driver?.driverId;
-    const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver cancelling ride:', driverId, 'for ride:', rideId);
-    console.log('📅 Cancellation details:', { NoOfDays, selectedDates });
-
-    if (!rideId) {
-      return res.status(400).json({ message: "Ride ID is required" });
-    }
-
-    const driverInfo = await Driver.findById(driverId);
-    if (!driverInfo) {
-      return res.status(404).json({ message: "Driver not found" });
-    }
-
-
-
+    // ✅ Validate rideId
     const currentRide = await Ride.findById(rideId);
     if (!currentRide) {
-      return res.status(404).json({ message: "Ride not found" });
+      return res.status(404).json({ success: false, message: "Ride not found" });
     }
 
-    console.log('📊 Current ride data:', currentRide.rideInfo);
+    // ✅ Check if ride has driverId
+    if (!currentRide.driverId) {
+      return res.status(400).json({ success: false, message: "For this ride driver not found" });
+    }
 
-    // Check if this is a partial cancellation (multi-day ride)
-    if (NoOfDays && selectedDates && selectedDates.length > 0) {
-      console.log('🔄 Processing partial cancellation...');
-
-      // Calculate remaining days
-      const originalDates = currentRide.rideInfo.selectedDates || [];
-      const originalNoOfDays = parseInt(currentRide.rideInfo.NoOfDays) || 1;
-      const cancelDays = parseInt(NoOfDays);
-
-      const remainingDates = originalDates.filter(date => !selectedDates.includes(date));
-      const remainingNoOfDays = originalNoOfDays - cancelDays;
-
-      console.log('📈 Calculation:', {
-        originalDates, originalNoOfDays, cancelDays, remainingDates, remainingNoOfDays
-      });
-
-      if (remainingNoOfDays <= 0 || remainingDates.length === 0) {
-        // Full cancellation - use existing logic
-        console.log('🚫 Full cancellation detected');
-      } else {
-        // Partial cancellation - update current ride with remaining days
-        console.log('✂️ Partial cancellation - updating current ride');
-
-        try {
-          // Calculate new charges for remaining days
-          let newCharges;
-          const { categoryName, categoryId, subcategoryName, subcategoryId, subSubcategoryId, selectedCategory, selectedCategoryId } = currentRide.rideInfo;
-
-          if (categoryName.toLowerCase() === 'driver') {
-            newCharges = await calculateDriverRideCharges({
-              riderId: currentRide.riderId,
-              categoryId,
-              selectedDate: currentRide.rideInfo.selectedDate,
-              selectedTime: currentRide.rideInfo.selectedTime,
-              includeInsurance: currentRide.rideInfo.includeInsurance,
-              selectedUsage: currentRide.rideInfo.selectedUsage,
-              subcategoryId,
-              subSubcategoryId,
-              durationType: 'day',
-              NoOfDays: remainingNoOfDays,
-              selectedCategoryId
-            });
-          } else if (categoryName.toLowerCase() === 'cab') {
-            newCharges = await calculateCabRideCharges({
-              categoryId,
-              selectedDate: currentRide.rideInfo.selectedDate,
-              selectedTime: currentRide.rideInfo.selectedTime,
-              includeInsurance: currentRide.rideInfo.includeInsurance,
-              selectedUsage: currentRide.rideInfo.selectedUsage,
-              subcategoryId,
-              subSubcategoryId,
-              durationType: 'day',
-              NoOfDays: remainingNoOfDays,
-              selectedCategoryId
-            });
-          }
-
-          console.log('💰 New charges calculated:', newCharges);
-
-          // Update current ride with remaining days and new charges
-          const updateFields = {
-            'rideInfo.driverCharges': newCharges.driverCharges,
-            'rideInfo.adminCharges': newCharges.adminCommissionAdjusted,
-            'rideInfo.subtotal': newCharges.subtotal,
-            'rideInfo.gstCharges': newCharges.gstCharges,
-            'rideInfo.insuranceCharges': newCharges.insuranceCharges,
-            'rideInfo.cancellationCharges': newCharges.cancellationCharges || 0,
-            totalPayable: newCharges.totalPayable
-          };
-
-          // Only include NoOfDays and selectedDates for weekly/monthly
-          const subCatLower = subcategoryName.toLowerCase();
-          if (subCatLower.includes('weekly') || subCatLower.includes('monthly')) {
-            updateFields['rideInfo.NoOfDays'] = remainingNoOfDays.toString();
-            updateFields['rideInfo.selectedDates'] = remainingDates;
-          }
-
-          const updatedCurrentRide = await Ride.findByIdAndUpdate(
-            rideId,
-            updateFields,
-            { new: true }
-          );
-
-          console.log('✅ Current ride updated with remaining days');
-
-          // Calculate charges for cancelled days
-          let cancelledChargesForNewRide;
-          if (categoryName.toLowerCase() === 'driver') {
-            cancelledChargesForNewRide = await calculateDriverRideCharges({
-              riderId: currentRide.riderId,
-              categoryId,
-              selectedDate: currentRide.rideInfo.selectedDate,
-              selectedTime: currentRide.rideInfo.selectedTime,
-              includeInsurance: currentRide.rideInfo.includeInsurance,
-              selectedUsage: currentRide.rideInfo.selectedUsage,
-              subcategoryId,
-              subSubcategoryId,
-              durationType: 'day',
-              NoOfDays: cancelDays,
-              selectedCategoryId
-            });
-          } else if (categoryName.toLowerCase() === 'cab') {
-            cancelledChargesForNewRide = await calculateCabRideCharges({
-              categoryId,
-              selectedDate: currentRide.rideInfo.selectedDate,
-              selectedTime: currentRide.rideInfo.selectedTime,
-              includeInsurance: currentRide.rideInfo.includeInsurance,
-              selectedUsage: currentRide.rideInfo.selectedUsage,
-              subcategoryId,
-              subSubcategoryId,
-              durationType: 'day',
-              NoOfDays: cancelDays,
-              selectedCategoryId
-            });
-          }
-
-          console.log('💰 Cancelled charges calculated:', cancelledChargesForNewRide);
-
-          // Create new ride for cancelled days using same structure as /book route
-          const newCancelledRide = new Ride({
-            riderId: currentRide.riderId,
-            riderInfo: {
-              riderName: currentRide.riderInfo.riderName,
-              riderMobile: currentRide.riderInfo.riderMobile
-            },
-            rideInfo: {
-              categoryId: currentRide.rideInfo.categoryId,
-              subcategoryId: currentRide.rideInfo.subcategoryId,
-              subSubcategoryId: currentRide.rideInfo.subSubcategoryId,
-              categoryName: currentRide.rideInfo.categoryName,
-              subcategoryName: currentRide.rideInfo.subcategoryName,
-              subSubcategoryName: currentRide.rideInfo.subSubcategoryName,
-              carType: currentRide.rideInfo.carType,
-              fromLocation: currentRide.rideInfo.fromLocation,
-              toLocation: currentRide.rideInfo.toLocation,
-              senderDetails: currentRide.rideInfo.senderDetails,
-              receiverDetails: currentRide.rideInfo.receiverDetails,
-              includeInsurance: currentRide.rideInfo.includeInsurance,
-              notes: currentRide.rideInfo.notes,
-              selectedCategoryId: currentRide.rideInfo.selectedCategoryId,
-              selectedCategory: currentRide.rideInfo.selectedCategory,
-              selectedDate: currentRide.rideInfo.selectedDate,
-              selectedTime: currentRide.rideInfo.selectedTime,
-              selectedUsage: currentRide.rideInfo.selectedUsage,
-              transmissionType: currentRide.rideInfo.transmissionType,
-              SelectedDays: cancelDays.toString(),
-              selectedDates: selectedDates,
-              driverCharges: cancelledChargesForNewRide.driverCharges,
-              insuranceCharges: cancelledChargesForNewRide.insuranceCharges,
-              cancellationCharges: cancelledChargesForNewRide.cancellationCharges || 0,
-              discount: cancelledChargesForNewRide.discountApplied || 0,
-              gstCharges: cancelledChargesForNewRide.gstCharges,
-              subtotal: cancelledChargesForNewRide.subtotal,
-              adminCharges: cancelledChargesForNewRide.adminCommissionAdjusted
-            },
-            referralEarning: currentRide.referralEarning || false,
-            referralBalance: currentRide.referralBalance || 0,
-            totalPayable: cancelledChargesForNewRide.totalPayable,
-            paymentType: currentRide.paymentType,
-            status: "BOOKED"
-          });
-
-          await newCancelledRide.save();
-
-          console.log('✅ New ride created for cancelled days:', newCancelledRide._id);
-
-          // Update driver status to WAITING
-          await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
-
-          // Emit new-ride event for cancelled days (following /book route pattern)
-          const io = req.app.get('io');
-          const onlineDrivers = req.app.get('onlineDrivers');
-
-          if (io && onlineDrivers) {
-            const rideData = {
-              rideId: newCancelledRide._id,
-              categoryName: newCancelledRide.rideInfo.categoryName,
-              subcategoryName: newCancelledRide.rideInfo.subcategoryName,
-              subSubcategoryName: newCancelledRide.rideInfo.subSubcategoryName,
-              carType: newCancelledRide.rideInfo.carType,
-              transmissionType: newCancelledRide.rideInfo.transmissionType,
-              selectedUsage: newCancelledRide.rideInfo.selectedUsage,
-              fromLocation: newCancelledRide.rideInfo.fromLocation,
-              toLocation: newCancelledRide.rideInfo.toLocation,
-              selectedDate: newCancelledRide.rideInfo.selectedDate,
-              selectedTime: newCancelledRide.rideInfo.selectedTime,
-              totalPayable: newCancelledRide.totalPayable,
-              status: 'BOOKED'
-            };
-
-            // Get drivers with rideStatus 'WAITING' (available drivers)
-            const waitingDrivers = await Driver.find({ rideStatus: 'WAITING' }).select('_id');
-            const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
-            console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
-
-            // Send to online drivers who have WAITING rideStatus
-            let sentCount = 0;
-            Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
-              // Only send to drivers with WAITING status
-              if (waitingDriverIds.includes(driverId)) {
-                io.to(driverSocketData.socketId).emit('new-ride', rideData);
-                sentCount++;
-              }
-            });
-
-            console.log(`🚗 New ride ${newCancelledRide._id} sent to ${sentCount} available drivers (WAITING status)`);
-          } else {
-            console.log('❌ Socket.io or onlineDrivers not available');
-          }
-
-          return res.json({
-            success: true,
-            message: "Partial cancellation processed successfully",
-            updatedRide: updatedCurrentRide,
-            newRideForCancelledDays: newCancelledRide
-          });
-
-        } catch (chargeError) {
-          console.error('Error calculating charges:', chargeError);
-          return res.status(500).json({ message: "Error calculating charges for partial cancellation" });
-        }
+    // ✅ Parse selectedDates safely (works for JSON or string from form-data)
+    if (typeof selectedDates === "string") {
+      try {
+        selectedDates = JSON.parse(selectedDates);
+      } catch {
+        selectedDates = selectedDates
+          .replace(/\[|\]/g, "")
+          .split(",")
+          .map((d) => d.trim().replace(/"/g, ""));
       }
     }
 
-    // Full cancellation logic (existing code)
-    console.log('🚫 Processing full cancellation...');
+    NoOfDays = parseInt(NoOfDays);
 
-    const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: { $in: ["CONFIRMED"] } },
-      {
-        status: "CANCELLED",
-        driverReason: reason
-      },
-      { new: true }
-    );
-
-    if (!updatedRide) {
-      return res.status(400).json({ message: "Ride is already cancelled or not found" });
+    // ✅ Validate selectedDates array
+    if (!Array.isArray(selectedDates) || selectedDates.length === 0) {
+      return res.status(400).json({ success: false, message: "selectedDates must be a non-empty array" });
     }
 
-    // Create new ride with same details but BOOKED status (following /book route structure)
-    const newRide = new Ride({
-      riderId: updatedRide.riderId,
+    const originalDates = currentRide.rideInfo.selectedDates || [];
+
+    // ✅ Check for invalid dates
+    const invalidDates = selectedDates.filter((d) => !originalDates.includes(d));
+    if (invalidDates.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `These dates are not part of this ride: ${invalidDates.join(", ")}`,
+      });
+    }
+
+    // ✅ Compute remaining and cancelled dates
+    const remainingDates = originalDates.filter((d) => !selectedDates.includes(d));
+    const remainingNoOfDays = remainingDates.length;
+    const cancelDays = selectedDates.length;
+
+    // ✅ Full cancellation
+    if (remainingNoOfDays === 0) {
+      await Ride.findByIdAndUpdate(rideId, {
+        status: "CANCELLED",
+        "rideInfo.remainingDates": [],
+        "rideInfo.selectedDates": [],
+        "rideInfo.SelectedDays": 0,
+      });
+
+      // Also update driver status to AVAILABLE again
+      if (driverId) {
+        await Driver.findByIdAndUpdate(driverId, { rideStatus: "AVAILABLE" });
+      }
+
+      return res.status(200).json({ success: true, message: "Full ride cancelled successfully" });
+    }
+
+    // ✅ Partial cancellation case - Calculate proportional charges
+    const originalTotalDays = parseInt(currentRide.rideInfo.SelectedDays) || 1;
+    const cancelRatio = cancelDays / originalTotalDays;
+    const remainingRatio = remainingNoOfDays / originalTotalDays;
+
+    // Calculate cancelled charges proportionally
+    const cancelledChargesForNewRide = {
+      driverCharges: Math.round(currentRide.rideInfo.driverCharges * cancelRatio),
+      insuranceCharges: Math.round(currentRide.rideInfo.insuranceCharges * cancelRatio),
+      cancellationCharges: Math.round(currentRide.rideInfo.cancellationCharges * cancelRatio),
+      discountApplied: Math.round(currentRide.rideInfo.discount * cancelRatio),
+      gstCharges: Math.round(currentRide.rideInfo.gstCharges * cancelRatio),
+      subtotal: Math.round(currentRide.rideInfo.subtotal * cancelRatio),
+      adminCommissionAdjusted: Math.round(currentRide.rideInfo.adminCharges * cancelRatio),
+      totalPayable: Math.round(currentRide.totalPayable * cancelRatio),
+    };
+
+    // Calculate remaining charges for current ride
+    const remainingCharges = {
+      driverCharges: Math.round(currentRide.rideInfo.driverCharges * remainingRatio),
+      insuranceCharges: Math.round(currentRide.rideInfo.insuranceCharges * remainingRatio),
+      cancellationCharges: Math.round(currentRide.rideInfo.cancellationCharges * remainingRatio),
+      discount: Math.round(currentRide.rideInfo.discount * remainingRatio),
+      gstCharges: Math.round(currentRide.rideInfo.gstCharges * remainingRatio),
+      subtotal: Math.round(currentRide.rideInfo.subtotal * remainingRatio),
+      adminCharges: Math.round(currentRide.rideInfo.adminCharges * remainingRatio),
+      totalPayable: Math.round(currentRide.totalPayable * remainingRatio),
+    };
+
+    // ✅ Create new ride document for cancelled dates
+    const newCancelledRide = new Ride({
+      riderId: currentRide.riderId,
       riderInfo: {
-        riderName: updatedRide.riderInfo.riderName,
-        riderMobile: updatedRide.riderInfo.riderMobile
+        riderName: currentRide.riderInfo.riderName,
+        riderMobile: currentRide.riderInfo.riderMobile,
       },
       rideInfo: {
-        categoryId: updatedRide.rideInfo.categoryId,
-        subcategoryId: updatedRide.rideInfo.subcategoryId,
-        subSubcategoryId: updatedRide.rideInfo.subSubcategoryId,
-        categoryName: updatedRide.rideInfo.categoryName,
-        subcategoryName: updatedRide.rideInfo.subcategoryName,
-        subSubcategoryName: updatedRide.rideInfo.subSubcategoryName,
-        carType: updatedRide.rideInfo.carType,
-        fromLocation: updatedRide.rideInfo.fromLocation,
-        toLocation: updatedRide.rideInfo.toLocation,
-        senderDetails: updatedRide.rideInfo.senderDetails,
-        receiverDetails: updatedRide.rideInfo.receiverDetails,
-        includeInsurance: updatedRide.rideInfo.includeInsurance,
-        notes: updatedRide.rideInfo.notes,
-        selectedCategoryId: updatedRide.rideInfo.selectedCategoryId,
-        selectedCategory: updatedRide.rideInfo.selectedCategory,
-        selectedDate: updatedRide.rideInfo.selectedDate,
-        selectedTime: updatedRide.rideInfo.selectedTime,
-        selectedUsage: updatedRide.rideInfo.selectedUsage,
-        transmissionType: updatedRide.rideInfo.transmissionType,
-        SelectedDays: updatedRide.rideInfo.NoOfDays,
-        selectedDates: updatedRide.rideInfo.selectedDates || [],
-        driverCharges: updatedRide.rideInfo.driverCharges || 0,
-        insuranceCharges: updatedRide.rideInfo.insuranceCharges || 0,
-        cancellationCharges: updatedRide.rideInfo.cancellationCharges || 0,
-        discount: updatedRide.rideInfo.discount || 0,
-        gstCharges: updatedRide.rideInfo.gstCharges || 0,
-        subtotal: updatedRide.rideInfo.subtotal || 0,
-        adminCharges: updatedRide.rideInfo.adminCharges || 0,
+        categoryId: currentRide.rideInfo.categoryId,
+        subcategoryId: currentRide.rideInfo.subcategoryId,
+        subSubcategoryId: currentRide.rideInfo.subSubcategoryId,
+        categoryName: currentRide.rideInfo.categoryName,
+        subcategoryName: currentRide.rideInfo.subcategoryName,
+        subSubcategoryName: currentRide.rideInfo.subSubcategoryName,
+        carType: currentRide.rideInfo.carType,
+        fromLocation: currentRide.rideInfo.fromLocation,
+        toLocation: currentRide.rideInfo.toLocation,
+        senderDetails: currentRide.rideInfo.senderDetails,
+        receiverDetails: currentRide.rideInfo.receiverDetails,
+        includeInsurance: currentRide.rideInfo.includeInsurance,
+        notes: currentRide.rideInfo.notes,
+        selectedCategoryId: currentRide.rideInfo.selectedCategoryId,
+        selectedCategory: currentRide.rideInfo.selectedCategory,
+        selectedDate: currentRide.rideInfo.selectedDate,
+        selectedTime: currentRide.rideInfo.selectedTime,
+        selectedUsage: currentRide.rideInfo.selectedUsage,
+        transmissionType: currentRide.rideInfo.transmissionType,
+        SelectedDays: cancelDays,            // ✅ number of cancelled days
+        selectedDates,                       // ✅ cancelled days
+        remainingDates: [],                  // ✅ none remain in cancelled record
+        driverCharges: cancelledChargesForNewRide.driverCharges,
+        insuranceCharges: cancelledChargesForNewRide.insuranceCharges,
+        cancellationCharges: cancelledChargesForNewRide.cancellationCharges,
+        discount: cancelledChargesForNewRide.discountApplied,
+        gstCharges: cancelledChargesForNewRide.gstCharges,
+        subtotal: cancelledChargesForNewRide.subtotal,
+        adminCharges: cancelledChargesForNewRide.adminCommissionAdjusted,
       },
-      referralEarning: updatedRide.referralEarning || false,
-      referralBalance: updatedRide.referralBalance || 0,
-      totalPayable: updatedRide.totalPayable,
-      paymentType: updatedRide.paymentType,
-      status: "BOOKED"
+      referralEarning: currentRide.referralEarning || false,
+      referralBalance: currentRide.referralBalance || 0,
+      totalPayable: cancelledChargesForNewRide.totalPayable,
+      paymentType: currentRide.paymentType,
+      status: "CANCELLED",
+      cancellationReason: reason || "Cancelled by user",
     });
 
-    await newRide.save();
+    await newCancelledRide.save();
 
-    // Extract cancellation details and apply driver charges
-    const { categoryName, categoryId, subcategoryId } = updatedRide.rideInfo;
-    const categoryNameLower = categoryName.toLowerCase();
-    let cancellationDetails = null;
+    // ✅ Update current ride with remaining dates and recalculated charges
+    await Ride.findByIdAndUpdate(currentRide._id, {
+      $set: {
+        "rideInfo.selectedDates": remainingDates,
+        "rideInfo.remainingDates": remainingDates,
+        "rideInfo.SelectedDays": remainingNoOfDays,
+        "rideInfo.driverCharges": remainingCharges.driverCharges,
+        "rideInfo.insuranceCharges": remainingCharges.insuranceCharges,
+        "rideInfo.cancellationCharges": remainingCharges.cancellationCharges,
+        "rideInfo.discount": remainingCharges.discount,
+        "rideInfo.gstCharges": remainingCharges.gstCharges,
+        "rideInfo.subtotal": remainingCharges.subtotal,
+        "rideInfo.adminCharges": remainingCharges.adminCharges,
+        "totalPayable": remainingCharges.totalPayable,
+      },
+    });
 
-    try {
-      if (categoryNameLower === 'driver') {
-        cancellationDetails = await driverRideCost.findOne({
-          category: categoryId,
-          subcategory: subcategoryId
-        }).select('driverCancellationCharges');
-      } else if (categoryNameLower === 'cab') {
-        cancellationDetails = await cabRideCost.findOne({
-          category: categoryId,
-          subcategory: subcategoryId
-        }).select('driverCancellationCharges');
-      } else if (categoryNameLower === 'parcel') {
-        cancellationDetails = await parcelRideCost.findOne({
-          category: categoryId,
-          subcategory: subcategoryId
-        }).select('driverCancellationCharges');
-      }
-
-      const currentRideCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
-      const driver = await Driver.findById(driverId);
-      const existingUnclearedCharges = driver?.unclearedCancellationCharges || 0;
-      const totalCancellationCharges = currentRideCancellationCharges + existingUnclearedCharges;
-
-      if (currentRideCancellationCharges > 0 || existingUnclearedCharges > 0) {
-        const wallet = await driverWallet.findOne({ driverId });
-
-        if (driver) {
-          // If driver has credits, use one credit and no charges
-          if (driver.cancellationRideCredits > 0) {
-            driver.cancellationRideCredits -= 1;
-            // No charges applied when credits are available
-            driver.unclearedCancellationCharges = existingUnclearedCharges;
-            await driver.save();
-
-            await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
-
-            return res.json({
-              success: true,
-              message: "Ride cancelled successfully using credit",
-              ride: updatedRide,
-              creditsUsed: true
-            });
-          }
-
-          // If no credits, apply charges
-          if (currentRideCancellationCharges === 0) {
-            driver.unclearedCancellationCharges = existingUnclearedCharges;
-            await driver.save();
-
-            await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
-
-            return res.json({
-              success: true,
-              message: "Ride cancelled successfully",
-              ride: updatedRide,
-              creditsUsed: false
-            });
-          }
-
-          // Reset unclearedCancellationCharges as we're processing all charges now
-          driver.unclearedCancellationCharges = 0;
-        }
-
-        if (wallet && driver) {
-          const currentBalance = wallet.balance;
-
-          if (currentBalance >= totalCancellationCharges) {
-            // Deduct full amount from wallet
-            wallet.balance -= totalCancellationCharges;
-            wallet.totalDeductions += totalCancellationCharges;
-            wallet.transactions.push({
-              type: "cancellation_charge",
-              amount: -totalCancellationCharges,
-              rideId: updatedRide._id,
-              description: `Ride cancellation charge (Total: ${totalCancellationCharges})`,
-              status: "completed"
-            });
-            await wallet.save();
-            await driver.save();
-          } else {
-            // Partial deduction from wallet, store remaining in unclearedCancellationCharges
-            const remainingCharges = totalCancellationCharges - currentBalance;
-
-            if (currentBalance > 0) {
-              wallet.totalDeductions += currentBalance;
-              wallet.balance = 0;
-              wallet.transactions.push({
-                type: "cancellation_charge",
-                amount: -currentBalance,
-                rideId: updatedRide._id,
-                description: `Ride cancellation charge (Partial: ${currentBalance}/${totalCancellationCharges})`,
-                status: "completed"
-              });
-              await wallet.save();
-            }
-
-            // Store remaining in unclearedCancellationCharges
-            driver.unclearedCancellationCharges = remainingCharges;
-            await driver.save();
-          }
-        } else if (driver) {
-          // No wallet, store full amount in unclearedCancellationCharges
-          driver.unclearedCancellationCharges = totalCancellationCharges;
-          await driver.save();
-        }
-      }
-    } catch (chargeError) {
-      console.error('Error processing driver cancellation charges:', chargeError);
-    }
-
-    await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
-
-    // Emit socket event following /book route pattern
-    const io = req.app.get('io');
-    const onlineDrivers = req.app.get('onlineDrivers');
-
-    if (io && onlineDrivers) {
-      const rideData = {
-        rideId: newRide._id,
-        categoryName: newRide.rideInfo.categoryName,
-        subcategoryName: newRide.rideInfo.subcategoryName,
-        subSubcategoryName: newRide.rideInfo.subSubcategoryName,
-        carType: newRide.rideInfo.carType,
-        transmissionType: newRide.rideInfo.transmissionType,
-        selectedUsage: newRide.rideInfo.selectedUsage,
-        fromLocation: newRide.rideInfo.fromLocation,
-        toLocation: newRide.rideInfo.toLocation,
-        selectedDate: newRide.rideInfo.selectedDate,
-        selectedTime: newRide.rideInfo.selectedTime,
-        totalPayable: newRide.totalPayable,
-        status: 'BOOKED'
-      };
-
-      // Get drivers with rideStatus 'WAITING' (available drivers)
-      const waitingDrivers = await Driver.find({ rideStatus: 'WAITING' }).select('_id');
-      const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
-      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
-
-      // Send to online drivers who have WAITING rideStatus
-      let sentCount = 0;
-      Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
-        // Only send to drivers with WAITING status
-        if (waitingDriverIds.includes(driverId)) {
-          io.to(driverSocketData.socketId).emit('new-ride', rideData);
-          sentCount++;
-        }
-      });
-
-      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status)`);
-    } else {
-      console.log('❌ Socket.io or onlineDrivers not available');
-    }
-
-    res.json({
+    return res.status(200).json({
       success: true,
-      message: "Ride cancelled successfully with charges applied",
-      ride: updatedRide,
-      creditsUsed: false,
-      chargesApplied: true
+      message: "Partial cancellation successful",
+      remainingDates,
+      cancelledDates: selectedDates,
     });
 
   } catch (error) {
-    console.error("Error cancelling ride:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Cancel Ride Error:", error);
+    return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 });
 

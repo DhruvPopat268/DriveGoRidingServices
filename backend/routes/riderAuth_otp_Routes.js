@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const Session = require("../models/Session");
 const authMiddleware = require("../middleware/authMiddleware");
 const { createSession } = require("../Services/sessionService");
+const axios = require("axios");
 
 // Twilio credentials from env
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -274,6 +275,45 @@ router.post("/delete-rider", async (req, res) => {
 
 // 🔹 Save Rider Profile
 
+// router.post("/send-otp", async (req, res) => {
+//   try {
+//     const { mobile } = req.body;
+//     if (!mobile) {
+//       return res.status(400).json({ message: "Mobile number is required" });
+//     }
+
+//     // Use dummy OTP for testing
+//     const otp = "123456";
+//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+//     // Ensure Rider exists
+//     let rider = await Rider.findOne({ mobile });
+//     if (!rider) {
+//       rider = new Rider({ mobile });
+//       await rider.save();
+//     }
+
+//     // Save OTP session
+//     const otpSession = new OtpSession({
+//       rider: rider._id,
+//       mobile,
+//       otp,
+//       otpExpiresAt
+//     });
+//     await otpSession.save();
+
+//     // No Twilio call, just respond
+//     res.json({
+//       success: true,
+//       message: "Dummy OTP generated successfully",
+//       otp // ⚠️ expose only in dev/testing, not in production
+//     });
+//   } catch (error) {
+//     console.error("Send OTP error:", error.message);
+//     res.status(500).json({ success: false, message: "Failed to generate OTP" });
+//   }
+// });
+
 router.post("/send-otp", async (req, res) => {
   try {
     const { mobile } = req.body;
@@ -281,8 +321,8 @@ router.post("/send-otp", async (req, res) => {
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
-    // Use dummy OTP for testing
-    const otp = "123456";
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     // Ensure Rider exists
@@ -297,22 +337,43 @@ router.post("/send-otp", async (req, res) => {
       rider: rider._id,
       mobile,
       otp,
-      otpExpiresAt
+      otpExpiresAt,
     });
     await otpSession.save();
 
-    // No Twilio call, just respond
-    res.json({
-      success: true,
-      message: "Dummy OTP generated successfully",
-      otp // ⚠️ expose only in dev/testing, not in production
-    });
+    // Format number properly
+    const toNumber = mobile.startsWith("+") ? mobile : `+91${mobile}`;
+
+    // ✅ Send OTP via Kaleyra SMS API
+    const response = await axios.post(
+      `${process.env.KALEYRA_API_DOMAIN}/${process.env.KALEYRA_SID}/messages`,
+      {
+        to: [toNumber],
+        sender: process.env.KALEYRA_SENDER_ID,
+        type: "TXN",
+        template_id: process.env.KALEYRA_TEMPLATE_ID,
+        body: {
+          var: otp, // fills the {#var#} placeholder in your template
+        },
+      },
+      {
+        headers: {
+          "api-key": process.env.KALEYRA_API_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("Kaleyra response:", response.data);
+
+    res.json({ success: true, message: "OTP sent successfully", otp });
   } catch (error) {
-    console.error("Send OTP error:", error.message);
-    res.status(500).json({ success: false, message: "Failed to generate OTP" });
+    console.error("Send OTP error:", error.response?.data || error.message);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to send OTP", error: error.message });
   }
 });
-
 
 router.post("/verify-otp", async (req, res) => {
   try {
