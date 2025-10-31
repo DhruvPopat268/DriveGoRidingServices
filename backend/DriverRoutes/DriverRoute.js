@@ -15,7 +15,9 @@ const DriverSubscriptionPlan = require('../DriverModel/SubscriptionPlan')
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const adminAuthMiddleware = require("../middleware/authMiddleware");
+const axios = require("axios");
 
+// dummy otp generation
 // router.post("/send-otp", async (req, res) => {
 //   try {
 //     const { mobile } = req.body;
@@ -364,83 +366,160 @@ router.get("/:driverId", async (req, res) => {
   }
 });
 
+//kaleyra integration
 router.post("/send-otp", async (req, res) => {
   try {
     const { mobile } = req.body;
+    
+    // ✅ Validate mobile number exists
     if (!mobile) {
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
-    // 🔒 Always fixed OTP for testing
-    const otp = "123456";
+    // ✅ Convert mobile to string if it's a number
+    const mobileStr = String(mobile).trim();
+
+    // ✅ Validate mobile number format
+    if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
+      return res.status(400).json({ message: "Invalid mobile number format" });
+    }
+
+    // ✅ Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Ensure Driver exists
-    let driver = await Driver.findOne({ mobile });
+    // ✅ Ensure Driver exists
+    let driver = await Driver.findOne({ mobile: mobileStr });
     if (!driver) {
-      driver = new Driver({ mobile });
+      driver = new Driver({ mobile: mobileStr });
       await driver.save();
     }
 
-    // Save OTP session
+    // ✅ Save OTP session
     const otpSession = new DriverOtpSession({
       driver: driver._id,
-      mobile,
+      mobile: mobileStr,
       otp,
       otpExpiresAt
     });
     await otpSession.save();
 
+    // ✅ Format phone number correctly
+    const toNumber = mobileStr.startsWith("+") ? mobileStr : `+91${mobileStr}`;
+
+    // ✅ Build Kaleyra API URL
+    const apiUrl = `https://api.kaleyra.io/v1/${process.env.KALEYRA_SID}/messages`;
+
+    // ✅ Prepare payload
+    const payload = {
+      to: toNumber,
+      sender: process.env.KALEYRA_SENDER_ID,
+      type: "TXN",
+      template_id: process.env.KALEYRA_TEMPLATE_ID,
+      body: `DriveGo OTP is booking confirmation or registration: ${otp}`,
+      template_params: otp,
+    };
+
+    console.log("Payload sent to Kaleyra =>", JSON.stringify(payload, null, 2));
+
+    // ✅ Send OTP via Kaleyra
+    const response = await axios.post(apiUrl, payload, {
+      headers: {
+        "api-key": process.env.KALEYRA_API_KEY,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("Kaleyra response:", response.data);
+
     res.json({
       success: true,
-      message: "OTP generated successfully",
-      otp // 🔥 Return OTP in response for testing
+      message: "OTP sent successfully",
+      // otp, // ⚠️ Remove this in production for security
     });
   } catch (error) {
-    console.error("Send OTP error:", error.message);
-    res.status(500).json({ success: false, message: "Failed to generate OTP" });
+    console.error("Send OTP error:", error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send OTP",
+      error: error.response?.data || error.message,
+    });
   }
 });
 
 router.post("/verify-otp", async (req, res) => {
   try {
     const { mobile, otp } = req.body;
+
+    // ✅ Validate input
     if (!mobile || !otp) {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
 
-    // Find latest OTP session
-    const otpSession = await DriverOtpSession.findOne({ mobile, otp }).sort({ createdAt: -1 });
+    // ✅ Convert mobile to string
+    const mobileStr = String(mobile).trim();
+
+    // ✅ Find the latest OTP session for this mobile
+    const otpSession = await DriverOtpSession.findOne({ 
+      mobile: mobileStr,
+      isVerified: false 
+    }).sort({ createdAt: -1 });
+
+    // ✅ Check if OTP session exists
     if (!otpSession) {
-      return res.status(400).json({ message: "Invalid OTP" });
+      return res.status(400).json({ 
+        success: false,
+        message: "No OTP found. Please request a new OTP." 
+      });
     }
 
-    // Check expiry
+    // ✅ Check if OTP has expired
     if (new Date() > otpSession.otpExpiresAt) {
-      return res.status(400).json({ message: "OTP expired" });
+      return res.status(400).json({ 
+        success: false,
+        message: "OTP has expired. Please request a new OTP." 
+      });
     }
 
+    // ✅ Verify OTP matches
+    if (otpSession.otp != otp) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid OTP" 
+      });
+    }
+
+    // ✅ Mark OTP session as verified
     otpSession.isVerified = true;
     await otpSession.save();
 
-    const driver = await Driver.findOne({ mobile });
-    const driverId = driver._id.toString()
+    // ✅ Get driver
+    const driver = await Driver.findOne({ mobile: mobileStr });
+    if (!driver) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Driver not found" 
+      });
+    }
+
+    const driverId = driver._id.toString();
 
     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
-    // Generate JWT
+    // ✅ Generate JWT
     const token = jwt.sign(
       { driverId: driver._id, mobile: driver.mobile },
       process.env.JWT_SECRET_DRIVER,
-      { expiresIn: "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    await createSession(mobile, token);
+    // ✅ Create session
+    await createSession(mobileStr, token);
 
-    // Evaluate profile progress
+    // ✅ Evaluate profile progress
     const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
-    // Update only if still pending or payment pending
+    // ✅ Update status only if still pending or payment pending
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       driver.status = progressStatus;
       await driver.save();
@@ -457,10 +536,10 @@ router.post("/verify-otp", async (req, res) => {
         totalDeductions: 0,
         transactions: [],
       });
-      // console.log(`✅ Empty wallet created for driver: ${driverId}`);
+      console.log(`✅ Empty wallet created for driver: ${driverId}`);
     }
 
-    // Prepare response
+    // ✅ Prepare response
     const response = {
       success: true,
       driverId,
@@ -477,9 +556,131 @@ router.post("/verify-otp", async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error("Verify OTP error:", error);
-    res.status(500).json({ success: false, message: "OTP verification failed" });
+    res.status(500).json({ 
+      success: false, 
+      message: "OTP verification failed",
+      error: error.message 
+    });
   }
 });
+
+// dummy otp generation
+// router.post("/send-otp", async (req, res) => {
+//   try {
+//     const { mobile } = req.body;
+//     if (!mobile) {
+//       return res.status(400).json({ message: "Mobile number is required" });
+//     }
+
+//     // 🔒 Always fixed OTP for testing
+//     const otp = "123456";
+//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+//     // Ensure Driver exists
+//     let driver = await Driver.findOne({ mobile });
+//     if (!driver) {
+//       driver = new Driver({ mobile });
+//       await driver.save();
+//     }
+
+//     // Save OTP session
+//     const otpSession = new DriverOtpSession({
+//       driver: driver._id,
+//       mobile,
+//       otp,
+//       otpExpiresAt
+//     });
+//     await otpSession.save();
+
+//     res.json({
+//       success: true,
+//       message: "OTP generated successfully",
+//       otp // 🔥 Return OTP in response for testing
+//     });
+//   } catch (error) {
+//     console.error("Send OTP error:", error.message);
+//     res.status(500).json({ success: false, message: "Failed to generate OTP" });
+//   }
+// });
+
+// router.post("/verify-otp", async (req, res) => {
+//   try {
+//     const { mobile, otp } = req.body;
+//     if (!mobile || !otp) {
+//       return res.status(400).json({ message: "Mobile & OTP required" });
+//     }
+
+//     // Find latest OTP session
+//     const otpSession = await DriverOtpSession.findOne({ mobile, otp }).sort({ createdAt: -1 });
+//     if (!otpSession) {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
+
+//     // Check expiry
+//     if (new Date() > otpSession.otpExpiresAt) {
+//       return res.status(400).json({ message: "OTP expired" });
+//     }
+
+//     otpSession.isVerified = true;
+//     await otpSession.save();
+
+//     const driver = await Driver.findOne({ mobile });
+//     const driverId = driver._id.toString()
+
+//     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
+
+//     // Generate JWT
+//     const token = jwt.sign(
+//       { driverId: driver._id, mobile: driver.mobile },
+//       process.env.JWT_SECRET_DRIVER,
+//       { expiresIn: "7d" }
+//     );
+
+//     await createSession(mobile, token);
+
+//     // Evaluate profile progress
+//     const { step, status: progressStatus } = evaluateDriverProgress(driver);
+
+//     // Update only if still pending or payment pending
+//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
+//       driver.status = progressStatus;
+//       await driver.save();
+//     }
+
+//     // ✅ Ensure wallet exists (create empty if missing)
+//     let wallet = await driverWallet.findOne({ driverId });
+//     if (!wallet) {
+//       await driverWallet.create({
+//         driverId,
+//         balance: 0,
+//         totalEarnings: 0,
+//         totalWithdrawn: 0,
+//         totalDeductions: 0,
+//         transactions: [],
+//       });
+//       // console.log(`✅ Empty wallet created for driver: ${driverId}`);
+//     }
+
+//     // Prepare response
+//     const response = {
+//       success: true,
+//       driverId,
+//       token,
+//       isNew,
+//       status: driver.status
+//     };
+
+//     // ✅ Add step ONLY if status is Pending or PendingForPayment
+//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
+//       response.step = step;
+//     }
+
+//     res.json(response);
+//   } catch (error) {
+//     console.error("Verify OTP error:", error);
+//     res.status(500).json({ success: false, message: "OTP verification failed" });
+//   }
+// });
 
 router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) => {
   try {
