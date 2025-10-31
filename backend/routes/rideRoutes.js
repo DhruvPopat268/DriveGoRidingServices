@@ -1127,9 +1127,9 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
       const existingIndex = weeklyMonthlyRideTimings.findIndex(timing => timing.date === currentDate);
 
       if (existingIndex >= 0) {
-        weeklyMonthlyRideTimings[existingIndex].ridseStartTime = rideStartTime;
+        weeklyMonthlyRideTimings[existingIndex].rideStartTime = rideStartTime;
       } else {
-        weeklyMonthlyRideTimings.push({ date: currentDate, ridseStartTime: rideStartTime });
+        weeklyMonthlyRideTimings.push({ date: currentDate, rideStartTime: rideStartTime });
       }
       updateData["rideInfo.weeklyMonthlyRideTimings"] = weeklyMonthlyRideTimings;
     } else {
