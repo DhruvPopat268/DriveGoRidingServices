@@ -1054,7 +1054,7 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
     if (!updatedRide) {
       return res.status(404).json({
         success: false,
-        message: "Ride not found or not in BOOKED status",
+        message: "Ride not found or not in CONFIRMED status",
       });
     }
 

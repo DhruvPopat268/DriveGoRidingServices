@@ -76,8 +76,9 @@ const rideSchema = new mongoose.Schema(
       weeklyMonthlyRideTimings: [{
         date: { type: String },
         driverReachTime: { type: String },
-        ridseStartTime: { type: String },
+        rideStartTime: { type: String }, // fixed typo: ridseStartTime → rideStartTime
         rideEndTime: { type: String },
+        _id: false
       }],
 
       extraChargePerKm: { type: Number, default: 0 },
