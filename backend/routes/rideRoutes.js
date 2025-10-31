@@ -470,7 +470,8 @@ router.get("/ongoing/my-rides", authMiddleware, async (req, res) => {
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
     const rides = await Ride.find({
-      riderId, status: { $in: ["ONGOING", "EXTENDED"] } }).sort({ createdAt: -1 });
+      riderId, status: { $in: ["ONGOING", "EXTENDED"] }
+    }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
       return res.status(200).json({ success: false, message: "No booked rides found" });
@@ -1058,9 +1059,9 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // ✅ Update driver status to REACHED
-    const driver = await Driver.findByIdAndUpdate(
-      driverId,
+    // ✅ Update driver status only if it was CONFIRMED
+    const driver = await Driver.findOneAndUpdate(
+      { _id: driverId, rideStatus: "CONFIRMED" },
       { rideStatus: "REACHED" },
       { new: true }
     );
@@ -1068,7 +1069,7 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
     if (!driver) {
       return res.status(404).json({
         success: false,
-        message: "Driver not found",
+        message: "Driver not found or ride status is not CONFIRMED",
       });
     }
 
@@ -2263,6 +2264,21 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
       },
       { new: true }
     );
+
+    // ✅ Update driver status to CONFIRMED only if current rideStatus is ONGOING or EXTENDED
+    const driverId = req.driver?.driverId;
+
+    if (driverId) {
+      const driver = await Driver.findById(driverId);
+
+      if (driver && (driver.rideStatus === "ONGOING" || driver.rideStatus === "EXTENDED")) {
+        await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
+      } else {
+        return res.status(400).json({
+          message: "Driver rideStatus must be ONGOING or EXTENDED to update to CONFIRMED.",
+        });
+      }
+    }
 
     res.json({
       success: true,
