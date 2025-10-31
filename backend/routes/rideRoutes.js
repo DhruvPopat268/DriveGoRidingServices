@@ -1294,7 +1294,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         transmissionType: currentRide.rideInfo.transmissionType,
         SelectedDays: cancelDays,            // ✅ number of cancelled days
         selectedDates,                       // ✅ cancelled days
-        remainingDates: [],                  // ✅ none remain in cancelled record
+        remainingDates: cancelDays ,                  // ✅ none remain in cancelled record
         driverCharges: cancelledChargesForNewRide.driverCharges,
         insuranceCharges: cancelledChargesForNewRide.insuranceCharges,
         cancellationCharges: cancelledChargesForNewRide.cancellationCharges,
@@ -1307,11 +1307,56 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       referralBalance: currentRide.referralBalance || 0,
       totalPayable: cancelledChargesForNewRide.totalPayable,
       paymentType: currentRide.paymentType,
-      status: "CANCELLED",
+      status: "BOOKED",
       cancellationReason: reason || "Cancelled by user",
     });
 
     await newCancelledRide.save();
+
+    // ✅ Emit socket event for new cancelled ride
+    const io = req.app.get('io');
+    const onlineDrivers = req.app.get('onlineDrivers');
+
+    if (io && onlineDrivers) {
+      const rideData = {
+        rideId: newCancelledRide._id,
+        categoryName: currentRide.rideInfo.categoryName,
+        subcategoryName: currentRide.rideInfo.subcategoryName,
+        subSubcategoryName: currentRide.rideInfo.subSubcategoryName,
+        carType: currentRide.rideInfo.carType,
+        transmissionType: currentRide.rideInfo.transmissionType,
+        selectedUsage: currentRide.rideInfo.selectedUsage,
+        fromLocation: currentRide.rideInfo.fromLocation,
+        toLocation: currentRide.rideInfo.toLocation,
+        selectedDate: currentRide.rideInfo.selectedDate,
+        selectedTime: currentRide.rideInfo.selectedTime,
+        totalPayable: cancelledChargesForNewRide.totalPayable,
+        status: 'BOOKED'
+      };
+
+      const waitingDrivers = await Driver.find({
+        rideStatus: 'WAITING',
+        'personalInformation.category': currentRide.rideInfo.categoryId,
+        'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
+        $or: [
+          { driverCategory: currentRide.rideInfo.selectedCategoryId },
+          { parcelCategory: currentRide.rideInfo.selectedCategoryId },
+          { assignedCar: currentRide.rideInfo.selectedCategoryId },
+        ],
+      }).select('_id');
+
+      const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
+
+      let sentCount = 0;
+      Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
+        if (waitingDriverIds.includes(driverId)) {
+          io.to(driverSocketData.socketId).emit('new-ride', rideData);
+          sentCount++;
+        }
+      });
+
+      console.log(`🚗 New cancelled ride ${newCancelledRide._id} sent to ${sentCount} available drivers`);
+    }
 
     // ✅ Update current ride with remaining dates and recalculated charges
     await Ride.findByIdAndUpdate(currentRide._id, {
