@@ -29,6 +29,7 @@ const authMiddleware = async (req, res, next) => {
 
     // ✅ Attach user info to request object
     req.rider = decoded; // contains { riderId, mobile }
+    console.log("AuthMiddleware success:", req.rider);
     
     next();
   } catch (error) {
