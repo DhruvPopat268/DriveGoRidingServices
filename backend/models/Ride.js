@@ -56,10 +56,11 @@ const rideSchema = new mongoose.Schema(
       selectedUsage: { type: String },
       SelectedDays: { type: String },
       selectedDates: [{ type: String }],
+      remainingDates: [{ type: String }],
 
       completedDays: [{ type: String }],
       completedDates: [{ type: String }],
-      
+
       transmissionType: { type: String },
 
       //for extended 
@@ -72,15 +73,22 @@ const rideSchema = new mongoose.Schema(
       ridseStartTime: { type: String },
       rideEndTime: { type: String },
 
-      extraChargePerKm : { type: Number, default: 0 },
-      extraChargePerMinute : { type: Number, default: 0 },
-      extraMinutesCharges : { type: Number, default: 0 },
-      extraKmCharges : { type: Number, default: 0 },
-      
+      weeklyMonthlyRideTimings: [{
+        date: { type: String },
+        driverReachTime: { type: String },
+        ridseStartTime: { type: String },
+        rideEndTime: { type: String },
+      }],
+
+      extraChargePerKm: { type: Number, default: 0 },
+      extraChargePerMinute: { type: Number, default: 0 },
+      extraMinutesCharges: { type: Number, default: 0 },
+      extraKmCharges: { type: Number, default: 0 },
+
       driverCharges: { type: Number, default: 0 },
-      pickCharges : { type: Number, default: 0 },
-      peakCharges : { type: Number, default: 0 },
-      nightCharges : { type: Number, default: 0 },
+      pickCharges: { type: Number, default: 0 },
+      peakCharges: { type: Number, default: 0 },
+      nightCharges: { type: Number, default: 0 },
       insuranceCharges: { type: Number, default: 0 },
       cancellationCharges: { type: Number, default: 0 },
       discount: { type: Number, default: 0 },

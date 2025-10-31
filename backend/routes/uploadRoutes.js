@@ -30,6 +30,8 @@ router.post('/image', upload.single('image'), async (req, res) => {
       const isImage = req.file.mimetype.startsWith('image/');
       const folder = isImage ? 'images' : 'documents';
       
+      console.log(`File MIME type: ${req.file.mimetype}, isImage: ${isImage}, folder: ${folder}`);
+      
       // Create testing directory if it doesn't exist
       const uploadPath = path.join(__dirname, `../testing/${folder}`);
       if (!fs.existsSync(uploadPath)) {
@@ -45,7 +47,8 @@ router.post('/image', upload.single('image'), async (req, res) => {
         message: `${isImage ? 'Image' : 'File'} uploaded successfully to server`,
         url: `/app/uploads/testing/${folder}/${uniqueName}`,
         filename: uniqueName,
-        size: req.file.size
+        size: req.file.size,
+        debug: { mimetype: req.file.mimetype, isImage, folder }
       });
     }
 

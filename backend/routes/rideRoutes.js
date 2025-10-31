@@ -263,6 +263,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         transmissionType,
         SelectedDays: durationValue,
         selectedDates: selectedDates || [],
+        remainingDates: selectedDates || [],
         driverCharges: selectedCategoryData.driverCharges || 0,
         pickCharges: selectedCategoryData.pickCharges || 0,
         peakCharges: selectedCategoryData.peakCharges || 0,
@@ -416,13 +417,60 @@ router.post("/my-rides", authMiddleware, async (req, res) => {
 });
 
 // booked rides
-router.post("/booked/my-rides", authMiddleware, async (req, res) => {
+router.get("/booked/my-rides", authMiddleware, async (req, res) => {
   try {
     // riderId comes from token (authMiddleware)
     const { riderId } = req.rider;
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
     const rides = await Ride.find({ riderId, status: "BOOKED" }).sort({ createdAt: -1 });
+
+    if (!rides || rides.length === 0) {
+      return res.status(200).json({ success: false, message: "No booked rides found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: rides.length,
+      rides,
+    });
+  } catch (error) {
+    console.error("Error fetching booked rides:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.get("/confirmed/my-rides", authMiddleware, async (req, res) => {
+  try {
+    // riderId comes from token (authMiddleware)
+    const { riderId } = req.rider;
+
+    // Find only rides with status = "BOOKED" sorted by createdAt desc
+    const rides = await Ride.find({ riderId, status: "CONFIRMED" }).sort({ createdAt: -1 });
+
+    if (!rides || rides.length === 0) {
+      return res.status(200).json({ success: false, message: "No booked rides found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: rides.length,
+      rides,
+    });
+  } catch (error) {
+    console.error("Error fetching booked rides:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.get("/ongoing/my-rides", authMiddleware, async (req, res) => {
+  try {
+    // riderId comes from token (authMiddleware)
+    const { riderId } = req.rider;
+
+    // Find only rides with status = "BOOKED" sorted by createdAt desc
+    const rides = await Ride.find({
+      riderId, status: { $in: ["ONGOING", "EXTENDED"] } }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
       return res.status(200).json({ success: false, message: "No booked rides found" });
@@ -965,19 +1013,41 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const { rideId } = req.body;
 
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
     // ✅ Get current time in HH:MM:SS format
     const driverReachTime = new Date().toLocaleTimeString("en-GB", {
       timeZone: "Asia/Kolkata",
     });
+    const currentDate = new Date().toISOString().split('T')[0];
 
-    // ✅ Update the ride only if status is BOOKED
+    const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
+    let updateData = {
+      status: "REACHED",
+      driverId: driverId,
+    };
+
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      const weeklyMonthlyRideTimings = ride.rideInfo.weeklyMonthlyRideTimings || [];
+      const existingIndex = weeklyMonthlyRideTimings.findIndex(timing => timing.date === currentDate);
+
+      if (existingIndex >= 0) {
+        weeklyMonthlyRideTimings[existingIndex].driverReachTime = driverReachTime;
+      } else {
+        weeklyMonthlyRideTimings.push({ date: currentDate, driverReachTime });
+      }
+      updateData["rideInfo.weeklyMonthlyRideTimings"] = weeklyMonthlyRideTimings;
+    } else {
+      updateData["rideInfo.driverReachTime"] = driverReachTime;
+    }
+
+    // ✅ Update the ride only if status is CONFIRMED
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: "CONFIRMED" },
-      {
-        "rideInfo.driverReachTime": driverReachTime,
-        status: "REACHED",
-        driverId: driverId,
-      },
+      updateData,
       { new: true }
     );
 
@@ -1027,29 +1097,49 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
 
     console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
 
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
     // ✅ Get current time in HH:MM:SS format
     const rideStartTime = new Date().toLocaleTimeString("en-GB", {
       timeZone: "Asia/Kolkata",
     });
-
-    if (!rideId) {
-      return res.status(400).json({ message: "Ride ID is required" });
-    }
+    const currentDate = new Date().toISOString().split('T')[0];
 
     const driverInfo = await Driver.findById(driverId);
     if (!driverInfo) {
       return res.status(404).json({ message: "Driver not found" });
     }
 
-    const driverName = driverInfo.personalInformation?.fullName
+    const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
+    let updateData = {
+      status: "ONGOING",
+    };
 
-    // Find and update the ride only if status is CONFIRMED
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      const weeklyMonthlyRideTimings = ride.rideInfo.weeklyMonthlyRideTimings || [];
+      const existingIndex = weeklyMonthlyRideTimings.findIndex(timing => timing.date === currentDate);
+
+      if (existingIndex >= 0) {
+        weeklyMonthlyRideTimings[existingIndex].ridseStartTime = rideStartTime;
+      } else {
+        weeklyMonthlyRideTimings.push({ date: currentDate, ridseStartTime: rideStartTime });
+      }
+      updateData["rideInfo.weeklyMonthlyRideTimings"] = weeklyMonthlyRideTimings;
+    } else {
+      updateData["rideInfo.ridseStartTime"] = rideStartTime;
+    }
+
+    // Find and update the ride only if status is REACHED
     const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: "REACHED" }, // only if ride is CONFIRMED
-      {
-        "rideInfo.ridseStartTime": rideStartTime,
-        status: "ONGOING",
-      },
+      { _id: rideId, status: "REACHED" },
+      updateData,
       { new: true }
     );
 
@@ -1428,9 +1518,9 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             // No charges applied when credits are available
             driver.unclearedCancellationCharges = existingUnclearedCharges;
             await driver.save();
-            
+
             await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
-            
+
             return res.json({
               success: true,
               message: "Ride cancelled successfully using credit",
@@ -1438,14 +1528,14 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
               creditsUsed: true
             });
           }
-          
+
           // If no credits, apply charges
           if (currentRideCancellationCharges === 0) {
             driver.unclearedCancellationCharges = existingUnclearedCharges;
             await driver.save();
-            
+
             await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
-            
+
             return res.json({
               success: true,
               message: "Ride cancelled successfully",
@@ -1453,7 +1543,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
               creditsUsed: false
             });
           }
-          
+
           // Reset unclearedCancellationCharges as we're processing all charges now
           driver.unclearedCancellationCharges = 0;
         }
@@ -1646,13 +1736,13 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     // Validate selectedDates and completedDates if both exist
     const selectedDates = currentRide.rideInfo.selectedDates || [];
     const completedDates = currentRide.rideInfo.completedDates || [];
-    
+
     if (selectedDates.length > 0 && completedDates.length > 0) {
       const sortedSelectedDates = [...selectedDates].sort();
       const sortedCompletedDates = [...completedDates].sort();
-      
+
       if (JSON.stringify(sortedSelectedDates) !== JSON.stringify(sortedCompletedDates)) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Cannot complete ride. Selected dates and completed dates must match.",
           selectedDates: sortedSelectedDates,
           completedDates: sortedCompletedDates
@@ -1813,9 +1903,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const rideEndTime = new Date().toLocaleTimeString("en-GB", {
-      timeZone: "Asia/Kolkata",
-    });
     const ride = await Ride.findById(rideId);
 
     if (!ride) {
@@ -1824,6 +1911,11 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
         message: "Ride not found"
       });
     }
+
+    const rideEndTime = new Date().toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata",
+    });
+    const currentDate = new Date().toISOString().split('T')[0];
 
     const { categoryId, categoryName, subcategoryId, subcategoryName, subSubcategoryId, ridseStartTime, selectedUsage, selectedCategoryId, } = ride.rideInfo;
 
@@ -1943,11 +2035,25 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       'rideInfo.subtotal': subtotal,
       'rideInfo.gstCharges': gstCharges,
       'rideInfo.extended': true,
-      'rideInfo.rideEndTime': rideEndTime,
       "rideInfo.extraKmCharges": extraKmCharges,
       "rideInfo.extraMinutesCharges": extraMinutesCharges,
       totalPayable
     };
+
+
+    if (subcategoryNameLower.includes('weekly') || subcategoryNameLower.includes('monthly')) {
+      const weeklyMonthlyRideTimings = ride.rideInfo.weeklyMonthlyRideTimings || [];
+      const existingIndex = weeklyMonthlyRideTimings.findIndex(timing => timing.date === currentDate);
+
+      if (existingIndex >= 0) {
+        weeklyMonthlyRideTimings[existingIndex].rideEndTime = rideEndTime;
+      } else {
+        weeklyMonthlyRideTimings.push({ date: currentDate, rideEndTime });
+      }
+      updateData["rideInfo.weeklyMonthlyRideTimings"] = weeklyMonthlyRideTimings;
+    } else {
+      updateData['rideInfo.rideEndTime'] = rideEndTime;
+    }
 
     if (extraKm > 0) {
       updateData['rideInfo.extraKm'] = extraKm;
@@ -2107,7 +2213,7 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
 });
 
 // Update completed days and dates
-router.post("/complete-day",driverAuthMiddleware, async (req, res) => {
+router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
   try {
     const { rideId } = req.body;
 
@@ -2122,13 +2228,14 @@ router.post("/complete-day",driverAuthMiddleware, async (req, res) => {
 
     const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
     const selectedDates = ride.rideInfo.selectedDates || [];
+    const remainingDates = ride.rideInfo.remainingDates || [];
     const completedDates = ride.rideInfo.completedDates || [];
     const completedDays = ride.rideInfo.completedDays || [];
     const selectedDays = parseInt(ride.rideInfo.SelectedDays) || 0;
 
-    // Check if current date exists in selectedDates
-    if (!selectedDates.includes(currentDate)) {
-      return res.status(400).json({ message: "Current date is not in selected dates" });
+    // Check if current date exists in remainingDates
+    if (!remainingDates.includes(currentDate)) {
+      return res.status(400).json({ message: "Current date is not in remaining dates" });
     }
 
     // Check if already completed
@@ -2138,7 +2245,7 @@ router.post("/complete-day",driverAuthMiddleware, async (req, res) => {
 
     // Update arrays
     const updatedCompletedDates = [...completedDates, currentDate];
-    const updatedSelectedDates = selectedDates.filter(date => date !== currentDate);
+    const updatedRemainingDates = remainingDates.filter(date => date !== currentDate);
     const updatedCompletedDays = [...completedDays, "1"];
 
     // Check if all days are completed
@@ -2150,8 +2257,9 @@ router.post("/complete-day",driverAuthMiddleware, async (req, res) => {
       rideId,
       {
         "rideInfo.completedDates": updatedCompletedDates,
-        "rideInfo.selectedDates": updatedSelectedDates,
-        "rideInfo.completedDays": updatedCompletedDays
+        "rideInfo.remainingDates": updatedRemainingDates,
+        "rideInfo.completedDays": updatedCompletedDays,
+        status: "CONFIRMED"
       },
       { new: true }
     );
@@ -2161,7 +2269,7 @@ router.post("/complete-day",driverAuthMiddleware, async (req, res) => {
       message: "Day completed successfully",
       data: {
         completedDates: updatedCompletedDates,
-        remainingDates: updatedSelectedDates,
+        remainingDates: updatedRemainingDates,
         completedDays: updatedCompletedDays,
         totalCompletedDays: updatedCompletedDays.length,
         totalSelectedDays: selectedDays
