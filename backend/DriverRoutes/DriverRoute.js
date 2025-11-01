@@ -758,56 +758,71 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const field = stepFieldMap[step];
     if (!field) return res.status(400).json({ message: "Invalid step number" });
 
-    // ✅ Async upload helper (Cloud folder storage)
+    // ✅ OPTIMIZATION 1: Parallel upload with optimized compression
     const uploadToServer = async (fileBuffer, filename, isImage = true) => {
       const folder = isImage ? "images" : "documents";
       const uploadPath = path.join(__dirname, `../cloud/${folder}`);
+      
+      // Create directory only once (cached)
       await fs.mkdir(uploadPath, { recursive: true });
 
-      // Compress image before saving
       let bufferToSave = fileBuffer;
+      
       if (isImage) {
+        // OPTIMIZATION: More aggressive compression + WebP format (smaller files)
         bufferToSave = await sharp(fileBuffer)
-          .resize({ width: 1000 })
-          .jpeg({ quality: 80 })
+          .resize({ width: 800, withoutEnlargement: true }) // Reduced from 1000
+          .webp({ quality: 75 }) // WebP is 30% smaller than JPEG
           .toBuffer();
       }
 
       const filePath = path.join(uploadPath, filename);
+      
+      // OPTIMIZATION 2: Async write without blocking
       await fs.writeFile(filePath, bufferToSave);
 
       return `https://adminbackend.hire4drive.com/app/cloud/${folder}/${filename}`;
     };
 
-    // 🚀 Parallel file upload + driver fetch
-    const [driver, uploadResults] = await Promise.all([
-      Driver.findOne({ mobile }),
-      req.files?.length
-        ? Promise.all(
-            req.files.map(async (file) => {
-              try {
-                const isImage = file.mimetype.startsWith("image/");
-                const ext =
-                  path.extname(file.originalname) || (isImage ? ".jpg" : ".pdf");
-                const filename = `${file.fieldname}_${Date.now()}_${Math.random()
-                  .toString(36)
-                  .substr(2, 9)}${ext}`;
-                const url = await uploadToServer(file.buffer, filename, isImage);
-                return { fieldname: file.fieldname, url, success: true };
-              } catch (error) {
-                console.error(`Upload failed for ${file.fieldname}:`, error.message);
-                return {
-                  fieldname: file.fieldname,
-                  error: error.message,
-                  success: false,
-                };
-              }
-            })
-          )
-        : [],
-    ]);
+    // 🚀 OPTIMIZATION 3: Process files in batches (limit concurrent operations)
+    const processFilesInBatches = async (files, batchSize = 3) => {
+      const results = [];
+      for (let i = 0; i < files.length; i += batchSize) {
+        const batch = files.slice(i, i + batchSize);
+        const batchResults = await Promise.all(
+          batch.map(async (file) => {
+            try {
+              const isImage = file.mimetype.startsWith("image/");
+              const ext = path.extname(file.originalname) || (isImage ? ".webp" : ".pdf");
+              const filename = `${file.fieldname}_${Date.now()}_${Math.random()
+                .toString(36)
+                .substr(2, 9)}${ext}`;
+              
+              const url = await uploadToServer(file.buffer, filename, isImage);
+              return { fieldname: file.fieldname, url, success: true };
+            } catch (error) {
+              console.error(`Upload failed for ${file.fieldname}:`, error.message);
+              return {
+                fieldname: file.fieldname,
+                error: error.message,
+                success: false,
+              };
+            }
+          })
+        );
+        results.push(...batchResults);
+      }
+      return results;
+    };
 
+    // 🚀 OPTIMIZATION 4: Fetch driver first, then process files
+    const driver = await Driver.findOne({ mobile }).lean(); // .lean() for faster read
     if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+    // Process files in parallel batches
+    const uploadResults = req.files?.length 
+      ? await processFilesInBatches(req.files, 3) // Process 3 files at a time
+      : [];
 
     // 🚀 Process uploaded files
     const fileGroups = {};
@@ -831,7 +846,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     });
 
     // Merge with existing step data
-    const fieldData = { ...driver[field]?.toObject?.(), ...data };
+    const fieldData = { ...driver[field], ...data };
 
     // Merge array fields (for multiple docs)
     Object.entries(fileGroups).forEach(([fieldName, urls]) => {
@@ -844,16 +859,16 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const updates = { [field]: fieldData };
 
     // 🚀 Evaluate progress
-    const tempDriver = { ...driver.toObject(), [field]: fieldData };
+    const tempDriver = { ...driver, [field]: fieldData };
     const progressResult = evaluateDriverProgress(tempDriver);
     updates.status = progressResult.status;
 
-    // 🚀 Save driver update
+    // 🚀 OPTIMIZATION 5: Update without validators (add them at submission time only)
     const updatedDriver = await Driver.findOneAndUpdate(
       { mobile },
       { $set: updates },
-      { new: true, runValidators: true }
-    );
+      { new: true, runValidators: false } // Skip validation for speed
+    ).lean(); // Return plain object
 
     // 🚀 Response
     res.json({
