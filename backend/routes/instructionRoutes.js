@@ -8,13 +8,13 @@ const axios = require('axios'); // Add this if not already imported
 // Create instruction
 router.post('/', async (req, res) => {
   try {
-    const { categoryId, subCategoryId, driverCategoryId, instructions } = req.body;
+    const { categoryId, subCategoryId, subSubCategoryId, instructions, driverCategoryId, carCategoryId, carId, parcelCategoryId, vehicleTypeId } = req.body;
 
     // Validate required fields
-    if (!categoryId || !subCategoryId || !driverCategoryId || !instructions) {
+    if (!categoryId || !subCategoryId || !instructions) {
       return res.status(400).json({
         success: false,
-        message: 'categoryId, subCategoryId, driverCategoryId, and instructions are required'
+        message: 'categoryId, subCategoryId, and instructions are required'
       });
     }
 
@@ -29,39 +29,79 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Fetch driver category name from price-categories API
-    let driverCategoryName = '';
-    try {
-      const response = await axios.get('https://drivegoridingservices-backend.onrender.com/api/price-categories');
-      const priceCategories = response.data;
-      const driverCategory = priceCategories.find(cat => cat._id === driverCategoryId);
-
-      if (!driverCategory) {
-        return res.status(404).json({
-          success: false,
-          message: 'Driver category not found'
-        });
-      }
-
-      driverCategoryName = driverCategory.priceCategoryName;
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to fetch driver category details'
-      });
-    }
-
-    // Create instruction using the names from DB and API
-    const instruction = new Instruction({
+    const instructionData = {
       categoryId,
       categoryName: category.name,
       subCategoryId,
       subCategoryName: subCategory.name,
-      driverCategoryId,
-      driverCategoryName,
       instructions,
-    });
+    };
 
+    // Add subSubCategory if provided
+    if (subSubCategoryId) {
+      instructionData.subSubCategoryId = subSubCategoryId;
+      instructionData.subSubCategoryName = req.body.subSubCategoryName;
+    }
+
+    // Handle driver category
+    if (driverCategoryId) {
+      try {
+        const response = await axios.get('https://drivegoridingservices-backend.onrender.com/api/price-categories');
+        const driverCategory = response.data.find(cat => cat._id === driverCategoryId);
+        if (driverCategory) {
+          instructionData.driverCategoryId = driverCategoryId;
+          instructionData.driverCategoryName = driverCategory.priceCategoryName;
+        }
+      } catch (error) {
+        console.error('Failed to fetch driver category:', error);
+      }
+    }
+
+    // Handle cab category
+    if (carCategoryId && carId) {
+      try {
+        const [carCatResponse, carResponse] = await Promise.all([
+          axios.get('https://drivegoridingservices-backend.onrender.com/api/car-categories'),
+          axios.get('https://drivegoridingservices-backend.onrender.com/api/cars')
+        ]);
+        const carCategory = carCatResponse.data.find(cat => cat._id === carCategoryId);
+        const car = carResponse.data.find(c => c._id === carId);
+        if (carCategory && car) {
+          instructionData.carCategoryId = carCategoryId;
+          instructionData.carCategoryName = carCategory.name;
+          instructionData.carId = carId;
+          instructionData.carName = car.name;
+        }
+      } catch (error) {
+        console.error('Failed to fetch car details:', error);
+      }
+    }
+
+    // Handle parcel category - check if it's parcel category by categoryName
+    if (category.name.toLowerCase() === 'parcel' && driverCategoryId && vehicleTypeId) {
+      instructionData.parcelCategoryId = driverCategoryId;
+      instructionData.parcelCategoryName = req.body.driverCategoryName;
+      instructionData.vehicleTypeId = vehicleTypeId;
+      instructionData.vehicleTypeName = req.body.vehicleTypeName;
+    }
+    
+    // Handle parcel category with explicit parcelCategoryId
+    if (parcelCategoryId && vehicleTypeId) {
+      try {
+        const response = await axios.get('https://drivegoridingservices-backend.onrender.com/api/parcel-vehicle-types');
+        const vehicleType = response.data.find(vt => vt._id === vehicleTypeId);
+        if (vehicleType) {
+          instructionData.parcelCategoryId = parcelCategoryId;
+          instructionData.parcelCategoryName = vehicleType.parcelCategory.categoryName;
+          instructionData.vehicleTypeId = vehicleTypeId;
+          instructionData.vehicleTypeName = vehicleType.name;
+        }
+      } catch (error) {
+        console.error('Failed to fetch parcel vehicle type:', error);
+      }
+    }
+
+    const instruction = new Instruction(instructionData);
     await instruction.save();
     res.status(201).json({ success: true, data: instruction });
   } catch (err) {
@@ -81,7 +121,7 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/getInstructions', async (req, res) => {
-  const { categoryId, subCategoryId, selectedCategoryName } = req.body;
+  const { categoryId, subCategoryId, subSubCategoryId, selectedCategoryName } = req.body;
 
   if (!categoryId || !subCategoryId) {
     return res.status(400).json({
@@ -93,6 +133,11 @@ router.post('/getInstructions', async (req, res) => {
   try {
     // Build query object
     const query = { categoryId, subCategoryId };
+
+    // Add subSubCategoryId to query if provided
+    if (subSubCategoryId) {
+      query.subSubCategoryId = subSubCategoryId;
+    }
 
     // Add driverCategoryName to query if provided
     if (selectedCategoryName) {
@@ -106,6 +151,7 @@ router.post('/getInstructions', async (req, res) => {
       success: true,
       categoryId,
       subCategoryId,
+      subSubCategoryId,
       selectedCategoryName,
       instructions: instructionTexts
     });
