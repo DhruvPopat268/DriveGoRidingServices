@@ -293,8 +293,6 @@ router.post("/send-otp", async (req, res) => {
       },
     });
 
-    console.log("Kaleyra response:", response.data);
-
     // ✅ Respond success
     res.json({
       success: true,

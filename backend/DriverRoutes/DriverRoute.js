@@ -433,7 +433,7 @@ router.post("/send-otp", async (req, res) => {
       },
     });
 
-    console.log("Kaleyra response:", response.data);
+
 
     res.json({
       success: true,
