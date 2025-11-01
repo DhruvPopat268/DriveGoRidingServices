@@ -16,6 +16,9 @@ const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const adminAuthMiddleware = require("../middleware/authMiddleware");
 const axios = require("axios");
+const fs = require("fs").promises;
+const path = require("path");
+const sharp = require("sharp");
 
 // dummy otp generation
 // router.post("/send-otp", async (req, res) => {
@@ -727,17 +730,16 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const step = parseInt(req.body.step, 10);
     const mobile = req.driver?.mobile;
 
-    // ✅ Safe JSON parsing with better error handling
+    // ✅ Safe JSON parsing
     let data = {};
     try {
       data = JSON.parse(req.body.data || "{}");
-    } catch (parseError) {
-      console.error("JSON parse error:", parseError.message);
-      console.error("Received data:", req.body.data);
+    } catch (err) {
+      console.error("JSON parse error:", err.message);
       return res.status(400).json({
         success: false,
-        message: "Invalid JSON format in data field",
-        error: parseError.message
+        message: "Invalid JSON in data field",
+        error: err.message,
       });
     }
 
@@ -750,159 +752,136 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       2: "drivingDetails",
       3: "paymentAndSubscription",
       4: "languageSkillsAndReferences",
-      5: "declaration"
+      5: "declaration",
     };
+
     const field = stepFieldMap[step];
     if (!field) return res.status(400).json({ message: "Invalid step number" });
 
-    // ✅ Server upload helper
-    const uploadToServer = (fileBuffer, filename, isImage = true) => {
-      return new Promise((resolve, reject) => {
-        try {
-          const path = require('path');
-          const fs = require('fs');
-          
-          // Determine folder based on file type
-          const folder = isImage ? 'images' : 'documents';
-          
-          // Create cloud directory if it doesn't exist
-          const uploadPath = path.join(__dirname, `../cloud/${folder}`);
-          if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-          }
-          
-          // Save file to server
-          const filePath = path.join(uploadPath, filename);
-          fs.writeFileSync(filePath, fileBuffer);
-          
-          // Return full URL
-          const url = `https://adminbackend.hire4drive.com/app/cloud/${folder}/${filename}`;
-          resolve(url);
-        } catch (error) {
-          reject(error);
-        }
-      });
+    // ✅ Async upload helper (Cloud folder storage)
+    const uploadToServer = async (fileBuffer, filename, isImage = true) => {
+      const folder = isImage ? "images" : "documents";
+      const uploadPath = path.join(__dirname, `../cloud/${folder}`);
+      await fs.mkdir(uploadPath, { recursive: true });
+
+      // Compress image before saving
+      let bufferToSave = fileBuffer;
+      if (isImage) {
+        bufferToSave = await sharp(fileBuffer)
+          .resize({ width: 1000 })
+          .jpeg({ quality: 80 })
+          .toBuffer();
+      }
+
+      const filePath = path.join(uploadPath, filename);
+      await fs.writeFile(filePath, bufferToSave);
+
+      return `https://adminbackend.hire4drive.com/app/cloud/${folder}/${filename}`;
     };
 
-    // 🚀 Step 1: Fetch driver + upload files in parallel
+    // 🚀 Parallel file upload + driver fetch
     const [driver, uploadResults] = await Promise.all([
       Driver.findOne({ mobile }),
       req.files?.length
         ? Promise.all(
-          req.files.map(async (file) => {
-            try {
-              const isImage = file.mimetype.startsWith('image/');
-              const ext = require('path').extname(file.originalname) || (isImage ? '.jpg' : '.pdf');
-              const filename = `${file.fieldname}_${Date.now()}_${Math.random()
-                .toString(36)
-                .substr(2, 9)}${ext}`;
-              const url = await uploadToServer(file.buffer, filename, isImage);
-              return { fieldname: file.fieldname, url, success: true };
-            } catch (error) {
-              console.error(`Upload failed for ${file.fieldname}:`, error.message);
-              return { fieldname: file.fieldname, error: error.message, success: false };
-            }
-          })
-        )
-        : []
+            req.files.map(async (file) => {
+              try {
+                const isImage = file.mimetype.startsWith("image/");
+                const ext =
+                  path.extname(file.originalname) || (isImage ? ".jpg" : ".pdf");
+                const filename = `${file.fieldname}_${Date.now()}_${Math.random()
+                  .toString(36)
+                  .substr(2, 9)}${ext}`;
+                const url = await uploadToServer(file.buffer, filename, isImage);
+                return { fieldname: file.fieldname, url, success: true };
+              } catch (error) {
+                console.error(`Upload failed for ${file.fieldname}:`, error.message);
+                return {
+                  fieldname: file.fieldname,
+                  error: error.message,
+                  success: false,
+                };
+              }
+            })
+          )
+        : [],
     ]);
 
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    // 🚀 Step 2: Process uploads - Group by fieldname for array fields
+    // 🚀 Process uploaded files
     const fileGroups = {};
     const singleFiles = {};
-
-    // Array fields that can have multiple files
     const arrayFields = ["aadhar", "drivingLicense"];
 
     uploadResults.forEach((result) => {
       if (result.success) {
         if (arrayFields.includes(result.fieldname)) {
-          // Group multiple files with same fieldname
-          if (!fileGroups[result.fieldname]) {
-            fileGroups[result.fieldname] = [];
-          }
+          if (!fileGroups[result.fieldname]) fileGroups[result.fieldname] = [];
           fileGroups[result.fieldname].push(result.url);
         } else {
-          // Single file fields
           singleFiles[result.fieldname] = result.url;
         }
       }
     });
 
-    // Handle single file uploads (panCard, passportPhoto, etc.)
+    // Add single file fields
     Object.entries(singleFiles).forEach(([fieldname, url]) => {
       data[fieldname] = url;
     });
 
-    // Merge existing + new data for the step field
+    // Merge with existing step data
     const fieldData = { ...driver[field]?.toObject?.(), ...data };
 
-    // Handle array field uploads - merge into fieldData instead of separate updates
+    // Merge array fields (for multiple docs)
     Object.entries(fileGroups).forEach(([fieldName, urls]) => {
       if (urls.length > 0) {
         const existingUrls = driver[field]?.[fieldName] || [];
-        const allUrls = [...existingUrls, ...urls];
-        const uniqueUrls = [...new Set(allUrls)];
-        fieldData[fieldName] = uniqueUrls;
+        fieldData[fieldName] = [...new Set([...existingUrls, ...urls])];
       }
     });
 
     const updates = { [field]: fieldData };
 
-    // 🚀 Step 3: Evaluate progress (keep your existing evaluateDriverProgress logic)
-    const tempDriver = {
-      ...driver.toObject(),
-      [field]: fieldData
-    };
-
-    // tempDriver already has the updated fieldData with array fields
-
+    // 🚀 Evaluate progress
+    const tempDriver = { ...driver.toObject(), [field]: fieldData };
     const progressResult = evaluateDriverProgress(tempDriver);
-
-    // Add status
     updates.status = progressResult.status;
 
-    // 🚀 Step 4: Save updates
+    // 🚀 Save driver update
     const updatedDriver = await Driver.findOneAndUpdate(
       { mobile },
       { $set: updates },
       { new: true, runValidators: true }
     );
 
-    // 🚀 Step 5: Send response
+    // 🚀 Response
     res.json({
       success: true,
-      message: "information updated successfully",
+      message: "Information updated successfully",
       nextStep: progressResult.step,
       status: progressResult.status,
-      driver: updatedDriver
+      driver: updatedDriver,
     });
   } catch (error) {
     console.error("Update step error:", error);
 
-    // ✅ Handle Mongoose Validation Errors
     if (error.name === "ValidationError") {
       const validationErrors = {};
-
-      // Extract all validation error messages
       Object.keys(error.errors).forEach((key) => {
         validationErrors[key] = error.errors[key].message;
       });
-
       return res.status(400).json({
         success: false,
         message: "Validation failed",
-        errors: validationErrors
+        errors: validationErrors,
       });
     }
 
-    // Handle other errors
     res.status(500).json({
       success: false,
       message: "Failed to update step",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 });
