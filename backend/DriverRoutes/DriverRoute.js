@@ -725,8 +725,84 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
   }
 });
 
+// ✅ Cache directory creation (avoid repeated fs.mkdir calls)
+const createdDirs = new Set();
+
+// ✅ OPTIMIZED: Ultra-fast file upload with streaming
+const uploadToServerFast = async (fileBuffer, filename, isImage = true) => {
+  const folder = isImage ? "images" : "documents";
+  const uploadPath = path.join(__dirname, `../cloud/${folder}`);
+  
+  // Create directory only once per server restart
+  if (!createdDirs.has(uploadPath)) {
+    await fs.mkdir(uploadPath, { recursive: true });
+    createdDirs.add(uploadPath);
+  }
+
+  const filePath = path.join(uploadPath, filename);
+
+  if (isImage) {
+    // FASTEST Sharp settings: effort 1, lower quality, smaller size
+    await sharp(fileBuffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .webp({ 
+        quality: 70,
+        effort: 1,
+        smartSubsample: true 
+      })
+      .toFile(filePath);  // Direct file write (faster than buffer)
+  } else {
+    // Direct write for PDFs
+    await fs.writeFile(filePath, fileBuffer);
+  }
+
+  return `https://adminbackend.hire4drive.com/app/cloud/${folder}/${filename}`;
+};
+
+// ✅ OPTIMIZED: Process ALL files in parallel (no batching)
+const processAllFiles = async (files) => {
+  return Promise.all(
+    files.map(async (file) => {
+      try {
+        const isImage = file.mimetype.startsWith("image/");
+        const ext = path.extname(file.originalname) || (isImage ? ".webp" : ".pdf");
+        const filename = `${file.fieldname}_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}${ext}`;
+        
+        const url = await uploadToServerFast(file.buffer, filename, isImage);
+        return { fieldname: file.fieldname, url, success: true };
+      } catch (error) {
+        console.error(`❌ Upload failed for ${file.fieldname}:`, error.message);
+        return {
+          fieldname: file.fieldname,
+          error: error.message,
+          success: false,
+        };
+      }
+    })
+  );
+};
+
+// ✅ OPTIMIZED: Main route with detailed performance logging
 router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res) => {
+  // 🔍 Performance tracking
+  const timings = {};
+  const startTime = Date.now();
+  let checkpointTime = startTime;
+  
+  const logTime = (label) => {
+    const now = Date.now();
+    const elapsed = now - checkpointTime;
+    const total = now - startTime;
+    timings[label] = { elapsed, total };
+    console.log(`⏱️  [${label}]: ${elapsed}ms (Total: ${total}ms)`);
+    checkpointTime = now;
+  };
+
   try {
+    logTime("START");
+
     const step = parseInt(req.body.step, 10);
     const mobile = req.driver?.mobile;
 
@@ -735,13 +811,15 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     try {
       data = JSON.parse(req.body.data || "{}");
     } catch (err) {
-      console.error("JSON parse error:", err.message);
+      console.error("❌ JSON parse error:", err.message);
       return res.status(400).json({
         success: false,
         message: "Invalid JSON in data field",
         error: err.message,
       });
     }
+
+    logTime("JSON_PARSE");
 
     if (!mobile || !step) {
       return res.status(400).json({ message: "Mobile & step are required" });
@@ -758,73 +836,27 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const field = stepFieldMap[step];
     if (!field) return res.status(400).json({ message: "Invalid step number" });
 
-    // ✅ OPTIMIZATION 1: Parallel upload with optimized compression
-    const uploadToServer = async (fileBuffer, filename, isImage = true) => {
-      const folder = isImage ? "images" : "documents";
-      const uploadPath = path.join(__dirname, `../cloud/${folder}`);
-      
-      // Create directory only once (cached)
-      await fs.mkdir(uploadPath, { recursive: true });
+    logTime("VALIDATION");
 
-      let bufferToSave = fileBuffer;
-      
-      if (isImage) {
-        // OPTIMIZATION: More aggressive compression + WebP format (smaller files)
-        bufferToSave = await sharp(fileBuffer)
-          .resize({ width: 800, withoutEnlargement: true }) // Reduced from 1000
-          .webp({ quality: 75 }) // WebP is 30% smaller than JPEG
-          .toBuffer();
-      }
+    // 🚀 CRITICAL OPTIMIZATION: Parallel driver fetch + file upload (all at once)
+    console.log(`📤 Starting parallel operations: DB fetch + ${req.files?.length || 0} file uploads`);
+    
+    const [driver, uploadResults] = await Promise.all([
+      Driver.findOne({ mobile })
+        .select(`${field} status mobile`)
+        .lean(),
+      req.files?.length ? processAllFiles(req.files) : Promise.resolve([])
+    ]);
 
-      const filePath = path.join(uploadPath, filename);
-      
-      // OPTIMIZATION 2: Async write without blocking
-      await fs.writeFile(filePath, bufferToSave);
+    logTime("PARALLEL_FETCH_AND_UPLOAD");
+    console.log(`✅ Uploaded ${uploadResults.filter(r => r.success).length}/${uploadResults.length} files`);
 
-      return `https://adminbackend.hire4drive.com/app/cloud/${folder}/${filename}`;
-    };
+    if (!driver) {
+      console.error("❌ Driver not found:", mobile);
+      return res.status(404).json({ message: "Driver not found" });
+    }
 
-    // 🚀 OPTIMIZATION 3: Process files in batches (limit concurrent operations)
-    const processFilesInBatches = async (files, batchSize = 3) => {
-      const results = [];
-      for (let i = 0; i < files.length; i += batchSize) {
-        const batch = files.slice(i, i + batchSize);
-        const batchResults = await Promise.all(
-          batch.map(async (file) => {
-            try {
-              const isImage = file.mimetype.startsWith("image/");
-              const ext = path.extname(file.originalname) || (isImage ? ".webp" : ".pdf");
-              const filename = `${file.fieldname}_${Date.now()}_${Math.random()
-                .toString(36)
-                .substr(2, 9)}${ext}`;
-              
-              const url = await uploadToServer(file.buffer, filename, isImage);
-              return { fieldname: file.fieldname, url, success: true };
-            } catch (error) {
-              console.error(`Upload failed for ${file.fieldname}:`, error.message);
-              return {
-                fieldname: file.fieldname,
-                error: error.message,
-                success: false,
-              };
-            }
-          })
-        );
-        results.push(...batchResults);
-      }
-      return results;
-    };
-
-    // 🚀 OPTIMIZATION 4: Fetch driver first, then process files
-    const driver = await Driver.findOne({ mobile }).lean(); // .lean() for faster read
-    if (!driver) return res.status(404).json({ message: "Driver not found" });
-
-    // Process files in parallel batches
-    const uploadResults = req.files?.length 
-      ? await processFilesInBatches(req.files, 3) // Process 3 files at a time
-      : [];
-
-    // 🚀 Process uploaded files
+    // 🚀 Organize files efficiently
     const fileGroups = {};
     const singleFiles = {};
     const arrayFields = ["aadhar", "drivingLicense"];
@@ -840,10 +872,10 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       }
     });
 
-    // Add single file fields
-    Object.entries(singleFiles).forEach(([fieldname, url]) => {
-      data[fieldname] = url;
-    });
+    logTime("FILE_ORGANIZATION");
+
+    // Add single file fields to data
+    Object.assign(data, singleFiles);
 
     // Merge with existing step data
     const fieldData = { ...driver[field], ...data };
@@ -858,28 +890,71 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     const updates = { [field]: fieldData };
 
-    // 🚀 Evaluate progress
-    const tempDriver = { ...driver, [field]: fieldData };
-    const progressResult = evaluateDriverProgress(tempDriver);
-    updates.status = progressResult.status;
+    logTime("DATA_MERGE");
 
-    // 🚀 OPTIMIZATION 5: Update without validators (add them at submission time only)
+    // 🚀 OPTIMIZATION: Skip progress calculation on steps 1-4
+    let progressResult = null;
+    if (step === 5) {
+      console.log("📊 Calculating driver progress (final step)...");
+      const tempDriver = { ...driver, [field]: fieldData };
+      progressResult = evaluateDriverProgress(tempDriver);
+      updates.status = progressResult.status;
+      logTime("PROGRESS_CALCULATION");
+    } else {
+      console.log("⏭️  Skipping progress calculation (not final step)");
+    }
+
+    // 🚀 Single atomic database update
+    console.log(`💾 Updating database for step ${step}...`);
     const updatedDriver = await Driver.findOneAndUpdate(
       { mobile },
       { $set: updates },
-      { new: true, runValidators: false } // Skip validation for speed
-    ).lean(); // Return plain object
+      { 
+        new: true, 
+        runValidators: false,
+        projection: `${field} status mobile`
+      }
+    ).lean();
+
+    logTime("DB_UPDATE");
+
+    const totalTime = Date.now() - startTime;
+    
+    // 🎯 Performance summary
+    console.log("\n" + "=".repeat(50));
+    console.log("📊 PERFORMANCE SUMMARY");
+    console.log("=".repeat(50));
+    console.log(`Total Time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
+    console.log(`Step: ${step} | Mobile: ${mobile}`);
+    console.log(`Files: ${req.files?.length || 0} uploaded`);
+    console.log("\nBreakdown:");
+    Object.entries(timings).forEach(([label, time]) => {
+      const percentage = ((time.elapsed / totalTime) * 100).toFixed(1);
+      console.log(`  ${label.padEnd(30)} ${time.elapsed}ms (${percentage}%)`);
+    });
+    console.log("=".repeat(50) + "\n");
 
     // 🚀 Response
     res.json({
       success: true,
       message: "Information updated successfully",
-      nextStep: progressResult.step,
-      status: progressResult.status,
+      nextStep: step < 5 ? step + 1 : 5,
+      status: updatedDriver.status || "Pending",
       driver: updatedDriver,
+      // Include timing in response (useful for monitoring)
+      _performance: {
+        totalTime: `${totalTime}ms`,
+        breakdown: Object.entries(timings).reduce((acc, [key, val]) => {
+          acc[key] = `${val.elapsed}ms`;
+          return acc;
+        }, {})
+      }
     });
+
   } catch (error) {
-    console.error("Update step error:", error);
+    const errorTime = Date.now() - startTime;
+    console.error("❌ Update step error:", error);
+    console.error(`⏱️  Failed after ${errorTime}ms`);
 
     if (error.name === "ValidationError") {
       const validationErrors = {};
