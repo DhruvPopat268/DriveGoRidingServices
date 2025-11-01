@@ -84,7 +84,7 @@ router.post('/', async (req, res) => {
       instructionData.vehicleTypeId = vehicleTypeId;
       instructionData.vehicleTypeName = req.body.vehicleTypeName;
     }
-    
+
     // Handle parcel category with explicit parcelCategoryId
     if (parcelCategoryId && vehicleTypeId) {
       try {
@@ -120,49 +120,57 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/getInstructions', async (req, res) => {
-  const { categoryId, subCategoryId, subSubCategoryId, selectedCategoryName } = req.body;
-
-  if (!categoryId || !subCategoryId) {
-    return res.status(400).json({
-      success: false,
-      message: 'categoryId and subCategoryId are required'
-    });
-  }
-
+router.post("/getInstructions", async (req, res) => {
   try {
-    // Build query object
-    const query = { categoryId, subCategoryId };
-
-    // Add subSubCategoryId to query if provided
-    if (subSubCategoryId) {
-      query.subSubCategoryId = subSubCategoryId;
-    }
-
-    // Add driverCategoryName to query if provided
-    if (selectedCategoryName) {
-      query.driverCategoryName = selectedCategoryName;
-    }
-
-    const instructions = await Instruction.find(query);
-    const instructionTexts = instructions.map((item) => item.instructions);
-
-    res.json({
-      success: true,
+    const {
       categoryId,
       subCategoryId,
       subSubCategoryId,
-      selectedCategoryName,
-      instructions: instructionTexts
+      driverCategoryId,
+      carCategoryId,
+      parcelCategoryId,
+      vehicleTypeId,
+      carId
+    } = req.body;
+
+    // categoryId & subCategoryId are minimum required
+    if (!categoryId || !subCategoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "categoryId and subCategoryId are required",
+      });
+    }
+
+    // Build dynamic query object
+    const query = { categoryId, subCategoryId };
+
+    if (subSubCategoryId) query.subSubCategoryId = subSubCategoryId;
+    if (driverCategoryId) query.driverCategoryId = driverCategoryId;
+    if (carCategoryId) query.carCategoryId = carCategoryId;
+    if (carId) query.carId = carId;
+    if (parcelCategoryId) query.parcelCategoryId = parcelCategoryId;
+    if (vehicleTypeId) query.vehicleTypeId = vehicleTypeId;
+
+    console.log("Instruction Query =>", query);
+
+    // Fetch all instructions matching the given IDs
+    const instructions = await Instruction.find(query);
+
+    // Map only instruction text array
+    const instructionTexts = instructions.map((item) => item.instructions);
+
+    return res.json({
+      success: true,
+      data: instructionTexts,
     });
   } catch (err) {
-    res.status(500).json({
+    console.error("Error fetching instructions:", err);
+    return res.status(500).json({
       success: false,
-      message: err.message
+      message: "Server error: " + err.message,
     });
   }
 });
-
 
 // Update instruction
 router.put('/:id', async (req, res) => {
