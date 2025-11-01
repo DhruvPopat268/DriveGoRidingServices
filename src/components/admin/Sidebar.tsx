@@ -129,7 +129,7 @@ const menuItems = [
   { icon: Shield, label: "Role Management", key: "rolemanagement" },
   { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" },
   { icon: FileText, label: "Driver Purchased Plans History", key: "driver-purchased-plans" },
-  { icon: Upload, label: "File Upload Test", key: "file-upload-test" }
+  // { icon: Upload, label: "File Upload Test", key: "file-upload-test" }
 ];
 
 const cn = (...classes: (string | boolean | undefined)[]) => {
