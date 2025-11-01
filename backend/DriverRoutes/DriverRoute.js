@@ -755,28 +755,32 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const field = stepFieldMap[step];
     if (!field) return res.status(400).json({ message: "Invalid step number" });
 
-    // ✅ Cloudinary upload helper
-    const uploadToCloudinary = (fileBuffer, folder, filename) => {
+    // ✅ Server upload helper
+    const uploadToServer = (fileBuffer, filename, isImage = true) => {
       return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Upload timeout")), 8000);
-
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder,
-            public_id: filename,
-            resource_type: "auto",
-            quality: "auto:good",
-            fetch_format: "auto",
-            flags: "progressive",
-            timeout: 60000
-          },
-          (error, result) => {
-            clearTimeout(timeout);
-            if (error) return reject(error);
-            resolve(result.secure_url);
+        try {
+          const path = require('path');
+          const fs = require('fs');
+          
+          // Determine folder based on file type
+          const folder = isImage ? 'images' : 'documents';
+          
+          // Create cloud directory if it doesn't exist
+          const uploadPath = path.join(__dirname, `../cloud/${folder}`);
+          if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
           }
-        );
-        stream.end(fileBuffer);
+          
+          // Save file to server
+          const filePath = path.join(uploadPath, filename);
+          fs.writeFileSync(filePath, fileBuffer);
+          
+          // Return full URL
+          const url = `https://adminbackend.hire4drive.com/app/cloud/${folder}/${filename}`;
+          resolve(url);
+        } catch (error) {
+          reject(error);
+        }
       });
     };
 
@@ -787,10 +791,12 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
         ? Promise.all(
           req.files.map(async (file) => {
             try {
+              const isImage = file.mimetype.startsWith('image/');
+              const ext = require('path').extname(file.originalname) || (isImage ? '.jpg' : '.pdf');
               const filename = `${file.fieldname}_${Date.now()}_${Math.random()
                 .toString(36)
-                .substr(2, 9)}`;
-              const url = await uploadToCloudinary(file.buffer, `drivers/${mobile}/${field}`, filename);
+                .substr(2, 9)}${ext}`;
+              const url = await uploadToServer(file.buffer, filename, isImage);
               return { fieldname: file.fieldname, url, success: true };
             } catch (error) {
               console.error(`Upload failed for ${file.fieldname}:`, error.message);
