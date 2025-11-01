@@ -21,7 +21,6 @@ const cityRoutes = require('./routes/cityRoutes');
 const carCategoryRoutes = require('./routes/carCategoryRoutes');
 const carRoutes = require('./routes/carRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
-const testUploadRoutes = require('./routes/testUploadRoutes');
 const CabRideCostRoutes = require('./routes/CabRideCostRoutes');
 
 const riderAuthRoutes = require('./routes/riderAuth_otp_Routes');
@@ -88,7 +87,6 @@ app.use('/api/car-categories', carCategoryRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/upload', uploadRoutes);
 console.log('✅ Test upload routes registered at /api/test-upload');
-app.use('/api/test-upload', testUploadRoutes);
 app.use('/api/CabRideCosts', CabRideCostRoutes);
 
 const path = require("path");
