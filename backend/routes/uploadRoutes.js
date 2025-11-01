@@ -32,8 +32,8 @@ router.post('/image', upload.single('image'), async (req, res) => {
       
       console.log(`File MIME type: ${req.file.mimetype}, isImage: ${isImage}, folder: ${folder}`);
       
-      // Create testing directory if it doesn't exist
-      const uploadPath = path.join(__dirname, `../testing/${folder}`);
+      // Create cloud directory if it doesn't exist
+      const uploadPath = path.join(__dirname, `../cloud/${folder}`);
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true });
       }
@@ -45,7 +45,7 @@ router.post('/image', upload.single('image'), async (req, res) => {
       
       return res.json({ 
         message: `${isImage ? 'Image' : 'File'} uploaded successfully to server`,
-        url: `/app/uploads/testing/${folder}/${uniqueName}`,
+        url: `https://adminbackend.hire4drive.com/app/cloud/${folder}/${uniqueName}`,
         filename: uniqueName,
         size: req.file.size,
         debug: { mimetype: req.file.mimetype, isImage, folder }
@@ -78,7 +78,7 @@ const fs = require('fs');
 // Configure multer for server storage
 const serverStorage = multer2.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../testing/images');
+    const uploadPath = path.join(__dirname, '../cloud/images');
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
@@ -106,7 +106,7 @@ router.post('/server-image', serverUpload.single('image'), async (req, res) => {
 
     res.json({ 
       message: 'Image uploaded successfully to server',
-      url: `/app/uploads/testing/images/${req.file.filename}`,
+      url: `https://adminbackend.hire4drive.com/app/cloud/images/${req.file.filename}`,
       filename: req.file.filename,
       size: req.file.size
     });

@@ -97,6 +97,10 @@ const path = require("path");
 app.use("/cloud/images", express.static(path.join(__dirname, "cloud/images")));
 app.use("/cloud/documents", express.static(path.join(__dirname, "cloud/documents")));
 
+// ✅ Serve images & documents with /app prefix for production URLs
+app.use("/app/cloud/images", express.static(path.join(__dirname, "cloud/images")));
+app.use("/app/cloud/documents", express.static(path.join(__dirname, "cloud/documents")));
+
 
 // Rider routes
 app.use("/api/rider-auth", riderAuthRoutes);
