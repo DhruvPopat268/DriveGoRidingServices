@@ -175,21 +175,18 @@ router.get('/planPayment', DriverAuthMiddleware, async (req, res) => {
 
 router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
   try {
-    console.log("📩 Received request to /add-purchased-plan");
-    console.log("Request body:", req.body);
-    console.log("Authenticated driver from middleware:", req.driver);
 
     const { paymentId, status } = req.body;
     const mobile = req.driver?.mobile;
 
     if (!mobile || !paymentId || !status) {
-      console.log("❌ Missing required fields:", { mobile, paymentId, status });
+      
       return res.status(400).json({
         message: "Mobile, paymentId, status, and plan are required"
       });
     }
 
-    console.log("🔍 Finding driver with status 'PendingForPayment' for mobile:", mobile);
+  
 
     const driver = await Driver.findOneAndUpdate(
       { mobile, status: "PendingForPayment" },
@@ -198,33 +195,39 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
     );
 
     if (!driver) {
-      console.log("⚠️ No driver found with PendingForPayment status");
+     
       return res.status(404).json({ message: "Driver not found or not pending payment" });
     }
 
-    console.log("✅ Driver found and updated:", driver._id);
+  
 
     const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan;
-    console.log("📦 Subscription Plan ID from driver:", subscriptionPlan);
+   
 
     if (!subscriptionPlan) {
-      console.log("❌ Subscription plan not found in driver.paymentAndSubscription");
+      
       return res.status(400).json({ message: "Subscription plan not found" });
     }
 
     const planDuration = await SubscriptionPlan.findById(subscriptionPlan).select("days");
-    console.log("📅 Plan Duration:", planDuration);
-
     const currentPlan = await SubscriptionPlan.findById(subscriptionPlan);
-    console.log("💰 Current Plan Details:", currentPlan);
-
     const amount = currentPlan?.amount;
-    console.log("💵 Plan Amount:", amount);
 
+    // Calculate expiry date and set currentPlan
+    const now = new Date();
+    let expiryDate;
+    if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
+      expiryDate = new Date(driver.currentPlan.expiryDate);
+      expiryDate.setDate(expiryDate.getDate() + planDuration.days); // extend from current expiry
+    } else {
+      expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + planDuration.days); // start from today
+    }
+
+    // Set currentPlan to activate the purchased plan
+    driver.currentPlan = { planId: subscriptionPlan, expiryDate };
     driver.purchasedPlans.push({ paymentId, status, plan: subscriptionPlan, amount });
     await driver.save();
-
-    console.log("✅ Driver updated with new purchased plan");
 
     res.json({
       success: true,

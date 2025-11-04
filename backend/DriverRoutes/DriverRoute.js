@@ -1,6 +1,7 @@
 const express = require("express");
 const Driver = require("../DriverModel/DriverModel");
 const router = express.Router();
+
 const DriverOtpSession = require("../DriverModel/DriverOtpSession");
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
@@ -19,6 +20,18 @@ const axios = require("axios");
 const fs = require("fs").promises;
 const path = require("path");
 const sharp = require("sharp");
+
+// Helper function to get field name by step number
+function getFieldByStep(step) {
+  const stepFieldMap = {
+    1: "personalInformation",
+    2: "drivingDetails",
+    3: "paymentAndSubscription",
+    4: "languageSkillsAndReferences",
+    5: "declaration"
+  };
+  return stepFieldMap[step] || null;
+}
 
 // dummy otp generation
 // router.post("/send-otp", async (req, res) => {
@@ -341,15 +354,37 @@ router.post("/approve/:driverId", async (req, res) => {
 router.post("/reject/:driverId", async (req, res) => {
   try {
     const { driverId } = req.params;
+    const { steps = [] } = req.body;
+    
+    // Build unset object for specified steps
+    const unsetFields = {};
+    steps.forEach(step => {
+      const fieldName = getFieldByStep(step);
+      if (fieldName) {
+        unsetFields[fieldName] = 1;
+      }
+    });
+    
+    const updateQuery = { status: "Rejected" };
+    if (Object.keys(unsetFields).length > 0) {
+      updateQuery.$unset = unsetFields;
+    }
+    
     const driver = await Driver.findByIdAndUpdate(
       driverId,
-      { status: "Rejected" },
+      updateQuery,
       { new: true }
     );
+    
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
-    res.json({ success: true, message: "Driver rejected successfully", driver });
+    
+    res.json({ 
+      success: true, 
+      message: `Driver rejected successfully${steps.length ? ` and ${steps.length} step(s) cleared` : ''}`, 
+      driver 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to reject driver" });
   }
@@ -699,8 +734,15 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
     // Evaluate driver profile progress
     const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
-    if (["Pending", "PendingForPayment"].includes(driver.status)) {
-      driver.status = progressStatus;
+    // Update status for Pending, PendingForPayment, and Rejected drivers
+    if (["Pending", "PendingForPayment", "Rejected"].includes(driver.status)) {
+      // For rejected drivers, if they have missing fields, set to Pending
+      // If all fields complete, set to Onreview for re-review
+      if (driver.status === "Rejected") {
+        driver.status = step === 0 ? "Onreview" : "Pending";
+      } else {
+        driver.status = progressStatus;
+      }
       await driver.save();
     }
 
@@ -712,14 +754,15 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
       status: driver.status,
     };
 
+    // Add step only if status is Pending or PendingForPayment
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       response.step = step;
     }
 
     res.json(response);
   } catch (error) {
-    console.error("Verify OTP error:", error);
-    res.status(500).json({ success: false, message: "OTP verification failed" });
+    console.error("Driver details error:", error);
+    res.status(500).json({ success: false, message: "Failed to get driver details" });
   }
 });
 

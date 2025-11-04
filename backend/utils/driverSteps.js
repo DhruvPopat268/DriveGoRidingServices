@@ -40,7 +40,12 @@ function evaluateDriverProgress(driver) {
     step = 5;
   }
 
-  const status = step === 0 ? "PendingForPayment" : "Pending";
+  // Check if driver has valid currentPlan
+  const hasValidPlan = driver.currentPlan?.planId && 
+                      driver.currentPlan?.expiryDate && 
+                      new Date(driver.currentPlan.expiryDate) > new Date();
+
+  const status = step === 0 ? (hasValidPlan ? "Onreview" : "PendingForPayment") : "Pending";
 
   return { step, status };
 }
