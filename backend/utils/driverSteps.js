@@ -1,6 +1,9 @@
-function isObjectComplete(obj) {
+function isObjectComplete(obj, optionalFields = []) {
   if (!obj) return false;
-  return Object.values(obj).every((value) => {
+  return Object.entries(obj).every(([key, value]) => {
+    // Skip optional fields
+    if (optionalFields.includes(key)) return true;
+    
     if (value === null || value === undefined || value === "") return false;
 
     // If array, check non-empty
@@ -26,7 +29,7 @@ function evaluateDriverProgress(driver) {
     step = 1;
   } else if (!isObjectComplete(driver.drivingDetails)) {
     step = 2;
-  } else if (!isObjectComplete(driver.paymentAndSubscription)) {
+  } else if (!isObjectComplete(driver.paymentAndSubscription, ['upiQrCode'])) {
     step = 3;
   } else if (
     !isObjectComplete(driver.languageSkillsAndReferences) ||
