@@ -132,7 +132,7 @@ router.delete("/:id", async (req, res) => {
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // ✅ Get subcategories by categoryId
-router.post("/by-category", driverAuthMiddleware, async (req, res) => {
+router.post("/by-category",  async (req, res) => {
   try {
     const { categoryId } = req.body;
     const subcategories = await SubCategory.find({ categoryId }).populate("categoryId", "name");
