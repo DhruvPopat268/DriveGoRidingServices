@@ -1503,8 +1503,11 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
 
     // console.log("Updated ride on completion:", updatedRide);
 
-    // 🔹 Update driver's ride status
-    await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
+    // 🔹 Update driver's ride status and add to completedRides
+    await Driver.findByIdAndUpdate(driverId, { 
+      rideStatus: "WAITING",
+      $push: { completedRides: rideId }
+    });
 
     // 🔹 Reset rider’s uncleared cancellation charges
     const rider = await Rider.findById(updatedRide.riderId);

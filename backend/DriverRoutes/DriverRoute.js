@@ -92,6 +92,33 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Get driver profile data (name, isOnline, passportPhoto, completedRides)
+router.get("/profile", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+    
+    const driver = await Driver.findById(driverId)
+      .select("personalInformation.fullName personalInformation.passportPhoto isOnline completedRides")
+      .lean();
+    
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        name: driver.personalInformation?.fullName || null,
+        isOnline: driver.isOnline || false,
+        passportPhoto: driver.personalInformation?.passportPhoto || null,
+        completedRides: driver.completedRides?.length || 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Assign drivers to price category
 router.put("/assign-category", async (req, res) => {
   try {
@@ -814,6 +841,35 @@ router.get("/track/check-missing-fields", DriverAuthMiddleware, async (req, res)
   }
 });
 
+// Toggle driver online status
+router.patch("/online-status", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+    
+    // Get current status and toggle it
+    const currentDriver = await Driver.findById(driverId).select("isOnline");
+    if (!currentDriver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+    
+    const newStatus = !currentDriver.isOnline;
+    
+    const driver = await Driver.findByIdAndUpdate(
+      driverId,
+      { isOnline: newStatus },
+      { new: true, select: "isOnline" }
+    );
+    
+    res.json({
+      success: true,
+      message: `Driver status updated to ${newStatus ? "online" : "offline"}`,
+      data: { isOnline: driver.isOnline }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ✅ Cache directory creation (avoid repeated fs.mkdir calls)
 const createdDirs = new Set();
 
@@ -1309,5 +1365,7 @@ router.get("/transactions/all", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+
 
 module.exports = router;

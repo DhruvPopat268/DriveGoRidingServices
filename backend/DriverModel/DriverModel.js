@@ -82,6 +82,11 @@ const driverSchema = new mongoose.Schema(
       default: "WAITING"
     },
 
+    isOnline: {
+      type: Boolean,
+      default: false
+    },
+
     currentPlan: {
       planId: { type: mongoose.Schema.Types.ObjectId, ref: 'SubscriptionPlan', default: null },
       expiryDate: { type: Date, default: null }
@@ -118,7 +123,10 @@ const driverSchema = new mongoose.Schema(
     
     // 🔹 Cancellation charges
     cancellationCharges: { type: Number, default: 0 },
-    unclearedCancellationCharges: { type: Number, default: 0 }
+    unclearedCancellationCharges: { type: Number, default: 0 },
+
+    // 🔹 Completed rides tracking
+    completedRides: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ride' }]
   },
   { timestamps: true }
 );
