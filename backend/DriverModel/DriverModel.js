@@ -53,6 +53,7 @@ const driverSchema = new mongoose.Schema(
           message: 'Invalid UPI ID format. Must be in format: username@provider'
         }
       },
+      upiQrCode: { type: String }, // Cloudinary URL
       oneTimeRegistrationFee: { type: Number },
       subscriptionPlan: { type: String },
       // subscriptionAmount: { type: Number },
