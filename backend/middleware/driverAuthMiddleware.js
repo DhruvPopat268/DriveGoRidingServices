@@ -55,26 +55,26 @@ const authMiddleware = async (req, res, next) => {
     const currentPlan = driverFromDB.currentPlan || {};
     // console.log("Current Plan:", currentPlan);
 
-    if (!currentPlan.expiryDate) {
-      // console.log("❌ Driver has no expiryDate set in currentPlan");
-      return res.status(402).json({
-        success: false,
-        message: "No active subscription found. Please purchase or renew your plan."
-      });
-    }
+    // if (!currentPlan.expiryDate) {
+    //   // console.log("❌ Driver has no expiryDate set in currentPlan");
+    //   return res.status(402).json({
+    //     success: false,
+    //     message: "No active subscription found. Please purchase or renew your plan."
+    //   });
+    // }
 
-    const now = new Date();
-    const expiry = new Date(currentPlan.expiryDate);
-    // console.log("Current Date:", now);
-    // console.log("Plan Expiry Date:", expiry);
+    // const now = new Date();
+    // const expiry = new Date(currentPlan.expiryDate);
+    // // console.log("Current Date:", now);
+    // // console.log("Plan Expiry Date:", expiry);
 
-    if (expiry < now) {
-      // console.log("❌ Driver plan expired");
-      return res.status(402).json({
-        success: false,
-        message: "Subscription plan expired. Please renew to continue."
-      });
-    }
+    // if (expiry < now) {
+    //   // console.log("❌ Driver plan expired");
+    //   return res.status(402).json({
+    //     success: false,
+    //     message: "Subscription plan expired. Please renew to continue."
+    //   });
+    // }
 
     // ✅ Attach driver info and continue
     req.driver = decoded;
