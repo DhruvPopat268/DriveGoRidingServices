@@ -725,6 +725,54 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
   }
 });
 
+router.get("/track/check-missing-fields", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+    const driver = await Driver.findById(driverId);
+    
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    const checkMissingFields = (obj, path = "") => {
+      const missing = [];
+      if (!obj) return [path];
+      
+      Object.entries(obj).forEach(([key, value]) => {
+        const currentPath = path ? `${path}.${key}` : key;
+        if (value === null || value === undefined || value === "") {
+          missing.push(currentPath);
+        } else if (Array.isArray(value) && value.length === 0) {
+          missing.push(currentPath);
+        } else if (typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)) {
+          missing.push(...checkMissingFields(value, currentPath));
+        }
+      });
+      return missing;
+    };
+
+    const missingFields = {
+      personalInformation: checkMissingFields(driver.personalInformation?.toObject(), "personalInformation"),
+      drivingDetails: checkMissingFields(driver.drivingDetails?.toObject(), "drivingDetails"),
+      paymentAndSubscription: checkMissingFields(driver.paymentAndSubscription?.toObject(), "paymentAndSubscription"),
+      languageSkillsAndReferences: checkMissingFields(driver.languageSkillsAndReferences?.toObject(), "languageSkillsAndReferences"),
+      declaration: checkMissingFields(driver.declaration?.toObject(), "declaration")
+    };
+
+    const { step } = evaluateDriverProgress(driver);
+
+    res.json({
+      success: true,
+      currentStep: step,
+      missingFields,
+      totalMissing: Object.values(missingFields).flat().length
+    });
+  } catch (error) {
+    console.error("Check missing fields error:", error);
+    res.status(500).json({ success: false, message: "Failed to check missing fields" });
+  }
+});
+
 // ✅ Cache directory creation (avoid repeated fs.mkdir calls)
 const createdDirs = new Set();
 
@@ -935,11 +983,13 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     console.log("=".repeat(50) + "\n");
 
     // 🚀 Response
+    const responseStep = progressResult && progressResult.step === 0 ? null : (step < 5 ? step + 1 : 5);
+    
     res.json({
       success: true,
       message: "Information updated successfully",
-      nextStep: step < 5 ? step + 1 : 5,
-      status: updatedDriver.status || "Pending",
+      nextStep: responseStep,
+      status: progressResult ? progressResult.status : (updatedDriver.status || "Pending"),
       driver: updatedDriver,
       // Include timing in response (useful for monitoring)
       _performance: {
