@@ -166,16 +166,18 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
           </Button>
           <Badge variant="secondary" className="text-sm">{driver.status}</Badge>
         </div>
-        <div className="flex space-x-2">
-          <Button onClick={handleApprove}>
-            <Check className="w-4 h-4 mr-2" />
-            Approve
-          </Button>
-          <Button variant="destructive" onClick={() => setShowRejectDialog(true)}>
-            <X className="w-4 h-4 mr-2" />
-            Reject
-          </Button>
-        </div>
+        {driver.status === "Onreview" && (
+          <div className="flex space-x-2">
+            <Button onClick={handleApprove}>
+              <Check className="w-4 h-4 mr-2" />
+              Approve
+            </Button>
+            <Button variant="destructive" onClick={() => setShowRejectDialog(true)}>
+              <X className="w-4 h-4 mr-2" />
+              Reject
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
