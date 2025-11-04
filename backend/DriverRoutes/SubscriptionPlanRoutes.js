@@ -192,7 +192,7 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
     console.log("🔍 Finding driver with status 'PendingForPayment' for mobile:", mobile);
 
     const driver = await Driver.findOneAndUpdate(
-      { mobile, status: "PendingForPayment" },
+      { mobile },
       { status: "Onreview" },
       { new: true }
     );
