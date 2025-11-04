@@ -189,19 +189,19 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-semibold">Passport Photo</p>
-                <img 
-                  src={driver.personalInformation.passportPhoto} 
-                  alt="Passport" 
-                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80" 
+                <img
+                  src={driver.personalInformation.passportPhoto}
+                  alt="Passport"
+                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
                   onClick={() => setPreviewImage(driver.personalInformation.passportPhoto)}
                 />
               </div>
               <div>
                 <p className="font-semibold">PAN Card</p>
-                <img 
-                  src={driver.personalInformation.panCard} 
-                  alt="PAN" 
-                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80" 
+                <img
+                  src={driver.personalInformation.panCard}
+                  alt="PAN"
+                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
                   onClick={() => setPreviewImage(driver.personalInformation.panCard)}
                 />
               </div>
@@ -210,11 +210,11 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
               <p className="font-semibold">Aadhar Documents</p>
               <div className="flex space-x-2">
                 {driver.personalInformation.aadhar.map((url, index) => (
-                  <img 
-                    key={index} 
-                    src={url} 
-                    alt={`Aadhar ${index + 1}`} 
-                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80" 
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`Aadhar ${index + 1}`}
+                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
                     onClick={() => setPreviewImage(url)}
                   />
                 ))}
@@ -224,11 +224,11 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
               <p className="font-semibold">Driving License</p>
               <div className="flex space-x-2">
                 {driver.personalInformation.drivingLicense.map((url, index) => (
-                  <img 
-                    key={index} 
-                    src={url} 
-                    alt={`License ${index + 1}`} 
-                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80" 
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`License ${index + 1}`}
+                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
                     onClick={() => setPreviewImage(url)}
                   />
                 ))}
@@ -312,6 +312,16 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
                 <p>{driver.paymentAndSubscription.upiId}</p>
               </div>
             </div>
+
+            <div>
+              <p className="font-semibold">UPI Qr code</p>
+              <img
+                src={driver.paymentAndSubscription.upiQrCode}
+                alt="upi Qr code"
+                className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
+                onClick={() => setPreviewImage(driver.paymentAndSubscription.upiQrCode)}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -360,10 +370,10 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
             </div>
             <div>
               <p className="font-semibold">Signature</p>
-              <img 
-                src={driver.declaration.signature} 
-                alt="Signature" 
-                className="w-32 h-16 object-cover rounded border cursor-pointer hover:opacity-80" 
+              <img
+                src={driver.declaration.signature}
+                alt="Signature"
+                className="w-32 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
                 onClick={() => setPreviewImage(driver.declaration.signature)}
               />
             </div>
@@ -373,16 +383,16 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
 
       <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
         <DialogContent className="max-w-full max-h-full w-screen h-screen p-0 bg-black">
-          <button 
+          <button
             onClick={() => setPreviewImage(null)}
             className="absolute top-4 right-4 z-10 text-white hover:text-gray-300"
           >
             <X className="w-8 h-8" />
           </button>
           {previewImage && (
-            <img 
-              src={previewImage} 
-              alt="Preview" 
+            <img
+              src={previewImage}
+              alt="Preview"
               className="w-full h-full object-contain"
             />
           )}

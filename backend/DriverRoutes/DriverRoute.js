@@ -696,8 +696,6 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
 
     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
-
-
     // Evaluate driver profile progress
     const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
@@ -946,6 +944,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       console.log("📊 Calculating driver progress (final step)...");
       const tempDriver = { ...driver, [field]: fieldData };
       progressResult = evaluateDriverProgress(tempDriver);
+      console.log(`🔄 New Status: ${progressResult.status}, Next Step: ${progressResult.step}`);
       updates.status = progressResult.status;
       logTime("PROGRESS_CALCULATION");
     } else {
