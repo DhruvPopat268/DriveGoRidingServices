@@ -175,33 +175,56 @@ router.get('/planPayment', DriverAuthMiddleware, async (req, res) => {
 
 router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
   try {
+    console.log("📩 Received request to /add-purchased-plan");
+    console.log("Request body:", req.body);
+    console.log("Authenticated driver from middleware:", req.driver);
+
     const { paymentId, status } = req.body;
     const mobile = req.driver?.mobile;
 
     if (!mobile || !paymentId || !status) {
-      return res.status(400).json({ message: "Mobile, paymentId, status, and plan are required" });
+      console.log("❌ Missing required fields:", { mobile, paymentId, status });
+      return res.status(400).json({
+        message: "Mobile, paymentId, status, and plan are required"
+      });
     }
 
+    console.log("🔍 Finding driver with status 'PendingForPayment' for mobile:", mobile);
+
     const driver = await Driver.findOneAndUpdate(
-      { mobile, status: "PendingForPayment" }, // condition: only if status is PendingForPayment
-      { status: "Onreview" },                   // update: set new status
-      { new: true }                             // return updated document
+      { mobile, status: "PendingForPayment" },
+      { status: "Onreview" },
+      { new: true }
     );
 
-    const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan
+    if (!driver) {
+      console.log("⚠️ No driver found with PendingForPayment status");
+      return res.status(404).json({ message: "Driver not found or not pending payment" });
+    }
 
-    const planDuration = await SubscriptionPlan.findById(subscriptionPlan).select('days')
+    console.log("✅ Driver found and updated:", driver._id);
 
-    // console.log("Plan Duration:", planDuration);
+    const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan;
+    console.log("📦 Subscription Plan ID from driver:", subscriptionPlan);
 
-    const currentPlan = await SubscriptionPlan.findById(subscriptionPlan)
+    if (!subscriptionPlan) {
+      console.log("❌ Subscription plan not found in driver.paymentAndSubscription");
+      return res.status(400).json({ message: "Subscription plan not found" });
+    }
 
-    // console.log("Current Plan:", currentPlan);
+    const planDuration = await SubscriptionPlan.findById(subscriptionPlan).select("days");
+    console.log("📅 Plan Duration:", planDuration);
 
-    const amount = currentPlan?.amount
+    const currentPlan = await SubscriptionPlan.findById(subscriptionPlan);
+    console.log("💰 Current Plan Details:", currentPlan);
+
+    const amount = currentPlan?.amount;
+    console.log("💵 Plan Amount:", amount);
 
     driver.purchasedPlans.push({ paymentId, status, plan: subscriptionPlan, amount });
     await driver.save();
+
+    console.log("✅ Driver updated with new purchased plan");
 
     res.json({
       success: true,
@@ -209,10 +232,11 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
       purchasedPlans: driver.purchasedPlans
     });
   } catch (error) {
-    console.error("Add purchased plan error:", error);
+    console.error("❌ Add purchased plan error:", error);
     res.status(500).json({ success: false, message: "Failed to add purchased plan" });
   }
 });
+
 
 router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
   try {
