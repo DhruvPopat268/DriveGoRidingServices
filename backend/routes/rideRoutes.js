@@ -1237,6 +1237,99 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
       }
 
+      // 🔹 Process cancellation charges for driver
+      const driver = await Driver.findById(driverId);
+      if (driver) {
+        // Get cancellation charges for the ride
+        const { categoryName, categoryId, subcategoryId } = currentRide.rideInfo;
+        const categoryNameLower = categoryName.toLowerCase();
+        let cancellationDetails = null;
+
+        try {
+          if (categoryNameLower === 'driver') {
+            cancellationDetails = await driverRideCost.findOne({
+              category: categoryId,
+              subcategory: subcategoryId
+            }).select('driverCancellationCharges');
+          } else if (categoryNameLower === 'cab') {
+            cancellationDetails = await cabRideCost.findOne({
+              category: categoryId,
+              subcategory: subcategoryId
+            }).select('driverCancellationCharges');
+          } else if (categoryNameLower === 'parcel') {
+            cancellationDetails = await parcelRideCost.findOne({
+              category: categoryId,
+              subcategory: subcategoryId
+            }).select('driverCancellationCharges');
+          }
+
+          const cancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
+
+          if (cancellationCharges > 0) {
+            // Check if driver has available cancellation credits
+            if (driver.cancellationRideCredits > 0) {
+              // Use one credit
+              driver.cancellationRideCredits -= 1;
+              await driver.save();
+              console.log(`✅ Used cancellation credit. Remaining credits: ${driver.cancellationRideCredits}`);
+            } else {
+              // No credits left, check wallet and deduct
+              let wallet = await driverWallet.findOne({ driverId });
+              
+              if (!wallet) {
+                // Create wallet if not exists
+                wallet = await driverWallet.create({
+                  driverId,
+                  balance: 0,
+                  totalEarnings: 0,
+                  totalWithdrawn: 0,
+                  totalDeductions: 0,
+                  transactions: [],
+                });
+              }
+
+              const currentBalance = wallet.balance;
+
+              if (currentBalance >= cancellationCharges) {
+                // Deduct full cancellation charges from wallet
+                wallet.balance -= cancellationCharges;
+                wallet.totalDeductions += cancellationCharges;
+                wallet.transactions.push({
+                  type: "cancellation_charge",
+                  amount: cancellationCharges,
+                  description: "Cancellation charges for cancelled ride",
+                  status: "completed",
+                });
+                await wallet.save();
+                console.log(`✅ Deducted full cancellation charges: ${cancellationCharges} from wallet`);
+              } else {
+                // Partial deduction from wallet, add remaining to uncleared charges
+                const remainingCharges = cancellationCharges - currentBalance;
+
+                if (currentBalance > 0) {
+                  wallet.totalDeductions += currentBalance;
+                  wallet.balance = 0;
+                  wallet.transactions.push({
+                    type: "cancellation_charge",
+                    amount: currentBalance,
+                    description: "Partial cancellation charges deducted",
+                    status: "completed",
+                  });
+                  await wallet.save();
+                }
+
+                // Add remaining charges to uncleared
+                driver.unclearedCancellationCharges += remainingCharges;
+                await driver.save();
+                console.log(`✅ Deducted ${currentBalance} from wallet, added ${remainingCharges} to uncleared charges`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error processing cancellation charges:', error);
+        }
+      }
+
       return res.status(200).json({ success: true, message: "Full ride cancelled successfully" });
     }
 
@@ -1593,7 +1686,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           driver.unclearedCancellationCharges = 0;
           await driver.save();
 
-          // console.log(`✅ Deducted full uncleared charges: ${unclearedCharges}`);
+          console.log(`✅ Deducted full uncleared charges: ${unclearedCharges}`);
         } else {
           // Partial deduction from wallet
           const remainingCharges = unclearedCharges - currentBalance;
@@ -1615,7 +1708,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           driver.unclearedCancellationCharges = remainingCharges;
           await driver.save();
 
-          // console.log(`✅ Deducted ${currentBalance} from wallet, remaining charges: ${remainingCharges}`);
+          console.log(`✅ Deducted ${currentBalance} from wallet, remaining charges: ${remainingCharges}`);
         }
       }
     } else {

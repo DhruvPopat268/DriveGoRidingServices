@@ -1298,7 +1298,7 @@ router.get("/transactions/pending", DriverAuthMiddleware, async (req, res) => {
     const wallet = await driverWallet.findOne({ driverId });
     if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
 
-    const transactions = wallet.transactions.filter(txn => txn.status === "pending");
+    const transactions = wallet.transactions.filter(txn => txn.status === "pending").sort((a, b) => b.createdAt - a.createdAt);
     res.json({ success: true, balance: wallet.balance, data: transactions });
 
   } catch (error) {
@@ -1316,7 +1316,7 @@ router.get("/transactions/completed", DriverAuthMiddleware, async (req, res) => 
 
 
 
-    const transactions = wallet.transactions.filter(txn => txn.status === "completed");
+    const transactions = wallet.transactions.filter(txn => txn.status === "completed").sort((a, b) => b.createdAt - a.createdAt);
     res.json({ success: true, balance: wallet.balance, data: transactions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -1331,7 +1331,7 @@ router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
     const wallet = await driverWallet.findOne({ driverId });
     if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
 
-    const transactions = wallet.transactions.filter(txn => txn.status === "failed");
+    const transactions = wallet.transactions.filter(txn => txn.status === "failed").sort((a, b) => b.createdAt - a.createdAt);
     res.json({ success: true, balance: wallet.balance, data: transactions });
 
   } catch (error) {
