@@ -793,53 +793,53 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
   }
 });
 
-router.get("/track/check-missing-fields", DriverAuthMiddleware, async (req, res) => {
-  try {
-    const driverId = req.driver.driverId;
-    const driver = await Driver.findById(driverId);
+// router.get("/track/check-missing-fields", DriverAuthMiddleware, async (req, res) => {
+//   try {
+//     const driverId = req.driver.driverId;
+//     const driver = await Driver.findById(driverId);
     
-    if (!driver) {
-      return res.status(404).json({ success: false, message: "Driver not found" });
-    }
+//     if (!driver) {
+//       return res.status(404).json({ success: false, message: "Driver not found" });
+//     }
 
-    const checkMissingFields = (obj, path = "") => {
-      const missing = [];
-      if (!obj) return [path];
+//     const checkMissingFields = (obj, path = "") => {
+//       const missing = [];
+//       if (!obj) return [path];
       
-      Object.entries(obj).forEach(([key, value]) => {
-        const currentPath = path ? `${path}.${key}` : key;
-        if (value === null || value === undefined || value === "") {
-          missing.push(currentPath);
-        } else if (Array.isArray(value) && value.length === 0) {
-          missing.push(currentPath);
-        } else if (typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)) {
-          missing.push(...checkMissingFields(value, currentPath));
-        }
-      });
-      return missing;
-    };
+//       Object.entries(obj).forEach(([key, value]) => {
+//         const currentPath = path ? `${path}.${key}` : key;
+//         if (value === null || value === undefined || value === "") {
+//           missing.push(currentPath);
+//         } else if (Array.isArray(value) && value.length === 0) {
+//           missing.push(currentPath);
+//         } else if (typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)) {
+//           missing.push(...checkMissingFields(value, currentPath));
+//         }
+//       });
+//       return missing;
+//     };
 
-    const missingFields = {
-      personalInformation: checkMissingFields(driver.personalInformation?.toObject(), "personalInformation"),
-      drivingDetails: checkMissingFields(driver.drivingDetails?.toObject(), "drivingDetails"),
-      paymentAndSubscription: checkMissingFields(driver.paymentAndSubscription?.toObject(), "paymentAndSubscription"),
-      languageSkillsAndReferences: checkMissingFields(driver.languageSkillsAndReferences?.toObject(), "languageSkillsAndReferences"),
-      declaration: checkMissingFields(driver.declaration?.toObject(), "declaration")
-    };
+//     const missingFields = {
+//       personalInformation: checkMissingFields(driver.personalInformation?.toObject(), "personalInformation"),
+//       drivingDetails: checkMissingFields(driver.drivingDetails?.toObject(), "drivingDetails"),
+//       paymentAndSubscription: checkMissingFields(driver.paymentAndSubscription?.toObject(), "paymentAndSubscription"),
+//       languageSkillsAndReferences: checkMissingFields(driver.languageSkillsAndReferences?.toObject(), "languageSkillsAndReferences"),
+//       declaration: checkMissingFields(driver.declaration?.toObject(), "declaration")
+//     };
 
-    const { step } = evaluateDriverProgress(driver);
+//     const { step } = evaluateDriverProgress(driver);
 
-    res.json({
-      success: true,
-      currentStep: step,
-      missingFields,
-      totalMissing: Object.values(missingFields).flat().length
-    });
-  } catch (error) {
-    console.error("Check missing fields error:", error);
-    res.status(500).json({ success: false, message: "Failed to check missing fields" });
-  }
-});
+//     res.json({
+//       success: true,
+//       currentStep: step,
+//       missingFields,
+//       totalMissing: Object.values(missingFields).flat().length
+//     });
+//   } catch (error) {
+//     console.error("Check missing fields error:", error);
+//     res.status(500).json({ success: false, message: "Failed to check missing fields" });
+//   }
+// });
 
 // Toggle driver online status
 router.patch("/online-status", DriverAuthMiddleware, async (req, res) => {
@@ -946,7 +946,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   };
 
   try {
-    logTime("START");
+    // logTime("START");
 
     const step = parseInt(req.body.step, 10);
     const mobile = req.driver?.mobile;
@@ -964,7 +964,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       });
     }
 
-    logTime("JSON_PARSE");
+    // logTime("JSON_PARSE");
 
     if (!mobile || !step) {
       return res.status(400).json({ message: "Mobile & step are required" });
@@ -981,20 +981,20 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const field = stepFieldMap[step];
     if (!field) return res.status(400).json({ message: "Invalid step number" });
 
-    logTime("VALIDATION");
+    // logTime("VALIDATION");
 
     // 🚀 CRITICAL OPTIMIZATION: Parallel driver fetch + file upload (all at once)
-    console.log(`📤 Starting parallel operations: DB fetch + ${req.files?.length || 0} file uploads`);
+    // console.log(`📤 Starting parallel operations: DB fetch + ${req.files?.length || 0} file uploads`);
     
     const [driver, uploadResults] = await Promise.all([
       Driver.findOne({ mobile })
-        .select(`${field} status mobile`)
+        .select(step === 5 ? "personalInformation drivingDetails paymentAndSubscription languageSkillsAndReferences declaration status mobile currentPlan" : `${field} status mobile`)
         .lean(),
       req.files?.length ? processAllFiles(req.files) : Promise.resolve([])
     ]);
 
-    logTime("PARALLEL_FETCH_AND_UPLOAD");
-    console.log(`✅ Uploaded ${uploadResults.filter(r => r.success).length}/${uploadResults.length} files`);
+    // logTime("PARALLEL_FETCH_AND_UPLOAD");
+    // console.log(`✅ Uploaded ${uploadResults.filter(r => r.success).length}/${uploadResults.length} files`);
 
     if (!driver) {
       console.error("❌ Driver not found:", mobile);
@@ -1017,7 +1017,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       }
     });
 
-    logTime("FILE_ORGANIZATION");
+    // logTime("FILE_ORGANIZATION");
 
     // Add single file fields to data
     Object.assign(data, singleFiles);
@@ -1035,7 +1035,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     const updates = { [field]: fieldData };
 
-    logTime("DATA_MERGE");
+    // logTime("DATA_MERGE");
 
     // 🚀 OPTIMIZATION: Skip progress calculation on steps 1-4
     let progressResult = null;
@@ -1045,7 +1045,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       progressResult = evaluateDriverProgress(tempDriver);
       console.log(`🔄 New Status: ${progressResult.status}, Next Step: ${progressResult.step}`);
       updates.status = progressResult.status;
-      logTime("PROGRESS_CALCULATION");
+      // logTime("PROGRESS_CALCULATION");
     } else {
       console.log("⏭️  Skipping progress calculation (not final step)");
     }
@@ -1062,23 +1062,23 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       }
     ).lean();
 
-    logTime("DB_UPDATE");
+    // logTime("DB_UPDATE");
 
     const totalTime = Date.now() - startTime;
     
     // 🎯 Performance summary
-    console.log("\n" + "=".repeat(50));
-    console.log("📊 PERFORMANCE SUMMARY");
-    console.log("=".repeat(50));
-    console.log(`Total Time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
-    console.log(`Step: ${step} | Mobile: ${mobile}`);
-    console.log(`Files: ${req.files?.length || 0} uploaded`);
-    console.log("\nBreakdown:");
+    // console.log("\n" + "=".repeat(50));
+    // console.log("📊 PERFORMANCE SUMMARY");
+    // console.log("=".repeat(50));
+    // console.log(`Total Time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
+    // console.log(`Step: ${step} | Mobile: ${mobile}`);
+    // console.log(`Files: ${req.files?.length || 0} uploaded`);
+    // console.log("\nBreakdown:");
     Object.entries(timings).forEach(([label, time]) => {
       const percentage = ((time.elapsed / totalTime) * 100).toFixed(1);
       console.log(`  ${label.padEnd(30)} ${time.elapsed}ms (${percentage}%)`);
     });
-    console.log("=".repeat(50) + "\n");
+    // console.log("=".repeat(50) + "\n");
 
     // 🚀 Response
     const responseStep = progressResult && progressResult.step === 0 ? null : (step < 5 ? step + 1 : 5);

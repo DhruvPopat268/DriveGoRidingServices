@@ -50,6 +50,8 @@ function evaluateDriverProgress(driver) {
 
   const status = step === 0 ? (hasValidPlan ? "Onreview" : "PendingForPayment") : "Pending";
 
+  console.log(`Driver Progress Evaluated from driverStep.js: Step ${step}, Status: ${status}`);
+
   return { step, status };
 }
 
