@@ -1228,9 +1228,9 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         "rideInfo.SelectedDays": 0,
       });
 
-      // Also update driver status to AVAILABLE again
+      // Also update driver status to WAITING again
       if (driverId) {
-        await Driver.findByIdAndUpdate(driverId, { rideStatus: "AVAILABLE" });
+        await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
       }
 
       return res.status(200).json({ success: true, message: "Full ride cancelled successfully" });
