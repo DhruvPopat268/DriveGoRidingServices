@@ -1243,7 +1243,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       const driver = await Driver.findById(driverId);
       if (driver) {
         // Get cancellation charges for the ride
-        const { categoryName, categoryId, subcategoryId, selectedCategoryId } = currentRide.rideInfo;
+        const { categoryName, categoryId, subcategoryId, selectedCategoryId , subcategoryName } = currentRide.rideInfo;
         const categoryNameLower = categoryName.toLowerCase();
         let cancellationDetails = null;
 
@@ -1269,7 +1269,12 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             }).select('driverCancellationCharges');
           }
 
-          const cancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
+          const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
+          // For weekly/monthly rides, multiply by number of selected dates
+          const cancellationCharges = (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) 
+            ? baseCancellationCharges * originalDates.length 
+            : baseCancellationCharges;
+          console.log('🚗 Driver cancellation charges:', cancellationCharges);
 
           if (cancellationCharges > 0) {
             // Check if driver has available cancellation credits
@@ -1399,8 +1404,11 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         }
 
         const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
-        // For partial cancellation, multiply by number of cancelled days
-        const cancellationCharges = baseCancellationCharges * cancelDays;
+        console.log('🚗 Driver cancellation charges (base):', baseCancellationCharges);
+        // For partial cancellation, multiply by number of cancelled days for weekly/monthly rides
+        const cancellationCharges = (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) 
+          ? baseCancellationCharges * selectedDates.length 
+          : baseCancellationCharges;
 
         if (cancellationCharges > 0) {
           // Check if driver has available cancellation credits
