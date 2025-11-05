@@ -92,7 +92,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get driver profile data (name, isOnline, passportPhoto, completedRides)
+// Get driver profile data (name, isOnline, passportPhoto, completedRides, totalEarnings)
 router.get("/profile", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
@@ -105,13 +105,16 @@ router.get("/profile", DriverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
     
+    const wallet = await driverWallet.findOne({ driverId }).select("totalEarnings").lean();
+    
     res.json({
       success: true,
       data: {
         name: driver.personalInformation?.fullName || null,
         isOnline: driver.isOnline || false,
         passportPhoto: driver.personalInformation?.passportPhoto || null,
-        completedRides: driver.completedRides?.length || 0
+        completedRides: driver.completedRides?.length || 0,
+        totalEarnings: wallet?.totalEarnings || 0
       }
     });
   } catch (error) {
