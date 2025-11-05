@@ -201,7 +201,7 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
               </div>
               <div>
                 <p className="font-semibold">Mobile Number</p>
-                <p>{driver.personalInformation.mobileNumber}</p>
+                <p>{driver.mobile}</p>
               </div>
               <div>
                 <p className="font-semibold">Alternate Number</p>
