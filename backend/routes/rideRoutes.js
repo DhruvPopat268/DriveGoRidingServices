@@ -1198,20 +1198,24 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     NoOfDays = parseInt(NoOfDays);
 
-    // ✅ Validate selectedDates array
-    if (!Array.isArray(selectedDates) || selectedDates.length === 0) {
-      return res.status(400).json({ success: false, message: "selectedDates must be a non-empty array" });
-    }
+    // ✅ Only validate selectedDates for weekly/monthly rides
+    const subcategoryName = currentRide.rideInfo.subcategoryName?.toLowerCase() || '';
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      // ✅ Validate selectedDates array
+      if (!Array.isArray(selectedDates) || selectedDates.length === 0) {
+        return res.status(400).json({ success: false, message: "selectedDates must be a non-empty array" });
+      }
 
-    const originalDates = currentRide.rideInfo.selectedDates || [];
+      const originalDates = currentRide.rideInfo.selectedDates || [];
 
-    // ✅ Check for invalid dates
-    const invalidDates = selectedDates.filter((d) => !originalDates.includes(d));
-    if (invalidDates.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `These dates are not part of this ride: ${invalidDates.join(", ")}`,
-      });
+      // ✅ Check for invalid dates
+      const invalidDates = selectedDates.filter((d) => !originalDates.includes(d));
+      if (invalidDates.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `These dates are not part of this ride: ${invalidDates.join(", ")}`,
+        });
+      }
     }
 
     // ✅ Compute remaining and cancelled dates
