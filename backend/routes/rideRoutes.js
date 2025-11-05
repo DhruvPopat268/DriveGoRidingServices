@@ -1219,9 +1219,9 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     }
 
     // ✅ Compute remaining and cancelled dates
-    const remainingDates = originalDates.filter((d) => !selectedDates.includes(d));
+    const remainingDates = originalDates.filter((d) => !(selectedDates || []).includes(d));
     const remainingNoOfDays = remainingDates.length;
-    const cancelDays = selectedDates.length;
+    const cancelDays = (selectedDates || []).length;
 
     // ✅ Full cancellation
     if (remainingNoOfDays === 0) {
