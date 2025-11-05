@@ -543,7 +543,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     }
 
     // Extract required data from updatedBooking
-    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime } = updatedBooking.rideInfo;
+    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime , selectedCategoryId } = updatedBooking.rideInfo;
     const bookingDriverId = updatedBooking.driverId;
 
     // Check category and fetch cancellation details from appropriate model
@@ -1243,7 +1243,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       const driver = await Driver.findById(driverId);
       if (driver) {
         // Get cancellation charges for the ride
-        const { categoryName, categoryId, subcategoryId } = currentRide.rideInfo;
+        const { categoryName, categoryId, subcategoryId, selectedCategoryId } = currentRide.rideInfo;
         const categoryNameLower = categoryName.toLowerCase();
         let cancellationDetails = null;
 
@@ -1372,7 +1372,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const driver = await Driver.findById(driverId);
     if (driver) {
       // Get cancellation charges for the ride
-      const { categoryName, categoryId, subcategoryId } = currentRide.rideInfo;
+      const { categoryName, categoryId, subcategoryId, selectedCategoryId } = currentRide.rideInfo;
       const categoryNameLower = categoryName.toLowerCase();
       let cancellationDetails = null;
 
@@ -1381,14 +1381,14 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           cancellationDetails = await driverRideCost.findOne({
             category: categoryId,
             subcategory: subcategoryId,
-                      priceCategory: selectedCategoryId
+            priceCategory: selectedCategoryId
 
           }).select('driverCancellationCharges');
         } else if (categoryNameLower === 'cab') {
           cancellationDetails = await cabRideCost.findOne({
             category: categoryId,
             subcategory: subcategoryId,
-                      car: selectedCategoryId
+            car: selectedCategoryId
 
           }).select('driverCancellationCharges');
         } else if (categoryNameLower === 'parcel') {
