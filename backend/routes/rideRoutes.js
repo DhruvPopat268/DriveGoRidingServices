@@ -2100,7 +2100,8 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
     }
 
     // Get cancellation charges for the ride
-    const { categoryName, categoryId, subcategoryId } = ride.rideInfo;
+    const { categoryName, categoryId, subcategoryId , selectedCategoryId } = ride.rideInfo;
+    console.log("Fetching cancellation info for ride:", rideId, { categoryName, categoryId, subcategoryId, selectedCategoryId });
     const categoryNameLower = categoryName.toLowerCase();
     let cancellationDetails = null;
 
@@ -2108,21 +2109,26 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
       if (categoryNameLower === 'driver') {
         cancellationDetails = await driverRideCost.findOne({
           category: categoryId,
-          subcategory: subcategoryId
-        }).select('driverCancellationCharges');
+          subcategory: subcategoryId,
+          priceCategory: selectedCategoryId
+        }).select('driverCancellationCharges _id');
       } else if (categoryNameLower === 'cab') {
         cancellationDetails = await cabRideCost.findOne({
           category: categoryId,
-          subcategory: subcategoryId
-        }).select('driverCancellationCharges');
+          subcategory: subcategoryId,
+          car: selectedCategoryId
+        }).select('driverCancellationCharges _id');
       } else if (categoryNameLower === 'parcel') {
         cancellationDetails = await parcelRideCost.findOne({
           category: categoryId,
-          subcategory: subcategoryId
-        }).select('driverCancellationCharges');
+          subcategory: subcategoryId,
+          priceCategory: selectedCategoryId
+        }).select('driverCancellationCharges _id');
       }
 
       const currentRideCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
+
+      console.log("Fetched cancellation details:", { cancellationDetails });
 
       res.json({
         success: true,
