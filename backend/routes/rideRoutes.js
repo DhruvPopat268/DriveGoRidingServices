@@ -554,12 +554,14 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       if (categoryNameLower === 'driver') {
         cancellationDetails = await driverRideCost.findOne({
           category: categoryId,
-          subcategory: subcategoryId
+          subcategory: subcategoryId,
+          priceCategory: selectedCategoryId
         }).select('cancellationFee cancellationBufferTime');
       } else if (categoryNameLower === 'cab') {
         cancellationDetails = await cabRideCost.findOne({
           category: categoryId,
-          subcategory: subcategoryId
+          subcategory: subcategoryId,
+          car: selectedCategoryId
         }).select('cancellationFee cancellationBufferTime');
       } else if (categoryNameLower === 'parcel') {
         cancellationDetails = await parcelRideCost.findOne({
@@ -1249,12 +1251,16 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           if (categoryNameLower === 'driver') {
             cancellationDetails = await driverRideCost.findOne({
               category: categoryId,
-              subcategory: subcategoryId
+              subcategory: subcategoryId,
+              priceCategory: selectedCategoryId
+
             }).select('driverCancellationCharges');
           } else if (categoryNameLower === 'cab') {
             cancellationDetails = await cabRideCost.findOne({
               category: categoryId,
-              subcategory: subcategoryId
+              subcategory: subcategoryId,
+              car: selectedCategoryId
+
             }).select('driverCancellationCharges');
           } else if (categoryNameLower === 'parcel') {
             cancellationDetails = await parcelRideCost.findOne({
@@ -1275,7 +1281,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             } else {
               // No credits left, check wallet and deduct
               let wallet = await driverWallet.findOne({ driverId });
-              
+
               if (!wallet) {
                 // Create wallet if not exists
                 wallet = await driverWallet.create({
@@ -1374,12 +1380,16 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         if (categoryNameLower === 'driver') {
           cancellationDetails = await driverRideCost.findOne({
             category: categoryId,
-            subcategory: subcategoryId
+            subcategory: subcategoryId,
+                      priceCategory: selectedCategoryId
+
           }).select('driverCancellationCharges');
         } else if (categoryNameLower === 'cab') {
           cancellationDetails = await cabRideCost.findOne({
             category: categoryId,
-            subcategory: subcategoryId
+            subcategory: subcategoryId,
+                      car: selectedCategoryId
+
           }).select('driverCancellationCharges');
         } else if (categoryNameLower === 'parcel') {
           cancellationDetails = await parcelRideCost.findOne({
@@ -1402,7 +1412,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           } else {
             // No credits left, check wallet and deduct
             let wallet = await driverWallet.findOne({ driverId });
-            
+
             if (!wallet) {
               // Create wallet if not exists
               wallet = await driverWallet.create({
@@ -1486,7 +1496,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         transmissionType: currentRide.rideInfo.transmissionType,
         SelectedDays: cancelDays,            // ✅ number of cancelled days
         selectedDates,                       // ✅ cancelled days
-        remainingDates: cancelDays ,                  // ✅ none remain in cancelled record
+        remainingDates: cancelDays,                  // ✅ none remain in cancelled record
         driverCharges: cancelledChargesForNewRide.driverCharges,
         insuranceCharges: cancelledChargesForNewRide.insuranceCharges,
         cancellationCharges: cancelledChargesForNewRide.cancellationCharges,
@@ -1696,7 +1706,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     // console.log("Updated ride on completion:", updatedRide);
 
     // 🔹 Update driver's ride status and add to completedRides
-    await Driver.findByIdAndUpdate(driverId, { 
+    await Driver.findByIdAndUpdate(driverId, {
       rideStatus: "WAITING",
       $push: { completedRides: rideId }
     });
@@ -2100,7 +2110,7 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
     }
 
     // Get cancellation charges for the ride
-    const { categoryName, categoryId, subcategoryId , selectedCategoryId } = ride.rideInfo;
+    const { categoryName, categoryId, subcategoryId, selectedCategoryId } = ride.rideInfo;
     console.log("Fetching cancellation info for ride:", rideId, { categoryName, categoryId, subcategoryId, selectedCategoryId });
     const categoryNameLower = categoryName.toLowerCase();
     let cancellationDetails = null;
