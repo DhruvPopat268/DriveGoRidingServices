@@ -1198,6 +1198,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     NoOfDays = parseInt(NoOfDays);
 
+    const originalDates = currentRide.rideInfo.selectedDates || [];
+
     // ✅ Only validate selectedDates for weekly/monthly rides
     const subcategoryName = currentRide.rideInfo.subcategoryName?.toLowerCase() || '';
     if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
@@ -1205,8 +1207,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       if (!Array.isArray(selectedDates) || selectedDates.length === 0) {
         return res.status(400).json({ success: false, message: "selectedDates must be a non-empty array" });
       }
-
-      const originalDates = currentRide.rideInfo.selectedDates || [];
 
       // ✅ Check for invalid dates
       const invalidDates = selectedDates.filter((d) => !originalDates.includes(d));
