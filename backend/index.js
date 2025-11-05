@@ -153,8 +153,8 @@ io.on('connection', (socket) => {
         const Driver = require('./DriverModel/DriverModel');
         const driver = await Driver.findById(driverId);
 
-        // Only send rides if driver has WAITING status
-        if (driver && driver.rideStatus === 'WAITING') {
+        // Only send rides if driver has WAITING status and is online
+        if (driver && driver.rideStatus === 'WAITING' && driver.isOnline === true) {
           const Ride = require('./models/Ride');
           const availableRides = await Ride.find({ status: 'BOOKED' }).sort({ createdAt: -1 });
 

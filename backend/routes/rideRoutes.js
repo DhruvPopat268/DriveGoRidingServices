@@ -307,9 +307,10 @@ router.post("/book", authMiddleware, async (req, res) => {
         status: 'BOOKED'
       };
 
-      // Get drivers with rideStatus 'WAITING' and matching categories
+      // Get drivers with rideStatus 'WAITING', isOnline: true, and matching categories
       const waitingDrivers = await Driver.find({
         rideStatus: 'WAITING',
+        isOnline: true,
         'personalInformation.category': categoryId,
         'personalInformation.subCategory': { $in: [subcategoryId] },
         $or: [
@@ -1244,6 +1245,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       if (driver) {
         // Get cancellation charges for the ride
         const { categoryName, categoryId, subcategoryId, selectedCategoryId , subcategoryName } = currentRide.rideInfo;
+        console.log('subcategoryName',subcategoryName);
         const categoryNameLower = categoryName.toLowerCase();
         let cancellationDetails = null;
 
@@ -1272,7 +1274,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
           // For weekly/monthly rides, multiply by number of selected dates
           const cancellationCharges = (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) 
-            ? baseCancellationCharges * originalDates.length 
+            ? baseCancellationCharges * selectedDates.length 
             : baseCancellationCharges;
           console.log('🚗 Driver cancellation charges:', cancellationCharges);
 
@@ -1377,7 +1379,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const driver = await Driver.findById(driverId);
     if (driver) {
       // Get cancellation charges for the ride
-      const { categoryName, categoryId, subcategoryId, selectedCategoryId } = currentRide.rideInfo;
+      const { categoryName, categoryId, subcategoryId, selectedCategoryId , subcategoryName } = currentRide.rideInfo;
       const categoryNameLower = categoryName.toLowerCase();
       let cancellationDetails = null;
 
