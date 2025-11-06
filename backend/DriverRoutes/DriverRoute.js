@@ -1268,7 +1268,10 @@ router.post("/admin/withdrawal/reject", async (req, res) => {
       const txn = wallet.transactions.find(
         (t) => t.withdrawalRequestId?.toString() === requestId
       );
-      if (txn) txn.status = "failed";
+      if (txn) {
+        txn.status = "failed";
+        txn.adminRemarks = adminRemarks || "";
+      }
 
       // Add a new transaction for the refunded amount
       wallet.transactions.push({
@@ -1276,6 +1279,7 @@ router.post("/admin/withdrawal/reject", async (req, res) => {
         amount: withdrawal.amount,
         status: "completed",
         description: "Refund for rejected withdrawal",
+        adminRemarks: adminRemarks || "",
       });
 
       await wallet.save();

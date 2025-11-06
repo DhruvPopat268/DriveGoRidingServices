@@ -33,6 +33,9 @@ const transactionSchema = new mongoose.Schema(
     description: {
       type: String,
     },
+    adminRemarks: {
+      type: String,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
