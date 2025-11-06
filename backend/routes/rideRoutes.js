@@ -1309,7 +1309,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           transmissionType: currentRide.rideInfo.transmissionType,
           SelectedDays: currentRide.rideInfo.SelectedDays,
           selectedDates: currentRide.rideInfo.selectedDates,
-          remainingDates: [],
+          remainingDates: currentRide.rideInfo.selectedDates,
           driverCharges: currentRide.rideInfo.driverCharges,
           insuranceCharges: currentRide.rideInfo.insuranceCharges,
           cancellationCharges: currentRide.rideInfo.cancellationCharges,
@@ -1651,7 +1651,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         transmissionType: currentRide.rideInfo.transmissionType,
         SelectedDays: cancelDays,            // ✅ number of cancelled days
         selectedDates,                       // ✅ cancelled days
-        remainingDates: cancelDays,                  // ✅ none remain in cancelled record
+        remainingDates: selectedDates,                  // ✅ none remain in cancelled record
         driverCharges: cancelledChargesForNewRide.driverCharges,
         insuranceCharges: cancelledChargesForNewRide.insuranceCharges,
         cancellationCharges: cancelledChargesForNewRide.cancellationCharges,
