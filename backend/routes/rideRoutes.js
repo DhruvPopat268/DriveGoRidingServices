@@ -544,7 +544,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     }
 
     // Extract required data from updatedBooking
-    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime , selectedCategoryId } = updatedBooking.rideInfo;
+    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime, selectedCategoryId } = updatedBooking.rideInfo;
     const bookingDriverId = updatedBooking.driverId;
 
     // Check category and fetch cancellation details from appropriate model
@@ -1244,8 +1244,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       const driver = await Driver.findById(driverId);
       if (driver) {
         // Get cancellation charges for the ride
-        const { categoryName, categoryId, subcategoryId, selectedCategoryId , subcategoryName } = currentRide.rideInfo;
-        console.log('subcategoryName',subcategoryName);
+        const { categoryName, categoryId, subcategoryId, selectedCategoryId, subcategoryName } = currentRide.rideInfo;
+        console.log('subcategoryName', subcategoryName);
         const categoryNameLower = categoryName.toLowerCase();
         let cancellationDetails = null;
 
@@ -1273,9 +1273,12 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
           const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
           // For weekly/monthly rides, multiply by number of selected dates
-          const cancellationCharges = (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) 
-            ? baseCancellationCharges * selectedDates.length 
+          console.log('full cancellation', subcategoryName, selectedDates.length);
+          const subcategoryNameLower = subcategoryName.toLowerCase();
+          const cancellationCharges = (subcategoryNameLower.includes('weekly') || subcategoryNameLower.includes('monthly'))
+            ? baseCancellationCharges * selectedDates.length
             : baseCancellationCharges;
+          console.log('🚗 Driver cancellation charges (base):', baseCancellationCharges);
           console.log('🚗 Driver cancellation charges:', cancellationCharges);
 
           if (cancellationCharges > 0) {
@@ -1379,7 +1382,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const driver = await Driver.findById(driverId);
     if (driver) {
       // Get cancellation charges for the ride
-      const { categoryName, categoryId, subcategoryId, selectedCategoryId , subcategoryName } = currentRide.rideInfo;
+      const { categoryName, categoryId, subcategoryId, selectedCategoryId, subcategoryName } = currentRide.rideInfo;
       const categoryNameLower = categoryName.toLowerCase();
       let cancellationDetails = null;
 
@@ -1408,8 +1411,12 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
         console.log('🚗 Driver cancellation charges (base):', baseCancellationCharges);
         // For partial cancellation, multiply by number of cancelled days for weekly/monthly rides
-        const cancellationCharges = (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) 
-          ? baseCancellationCharges * selectedDates.length 
+        console.log(' partial cancellation', subcategoryName, selectedDates.length);
+
+        const subcategoryNameLower = subcategoryName.toLowerCase();
+
+        const cancellationCharges = (subcategoryNameLower.includes('weekly') || subcategoryNameLower.includes('monthly'))
+          ? baseCancellationCharges * selectedDates.length
           : baseCancellationCharges;
 
         if (cancellationCharges > 0) {

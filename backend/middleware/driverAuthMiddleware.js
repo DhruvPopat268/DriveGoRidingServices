@@ -53,7 +53,7 @@ const authMiddleware = async (req, res, next) => {
 
     // ✅ Check current plan and expiry
     const currentPlan = driverFromDB.currentPlan || {};
-    console.log("Current Plan:", currentPlan);
+    // console.log("Current Plan:", currentPlan);
 
     // if (!currentPlan.expiryDate) {
     //   // console.log("❌ Driver has no expiryDate set in currentPlan");
