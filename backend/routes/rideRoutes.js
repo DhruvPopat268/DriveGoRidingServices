@@ -1280,6 +1280,54 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         await Driver.findByIdAndUpdate(driverId, { rideStatus: "WAITING" });
       }
 
+      // ✅ Create new cancelled ride document for full cancellation
+      const newCancelledRide = new Ride({
+        riderId: currentRide.riderId,
+        riderInfo: {
+          riderName: currentRide.riderInfo.riderName,
+          riderMobile: currentRide.riderInfo.riderMobile,
+        },
+        rideInfo: {
+          categoryId: currentRide.rideInfo.categoryId,
+          subcategoryId: currentRide.rideInfo.subcategoryId,
+          subSubcategoryId: currentRide.rideInfo.subSubcategoryId,
+          categoryName: currentRide.rideInfo.categoryName,
+          subcategoryName: currentRide.rideInfo.subcategoryName,
+          subSubcategoryName: currentRide.rideInfo.subSubcategoryName,
+          carType: currentRide.rideInfo.carType,
+          fromLocation: currentRide.rideInfo.fromLocation,
+          toLocation: currentRide.rideInfo.toLocation,
+          senderDetails: currentRide.rideInfo.senderDetails,
+          receiverDetails: currentRide.rideInfo.receiverDetails,
+          includeInsurance: currentRide.rideInfo.includeInsurance,
+          notes: currentRide.rideInfo.notes,
+          selectedCategoryId: currentRide.rideInfo.selectedCategoryId,
+          selectedCategory: currentRide.rideInfo.selectedCategory,
+          selectedDate: currentRide.rideInfo.selectedDate,
+          selectedTime: currentRide.rideInfo.selectedTime,
+          selectedUsage: currentRide.rideInfo.selectedUsage,
+          transmissionType: currentRide.rideInfo.transmissionType,
+          SelectedDays: currentRide.rideInfo.SelectedDays,
+          selectedDates: currentRide.rideInfo.selectedDates,
+          remainingDates: [],
+          driverCharges: currentRide.rideInfo.driverCharges,
+          insuranceCharges: currentRide.rideInfo.insuranceCharges,
+          cancellationCharges: currentRide.rideInfo.cancellationCharges,
+          discount: currentRide.rideInfo.discount,
+          gstCharges: currentRide.rideInfo.gstCharges,
+          subtotal: currentRide.rideInfo.subtotal,
+          adminCharges: currentRide.rideInfo.adminCharges,
+        },
+        referralEarning: currentRide.referralEarning || false,
+        referralBalance: currentRide.referralBalance || 0,
+        totalPayable: currentRide.totalPayable,
+        paymentType: currentRide.paymentType,
+        status: "CANCELLED",
+        cancellationReason: reason || "Cancelled by driver",
+      });
+
+      await newCancelledRide.save();
+
       // 🔹 Process cancellation charges for driver
       const driver = await Driver.findById(driverId);
       if (driver) {
@@ -1386,7 +1434,11 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         }
       }
 
-      return res.status(200).json({ success: true, message: "Full ride cancelled successfully" });
+      return res.status(200).json({ 
+        success: true, 
+        message: "Full ride cancelled successfully",
+        cancelledRideId: newCancelledRide._id
+      });
     }
 
     // ✅ Partial cancellation case - Calculate proportional charges
