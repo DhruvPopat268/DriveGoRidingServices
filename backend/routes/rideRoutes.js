@@ -1022,13 +1022,33 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
+    // ✅ Get current date and validate ride day
+    const currentDate = new Date().toISOString().split('T')[0];
+    const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
+    
+    // ✅ Date validation
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      const remainingDates = ride.rideInfo.remainingDates || [];
+      if (!remainingDates.includes(currentDate)) {
+        return res.status(400).json({
+          success: false,
+          message: "You can only update status to REACHED on scheduled ride days"
+        });
+      }
+    } else {
+      const selectedDate = new Date(ride.rideInfo.selectedDate).toISOString().split('T')[0];
+      if (selectedDate !== currentDate) {
+        return res.status(400).json({
+          success: false,
+          message: "You can only update status to REACHED on the scheduled ride date"
+        });
+      }
+    }
+
     // ✅ Get current time in HH:MM:SS format
     const driverReachTime = new Date().toLocaleTimeString("en-GB", {
       timeZone: "Asia/Kolkata",
     });
-    const currentDate = new Date().toISOString().split('T')[0];
-
-    const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
     let updateData = {
       status: "REACHED",
       driverId: driverId,
@@ -1110,18 +1130,38 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    // ✅ Get current time in HH:MM:SS format
-    const rideStartTime = new Date().toLocaleTimeString("en-GB", {
-      timeZone: "Asia/Kolkata",
-    });
+    // ✅ Get current date and validate ride day
     const currentDate = new Date().toISOString().split('T')[0];
+    const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
+    
+    // ✅ Date validation
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      const remainingDates = ride.rideInfo.remainingDates || [];
+      if (!remainingDates.includes(currentDate)) {
+        return res.status(400).json({
+          success: false,
+          message: "You can only update status to ONGOING on scheduled ride days"
+        });
+      }
+    } else {
+      const selectedDate = new Date(ride.rideInfo.selectedDate).toISOString().split('T')[0];
+      if (selectedDate !== currentDate) {
+        return res.status(400).json({
+          success: false,
+          message: "You can only update status to ONGOING on the scheduled ride date"
+        });
+      }
+    }
 
     const driverInfo = await Driver.findById(driverId);
     if (!driverInfo) {
       return res.status(404).json({ message: "Driver not found" });
     }
 
-    const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
+    // ✅ Get current time in HH:MM:SS format
+    const rideStartTime = new Date().toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Kolkata",
+    });
     let updateData = {
       status: "ONGOING",
     };
@@ -1620,6 +1660,34 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    // ✅ Get current date and validate ride day
+    const currentDate = new Date().toISOString().split('T')[0];
+    const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
+    
+    // ✅ Date validation
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      const remainingDates = ride.rideInfo.remainingDates || [];
+      if (!remainingDates.includes(currentDate)) {
+        return res.status(400).json({
+          success: false,
+          message: "You can only extend ride on scheduled ride days"
+        });
+      }
+    } else {
+      const selectedDate = new Date(ride.rideInfo.selectedDate).toISOString().split('T')[0];
+      if (selectedDate !== currentDate) {
+        return res.status(400).json({
+          success: false,
+          message: "You can only extend ride on the scheduled ride date"
+        });
+      }
+    }
+
     const driverInfo = await Driver.findById(driverId);
     if (!driverInfo) {
       return res.status(404).json({ message: "Driver not found" });
@@ -1688,19 +1756,34 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    // Validate selectedDates and completedDates if both exist
-    const selectedDates = currentRide.rideInfo.selectedDates || [];
-    const completedDates = currentRide.rideInfo.completedDates || [];
+    // ✅ Date validation
+    const currentDate = new Date().toISOString().split('T')[0];
+    const subcategoryName = currentRide.rideInfo.subcategoryName?.toLowerCase() || '';
+    
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      // Validate selectedDates and completedDates for weekly/monthly rides
+      const selectedDates = currentRide.rideInfo.selectedDates || [];
+      const completedDates = currentRide.rideInfo.completedDates || [];
 
-    if (selectedDates.length > 0 && completedDates.length > 0) {
-      const sortedSelectedDates = [...selectedDates].sort();
-      const sortedCompletedDates = [...completedDates].sort();
+      if (selectedDates.length > 0 && completedDates.length > 0) {
+        const sortedSelectedDates = [...selectedDates].sort();
+        const sortedCompletedDates = [...completedDates].sort();
 
-      if (JSON.stringify(sortedSelectedDates) !== JSON.stringify(sortedCompletedDates)) {
+        if (JSON.stringify(sortedSelectedDates) !== JSON.stringify(sortedCompletedDates)) {
+          return res.status(400).json({
+            message: "Cannot complete ride. Selected dates and completed dates must match.",
+            selectedDates: sortedSelectedDates,
+            completedDates: sortedCompletedDates
+          });
+        }
+      }
+    } else {
+      // Validate current date for non-weekly/monthly rides
+      const selectedDate = new Date(currentRide.rideInfo.selectedDate).toISOString().split('T')[0];
+      if (selectedDate !== currentDate) {
         return res.status(400).json({
-          message: "Cannot complete ride. Selected dates and completed dates must match.",
-          selectedDates: sortedSelectedDates,
-          completedDates: sortedCompletedDates
+          success: false,
+          message: "You can only complete ride on the scheduled ride date"
         });
       }
     }
