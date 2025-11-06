@@ -1281,6 +1281,13 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       }
 
       // ✅ Create new cancelled ride document for full cancellation
+      const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
+      const newSelectedDate = isWeeklyMonthly 
+        ? (currentRide.rideInfo.selectedDates && currentRide.rideInfo.selectedDates.length > 0 
+           ? currentRide.rideInfo.selectedDates[0] 
+           : currentRide.rideInfo.selectedDate)
+        : currentRide.rideInfo.selectedDate;
+
       const newCancelledRide = new Ride({
         riderId: currentRide.riderId,
         riderInfo: {
@@ -1303,7 +1310,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           notes: currentRide.rideInfo.notes,
           selectedCategoryId: currentRide.rideInfo.selectedCategoryId,
           selectedCategory: currentRide.rideInfo.selectedCategory,
-          selectedDate: currentRide.rideInfo.selectedDate,
+          selectedDate: newSelectedDate,
           selectedTime: currentRide.rideInfo.selectedTime,
           selectedUsage: currentRide.rideInfo.selectedUsage,
           transmissionType: currentRide.rideInfo.transmissionType,
@@ -1333,6 +1340,14 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       const onlineDrivers = req.app.get('onlineDrivers');
 
       if (io && onlineDrivers) {
+        // Determine selectedDate based on ride type for full cancellation
+        const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
+        const socketSelectedDate = isWeeklyMonthly 
+          ? (currentRide.rideInfo.selectedDates && currentRide.rideInfo.selectedDates.length > 0 
+             ? currentRide.rideInfo.selectedDates[0] 
+             : currentRide.rideInfo.selectedDate)
+          : currentRide.rideInfo.selectedDate;
+
         const rideData = {
           rideId: newCancelledRide._id,
           categoryName: currentRide.rideInfo.categoryName,
@@ -1343,7 +1358,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           selectedUsage: currentRide.rideInfo.selectedUsage,
           fromLocation: currentRide.rideInfo.fromLocation,
           toLocation: currentRide.rideInfo.toLocation,
-          selectedDate: currentRide.rideInfo.selectedDate,
+          selectedDate: socketSelectedDate,
           selectedTime: currentRide.rideInfo.selectedTime,
           totalPayable: currentRide.totalPayable,
           status: 'BOOKED'
@@ -1623,6 +1638,11 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     }
 
     // ✅ Create new ride document for cancelled dates
+    const partialIsWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
+    const partialNewSelectedDate = partialIsWeeklyMonthly 
+      ? (selectedDates && selectedDates.length > 0 ? selectedDates[0] : currentRide.rideInfo.selectedDate)
+      : currentRide.rideInfo.selectedDate;
+
     const newCancelledRide = new Ride({
       riderId: currentRide.riderId,
       riderInfo: {
@@ -1645,7 +1665,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         notes: currentRide.rideInfo.notes,
         selectedCategoryId: currentRide.rideInfo.selectedCategoryId,
         selectedCategory: currentRide.rideInfo.selectedCategory,
-        selectedDate: currentRide.rideInfo.selectedDate,
+        selectedDate: partialNewSelectedDate,
         selectedTime: currentRide.rideInfo.selectedTime,
         selectedUsage: currentRide.rideInfo.selectedUsage,
         transmissionType: currentRide.rideInfo.transmissionType,
@@ -1675,6 +1695,12 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const onlineDrivers = req.app.get('onlineDrivers');
 
     if (io && onlineDrivers) {
+      // Determine selectedDate based on ride type
+      const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
+      const socketSelectedDate = isWeeklyMonthly 
+        ? (selectedDates && selectedDates.length > 0 ? selectedDates[0] : currentRide.rideInfo.selectedDate)
+        : currentRide.rideInfo.selectedDate;
+
       const rideData = {
         rideId: newCancelledRide._id,
         categoryName: currentRide.rideInfo.categoryName,
@@ -1685,7 +1711,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         selectedUsage: currentRide.rideInfo.selectedUsage,
         fromLocation: currentRide.rideInfo.fromLocation,
         toLocation: currentRide.rideInfo.toLocation,
-        selectedDate: currentRide.rideInfo.selectedDate,
+        selectedDate: socketSelectedDate,
         selectedTime: currentRide.rideInfo.selectedTime,
         totalPayable: cancelledChargesForNewRide.totalPayable,
         status: 'BOOKED'
