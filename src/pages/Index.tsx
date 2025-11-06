@@ -58,6 +58,7 @@ import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/Univer
 import FileUploadTest from "@/components/admin/pages/FileUploadTest";
 import { AllDriversCreditsPage } from "@/components/admin/pages/AllDriversCreditsPage";
 import { ManageDriverCreditsPage } from "@/components/admin/pages/ManageDriverCreditsPage";
+import MinWithdrawBalancePage from "@/components/admin/pages/MinWithdrawBalancePage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -319,6 +320,8 @@ const Index = () => {
         return <AllDriversCreditsPage />;
       case "manage-driver-credits":
         return <ManageDriverCreditsPage />;
+      case "min-withdraw-balance":
+        return <MinWithdrawBalancePage />;
       case "file-upload-test":
         return <FileUploadTest />;
       case "category-assignment":

@@ -15,6 +15,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 const DriverSubscriptionPlan = require('../DriverModel/SubscriptionPlan')
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
+const MinHoldBalance = require("../models/MinWithdrawBalance");
 const adminAuthMiddleware = require("../middleware/authMiddleware");
 const CancellationCredit = require("../models/CancellationCredit");
 const axios = require("axios");
@@ -757,124 +758,6 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-// dummy otp generation
-// router.post("/send-otp", async (req, res) => {
-//   try {
-//     const { mobile } = req.body;
-//     if (!mobile) {
-//       return res.status(400).json({ message: "Mobile number is required" });
-//     }
-
-//     // 🔒 Always fixed OTP for testing
-//     const otp = "123456";
-//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
-
-//     // Ensure Driver exists
-//     let driver = await Driver.findOne({ mobile });
-//     if (!driver) {
-//       driver = new Driver({ mobile });
-//       await driver.save();
-//     }
-
-//     // Save OTP session
-//     const otpSession = new DriverOtpSession({
-//       driver: driver._id,
-//       mobile,
-//       otp,
-//       otpExpiresAt
-//     });
-//     await otpSession.save();
-
-//     res.json({
-//       success: true,
-//       message: "OTP generated successfully",
-//       otp // 🔥 Return OTP in response for testing
-//     });
-//   } catch (error) {
-//     console.error("Send OTP error:", error.message);
-//     res.status(500).json({ success: false, message: "Failed to generate OTP" });
-//   }
-// });
-
-// router.post("/verify-otp", async (req, res) => {
-//   try {
-//     const { mobile, otp } = req.body;
-//     if (!mobile || !otp) {
-//       return res.status(400).json({ message: "Mobile & OTP required" });
-//     }
-
-//     // Find latest OTP session
-//     const otpSession = await DriverOtpSession.findOne({ mobile, otp }).sort({ createdAt: -1 });
-//     if (!otpSession) {
-//       return res.status(400).json({ message: "Invalid OTP" });
-//     }
-
-//     // Check expiry
-//     if (new Date() > otpSession.otpExpiresAt) {
-//       return res.status(400).json({ message: "OTP expired" });
-//     }
-
-//     otpSession.isVerified = true;
-//     await otpSession.save();
-
-//     const driver = await Driver.findOne({ mobile });
-//     const driverId = driver._id.toString()
-
-//     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
-
-//     // Generate JWT
-//     const token = jwt.sign(
-//       { driverId: driver._id, mobile: driver.mobile },
-//       process.env.JWT_SECRET_DRIVER,
-//       { expiresIn: "7d" }
-//     );
-
-//     await createSession(mobile, token);
-
-//     // Evaluate profile progress
-//     const { step, status: progressStatus } = evaluateDriverProgress(driver);
-
-//     // Update only if still pending or payment pending
-//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
-//       driver.status = progressStatus;
-//       await driver.save();
-//     }
-
-//     // ✅ Ensure wallet exists (create empty if missing)
-//     let wallet = await driverWallet.findOne({ driverId });
-//     if (!wallet) {
-//       await driverWallet.create({
-//         driverId,
-//         balance: 0,
-//         totalEarnings: 0,
-//         totalWithdrawn: 0,
-//         totalDeductions: 0,
-//         transactions: [],
-//       });
-//       // console.log(`✅ Empty wallet created for driver: ${driverId}`);
-//     }
-
-//     // Prepare response
-//     const response = {
-//       success: true,
-//       driverId,
-//       token,
-//       isNew,
-//       status: driver.status
-//     };
-
-//     // ✅ Add step ONLY if status is Pending or PendingForPayment
-//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
-//       response.step = step;
-//     }
-
-//     res.json(response);
-//   } catch (error) {
-//     console.error("Verify OTP error:", error);
-//     res.status(500).json({ success: false, message: "OTP verification failed" });
-//   }
-// });
-
 router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) => {
   try {
     const driverId = req.driver.driverId;
@@ -920,54 +803,6 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
     res.status(500).json({ success: false, message: "Failed to get driver details" });
   }
 });
-
-// router.get("/track/check-missing-fields", DriverAuthMiddleware, async (req, res) => {
-//   try {
-//     const driverId = req.driver.driverId;
-//     const driver = await Driver.findById(driverId);
-    
-//     if (!driver) {
-//       return res.status(404).json({ success: false, message: "Driver not found" });
-//     }
-
-//     const checkMissingFields = (obj, path = "") => {
-//       const missing = [];
-//       if (!obj) return [path];
-      
-//       Object.entries(obj).forEach(([key, value]) => {
-//         const currentPath = path ? `${path}.${key}` : key;
-//         if (value === null || value === undefined || value === "") {
-//           missing.push(currentPath);
-//         } else if (Array.isArray(value) && value.length === 0) {
-//           missing.push(currentPath);
-//         } else if (typeof value === "object" && !(value instanceof Date) && !Array.isArray(value)) {
-//           missing.push(...checkMissingFields(value, currentPath));
-//         }
-//       });
-//       return missing;
-//     };
-
-//     const missingFields = {
-//       personalInformation: checkMissingFields(driver.personalInformation?.toObject(), "personalInformation"),
-//       drivingDetails: checkMissingFields(driver.drivingDetails?.toObject(), "drivingDetails"),
-//       paymentAndSubscription: checkMissingFields(driver.paymentAndSubscription?.toObject(), "paymentAndSubscription"),
-//       languageSkillsAndReferences: checkMissingFields(driver.languageSkillsAndReferences?.toObject(), "languageSkillsAndReferences"),
-//       declaration: checkMissingFields(driver.declaration?.toObject(), "declaration")
-//     };
-
-//     const { step } = evaluateDriverProgress(driver);
-
-//     res.json({
-//       success: true,
-//       currentStep: step,
-//       missingFields,
-//       totalMissing: Object.values(missingFields).flat().length
-//     });
-//   } catch (error) {
-//     console.error("Check missing fields error:", error);
-//     res.status(500).json({ success: false, message: "Failed to check missing fields" });
-//   }
-// });
 
 // Toggle driver online status
 router.patch("/online-status", DriverAuthMiddleware, async (req, res) => {
@@ -1267,6 +1102,24 @@ router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) =
       return res.status(404).json({ message: "Wallet not found" });
     }
 
+    // Check minimum hold balance and withdraw amount requirements
+    const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
+    const minHoldBalance = config?.minHoldBalance || 0;
+    const minWithdrawAmount = config?.minWithdrawAmount || 0;
+    const availableBalance = wallet.balance - minHoldBalance;
+
+    if (amount < minWithdrawAmount) {
+      return res.status(400).json({ 
+        message: `Minimum withdrawal amount is ₹${minWithdrawAmount}` 
+      });
+    }
+
+    if (availableBalance < amount) {
+      return res.status(400).json({ 
+        message: `Insufficient withdrawable balance. Available: ₹${availableBalance}, Hold balance: ₹${minHoldBalance}` 
+      });
+    }
+
     if (wallet.balance < amount) {
       return res.status(400).json({ message: "Insufficient wallet balance" });
     }
@@ -1304,7 +1157,6 @@ router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) =
       description: "Withdrawal requested by driver",
     });
     await wallet.save();
-
 
     res.status(200).json({
       success: true,
@@ -1387,45 +1239,106 @@ router.post("/admin/withdrawal/reject", async (req, res) => {
     // Refund wallet
     const wallet = await driverWallet.findOne({ driverId: withdrawal.driverId });
     if (wallet) {
-      wallet.balance += withdrawal.amount; // refund
+      wallet.balance += withdrawal.amount;
 
-      // Update original withdrawal transaction as failed
-      const txn = wallet.transactions.find(
+      // Update the corresponding transaction
+      const txnIndex = wallet.transactions.findIndex(
         (t) => t.withdrawalRequestId?.toString() === requestId
       );
-      if (txn) {
-        txn.status = "failed";
-        txn.adminRemarks = adminRemarks || "";
+      if (txnIndex !== -1) {
+        wallet.transactions[txnIndex].status = "rejected";
       }
-
-      // Add a new transaction for the refunded amount
-      wallet.transactions.push({
-        type: "refunded",
-        amount: withdrawal.amount,
-        status: "completed",
-        description: "Refund for rejected withdrawal",
-        adminRemarks: adminRemarks || "",
-      });
-
       await wallet.save();
     }
 
-    // Update withdrawal request status
+    // Update withdrawal request
     withdrawal.status = "rejected";
-    withdrawal.adminRemarks = adminRemarks || "";
+    withdrawal.adminRemarks = adminRemarks || "Rejected by admin";
     await withdrawal.save();
 
-    res.json({ success: true, message: "Withdrawal rejected and refunded", withdrawal });
+    res.json({
+      success: true,
+      message: "Withdrawal request rejected and amount refunded",
+      withdrawal,
+    });
   } catch (error) {
     console.error("Reject withdrawal error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
 
+// Get all minimum hold balance entries
+router.get("/admin/min-withdraw-balance/all", async (req, res) => {
+  try {
+    const entries = await MinHoldBalance.find().sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      data: entries
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Create new minimum hold balance entry
+router.post("/admin/min-withdraw-balance", async (req, res) => {
+  try {
+    const { minHoldBalance, minWithdrawAmount } = req.body;
+
+    if (minHoldBalance < 0 || minWithdrawAmount < 0) {
+      return res.status(400).json({ message: "Values cannot be negative" });
+    }
+
+    // Create new config (latest entry becomes active)
+    const newConfig = await MinHoldBalance.create({
+      minHoldBalance: minHoldBalance || 0,
+      minWithdrawAmount: minWithdrawAmount || 0
+    });
+
+    res.json({
+      success: true,
+      message: "New hold balance configuration created successfully",
+      data: newConfig
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get driver wallet info with minimum balance
+router.get("/driver/wallet-info", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+    
+    const wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) {
+      return res.status(404).json({ message: "Wallet not found" });
+    }
+
+    const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
+    const minHoldBalance = config?.minHoldBalance || 0;
+    const minWithdrawAmount = config?.minWithdrawAmount || 0;
+    const availableBalance = wallet.balance - minHoldBalance;
+
+    res.json({
+      success: true,
+      data: {
+        totalBalance: wallet.balance,
+        minHoldBalance,
+        minWithdrawAmount,
+        availableBalance: Math.max(0, availableBalance),
+        totalEarnings: wallet.totalEarnings,
+        totalWithdrawn: wallet.totalWithdrawn
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get("/transactions/pending", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
-    // console.log("Driver ID:", driverId);
 
     const wallet = await driverWallet.findOne({ driverId });
     if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
@@ -1438,15 +1351,12 @@ router.get("/transactions/pending", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
-// 2️⃣ Get all COMPLETED transactions
 router.get("/transactions/completed", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
 
     const wallet = await driverWallet.findOne({ driverId });
     if (!wallet) return res.status(200).json({ success: true, balance: 0, data: [] });
-
-
 
     const transactions = wallet.transactions.filter(txn => txn.status === "completed").sort((a, b) => b.createdAt - a.createdAt);
     res.json({ success: true, balance: wallet.balance, data: transactions });
@@ -1455,7 +1365,6 @@ router.get("/transactions/completed", DriverAuthMiddleware, async (req, res) => 
   }
 });
 
-// 3️⃣ Get all FAILED transactions
 router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver?.driverId;
@@ -1471,17 +1380,12 @@ router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Admin >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-// Get all transactions across all drivers (admin)
 router.get("/transactions/all", async (req, res) => {
   try {
-    // Fetch all wallets and populate driver info
     const wallets = await driverWallet.find()
       .populate("driverId", "personalInformation.fullName mobile")
       .sort({ createdAt: -1 });
 
-    // Extract all transactions from all driver wallets
     const allTransactions = wallets.flatMap(wallet =>
       wallet.transactions.map(tx => ({
         ...tx.toObject(),
@@ -1489,7 +1393,6 @@ router.get("/transactions/all", async (req, res) => {
       }))
     );
 
-    // Sort transactions by creation date (latest first)
     allTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({ success: true, data: allTransactions });

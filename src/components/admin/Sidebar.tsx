@@ -117,14 +117,15 @@ const menuItems = [
   { icon: Gift, label: "Refer Earn", key: "referearn" },
   {
     icon: Wallet,
-    label: "Payments Management",
+    label: "Driver Wallet & Payments Management",
     key: "payments-management",
     isDropdown: true,
     subItems: [
       { icon: Clock, label: "Pending Withdrawal Requests", key: "pending-withdrawals" },
       { icon: CheckCircle, label: "Completed Withdrawal Requests", key: "completed-withdrawals" },
       { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rejected-withdrawals" },
-      { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" }
+      { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" },
+      { icon: Wallet, label: "Min Withdrawal Balance", key: "min-withdraw-balance" }
     ]
   },
   {
