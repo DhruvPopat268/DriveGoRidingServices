@@ -59,6 +59,7 @@ import FileUploadTest from "@/components/admin/pages/FileUploadTest";
 import { AllDriversCreditsPage } from "@/components/admin/pages/AllDriversCreditsPage";
 import { ManageDriverCreditsPage } from "@/components/admin/pages/ManageDriverCreditsPage";
 import MinWithdrawBalancePage from "@/components/admin/pages/MinWithdrawBalancePage";
+import { ServiceWiseMinWalletPage } from "@/components/admin/pages/ServiceWiseMinWalletPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -322,6 +323,8 @@ const Index = () => {
         return <ManageDriverCreditsPage />;
       case "min-withdraw-balance":
         return <MinWithdrawBalancePage />;
+      case "service-wallet-balance":
+        return <ServiceWiseMinWalletPage />;
       case "file-upload-test":
         return <FileUploadTest />;
       case "category-assignment":

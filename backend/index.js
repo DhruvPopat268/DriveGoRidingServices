@@ -22,6 +22,7 @@ const carCategoryRoutes = require('./routes/carCategoryRoutes');
 const carRoutes = require('./routes/carRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const CabRideCostRoutes = require('./routes/CabRideCostRoutes');
+const serviceWalletBalanceRoutes = require('./routes/serviceWalletBalanceRoutes');
 
 const riderAuthRoutes = require('./routes/riderAuth_otp_Routes');
 const connectToDb = require('./database/db');
@@ -88,6 +89,7 @@ app.use('/api/cars', carRoutes);
 app.use('/api/upload', uploadRoutes);
 console.log('✅ Test upload routes registered at /api/test-upload');
 app.use('/api/CabRideCosts', CabRideCostRoutes);
+app.use('/api/service-wallet-balances', serviceWalletBalanceRoutes);
 
 const path = require("path");
 

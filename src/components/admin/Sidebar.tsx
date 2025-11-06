@@ -125,7 +125,8 @@ const menuItems = [
       { icon: CheckCircle, label: "Completed Withdrawal Requests", key: "completed-withdrawals" },
       { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rejected-withdrawals" },
       { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" },
-      { icon: Wallet, label: "Min Withdrawal Balance", key: "min-withdraw-balance" }
+      { icon: Wallet, label: "Min Withdrawal Balance", key: "min-withdraw-balance" },
+      { icon: Calculator, label: "Service Wise Min Wallet Balance", key: "service-wallet-balance" }
     ]
   },
   {

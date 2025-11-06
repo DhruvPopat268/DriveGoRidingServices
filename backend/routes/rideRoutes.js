@@ -19,6 +19,7 @@ const { getDriverRideIncludedData, getCabRideIncludedData, getParcelRideIncluded
 const { calculateDriverRideCharges, calculateCabRideCharges } = require("../Services/reAssignRideCharges");
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
+const { checkDriverWalletBalance } = require('../utils/walletBalanceChecker');
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -946,6 +947,8 @@ router.get("/driver/rides/cancelled", driverAuthMiddleware, async (req, res) => 
   }
 });
 
+
+
 // update status to confirm and assign driver ride by driver
 router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
   try {
@@ -957,6 +960,38 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    // Get ride details for wallet balance check
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    // Check wallet balance before confirming ride
+    try {
+      const balanceCheck = await checkDriverWalletBalance(
+        driverId,
+        ride.rideInfo.categoryId,
+        ride.rideInfo.subcategoryId,
+        ride.rideInfo.subSubcategoryId
+      );
+
+      if (!balanceCheck.success) {
+        return res.status(402).json({
+          success: false,
+          message: balanceCheck.message,
+          requiredBalance: balanceCheck.requiredBalance,
+          currentBalance: balanceCheck.currentBalance,
+          errorCode: 'INSUFFICIENT_WALLET_BALANCE'
+        });
+      }
+    } catch (walletError) {
+      console.error('Wallet balance check error:', walletError);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to validate wallet balance' 
+      });
     }
 
     const driverInfo = await Driver.findById(driverId);
