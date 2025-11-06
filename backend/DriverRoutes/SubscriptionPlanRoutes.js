@@ -102,7 +102,7 @@ router.get("/drivers/purchased-plans", async (req, res) => {
       path: "purchasedPlans.plan", // populate the plan ObjectId
       model: "SubscriptionPlan",
       select: "name" // only fetch the plan name
-    });
+    }).sort({ 'purchasedPlans.purchasedAt': -1 }); // sort by purchasedAt descending
 
     // Transform response to include driver info and plan name
     const result = drivers.map(driver => {

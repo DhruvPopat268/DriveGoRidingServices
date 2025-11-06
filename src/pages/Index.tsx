@@ -56,6 +56,8 @@ import { DriverPurchasedPlansPage } from "@/components/admin/pages/DriverPurchas
 import { RideDetailsPage } from "@/components/admin/pages/RideDetailsPage";
 import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/UniversalCategoryAssignmentPage";
 import FileUploadTest from "@/components/admin/pages/FileUploadTest";
+import { AllDriversCreditsPage } from "@/components/admin/pages/AllDriversCreditsPage";
+import { ManageDriverCreditsPage } from "@/components/admin/pages/ManageDriverCreditsPage";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -313,6 +315,10 @@ const Index = () => {
         return <DriverTransactionsPage />;
       case "driver-purchased-plans":
         return <DriverPurchasedPlansPage />;
+      case "all-drivers-credits":
+        return <AllDriversCreditsPage />;
+      case "manage-driver-credits":
+        return <ManageDriverCreditsPage />;
       case "file-upload-test":
         return <FileUploadTest />;
       case "category-assignment":

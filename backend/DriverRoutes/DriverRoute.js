@@ -16,6 +16,7 @@ const DriverSubscriptionPlan = require('../DriverModel/SubscriptionPlan')
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const adminAuthMiddleware = require("../middleware/authMiddleware");
+const CancellationCredit = require("../models/CancellationCredit");
 const axios = require("axios");
 const fs = require("fs").promises;
 const path = require("path");
@@ -363,11 +364,16 @@ router.post("/approve/:driverId", async (req, res) => {
       }
     }
 
-    // Update driver status to Approved and set currentPlan
+    // Get latest cancellation credit configuration
+    const latestCredit = await CancellationCredit.findOne().sort({ createdAt: -1 });
+    const cancellationCredits = latestCredit ? latestCredit.credits : 0;
+
+    // Update driver status to Approved and set currentPlan and cancellation credits
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
       {
         status: "Approved",
+        cancellationRideCredits: cancellationCredits,
         ...currentPlanUpdate
       },
       { new: true }
@@ -417,6 +423,125 @@ router.post("/reject/:driverId", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to reject driver" });
+  }
+});
+
+// Get driver cancellation credits info
+router.get("/cancellation-credits", async (req, res) => {
+  try {
+    console.log('Fetching driver cancellation credits...');
+    
+    const drivers = await Driver.find({ status: "Approved" })
+      .select("personalInformation.fullName mobile personalInformation.currentAddress cancellationRideCredits createdAt")
+      .sort({ createdAt: -1 });
+
+    console.log(`Found ${drivers.length} approved drivers`);
+
+    const driversData = drivers.map(driver => ({
+      driverName: driver.personalInformation?.fullName || "N/A",
+      mobile: driver.mobile || "N/A",
+      currentAddress: driver.personalInformation?.currentAddress || "N/A",
+      cancellationRideCredits: driver.cancellationRideCredits || 0,
+      createdAt: driver.createdAt
+    }));
+
+    res.json({ success: true, data: driversData });
+  } catch (error) {
+    console.error('Cancellation credits API error:', error);
+    res.status(500).json({ success: false, message: "Failed to fetch driver", error: error.message });
+  }
+});
+
+// Get all cancellation credit configurations
+router.get("/manage-credits", async (req, res) => {
+  try {
+    const credits = await CancellationCredit.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: credits });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Update cancellation credits for all drivers
+router.post("/manage-credits", async (req, res) => {
+  try {
+    const { credits } = req.body;
+
+    if (credits === undefined || credits < 0) {
+      return res.status(400).json({ message: "Credits must be a non-negative number" });
+    }
+
+    // Check if this is the first credit configuration
+    const existingCredits = await CancellationCredit.find().sort({ createdAt: -1 });
+    const isFirstCredit = existingCredits.length === 0;
+
+    // Create new credit record
+    const newCredit = new CancellationCredit({ credits });
+    await newCredit.save();
+
+    if (isFirstCredit) {
+      // First credit: Set all approved drivers to this amount
+      await Driver.updateMany(
+        { status: "Approved" },
+        { cancellationRideCredits: credits }
+      );
+      res.status(201).json({ 
+        success: true, 
+        data: newCredit, 
+        message: `Initial credits (${credits}) set for all drivers` 
+      });
+    } else {
+      // Subsequent credits: Handle increase/decrease for existing drivers
+      const previousCredit = existingCredits[0].credits;
+      const difference = credits - previousCredit;
+      
+      if (difference > 0) {
+        // Increase: Add difference to existing drivers
+        await Driver.updateMany(
+          { status: "Approved" },
+          { $inc: { cancellationRideCredits: difference } }
+        );
+        res.status(201).json({ 
+          success: true, 
+          data: newCredit, 
+          message: `Added ${difference} credits to existing drivers. New drivers will get ${credits} credits.` 
+        });
+      } else if (difference < 0) {
+        // Decrease: Smart deduction from existing drivers
+        const deductAmount = Math.abs(difference);
+        
+        // Get all approved drivers with their current credits
+        const drivers = await Driver.find({ status: "Approved" }).select('_id cancellationRideCredits');
+        
+        // Process each driver individually for smart deduction
+        const updatePromises = drivers.map(driver => {
+          const currentCredits = driver.cancellationRideCredits || 0;
+          const actualDeduction = Math.min(currentCredits, deductAmount);
+          const newCredits = currentCredits - actualDeduction;
+          
+          return Driver.findByIdAndUpdate(
+            driver._id,
+            { cancellationRideCredits: newCredits }
+          );
+        });
+        
+        await Promise.all(updatePromises);
+        
+        res.status(201).json({ 
+          success: true, 
+          data: newCredit, 
+          message: `Deducted up to ${deductAmount} credits from existing drivers. New drivers will get ${credits} credits.` 
+        });
+      } else {
+        res.status(201).json({ 
+          success: true, 
+          data: newCredit, 
+          message: `Credit configuration saved. New drivers will get ${credits} credits. Existing drivers unchanged.` 
+        });
+      }
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

@@ -119,7 +119,7 @@ const driverSchema = new mongoose.Schema(
       default: null
     },
 
-    cancellationRideCredits: { type: Number, default: 3 },
+    cancellationRideCredits: { type: Number, default: 0 },
     
     // 🔹 Cancellation charges
     cancellationCharges: { type: Number, default: 0 },

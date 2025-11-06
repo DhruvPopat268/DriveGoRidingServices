@@ -25,7 +25,8 @@ import {
   CheckCircle,
   XCircle,
   FileText,
-  Upload
+  Upload,
+  Ban
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -126,6 +127,16 @@ const menuItems = [
       { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" }
     ]
   },
+  {
+    icon: Ban,
+    label: "Driver Cancellation Credits Management",
+    key: "driver-cancellation-credits",
+    isDropdown: true,
+    subItems: [
+      { icon: Users, label: "All Drivers", key: "all-drivers-credits" },
+      { icon: CreditCard, label: "Manage Driver Credits", key: "manage-driver-credits" }
+    ]
+  },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },
   { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" },
   { icon: FileText, label: "Driver Purchased Plans History", key: "driver-purchased-plans" },
@@ -201,7 +212,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
           </div>
           {isOpen && (
             <div>
-              <h1 className="text-lg font-bold text-black">DriveGo</h1>
+              <h1 className="text-lg font-bold text-black">Hire4Drive</h1>
               <p className="text-xs text-gray-500">Admin Panel</p>
             </div>
           )}

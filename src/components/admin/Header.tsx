@@ -31,14 +31,7 @@ export const Header = ({ onToggleSidebar }: HeaderProps) => {
       <div className="flex items-center justify-between">
         {/* Left side */}
         <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggleSidebar}
-            className="text-black hover:text-black hover:bg-gray-100"
-          >
-            <Menu className="w-5 h-5" />
-          </Button>
+      
           
           {/* Search Bar */}
           <div className="relative">
