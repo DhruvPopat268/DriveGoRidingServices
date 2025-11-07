@@ -712,6 +712,11 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       console.error('Error processing cancellation:', modelError);
     }
 
+    // Update driver rideStatus to WAITING if driver is assigned
+    if (bookingDriverId) {
+      await Driver.findByIdAndUpdate(bookingDriverId, { rideStatus: 'WAITING' });
+    }
+
     res.json({
       message: "Booking cancelled successfully",
       booking: updatedBooking,
