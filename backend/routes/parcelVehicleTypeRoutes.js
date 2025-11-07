@@ -31,6 +31,19 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get parcel vehicle type by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const vehicleType = await ParcelVehicleType.findById(req.params.id).populate('parcelCategory');
+    if (!vehicleType) {
+      return res.status(404).json({ error: 'Parcel vehicle type not found' });
+    }
+    res.json(vehicleType);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update parcel vehicle type by ID
 router.put('/:id', async (req, res) => {
   try {

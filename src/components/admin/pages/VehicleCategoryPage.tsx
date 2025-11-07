@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Upload, Loader } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,10 +33,7 @@ import axios from 'axios';
 
 interface VehicleCategory {
   _id: string;
-  image: string;
   vehicleName: string;
-  perKmCharge: number;
-  perMinuteCharge: number;
 }
 
 export const VehicleCategoryPage = () => {
@@ -46,9 +43,7 @@ export const VehicleCategoryPage = () => {
 
   const [vehicleCategoryForm, setVehicleCategoryForm] = useState({
     image: '',
-    vehicleName: '',
-    perKmCharge: '',
-    perMinuteCharge: ''
+    vehicleName: ''
   });
   const [vehicleCategoryDialogOpen, setVehicleCategoryDialogOpen] = useState(false);
   const [editingVehicleCategory, setEditingVehicleCategory] = useState<VehicleCategory | null>(null);
@@ -73,42 +68,29 @@ export const VehicleCategoryPage = () => {
 
   const handleVehicleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      vehicleCategoryForm.vehicleName.trim() &&
-      vehicleCategoryForm.perKmCharge &&
-      vehicleCategoryForm.perMinuteCharge
-    ) {
+    if (vehicleCategoryForm.vehicleName.trim()) {
       const payload = {
         image: vehicleCategoryForm.image || '/placeholder.svg',
-        vehicleName: vehicleCategoryForm.vehicleName.trim(),
-        perKmCharge: parseFloat(vehicleCategoryForm.perKmCharge),
-        perMinuteCharge: parseFloat(vehicleCategoryForm.perMinuteCharge)
+        vehicleName: vehicleCategoryForm.vehicleName.trim()
       };
       const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`, payload);
       setVehicleCategories([...vehicleCategories, res.data.data]);
-      setVehicleCategoryForm({ image: '', vehicleName: '', perKmCharge: '', perMinuteCharge: '' });
+      setVehicleCategoryForm({ image: '', vehicleName: '' });
       setVehicleCategoryDialogOpen(false);
     }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      editingVehicleCategory &&
-      vehicleCategoryForm.vehicleName.trim() &&
-      vehicleCategoryForm.perKmCharge &&
-      vehicleCategoryForm.perMinuteCharge
-    ) {
+    if (editingVehicleCategory && vehicleCategoryForm.vehicleName.trim()) {
       const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${editingVehicleCategory._id}`, {
         image: vehicleCategoryForm.image,
-        vehicleName: vehicleCategoryForm.vehicleName,
-        perKmCharge: parseFloat(vehicleCategoryForm.perKmCharge),
-        perMinuteCharge: parseFloat(vehicleCategoryForm.perMinuteCharge)
+        vehicleName: vehicleCategoryForm.vehicleName
       });
       setVehicleCategories(
         vehicleCategories.map(vc => (vc._id === editingVehicleCategory._id ? res.data.data : vc))
       );
-      setVehicleCategoryForm({ image: '', vehicleName: '', perKmCharge: '', perMinuteCharge: '' });
+      setVehicleCategoryForm({ image: '', vehicleName: '' });
       setEditDialogOpen(false);
       setEditingVehicleCategory(null);
     }
@@ -118,9 +100,7 @@ export const VehicleCategoryPage = () => {
     setEditingVehicleCategory(vehicleCategory);
     setVehicleCategoryForm({
       image: vehicleCategory.image,
-      vehicleName: vehicleCategory.vehicleName,
-      perKmCharge: vehicleCategory.perKmCharge.toString(),
-      perMinuteCharge: vehicleCategory.perMinuteCharge.toString()
+      vehicleName: vehicleCategory.vehicleName
     });
     setEditDialogOpen(true);
   };
@@ -151,14 +131,7 @@ export const VehicleCategoryPage = () => {
                 <DialogTitle>Create New Vehicle Category</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleVehicleCategorySubmit} className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Upload className="w-4 h-4" />
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setVehicleCategoryForm({ ...vehicleCategoryForm, image: e.target.value })}
-                  />
-                </div>
+
                 <Input
                   placeholder="Vehicle name"
                   value={vehicleCategoryForm.vehicleName}
@@ -167,26 +140,7 @@ export const VehicleCategoryPage = () => {
                   }
                   required
                 />
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Per km charge"
-                  value={vehicleCategoryForm.perKmCharge}
-                  onChange={(e) =>
-                    setVehicleCategoryForm({ ...vehicleCategoryForm, perKmCharge: e.target.value })
-                  }
-                  required
-                />
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Per minute charge"
-                  value={vehicleCategoryForm.perMinuteCharge}
-                  onChange={(e) =>
-                    setVehicleCategoryForm({ ...vehicleCategoryForm, perMinuteCharge: e.target.value })
-                  }
-                  required
-                />
+
                 <Button type="submit" className="w-full">
                   Submit
                 </Button>
@@ -202,14 +156,7 @@ export const VehicleCategoryPage = () => {
               <DialogTitle>Edit Vehicle Category</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Upload className="w-4 h-4" />
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setVehicleCategoryForm({ ...vehicleCategoryForm, image: e.target.value })}
-                />
-              </div>
+
               <Input
                 placeholder="Vehicle name"
                 value={vehicleCategoryForm.vehicleName}
@@ -218,26 +165,7 @@ export const VehicleCategoryPage = () => {
                 }
                 required
               />
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Per km charge"
-                value={vehicleCategoryForm.perKmCharge}
-                onChange={(e) =>
-                  setVehicleCategoryForm({ ...vehicleCategoryForm, perKmCharge: e.target.value })
-                }
-                required
-              />
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="Per minute charge"
-                value={vehicleCategoryForm.perMinuteCharge}
-                onChange={(e) =>
-                  setVehicleCategoryForm({ ...vehicleCategoryForm, perMinuteCharge: e.target.value })
-                }
-                required
-              />
+
               <Button type="submit" className="w-full">
                 Update
               </Button>
@@ -251,15 +179,13 @@ export const VehicleCategoryPage = () => {
             <TableRow>
               <TableHead>#</TableHead>
               <TableHead>Vehicle Name</TableHead>
-              <TableHead>Per Km Charge</TableHead>
-              <TableHead>Per Minute Charge</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={3} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <Loader className="w-6 h-6 animate-spin mr-2" />
                     <span>Loading vehicle categories...</span>
@@ -268,7 +194,7 @@ export const VehicleCategoryPage = () => {
               </TableRow>
             ) : vehicleCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={3} className="text-center text-muted-foreground">
                   No vehicle category found. Create your first vehicle category!
                 </TableCell>
               </TableRow>
@@ -276,10 +202,7 @@ export const VehicleCategoryPage = () => {
               vehicleCategories.map((vehicle,index) => (
                 <TableRow key={vehicle._id}>
                   <TableCell>{index+1}</TableCell>
-                 
                   <TableCell>{vehicle.vehicleName}</TableCell>
-                  <TableCell>₹{vehicle.perKmCharge}</TableCell>
-                  <TableCell>₹{vehicle.perMinuteCharge}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm" onClick={() => handleEdit(vehicle)}>

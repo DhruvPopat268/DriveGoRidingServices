@@ -62,6 +62,7 @@ export const UniversalCategoryAssignmentPage = ({
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [displayName, setDisplayName] = useState(categoryName);
 
   const config = isCarAssignment ? carAssignmentConfig : categoryConfig[categoryType as keyof typeof categoryConfig];
 
@@ -71,7 +72,24 @@ export const UniversalCategoryAssignmentPage = ({
       return;
     }
     fetchDrivers();
+    fetchDisplayName();
   }, [categoryId, categoryType]);
+
+  const fetchDisplayName = async () => {
+    try {
+      if (isCarAssignment) {
+        const carRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/cars/${categoryId}`);
+        setDisplayName(`Cab-${carRes.data.category.name}-${carRes.data.name}`);
+      } else if (categoryType === 'parcel') {
+        const vehicleRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicle-types/${categoryId}`);
+        setDisplayName(`parcel-${vehicleRes.data.parcelCategory.categoryName}-${vehicleRes.data.name}`);
+      } else if (categoryType === 'driver') {
+        setDisplayName(`Driver-${categoryName}`);
+      }
+    } catch (err) {
+      console.error('Failed to fetch display name:', err);
+    }
+  };
 
   const fetchDrivers = async () => {
     try {
@@ -126,7 +144,7 @@ export const UniversalCategoryAssignmentPage = ({
         
       await axios.put(`${import.meta.env.VITE_API_URL}${config.endpoint}`, payload);
       
-      onBack();
+     
     } catch (err) {
       console.error(`Failed to assign drivers to ${isCarAssignment ? 'car' : categoryType + ' category'}`, err);
     } finally {
@@ -144,13 +162,7 @@ export const UniversalCategoryAssignmentPage = ({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4 mt-10">
-          <Button variant="outline" className='ml-5' onClick={onBack}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-          <h1 className="text-3xl font-bold">Assign Drivers to {isCarAssignment ? 'Car: ' : ''}{categoryName}</h1>
-        </div>
+        <h1 className="text-3xl font-bold mt-10">Assign Drivers to {displayName}</h1>
         
         <Button onClick={handleSave} disabled={saving} className='mt-10 mr-5'>
           {saving ? (

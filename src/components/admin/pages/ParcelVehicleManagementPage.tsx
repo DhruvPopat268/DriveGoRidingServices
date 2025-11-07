@@ -130,10 +130,8 @@ export const ParcelVehicleManagementPage = () => {
     setVehicleTypeForm({ parcelCategory: '', name: '', description: '', weight: '' });
   };
 
-  const handleViewDrivers = (category: ParcelCategory) => {
-    navigate(`/admin/category-assignment/parcel/${category._id}`, {
-      state: { categoryName: category.categoryName }
-    });
+  const handleViewDrivers = (vehicleType: ParcelVehicleType) => {
+    navigate(`/admin/category-assignment/parcel/${vehicleType._id}`);
   };
 
   return (
@@ -257,7 +255,7 @@ export const ParcelVehicleManagementPage = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleViewDrivers(vehicleType.parcelCategory)}
+                        onClick={() => handleViewDrivers(vehicleType)}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>

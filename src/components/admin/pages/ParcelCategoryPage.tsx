@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Loader, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,7 +23,6 @@ interface ParcelCategory {
 }
 
 export const ParcelCategoryPage = () => {
-  const navigate = useNavigate();
   const [parcelCategories, setParcelCategories] = useState<ParcelCategory[]>([]);
   const [categoryForm, setCategoryForm] = useState({
     categoryName: '',
@@ -95,9 +93,7 @@ export const ParcelCategoryPage = () => {
     setCategoryForm({ categoryName: '', description: '' });
   };
 
-  const handleViewDrivers = (category: ParcelCategory) => {
-    navigate(`/admin/category-assignment/parcel/${category._id}`);
-  };
+
 
   return (
     <div className="space-y-8">
@@ -172,9 +168,6 @@ export const ParcelCategoryPage = () => {
                   <TableCell>{category.description}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleViewDrivers(category)}>
-                        <Eye className="w-4 h-4" />
-                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(category)}>
                         <Edit className="w-4 h-4" />
                       </Button>
