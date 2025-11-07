@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Trash2, Loader, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import axios from 'axios';
 
@@ -39,11 +40,8 @@ interface CarForm {
   existingImageUrl?: string;
 }
 
-interface CarManagementPageProps {
-  onNavigateToCategoryAssignment?: (categoryType: string, categoryId: string, categoryName: string, isCarAssignment?: boolean) => void;
-}
-
-export const CarManagementPage = ({ onNavigateToCategoryAssignment }: CarManagementPageProps) => {
+export const CarManagementPage = () => {
+  const navigate = useNavigate();
   const [cars, setCars] = useState<Car[]>([]);
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   const [categories, setCategories] = useState<CarCategory[]>([]);
@@ -193,7 +191,7 @@ export const CarManagementPage = ({ onNavigateToCategoryAssignment }: CarManagem
   };
 
   const handleViewDrivers = (car: Car) => {
-    onNavigateToCategoryAssignment?.('car', car._id, car.name, true);
+    navigate(`/admin/category-assignment/car/${car._id}`);
   };
 
   return (

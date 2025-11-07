@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Header } from "@/components/admin/Header";
 import { DashboardStats } from "@/components/admin/DashboardStats";
@@ -54,19 +55,66 @@ import { CompletedWithdrawalPage } from "@/components/admin/pages/CompletedWithd
 import { RejectedWithdrawalPage } from "@/components/admin/pages/RejectedWithdrawalPage";
 import { DriverPurchasedPlansPage } from "@/components/admin/pages/DriverPurchasedPlansPage";
 import { RideDetailsPage } from "@/components/admin/pages/RideDetailsPage";
-import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/UniversalCategoryAssignmentPage";
+
 import FileUploadTest from "@/components/admin/pages/FileUploadTest";
 import { AllDriversCreditsPage } from "@/components/admin/pages/AllDriversCreditsPage";
 import { ManageDriverCreditsPage } from "@/components/admin/pages/ManageDriverCreditsPage";
 import MinWithdrawBalancePage from "@/components/admin/pages/MinWithdrawBalancePage";
 import { ServiceWiseMinWalletPage } from "@/components/admin/pages/ServiceWiseMinWalletPage";
+import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/UniversalCategoryAssignmentPage";
+import axios from "axios";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
-  const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string, isCarAssignment?: boolean} | null>(null);
+  const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string} | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const path = location.pathname;
+    const match = path.match(/\/admin\/category-assignment\/(\w+)\/([a-f0-9]+)/);
+    if (match) {
+      const [, categoryType, categoryId] = match;
+      fetchCategoryAndSet(categoryType, categoryId);
+      setActiveSection('category-assignment');
+    }
+  }, [location.pathname]);
+
+  const fetchCategoryAndSet = async (categoryType: string, categoryId: string) => {
+    try {
+      let endpoint = '';
+      let nameField = '';
+      
+      switch (categoryType) {
+        case 'parcel':
+          endpoint = `/api/parcel-categories/${categoryId}`;
+          nameField = 'categoryName';
+          break;
+        case 'driver':
+          endpoint = `/api/price-categories/${categoryId}`;
+          nameField = 'priceCategoryName';
+          break;
+        case 'car':
+          endpoint = `/api/cars/${categoryId}`;
+          nameField = 'name';
+          break;
+      }
+      
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}${endpoint}`);
+      setCategoryAssignment({
+        categoryType,
+        categoryId,
+        categoryName: response.data[nameField]
+      });
+    } catch (err) {
+      console.error('Failed to fetch category:', err);
+      navigate('/');
+    }
+  };
+
 
   const renderContent = () => {
     switch (activeSection) {
@@ -195,12 +243,7 @@ const Index = () => {
       case "vehiclecategory":
         return <VehicleCategoryPage />;
       case "pricecategory":
-        return <PriceCategoryPage 
-          onNavigateToCategoryAssignment={(categoryType, categoryId, categoryName) => {
-            setCategoryAssignment({ categoryType, categoryId, categoryName });
-            setActiveSection('category-assignment');
-          }}
-        />;
+        return <PriceCategoryPage />;
       case "parcelcategory":
         return <ParcelCategoryPage />;
       case "parcelvehicletypes":
@@ -236,12 +279,7 @@ const Index = () => {
       case "carcategory":
         return <CarCategoryPage />;
       case "carmanagement":
-        return <CarManagementPage 
-          onNavigateToCategoryAssignment={(categoryType, categoryId, categoryName, isCarAssignment) => {
-            setCategoryAssignment({ categoryType, categoryId, categoryName, isCarAssignment });
-            setActiveSection('category-assignment');
-          }}
-        />;
+        return <CarManagementPage />;
       case "cabridecost":
         return <CabRideCostPage />;
       case "driversubscription":
@@ -327,23 +365,18 @@ const Index = () => {
         return <ServiceWiseMinWalletPage />;
       case "file-upload-test":
         return <FileUploadTest />;
+
       case "category-assignment":
         return categoryAssignment ? (
           <UniversalCategoryAssignmentPage 
             categoryType={categoryAssignment.categoryType}
             categoryId={categoryAssignment.categoryId}
             categoryName={categoryAssignment.categoryName}
-            isCarAssignment={categoryAssignment.isCarAssignment}
+            isCarAssignment={categoryAssignment.categoryType === 'car'}
             onBack={() => {
               setCategoryAssignment(null);
-              // Go back to the previous section based on assignment type
-              if (categoryAssignment.isCarAssignment) {
-                setActiveSection('carmanagement');
-              } else if (categoryAssignment.categoryType === 'driver') {
-                setActiveSection('pricecategory');
-              } else if (categoryAssignment.categoryType === 'parcel') {
-                setActiveSection('parcelcategory');
-              }
+              setActiveSection('dashboard');
+              navigate('/');
             }}
           />
         ) : null;

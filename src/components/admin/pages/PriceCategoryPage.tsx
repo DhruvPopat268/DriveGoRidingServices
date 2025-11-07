@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, Loader, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,11 +21,8 @@ interface PriceCategory {
   priceCategoryName: string;
 }
 
-interface PriceCategoryPageProps {
-  onNavigateToCategoryAssignment?: (categoryType: string, categoryId: string, categoryName: string) => void;
-}
-
-export const PriceCategoryPage = ({ onNavigateToCategoryAssignment }: PriceCategoryPageProps) => {
+export const PriceCategoryPage = () => {
+  const navigate = useNavigate();
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
   const [priceCategoryForm, setPriceCategoryForm] = useState({
     priceCategoryName: ''
@@ -93,7 +91,7 @@ export const PriceCategoryPage = ({ onNavigateToCategoryAssignment }: PriceCateg
   };
 
   const handleViewDrivers = (category: PriceCategory) => {
-    onNavigateToCategoryAssignment?.('driver', category._id, category.priceCategoryName);
+    navigate(`/admin/category-assignment/driver/${category._id}`);
   };
 
   return (
