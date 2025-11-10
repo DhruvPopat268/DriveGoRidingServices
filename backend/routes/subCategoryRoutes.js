@@ -150,3 +150,25 @@ router.post("/by-category", driverAuthMiddleware, async (req, res) => {
 });
 
 module.exports = router;
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// ✅ Get subcategories by categoryId
+router.post("/by-category",  async (req, res) => {
+  try {
+    const { categoryId } = req.body;
+    const subcategories = await SubCategory.find({ categoryId }).populate("categoryId", "name");
+    res.status(200).json({
+      success: true,
+      data:subcategories
+    }
+    );
+  } catch (err) {
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
+  }
+});
+
+module.exports = router;
