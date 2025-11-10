@@ -154,7 +154,7 @@ module.exports = router;
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // ✅ Get subcategories by categoryId
-router.post("/by-category",  async (req, res) => {
+router.post("/userApp/by-category",  async (req, res) => {
   try {
     const { categoryId } = req.body;
     const subcategories = await SubCategory.find({ categoryId }).populate("categoryId", "name");
