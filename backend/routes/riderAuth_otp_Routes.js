@@ -492,6 +492,8 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
   try {
     const updates = req.body; // expect full object { name, email, mobile, gender, ... }
 
+    console.log("Update request body:", updates);
+
     // Allowed fields to protect against unwanted updates (e.g., password, _id)
     const allowedFields = ["name", "mobile", "gender", "email"];
     const invalidFields = Object.keys(updates).filter(f => !allowedFields.includes(f));
