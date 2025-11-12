@@ -569,7 +569,7 @@ router.post("/save-profile",authMiddleware, async (req, res) => {
 
     console.log("Save profile request body:", req.body);
 
-    const mobile = req.body.mobile;
+    const mobile = req.rider.mobile;
 
     if(!name || !gender) {
       return res.status(400).json({ success: false, message: "Name and gender are required" });
