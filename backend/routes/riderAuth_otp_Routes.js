@@ -14,6 +14,117 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
 
 const MAX_SESSIONS = 2;
 
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// Update rider profile data (multiple fields at once)
+router.put("/userApp/update", authMiddleware, async (req, res) => {
+  try {
+    const updates = req.body; // expect full object { name, email, mobile, gender, ... }
+
+    console.log("Update request body:", updates);
+
+    // Allowed fields to protect against unwanted updates (e.g., password, _id)
+    const allowedFields = ["name", "mobile", "gender", "email"];
+    const invalidFields = Object.keys(updates).filter(f => !allowedFields.includes(f));
+
+    if (invalidFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid fields: ${invalidFields.join(", ")}`
+      });
+    }
+
+    // Trim all string fields
+    for (const key in updates) {
+      if (typeof updates[key] === "string") {
+        updates[key] = updates[key].trim();
+      }
+    }
+
+    // === Field-specific validations ===
+    if (updates.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(updates.email)) {
+        return res.status(400).json({ success: false, message: "Invalid email format" });
+      }
+
+      // Check for duplicate email
+      const existingEmail = await Rider.findOne({
+        email: updates.email,
+        _id: { $ne: req.rider.riderId }
+      });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: "Email already in use" });
+      }
+    }
+
+    if (updates.mobile) {
+      const mobileRegex = /^[6-9]\d{9}$/;
+      if (!mobileRegex.test(updates.mobile)) {
+        return res.status(400).json({ success: false, message: "Invalid mobile number format" });
+      }
+
+      // Check for duplicate mobile
+      const existingMobile = await Rider.findOne({
+        mobile: updates.mobile,
+        _id: { $ne: req.rider.riderId }
+      });
+      if (existingMobile) {
+        return res.status(400).json({ success: false, message: "Mobile number already in use" });
+      }
+    }
+
+    if (updates.name) {
+      if (updates.name.length < 2 || updates.name.length > 50) {
+        return res.status(400).json({ success: false, message: "Name must be between 2 and 50 characters" });
+      }
+    }
+
+    if (updates.gender) {
+      if (!["male", "female", "other"].includes(updates.gender)) {
+        return res.status(400).json({ success: false, message: "Invalid gender value" });
+      }
+    }
+
+    // === Perform update ===
+    const updatedRider = await Rider.findByIdAndUpdate(
+      req.rider.riderId,
+      { $set: updates }, // ✅ update all provided fields
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedRider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+    res.json({
+      success: true,
+      rider: updatedRider,
+      message: "Profile updated successfully"
+    });
+  } catch (err) {
+    console.error("Update profile error:", err);
+
+    if (err.name === "ValidationError") {
+      const errorMessages = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({
+        success: false,
+        message: `Validation failed: ${errorMessages.join(", ")}`
+      });
+    }
+
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(400).json({
+        success: false,
+        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
+      });
+    }
+
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 router.get("/auth/check", (req, res) => {
   // Get token from "Authorization: Bearer <token>"
   const authHeader = req.headers["authorization"];
@@ -482,117 +593,6 @@ router.post("/save-profile", async (req, res) => {
   } catch (error) {
     console.error("Save profile error:", error);
     res.status(500).json({ success: false, message: "Failed to save profile" });
-  }
-});
-
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-// Update rider profile data (multiple fields at once)
-router.put("/userApp/update", authMiddleware, async (req, res) => {
-  try {
-    const updates = req.body; // expect full object { name, email, mobile, gender, ... }
-
-    console.log("Update request body:", updates);
-
-    // Allowed fields to protect against unwanted updates (e.g., password, _id)
-    const allowedFields = ["name", "mobile", "gender", "email"];
-    const invalidFields = Object.keys(updates).filter(f => !allowedFields.includes(f));
-
-    if (invalidFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid fields: ${invalidFields.join(", ")}`
-      });
-    }
-
-    // Trim all string fields
-    for (const key in updates) {
-      if (typeof updates[key] === "string") {
-        updates[key] = updates[key].trim();
-      }
-    }
-
-    // === Field-specific validations ===
-    if (updates.email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(updates.email)) {
-        return res.status(400).json({ success: false, message: "Invalid email format" });
-      }
-
-      // Check for duplicate email
-      const existingEmail = await Rider.findOne({
-        email: updates.email,
-        _id: { $ne: req.rider.riderId }
-      });
-      if (existingEmail) {
-        return res.status(400).json({ success: false, message: "Email already in use" });
-      }
-    }
-
-    if (updates.mobile) {
-      const mobileRegex = /^[6-9]\d{9}$/;
-      if (!mobileRegex.test(updates.mobile)) {
-        return res.status(400).json({ success: false, message: "Invalid mobile number format" });
-      }
-
-      // Check for duplicate mobile
-      const existingMobile = await Rider.findOne({
-        mobile: updates.mobile,
-        _id: { $ne: req.rider.riderId }
-      });
-      if (existingMobile) {
-        return res.status(400).json({ success: false, message: "Mobile number already in use" });
-      }
-    }
-
-    if (updates.name) {
-      if (updates.name.length < 2 || updates.name.length > 50) {
-        return res.status(400).json({ success: false, message: "Name must be between 2 and 50 characters" });
-      }
-    }
-
-    if (updates.gender) {
-      if (!["male", "female", "other"].includes(updates.gender)) {
-        return res.status(400).json({ success: false, message: "Invalid gender value" });
-      }
-    }
-
-    // === Perform update ===
-    const updatedRider = await Rider.findByIdAndUpdate(
-      req.rider.riderId,
-      { $set: updates }, // ✅ update all provided fields
-      { new: true, runValidators: true }
-    ).select("-password");
-
-    if (!updatedRider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
-    }
-
-    res.json({
-      success: true,
-      rider: updatedRider,
-      message: "Profile updated successfully"
-    });
-  } catch (err) {
-    console.error("Update profile error:", err);
-
-    if (err.name === "ValidationError") {
-      const errorMessages = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({
-        success: false,
-        message: `Validation failed: ${errorMessages.join(", ")}`
-      });
-    }
-
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(400).json({
-        success: false,
-        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
-      });
-    }
-
-    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
