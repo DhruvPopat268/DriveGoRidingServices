@@ -563,9 +563,17 @@ router.post("/verify-otp", async (req, res) => {
 //   }
 // });
 
-router.post("/save-profile", async (req, res) => {
+router.post("/save-profile",authMiddleware, async (req, res) => {
   try {
-    const { mobile, name, gender, email, referralCodeUsed } = req.body;
+    const {  name, gender, email, referralCodeUsed } = req.body;
+
+    console.log("Save profile request body:", req.body);
+
+    const mobile = req.body.mobile;
+
+    if(!name || !gender) {
+      return res.status(400).json({ success: false, message: "Name and gender are required" });
+    }
 
     let rider = await Rider.findOne({ mobile });
     if (!rider) return res.status(404).json({ message: "Rider not found" });
