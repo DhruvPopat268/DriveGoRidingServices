@@ -26,7 +26,8 @@ import {
   XCircle,
   FileText,
   Upload,
-  Ban
+  Ban,
+  Star
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -137,6 +138,16 @@ const menuItems = [
     subItems: [
       { icon: Users, label: "All Drivers", key: "all-drivers-credits" },
       { icon: CreditCard, label: "Manage Driver Credits", key: "manage-driver-credits" }
+    ]
+  },
+  {
+    icon: Star,
+    label: "Ratings Management",
+    key: "ratings-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Users, label: "User Ratings", key: "user-ratings" },
+      { icon: UserCheck, label: "Driver Ratings", key: "driver-ratings" }
     ]
   },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },

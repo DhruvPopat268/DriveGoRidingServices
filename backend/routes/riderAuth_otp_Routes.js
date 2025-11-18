@@ -127,6 +127,16 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User Web            >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+// Get all riders with non-empty names
+router.get("/all", async (req, res) => {
+  try {
+    const riders = await Rider.find({ name: { $ne: "" } }).sort({ createdAt: -1 });
+    res.json({ success: true, data: riders });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 router.get("/auth/check", (req, res) => {
   // Get token from "Authorization: Bearer <token>"

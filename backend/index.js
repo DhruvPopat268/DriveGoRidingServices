@@ -31,6 +31,8 @@ const rideRoutes = require("./routes/rideRoutes");
 const referralRulesRoutes = require('./routes/referralRules');
 const registrationFeeRoutes = require('./DriverRoutes/RegistrationFeeRoutes');
 const subscriptionPlanRoutes = require('./DriverRoutes/SubscriptionPlanRoutes');
+const userRatingRoutes = require('./DriverRoutes/UserRatingRoutes');
+const driverRatingRoutes = require('./DriverRoutes/DriverRatingRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -110,6 +112,8 @@ app.use("/api/rides", rideRoutes);
 app.use('/api/referral-rules', referralRulesRoutes);
 app.use('/api/registration-fees', registrationFeeRoutes);
 app.use('/api/subscription-plans', subscriptionPlanRoutes);
+app.use('/api/user-rating', userRatingRoutes);
+app.use('/api/driver-rating', driverRatingRoutes);
 
 // admin
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));

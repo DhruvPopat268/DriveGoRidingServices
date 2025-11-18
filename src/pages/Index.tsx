@@ -62,6 +62,8 @@ import { ManageDriverCreditsPage } from "@/components/admin/pages/ManageDriverCr
 import MinWithdrawBalancePage from "@/components/admin/pages/MinWithdrawBalancePage";
 import { ServiceWiseMinWalletPage } from "@/components/admin/pages/ServiceWiseMinWalletPage";
 import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/UniversalCategoryAssignmentPage";
+import UserRatingsPage from "@/components/admin/pages/UserRatingsPage";
+import DriverRatingsPage from "@/components/admin/pages/DriverRatingsPage";
 import axios from "axios";
 
 const Index = () => {
@@ -363,6 +365,10 @@ const Index = () => {
         return <MinWithdrawBalancePage />;
       case "service-wallet-balance":
         return <ServiceWiseMinWalletPage />;
+      case "user-ratings":
+        return <UserRatingsPage />;
+      case "driver-ratings":
+        return <DriverRatingsPage />;
       case "file-upload-test":
         return <FileUploadTest />;
 
