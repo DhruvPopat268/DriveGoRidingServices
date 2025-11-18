@@ -22,6 +22,7 @@ const axios = require("axios");
 const fs = require("fs").promises;
 const path = require("path");
 const sharp = require("sharp");
+const DriverReferanceOtpSession = require("../DriverModel/DriverReferanceOtpSession");
 
 // Helper function to get field name by step number
 function getFieldByStep(step) {
@@ -98,17 +99,17 @@ router.get("/", async (req, res) => {
 router.get("/profile", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
-    
+
     const driver = await Driver.findById(driverId)
       .select("personalInformation.fullName personalInformation.passportPhoto isOnline completedRides")
       .lean();
-    
+
     if (!driver) {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
-    
+
     const wallet = await driverWallet.findOne({ driverId }).select("totalEarnings").lean();
-    
+
     res.json({
       success: true,
       data: {
@@ -392,7 +393,7 @@ router.post("/reject/:driverId", async (req, res) => {
   try {
     const { driverId } = req.params;
     const { steps = [] } = req.body;
-    
+
     // Build unset object for specified steps
     const unsetFields = {};
     steps.forEach(step => {
@@ -401,26 +402,26 @@ router.post("/reject/:driverId", async (req, res) => {
         unsetFields[fieldName] = 1;
       }
     });
-    
+
     const updateQuery = { status: "Rejected" };
     if (Object.keys(unsetFields).length > 0) {
       updateQuery.$unset = unsetFields;
     }
-    
+
     const driver = await Driver.findByIdAndUpdate(
       driverId,
       updateQuery,
       { new: true }
     );
-    
+
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
-    
-    res.json({ 
-      success: true, 
-      message: `Driver rejected successfully${steps.length ? ` and ${steps.length} step(s) cleared` : ''}`, 
-      driver 
+
+    res.json({
+      success: true,
+      message: `Driver rejected successfully${steps.length ? ` and ${steps.length} step(s) cleared` : ''}`,
+      driver
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to reject driver" });
@@ -431,7 +432,7 @@ router.post("/reject/:driverId", async (req, res) => {
 router.get("/cancellation-credits", async (req, res) => {
   try {
     console.log('Fetching driver cancellation credits...');
-    
+
     const drivers = await Driver.find({ status: "Approved" })
       .select("personalInformation.fullName mobile personalInformation.currentAddress cancellationRideCredits createdAt")
       .sort({ createdAt: -1 });
@@ -486,58 +487,58 @@ router.post("/manage-credits", async (req, res) => {
         { status: "Approved" },
         { cancellationRideCredits: credits }
       );
-      res.status(201).json({ 
-        success: true, 
-        data: newCredit, 
-        message: `Initial credits (${credits}) set for all drivers` 
+      res.status(201).json({
+        success: true,
+        data: newCredit,
+        message: `Initial credits (${credits}) set for all drivers`
       });
     } else {
       // Subsequent credits: Handle increase/decrease for existing drivers
       const previousCredit = existingCredits[0].credits;
       const difference = credits - previousCredit;
-      
+
       if (difference > 0) {
         // Increase: Add difference to existing drivers
         await Driver.updateMany(
           { status: "Approved" },
           { $inc: { cancellationRideCredits: difference } }
         );
-        res.status(201).json({ 
-          success: true, 
-          data: newCredit, 
-          message: `Added ${difference} credits to existing drivers. New drivers will get ${credits} credits.` 
+        res.status(201).json({
+          success: true,
+          data: newCredit,
+          message: `Added ${difference} credits to existing drivers. New drivers will get ${credits} credits.`
         });
       } else if (difference < 0) {
         // Decrease: Smart deduction from existing drivers
         const deductAmount = Math.abs(difference);
-        
+
         // Get all approved drivers with their current credits
         const drivers = await Driver.find({ status: "Approved" }).select('_id cancellationRideCredits');
-        
+
         // Process each driver individually for smart deduction
         const updatePromises = drivers.map(driver => {
           const currentCredits = driver.cancellationRideCredits || 0;
           const actualDeduction = Math.min(currentCredits, deductAmount);
           const newCredits = currentCredits - actualDeduction;
-          
+
           return Driver.findByIdAndUpdate(
             driver._id,
             { cancellationRideCredits: newCredits }
           );
         });
-        
+
         await Promise.all(updatePromises);
-        
-        res.status(201).json({ 
-          success: true, 
-          data: newCredit, 
-          message: `Deducted up to ${deductAmount} credits from existing drivers. New drivers will get ${credits} credits.` 
+
+        res.status(201).json({
+          success: true,
+          data: newCredit,
+          message: `Deducted up to ${deductAmount} credits from existing drivers. New drivers will get ${credits} credits.`
         });
       } else {
-        res.status(201).json({ 
-          success: true, 
-          data: newCredit, 
-          message: `Credit configuration saved. New drivers will get ${credits} credits. Existing drivers unchanged.` 
+        res.status(201).json({
+          success: true,
+          data: newCredit,
+          message: `Credit configuration saved. New drivers will get ${credits} credits. Existing drivers unchanged.`
         });
       }
     }
@@ -564,7 +565,7 @@ router.get("/:driverId", async (req, res) => {
 router.post("/send-otp", async (req, res) => {
   try {
     const { mobile } = req.body;
-    
+
     // ✅ Validate mobile number exists
     if (!mobile) {
       return res.status(400).json({ message: "Mobile number is required" });
@@ -654,32 +655,32 @@ router.post("/verify-otp", async (req, res) => {
     const mobileStr = String(mobile).trim();
 
     // ✅ Find the latest OTP session for this mobile
-    const otpSession = await DriverOtpSession.findOne({ 
+    const otpSession = await DriverOtpSession.findOne({
       mobile: mobileStr,
-      isVerified: false 
+      isVerified: false
     }).sort({ createdAt: -1 });
 
     // ✅ Check if OTP session exists
     if (!otpSession) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "No OTP found. Please request a new OTP." 
+        message: "No OTP found. Please request a new OTP."
       });
     }
 
     // ✅ Check if OTP has expired
     if (new Date() > otpSession.otpExpiresAt) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "OTP has expired. Please request a new OTP." 
+        message: "OTP has expired. Please request a new OTP."
       });
     }
 
     // ✅ Verify OTP matches
     if (otpSession.otp != otp) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Invalid OTP" 
+        message: "Invalid OTP"
       });
     }
 
@@ -690,9 +691,9 @@ router.post("/verify-otp", async (req, res) => {
     // ✅ Get driver
     const driver = await Driver.findOne({ mobile: mobileStr });
     if (!driver) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "Driver not found" 
+        message: "Driver not found"
       });
     }
 
@@ -750,15 +751,15 @@ router.post("/verify-otp", async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error("Verify OTP error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "OTP verification failed",
-      error: error.message 
+      error: error.message
     });
   }
 });
 
-router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) => {
+router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
 
@@ -808,21 +809,21 @@ router.get("/application/driverDeatils",DriverAuthMiddleware,async (req, res) =>
 router.patch("/online-status", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
-    
+
     // Get current status and toggle it
     const currentDriver = await Driver.findById(driverId).select("isOnline");
     if (!currentDriver) {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
-    
+
     const newStatus = !currentDriver.isOnline;
-    
+
     const driver = await Driver.findByIdAndUpdate(
       driverId,
       { isOnline: newStatus },
       { new: true, select: "isOnline" }
     );
-    
+
     res.json({
       success: true,
       message: `Driver status updated to ${newStatus ? "online" : "offline"}`,
@@ -840,7 +841,7 @@ const createdDirs = new Set();
 const uploadToServerFast = async (fileBuffer, filename, isImage = true) => {
   const folder = isImage ? "images" : "documents";
   const uploadPath = path.join(__dirname, `../cloud/${folder}`);
-  
+
   // Create directory only once per server restart
   if (!createdDirs.has(uploadPath)) {
     await fs.mkdir(uploadPath, { recursive: true });
@@ -853,10 +854,10 @@ const uploadToServerFast = async (fileBuffer, filename, isImage = true) => {
     // FASTEST Sharp settings: effort 1, lower quality, smaller size
     await sharp(fileBuffer)
       .resize({ width: 800, withoutEnlargement: true })
-      .webp({ 
+      .webp({
         quality: 70,
         effort: 1,
-        smartSubsample: true 
+        smartSubsample: true
       })
       .toFile(filePath);  // Direct file write (faster than buffer)
   } else {
@@ -877,7 +878,7 @@ const processAllFiles = async (files) => {
         const filename = `${file.fieldname}_${Date.now()}_${Math.random()
           .toString(36)
           .substr(2, 9)}${ext}`;
-        
+
         const url = await uploadToServerFast(file.buffer, filename, isImage);
         return { fieldname: file.fieldname, url, success: true };
       } catch (error) {
@@ -898,7 +899,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   const timings = {};
   const startTime = Date.now();
   let checkpointTime = startTime;
-  
+
   const logTime = (label) => {
     const now = Date.now();
     const elapsed = now - checkpointTime;
@@ -948,7 +949,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     // 🚀 CRITICAL OPTIMIZATION: Parallel driver fetch + file upload (all at once)
     // console.log(`📤 Starting parallel operations: DB fetch + ${req.files?.length || 0} file uploads`);
-    
+
     const [driver, uploadResults] = await Promise.all([
       Driver.findOne({ mobile })
         .select(step === 5 ? "personalInformation drivingDetails paymentAndSubscription languageSkillsAndReferences declaration status mobile currentPlan" : `${field} status mobile`)
@@ -1018,8 +1019,8 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const updatedDriver = await Driver.findOneAndUpdate(
       { mobile },
       { $set: updates },
-      { 
-        new: true, 
+      {
+        new: true,
         runValidators: false,
         projection: `${field} status mobile`
       }
@@ -1028,7 +1029,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // logTime("DB_UPDATE");
 
     const totalTime = Date.now() - startTime;
-    
+
     // 🎯 Performance summary
     // console.log("\n" + "=".repeat(50));
     // console.log("📊 PERFORMANCE SUMMARY");
@@ -1045,7 +1046,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     // 🚀 Response
     const responseStep = progressResult && progressResult.step === 0 ? null : (step < 5 ? step + 1 : 5);
-    
+
     res.json({
       success: true,
       message: "Information updated successfully",
@@ -1109,14 +1110,14 @@ router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) =
     const availableBalance = wallet.balance - minHoldBalance;
 
     if (amount < minWithdrawAmount) {
-      return res.status(400).json({ 
-        message: `Minimum withdrawal amount is ₹${minWithdrawAmount}` 
+      return res.status(400).json({
+        message: `Minimum withdrawal amount is ₹${minWithdrawAmount}`
       });
     }
 
     if (availableBalance < amount) {
-      return res.status(400).json({ 
-        message: `Insufficient withdrawable balance. Available: ₹${availableBalance}, Hold balance: ₹${minHoldBalance}` 
+      return res.status(400).json({
+        message: `Insufficient withdrawable balance. Available: ₹${availableBalance}, Hold balance: ₹${minHoldBalance}`
       });
     }
 
@@ -1309,7 +1310,7 @@ router.post("/admin/min-withdraw-balance", async (req, res) => {
 router.get("/driver/wallet-info", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
-    
+
     const wallet = await driverWallet.findOne({ driverId });
     if (!wallet) {
       return res.status(404).json({ message: "Wallet not found" });
@@ -1398,6 +1399,123 @@ router.get("/transactions/all", async (req, res) => {
     res.status(200).json({ success: true, data: allTransactions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Reference OTP endpoints
+router.post("/reference/send-otp", async (req, res) => {
+  console.log("SID =>", process.env.KALEYRA_SID);
+  console.log("API KEY =>", process.env.KALEYRA_API_KEY);
+  console.log("SENDER ID =>", process.env.KALEYRA_SENDER_ID);
+  console.log("TEMPLATE ID =>", process.env.KALEYRA_TEMPLATE_ID);
+
+  try {
+    const { mobile } = req.body;
+
+    if (!mobile) {
+      return res.status(400).json({ message: "Mobile number is required" });
+    }
+
+    const mobileStr = String(mobile).trim();
+
+    if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
+      return res.status(400).json({ message: "Invalid mobile number format" });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+    const otpSession = new DriverReferanceOtpSession({
+      mobile: mobileStr,
+      otp,
+      otpExpiresAt
+    });
+    await otpSession.save();
+
+    const toNumber = mobileStr.startsWith("+") ? mobileStr : `+91${mobileStr}`;
+    const apiUrl = `https://api.kaleyra.io/v1/${process.env.KALEYRA_SID}/messages`;
+
+    const payload = {
+      to: toNumber,
+      sender: process.env.KALEYRA_SENDER_ID,
+      type: "TXN",
+      template_id: process.env.KALEYRA_TEMPLATE_ID,
+      body: `DriveGo OTP is booking confirmation or registration: ${otp}`,
+      template_params: otp,
+    };
+
+    await axios.post(apiUrl, payload, {
+      headers: {
+        "api-key": process.env.KALEYRA_API_KEY,
+        "Content-Type": "application/json",
+      },
+    });
+
+    res.json({
+      success: true,
+      message: "OTP sent successfully"
+    });
+  } catch (error) {
+    console.error("Reference send OTP error:", error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send OTP",
+      error: error.response?.data || error.message,
+    });
+  }
+});
+
+router.post("/reference/verify-otp", async (req, res) => {
+  try {
+    const { mobile, otp } = req.body;
+
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
+
+    const mobileStr = String(mobile).trim();
+
+    const otpSession = await DriverReferanceOtpSession.findOne({
+      mobile: mobileStr,
+      isVerified: false
+    }).sort({ createdAt: -1 });
+
+    if (!otpSession) {
+      return res.status(400).json({
+        success: false,
+        message: "No OTP found. Please request a new OTP."
+      });
+    }
+
+    if (new Date() > otpSession.otpExpiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new OTP."
+      });
+    }
+
+    if (otpSession.otp != otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP"
+      });
+    }
+
+    otpSession.isVerified = true;
+    await otpSession.save();
+
+    res.json({
+      success: true,
+      message: "OTP verified successfully",
+      mobile: mobileStr
+    });
+  } catch (error) {
+    console.error("Reference verify OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "OTP verification failed",
+      error: error.message
+    });
   }
 });
 
