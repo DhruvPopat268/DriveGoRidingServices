@@ -376,51 +376,57 @@ export const CabRideCostPage = () => {
   };
 
   const handleEdit = (rideCost: RideCost) => {
-    // console.log('Editing ride cost:', rideCost);
+    console.log('🚀 EDIT CLICKED - rideCost:', rideCost);
+    setLoading(true);
     setEditingRideCost(rideCost);
 
     const categoryId = extractId(rideCost.category);
     const subcategoryId = extractId(rideCost.subcategory);
     const subSubCategoryId = rideCost.subSubCategory ? extractId(rideCost.subSubCategory) : '';
     const priceCategoryId = rideCost.priceCategory ? extractId(rideCost.priceCategory) : '';
+    const carId = rideCost.car ? extractId(rideCost.car) : '';
 
-    // Set filtered subcategories first
+    // Set all filtered arrays first
     const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
-    setFilteredSubcategories(filteredSubs);
-
-    // Set filtered sub-subcategories
     const filteredSubSubs = subSubCategories.filter(subSub =>
       subSub.categoryId === categoryId && subSub.subCategoryId === subcategoryId
     );
+    const filteredCars = cars.filter(car => car.category._id === priceCategoryId);
+
+    setFilteredSubcategories(filteredSubs);
     setFilteredSubSubCategories(filteredSubSubs);
-
-    // Set filtered price categories - show all when subcategory is selected
     setFilteredPriceCategories(priceCategories);
+    setFilteredCars(filteredCars);
 
-    setRideCostForm({
-      category: categoryId,
-      subcategory: subcategoryId,
-      subSubCategory: subSubCategoryId,
-      priceCategory: priceCategoryId,
-      car: rideCost.car ? extractId(rideCost.car) : '',
-      weight: rideCost.weight?.toString() || '',
-      baseFare: rideCost.baseFare.toString(),
-      includedKm: rideCost.includedKm || '',
-      includedMinutes: rideCost.includedMinutes || '',
-      extraChargePerKm: rideCost.extraChargePerKm.toString(),
-      extraChargePerMinute: rideCost.extraChargePerMinute.toString(),
-      pickCharges: rideCost.pickCharges.toString(),
-      nightCharges: rideCost.nightCharges.toString(),
-      cancellationFee: rideCost.cancellationFee.toString(),
-      cancellationBufferTime: rideCost.cancellationBufferTime.toString(),
-      insurance: rideCost.insurance.toString(),
-      extraChargesFromAdmin: rideCost.extraChargesFromAdmin.toString(),
-      gst: rideCost.gst.toString(),
-      discount: rideCost.discount.toString(),
-      driverCancellationCharges: rideCost.driverCancellationCharges?.toString() || '0',
-      driverCancellationCredits: rideCost.driverCancellationCredits?.toString() || '0'
-    });
-    setDialogOpen(true);
+    // Use setTimeout to ensure filtered arrays are set before form values
+    setTimeout(() => {
+      setRideCostForm({
+        category: categoryId,
+        subcategory: subcategoryId,
+        subSubCategory: subSubCategoryId,
+        priceCategory: priceCategoryId,
+        car: carId,
+        weight: rideCost.weight?.toString() || '',
+        baseFare: rideCost.baseFare.toString(),
+        includedKm: rideCost.includedKm || '',
+        includedMinutes: rideCost.includedMinutes || '',
+        extraChargePerKm: rideCost.extraChargePerKm.toString(),
+        extraChargePerMinute: rideCost.extraChargePerMinute.toString(),
+        pickCharges: rideCost.pickCharges.toString(),
+        nightCharges: rideCost.nightCharges.toString(),
+        cancellationFee: rideCost.cancellationFee.toString(),
+        cancellationBufferTime: rideCost.cancellationBufferTime.toString(),
+        insurance: rideCost.insurance.toString(),
+        extraChargesFromAdmin: rideCost.extraChargesFromAdmin.toString(),
+        gst: rideCost.gst.toString(),
+        discount: rideCost.discount.toString(),
+        driverCancellationCharges: rideCost.driverCancellationCharges?.toString() || '0',
+        driverCancellationCredits: rideCost.driverCancellationCredits?.toString() || '0'
+      });
+      
+      setDialogOpen(true);
+      setLoading(false);
+    }, 100);
   };
 
   const handleDelete = async (id?: string) => {
