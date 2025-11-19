@@ -103,7 +103,6 @@ app.use("/cloud/documents", express.static(path.join(__dirname, "cloud/documents
 app.use("/app/cloud/images", express.static(path.join(__dirname, "cloud/images")));
 app.use("/app/cloud/documents", express.static(path.join(__dirname, "cloud/documents")));
 
-
 // Rider routes
 app.use("/api/rider-auth", riderAuthRoutes);
 

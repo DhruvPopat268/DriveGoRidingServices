@@ -2,8 +2,9 @@ const express = require("express");
 const DriverRating = require("../DriverModel/DriverRating");
 const Ride = require("../models/Ride");
 const router = express.Router();
+const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
 
-router.post("/", async (req, res) => {
+router.post("/",DriverAuthMiddleware, async (req, res) => {
   try {
     const { rideId, rating, comment } = req.body;
 
