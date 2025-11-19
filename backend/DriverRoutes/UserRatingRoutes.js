@@ -1,6 +1,7 @@
 const express = require("express");
 const UserRating = require("../DriverModel/UserRating");
 const Ride = require("../models/Ride");
+const Driver = require("../DriverModel/DriverModel");
 const router = express.Router();
 
 router.post("/", async (req, res) => {
@@ -16,6 +17,12 @@ router.post("/", async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
+    const userRatingg = await UserRating.findOne({ rideId });
+    if (userRatingg) {
+      return res.status(400).json({ message: "Rating for this ride already exists" });
+    }
+
+
     const userRating = new UserRating({
       userId: ride.riderId,
       driverId: ride.driverId,
@@ -25,6 +32,16 @@ router.post("/", async (req, res) => {
     });
 
     await userRating.save();
+
+    // Update driver's rating history and average
+    const driver = await Driver.findById(ride.driverId);
+    if (driver) {
+      driver.ratings.ratingHistory.push(rating);
+      const totalRatings = driver.ratings.ratingHistory.length;
+      const sumRatings = driver.ratings.ratingHistory.reduce((sum, r) => sum + r, 0);
+      driver.ratings.avgRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
+      await driver.save();
+    }
 
     res.json({
       success: true,
@@ -39,11 +56,13 @@ router.post("/", async (req, res) => {
 router.post("/given-by-user", async (req, res) => {
   try {
     const { userId } = req.body;
-    
+
     if (!userId) {
       return res.status(400).json({ message: "userId is required" });
     }
-    
+
+
+
     const ratings = await UserRating.find({ userId })
       .populate('userId', 'name')
       .populate('driverId', 'personalInformation.fullName')

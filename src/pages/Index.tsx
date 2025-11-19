@@ -366,9 +366,27 @@ const Index = () => {
       case "service-wallet-balance":
         return <ServiceWiseMinWalletPage />;
       case "user-ratings":
-        return <UserRatingsPage />;
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <UserRatingsPage 
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
       case "driver-ratings":
-        return <DriverRatingsPage />;
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <DriverRatingsPage 
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
       case "file-upload-test":
         return <FileUploadTest />;
 

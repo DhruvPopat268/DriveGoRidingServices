@@ -24,7 +24,13 @@ const riderSchema = new mongoose.Schema(
     
     // 🔹 Cancellation charges
     cancellationCharges: { type: Number, default: 0 },
-    unclearedCancellationCharges: { type: Number, default: 0 }
+    unclearedCancellationCharges: { type: Number, default: 0 },
+
+    // 🔹 Ratings tracking
+    ratings: {
+      ratingHistory: [{ type: Number }],
+      avgRating: { type: Number, default: 0 }
+    }
   },
   { timestamps: true }
 );

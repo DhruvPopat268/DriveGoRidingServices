@@ -101,7 +101,7 @@ router.get("/profile", DriverAuthMiddleware, async (req, res) => {
     const driverId = req.driver.driverId;
 
     const driver = await Driver.findById(driverId)
-      .select("personalInformation.fullName personalInformation.passportPhoto isOnline completedRides")
+      .select("personalInformation.fullName personalInformation.passportPhoto isOnline completedRides ratings.avgRating")
       .lean();
 
     if (!driver) {
@@ -117,7 +117,8 @@ router.get("/profile", DriverAuthMiddleware, async (req, res) => {
         isOnline: driver.isOnline || false,
         passportPhoto: driver.personalInformation?.passportPhoto || null,
         completedRides: driver.completedRides?.length || 0,
-        totalEarnings: wallet?.totalEarnings || 0
+        totalEarnings: wallet?.totalEarnings || 0,
+        avgRating: driver.ratings?.avgRating || 0
       }
     });
   } catch (error) {

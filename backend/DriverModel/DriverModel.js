@@ -126,7 +126,13 @@ const driverSchema = new mongoose.Schema(
     unclearedCancellationCharges: { type: Number, default: 0 },
 
     // 🔹 Completed rides tracking
-    completedRides: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ride' }]
+    completedRides: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ride' }],
+
+    // 🔹 Ratings tracking
+    ratings: {
+      ratingHistory: [{ type: Number }],
+      avgRating: { type: Number, default: 0 }
+    }
   },
   { timestamps: true }
 );

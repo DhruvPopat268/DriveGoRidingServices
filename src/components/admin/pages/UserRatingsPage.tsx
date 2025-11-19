@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Filter, Search } from 'lucide-react';
+import { Star, Filter, Search, Eye, Loader } from 'lucide-react';
 
 interface UserRating {
   _id: string;
@@ -17,7 +17,11 @@ interface User {
   mobile: string;
 }
 
-const UserRatingsPage = () => {
+interface UserRatingsPageProps {
+  onNavigateToRideDetail?: (rideId: string) => void;
+}
+
+const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
   const [ratings, setRatings] = useState<UserRating[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,8 +102,9 @@ const UserRatingsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center py-8">
+        <Loader className="w-6 h-6 animate-spin mr-2" />
+        <span>Loading user ratings...</span>
       </div>
     );
   }
@@ -154,10 +159,10 @@ const UserRatingsPage = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User ID
+                  User
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Driver ID
+                  Driver 
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ride ID
@@ -171,12 +176,15 @@ const UserRatingsPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {ratings.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
                     No ratings found
                   </td>
                 </tr>
@@ -203,6 +211,15 @@ const UserRatingsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(rating.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <button
+                        onClick={() => onNavigateToRideDetail?.(rating.rideId)}
+                        className="inline-flex items-center px-2 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        
+                      </button>
                     </td>
                   </tr>
                 ))

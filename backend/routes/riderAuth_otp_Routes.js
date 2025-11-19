@@ -167,7 +167,7 @@ router.post("/find-rider", authMiddleware, async (req, res) => {
     }
 
     // Find rider by Mongo _id
-    const rider = await Rider.findById(riderId);
+    const rider = await Rider.findById(riderId).select('name mobile gender email referralCode ratings.avgRating');
 
     if (!rider) {
       return res.status(200).json({ success: false, message: "Rider not found" });
@@ -175,7 +175,10 @@ router.post("/find-rider", authMiddleware, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      rider,
+      rider: {
+        ...rider.toObject(),
+        avgRating: rider.ratings?.avgRating || 0
+      },
     });
   } catch (error) {
     console.error("Error finding rider:", error.message);
