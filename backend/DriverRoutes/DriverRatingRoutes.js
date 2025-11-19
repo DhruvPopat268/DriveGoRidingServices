@@ -4,7 +4,7 @@ const Ride = require("../models/Ride");
 const router = express.Router();
 const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
 
-router.post("/",DriverAuthMiddleware, async (req, res) => {
+router.post("/", DriverAuthMiddleware, async (req, res) => {
   try {
     const { rideId, rating, comment } = req.body;
 
@@ -40,12 +40,14 @@ router.post("/",DriverAuthMiddleware, async (req, res) => {
 router.post("/given-by-driver", async (req, res) => {
   try {
     const { driverId } = req.body;
-    
+
     if (!driverId) {
       return res.status(400).json({ message: "driverId is required" });
     }
-    
-    const ratings = await DriverRating.find({ driverId }).sort({ createdAt: -1 });
+
+    const ratings = await DriverRating.find({ driverId })
+      .populate('userId', 'name')
+      .populate('driverId', 'personalInformation.fullName').sort({ createdAt: -1 });
     res.json({ success: true, data: ratings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -54,7 +56,10 @@ router.post("/given-by-driver", async (req, res) => {
 
 router.get("/all", async (req, res) => {
   try {
-    const ratings = await DriverRating.find().sort({ createdAt: -1 });
+    const ratings = await DriverRating.find()
+      .populate('userId', 'name')
+      .populate('driverId', 'personalInformation.fullName')
+      .sort({ createdAt: -1 });
     res.json({ success: true, data: ratings });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
