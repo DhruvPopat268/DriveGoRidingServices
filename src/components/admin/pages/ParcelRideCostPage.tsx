@@ -99,7 +99,7 @@ export const ParcelRideCostPage = () => {
   const [filteredParcelVehicleTypes, setFilteredParcelVehicleTypes] = useState<ParcelVehicleType[]>([]);
   const [carCategories, setCarCategories] = useState<CarCategory[]>([]);
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
-  const [filteredSubSubCategories, setFilteredSubSubCategories] = useState<SubSubCategory[]>([]);
+
   const [filteredPriceCategories, setFilteredPriceCategories] = useState<PriceCategory[]>([]);
 
   // Filter states
@@ -126,7 +126,7 @@ export const ParcelRideCostPage = () => {
     extraChargePerMinute: '',
     pickCharges: '',
     nightCharges: '',
-    cancellationBufferTime: '',    cancellationFee: '',
+    cancellationBufferTime: '', cancellationFee: '',
     insurance: '',
     extraChargesFromAdmin: '',
     gst: '',
@@ -181,52 +181,10 @@ export const ParcelRideCostPage = () => {
     fetchData();
   }, []);
 
-  // Filter subcategories when category changes in form
-  useEffect(() => {
-    if (rideCostForm.category) {
-      const filtered = subcategories.filter(sub => sub.categoryId === rideCostForm.category);
-      setFilteredSubcategories(filtered);
-      setRideCostForm(prev => ({ ...prev, subcategory: '', subSubCategory: '', priceCategory: '', car: '' }));
-      setFilteredSubSubCategories([]);
-      setFilteredPriceCategories([]);
 
-    } else {
-      setFilteredSubcategories([]);
-      setFilteredSubSubCategories([]);
-      setFilteredPriceCategories([]);
 
-    }
-  }, [rideCostForm.category, subcategories]);
 
-  // Filter sub-subcategories when subcategory changes in form
-  useEffect(() => {
-    if (rideCostForm.subcategory) {
-      const filtered = subSubCategories.filter(subSub =>
-        subSub.categoryId === rideCostForm.category &&
-        subSub.subCategoryId === rideCostForm.subcategory
-      );
-      setFilteredSubSubCategories(filtered);
-      setRideCostForm(prev => ({ ...prev, subSubCategory: '', priceCategory: '' }));
 
-      // Show price categories if not outstation or if outstation and subSubCategory selected
-      if (!isOutstationSubCategory()) {
-        setFilteredPriceCategories(priceCategories);
-      } else {
-        setFilteredPriceCategories([]);
-      }
-    } else {
-      setFilteredSubSubCategories([]);
-      setFilteredPriceCategories([]);
-    }
-  }, [rideCostForm.subcategory, subSubCategories, priceCategories]);
-
-  // Show price categories when sub-subcategory is selected for outstation
-  useEffect(() => {
-    if (rideCostForm.subSubCategory && isOutstationSubCategory()) {
-      setFilteredPriceCategories(priceCategories);
-      setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
-    }
-  }, [rideCostForm.subSubCategory, priceCategories]);
 
   // Fetch parcel categories and vehicle types when category is parcel
   useEffect(() => {
@@ -243,11 +201,14 @@ export const ParcelRideCostPage = () => {
         type => type.parcelCategory._id === rideCostForm.parcelCategory
       );
       setFilteredParcelVehicleTypes(filtered);
-      setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      // Only clear priceCategory if not editing
+      if (!editingRideCost) {
+        setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      }
     } else {
       setFilteredParcelVehicleTypes([]);
     }
-  }, [rideCostForm.parcelCategory, parcelVehicleTypes]);
+  }, [rideCostForm.parcelCategory, parcelVehicleTypes, editingRideCost]);
 
   // Filter subcategories for filter dropdown
   useEffect(() => {
@@ -298,22 +259,16 @@ export const ParcelRideCostPage = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes, carCategoriesRes, carsRes] = await Promise.all([
+      const [rideCostsRes, categoriesRes, subcategoriesRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL}/api/ParcelRideCosts`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/categories`),
         axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/car-categories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/cars`)
       ]);
 
       setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
       setCategories(categoriesRes.data);
       setSubcategories(subcategoriesRes.data);
-      setSubSubCategories(subSubCategoriesRes.data);
-      setPriceCategories(priceCategoriesRes.data);
-      setCarCategories(carCategoriesRes.data.filter((cat: CarCategory & { status: boolean }) => cat.status));
+      console.log('subcategoriesRes.data:', subcategoriesRes.data);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -325,6 +280,7 @@ export const ParcelRideCostPage = () => {
   const fetchParcelCategories = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
+      console.log('Parcel categories response:', response.data);
       setParcelCategories(response.data);
     } catch (error) {
       console.error('Error fetching parcel categories:', error);
@@ -334,6 +290,7 @@ export const ParcelRideCostPage = () => {
   const fetchParcelVehicleTypes = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicle-types`);
+      console.log('Parcel vehicle types response:', response.data);
       setParcelVehicleTypes(response.data);
     } catch (error) {
       console.error('Error fetching parcel vehicle types:', error);
@@ -385,66 +342,92 @@ export const ParcelRideCostPage = () => {
     }
   };
 
-  const handleEdit = (rideCost: RideCost) => {
-    console.log('Editing ride cost:', rideCost);
-    setEditingRideCost(rideCost);
+  const handleEdit = async (rideCost: RideCost) => {
+    if (!rideCost._id) return;
 
-    const categoryId = extractId(rideCost.category);
-    const subcategoryId = extractId(rideCost.subcategory);
-    const subSubCategoryId = rideCost.subSubCategory ? extractId(rideCost.subSubCategory) : '';
-    const priceCategoryId = rideCost.priceCategory ? extractId(rideCost.priceCategory) : '';
-    const parcelCategoryId = rideCost.parcelCategory ? extractId(rideCost.parcelCategory) : '';
-    const parcelVehicleTypeId = rideCost.parcelVehicleType ? extractId(rideCost.parcelVehicleType) : '';
+    setLoading(true);
+    try {
+      // Fetch detailed data from API
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/ParcelRideCosts/${rideCost._id}`);
+      const detailedRideCost = response.data.data;
 
-    // Set filtered subcategories first
-    const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
-    setFilteredSubcategories(filteredSubs);
+      console.log('Detailed ride cost:', detailedRideCost);
+      setEditingRideCost(detailedRideCost);
 
-    // Set filtered sub-subcategories
-    const filteredSubSubs = subSubCategories.filter(subSub =>
-      subSub.categoryId === categoryId && subSub.subCategoryId === subcategoryId
-    );
-    setFilteredSubSubCategories(filteredSubSubs);
+      const categoryId = extractId(detailedRideCost.category);
+      const subcategoryId = extractId(detailedRideCost.subcategory);
+      const subSubCategoryId = detailedRideCost.subSubCategory ? extractId(detailedRideCost.subSubCategory) : '';
+      const priceCategoryId = detailedRideCost.priceCategory ? extractId(detailedRideCost.priceCategory) : '';
+      const parcelCategoryId = detailedRideCost.parcelCategory ? extractId(detailedRideCost.parcelCategory) : '';
+      const parcelVehicleTypeId = detailedRideCost.parcelVehicleType ? extractId(detailedRideCost.parcelVehicleType) : '';
 
-    // Set filtered price categories - show all when subcategory is selected
-    setFilteredPriceCategories(priceCategories);
+      // Set filtered subcategories first
+      const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
+      setFilteredSubcategories(filteredSubs);
+      console.log('Filtered subcategories for edit:', filteredSubs);
 
-    // If it's a parcel category, set parcel data
-    const selectedCategory = categories.find(cat => cat._id === categoryId);
-    if (selectedCategory && selectedCategory.name.toLowerCase() === 'parcel') {
-      // Set filtered parcel vehicle types if parcel category exists
-      if (parcelCategoryId && parcelVehicleTypes.length > 0) {
-        const filtered = parcelVehicleTypes.filter(
-          type => type.parcelCategory._id === parcelCategoryId
+      // Set filtered price categories - show all when subcategory is selected
+      setFilteredPriceCategories(priceCategories);
+
+      // If it's a parcel category, set parcel data
+      const selectedCategory = categories.find(cat => cat._id === categoryId);
+      if (selectedCategory && selectedCategory.name.toLowerCase() === 'parcel') {
+        // Ensure parcel data is loaded
+        if (parcelCategories.length === 0) {
+          await fetchParcelCategories();
+        }
+        
+        let vehicleTypesData = parcelVehicleTypes;
+        if (parcelVehicleTypes.length === 0) {
+          console.log('Fetching parcel vehicle types for edit...');
+          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicle-types`);
+          vehicleTypesData = response.data;
+          setParcelVehicleTypes(vehicleTypesData);
+        }
+
+        console.log('parcelVehicleTypes before filtering:', vehicleTypesData);
+        const filtered = vehicleTypesData.filter(
+          type => type._id === parcelVehicleTypeId
         );
+        console.log('Filtered parcel vehicle types for edit:', filtered);
         setFilteredParcelVehicleTypes(filtered);
       }
-    }
 
-    setRideCostForm({
-      category: categoryId,
-      subcategory: subcategoryId,
-      subSubCategory: subSubCategoryId,
-      parcelCategory: parcelCategoryId,
-      priceCategory: parcelVehicleTypeId || priceCategoryId,
-      car: rideCost.car ? extractId(rideCost.car) : '',
-      baseFare: rideCost.baseFare.toString(),
-      includedKm: rideCost.includedKm || '',
-      includedMinutes: rideCost.includedMinutes || '',
-      extraChargePerKm: rideCost.extraChargePerKm.toString(),
-      extraChargePerMinute: rideCost.extraChargePerMinute.toString(),
-      pickCharges: rideCost.pickCharges.toString(),
-      nightCharges: rideCost.nightCharges.toString(),
-      cancellationFee: rideCost.cancellationFee.toString(),
-      cancellationBufferTime: rideCost.cancellationBufferTime.toString(),
-      insurance: rideCost.insurance.toString(),
-      extraChargesFromAdmin: rideCost.extraChargesFromAdmin.toString(),
-      gst: rideCost.gst.toString(),
-      discount: rideCost.discount.toString(),
-      driverCancellationCharges: rideCost.driverCancellationCharges?.toString() || '0',
-      driverCancellationCredits: rideCost.driverCancellationCredits?.toString() || '0'
-    });
-    setDialogOpen(true);
+      setRideCostForm({
+        category: categoryId,
+        subcategory: subcategoryId,
+        subSubCategory: subSubCategoryId,
+        parcelCategory: parcelCategoryId,
+        priceCategory: parcelVehicleTypeId || priceCategoryId,
+        car: detailedRideCost.car ? extractId(detailedRideCost.car) : '',
+        baseFare: detailedRideCost.baseFare.toString(),
+        includedKm: detailedRideCost.includedKm?.toString() || '',
+        includedMinutes: detailedRideCost.includedMinutes?.toString() || '',
+        extraChargePerKm: detailedRideCost.extraChargePerKm.toString(),
+        extraChargePerMinute: detailedRideCost.extraChargePerMinute.toString(),
+        pickCharges: detailedRideCost.pickCharges.toString(),
+        nightCharges: detailedRideCost.nightCharges.toString(),
+        cancellationFee: detailedRideCost.cancellationFee.toString(),
+        cancellationBufferTime: detailedRideCost.cancellationBufferTime?.toString() || '0',
+        insurance: detailedRideCost.insurance.toString(),
+        extraChargesFromAdmin: detailedRideCost.extraChargesFromAdmin.toString(),
+        gst: detailedRideCost.gst.toString(),
+        discount: detailedRideCost.discount.toString(),
+        driverCancellationCharges: detailedRideCost.driverCancellationCharges?.toString() || '0',
+        driverCancellationCredits: detailedRideCost.driverCancellationCredits?.toString() || '0'
+      });
+      console.log('category', categoryId,
+        'subcategory', subcategoryId,
+        'subSubCategory', subSubCategoryId,
+        'parcelCategory', parcelCategoryId,
+        'priceCategory', parcelVehicleTypeId || priceCategoryId,
+      )
+      setDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching detailed ride cost:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id?: string) => {
@@ -475,7 +458,7 @@ export const ParcelRideCostPage = () => {
       extraChargePerKm: '',
       extraChargePerMinute: '',
       pickCharges: '',
-    cancellationBufferTime: '',      nightCharges: '',
+      cancellationBufferTime: '', nightCharges: '',
       cancellationFee: '',
       insurance: '',
       extraChargesFromAdmin: '',
@@ -705,7 +688,7 @@ export const ParcelRideCostPage = () => {
                     value={rideCostForm.nightCharges}
                     onChange={(e) => setRideCostForm(prev => ({ ...prev, nightCharges: e.target.value }))}
                   />
-                   <Input
+                  <Input
                     type="number"
                     step="0.01"
                     placeholder="Cancellation Fee"
@@ -984,7 +967,7 @@ export const ParcelRideCostPage = () => {
                 <ChevronLeft className="w-4 h-4" />
                 Previous
               </Button>
-              
+
               <div className="flex items-center space-x-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNumber;
@@ -997,7 +980,7 @@ export const ParcelRideCostPage = () => {
                   } else {
                     pageNumber = currentPage - 2 + i;
                   }
-                  
+
                   return (
                     <Button
                       key={pageNumber}
@@ -1011,7 +994,7 @@ export const ParcelRideCostPage = () => {
                   );
                 })}
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -1080,10 +1063,10 @@ export const ParcelRideCostPage = () => {
                   <p className="text-sm text-gray-600">₹{viewingRideCost.nightCharges}</p>
                 </div>
                 <div>
-                <div>
-                  <label className="text-sm font-medium">Cancellation Buffer Time</label>
-                  <p className="text-sm text-gray-600">{viewingRideCost.cancellationBufferTime} minutes</p>
-                </div>                  <label className="text-sm font-medium">Cancellation Fee</label>
+                  <div>
+                    <label className="text-sm font-medium">Cancellation Buffer Time</label>
+                    <p className="text-sm text-gray-600">{viewingRideCost.cancellationBufferTime} minutes</p>
+                  </div>                  <label className="text-sm font-medium">Cancellation Fee</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.cancellationFee}</p>
                 </div>
                 <div>

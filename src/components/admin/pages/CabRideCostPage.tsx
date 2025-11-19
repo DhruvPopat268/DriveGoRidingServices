@@ -90,6 +90,7 @@ interface SubSubCategory {
 }
 
 export const CabRideCostPage = () => {
+  console.log('🔥 CabRideCostPage component loaded!');
   const [rideCosts, setRideCosts] = useState<RideCost[]>([]);
   const [filteredRideCosts, setFilteredRideCosts] = useState<RideCost[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -377,6 +378,7 @@ export const CabRideCostPage = () => {
 
   const handleEdit = (rideCost: RideCost) => {
     console.log('🚀 EDIT CLICKED - rideCost:', rideCost);
+    console.log('🔍 Console is working! Edit button clicked');
     setLoading(true);
     setEditingRideCost(rideCost);
 

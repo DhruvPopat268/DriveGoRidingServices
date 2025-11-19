@@ -28,6 +28,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  try {
+    const rideCost = await ParcelRideCost.findById(req.params.id);
+    if (!rideCost) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ride cost model not found'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: rideCost
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 router.post('/', async (req, res) => {
   try {
     // Create new ParcelRideCost
