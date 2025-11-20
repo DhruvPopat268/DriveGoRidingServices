@@ -576,7 +576,7 @@ router.post("/verify-otp", async (req, res) => {
 //   }
 // });
 
-router.post("/save-profile",authMiddleware, async (req, res) => {
+router.post("/save-profile", async (req, res) => {
   try {
     const {  name, gender, email, referralCodeUsed } = req.body;
 
