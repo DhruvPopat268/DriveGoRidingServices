@@ -230,7 +230,7 @@ io.on('connection', (socket) => {
 });
 
 app.get('/api/google-maps-script', (req, res) => {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCYJrI4qi8sgD5DsKn9lVlUtQtKr_y13t4';
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Google Maps API key not configured' });
