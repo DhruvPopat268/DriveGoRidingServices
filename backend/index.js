@@ -229,6 +229,67 @@ io.on('connection', (socket) => {
   });
 });
 
+app.get('/api/google-maps-script', (req, res) => {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Google Maps API key not configured' });
+  }
+
+  const script = `
+    (function() {
+      const script = document.createElement('script');
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    })();
+  `;
+
+  res.setHeader('Content-Type', 'application/javascript');
+  res.send(script);
+});
+
+// Add these routes to your server.js along with the existing google-maps-script route
+
+app.get('/api/places/autocomplete', async (req, res) => {
+  const { input, sessiontoken } = req.query;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Google Maps API key not configured' });
+  }
+
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:IN&key=${apiKey}&sessiontoken=${sessiontoken}`
+    );
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch suggestions' });
+  }
+});
+
+app.get('/api/places/details', async (req, res) => {
+  const { place_id, sessiontoken } = req.query;
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Google Maps API key not configured' });
+  }
+
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=formatted_address,geometry,address_components&key=${apiKey}&sessiontoken=${sessiontoken}`
+    );
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch place details' });
+  }
+});
+
 // Make onlineDrivers accessible globally
 app.set('onlineDrivers', onlineDrivers);
 
