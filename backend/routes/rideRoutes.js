@@ -173,6 +173,8 @@ router.post("/book", authMiddleware, async (req, res) => {
       notes,
       selectedCategory,
       selectedCategoryId,
+      selectedParcelCategory,
+      selectedCarCategory,
       selectedDate,
       selectedTime,
       selectedUsage,
@@ -188,7 +190,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       receiverDetails,   // ✅ new
     } = req.body;
 
-    console.log('selected category id', selectedCategoryId)
+    // console.log('selected category id', selectedCategoryId)
 
     if (!categoryId || !totalAmount || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
@@ -198,7 +200,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       (item) => item.category === selectedCategory
     );
 
-    console.log('selected category data', selectedCategoryData)
+    // console.log('selected category data', selectedCategoryData)
 
     if (!selectedCategoryData) {
       return res.status(400).json({ message: "Invalid selectedCategory" });
@@ -232,7 +234,9 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     // Convert selectedDate to Date object before saving
     let rideDate = selectedDate ? new Date(selectedDate) : null;
-    console.log('📅 Ride date:', rideDate);
+    // console.log('📅 Ride date:', rideDate);
+
+    
 
     // In rideInfo
     const newRide = new Ride({
@@ -282,9 +286,19 @@ router.post("/book", authMiddleware, async (req, res) => {
       status: "BOOKED",
     });
 
+    if(selectedCarCategory){
+      newRide.rideInfo.selectedCarCategory = selectedCarCategory.name;
+      newRide.rideInfo.selectedCarCategoryId = selectedCarCategory._id;
+    }
+
+    if(selectedParcelCategory){
+      newRide.rideInfo.selectedParcelCategory = selectedParcelCategory.categoryName;
+      newRide.rideInfo.selectedParcelCategoryId = selectedParcelCategory._id;
+    }
+
     await newRide.save();
 
-    console.log('📱 New ride booked:', newRide._id);
+    // console.log('📱 New ride booked:', newRide._id);
 
     // Emit socket event to drivers with EXTENDED rides only
     const io = req.app.get('io');
@@ -297,6 +311,9 @@ router.post("/book", authMiddleware, async (req, res) => {
         subcategoryName: subcategoryName,
         subSubcategoryName: subSubcategoryName,
         carType: carType,
+        selectedCategory: selectedCategory,
+        selectedCarCategory: selectedCarCategory.name,
+        selectedParcelCategory: selectedParcelCategory.categoryName,
         transmissionType: transmissionType,
         selectedUsage: selectedUsage,
         fromLocation: fromLocationData,
@@ -538,7 +555,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       });
     }
 
-    console.log(updatedBooking)
+    // console.log(updatedBooking)
 
     if (!updatedBooking) {
       return res.status(404).json({ message: "Booking not found" });
@@ -607,7 +624,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               await rider.save();
             }
 
-            console.log(`Deducted full cancellation fee: ${cancellationFee} from wallet`);
+            // console.log(`Deducted full cancellation fee: ${cancellationFee} from wallet`);
           } else {
             // Add transaction to wallet for partial deduction
             if (currentBalance > 0) {
@@ -639,7 +656,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               await rider.save();
             }
 
-            console.log(`Deducted ${currentBalance} from wallet, stored ${remainingCharges} as pending charges`);
+            // console.log(`Deducted ${currentBalance} from wallet, stored ${remainingCharges} as pending charges`);
           }
         } else {
           // No wallet found, store full amount in rider model

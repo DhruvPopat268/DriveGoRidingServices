@@ -433,13 +433,13 @@ router.post("/reject/:driverId", async (req, res) => {
 // Get driver cancellation credits info
 router.get("/cancellation-credits", async (req, res) => {
   try {
-    console.log('Fetching driver cancellation credits...');
+    // console.log('Fetching driver cancellation credits...');
 
     const drivers = await Driver.find({ status: "Approved" })
       .select("personalInformation.fullName mobile personalInformation.currentAddress cancellationRideCredits createdAt")
       .sort({ createdAt: -1 });
 
-    console.log(`Found ${drivers.length} approved drivers`);
+    // console.log(`Found ${drivers.length} approved drivers`);
 
     const driversData = drivers.map(driver => ({
       driverName: driver.personalInformation?.fullName || "N/A",
@@ -617,7 +617,7 @@ router.post("/send-otp", async (req, res) => {
       template_params: otp,
     };
 
-    console.log("Payload sent to Kaleyra =>", JSON.stringify(payload, null, 2));
+    // console.log("Payload sent to Kaleyra =>", JSON.stringify(payload, null, 2));
 
     // ✅ Send OTP via Kaleyra
     const response = await axios.post(apiUrl, payload, {
@@ -733,7 +733,7 @@ router.post("/verify-otp", async (req, res) => {
         totalDeductions: 0,
         transactions: [],
       });
-      console.log(`✅ Empty wallet created for driver: ${driverId}`);
+      // console.log(`✅ Empty wallet created for driver: ${driverId}`);
     }
 
     // ✅ Prepare response
@@ -907,7 +907,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const elapsed = now - checkpointTime;
     const total = now - startTime;
     timings[label] = { elapsed, total };
-    console.log(`⏱️  [${label}]: ${elapsed}ms (Total: ${total}ms)`);
+    // console.log(`⏱️  [${label}]: ${elapsed}ms (Total: ${total}ms)`);
     checkpointTime = now;
   };
 
@@ -1006,18 +1006,18 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // 🚀 OPTIMIZATION: Skip progress calculation on steps 1-4
     let progressResult = null;
     if (step === 5) {
-      console.log("📊 Calculating driver progress (final step)...");
+      // console.log("📊 Calculating driver progress (final step)...");
       const tempDriver = { ...driver, [field]: fieldData };
       progressResult = evaluateDriverProgress(tempDriver);
-      console.log(`🔄 New Status: ${progressResult.status}, Next Step: ${progressResult.step}`);
+      // console.log(`🔄 New Status: ${progressResult.status}, Next Step: ${progressResult.step}`);
       updates.status = progressResult.status;
       // logTime("PROGRESS_CALCULATION");
     } else {
-      console.log("⏭️  Skipping progress calculation (not final step)");
+      // console.log("⏭️  Skipping progress calculation (not final step)");
     }
 
     // 🚀 Single atomic database update
-    console.log(`💾 Updating database for step ${step}...`);
+    // console.log(`💾 Updating database for step ${step}...`);
     const updatedDriver = await Driver.findOneAndUpdate(
       { mobile },
       { $set: updates },
@@ -1042,7 +1042,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // console.log("\nBreakdown:");
     Object.entries(timings).forEach(([label, time]) => {
       const percentage = ((time.elapsed / totalTime) * 100).toFixed(1);
-      console.log(`  ${label.padEnd(30)} ${time.elapsed}ms (${percentage}%)`);
+      // console.log(`  ${label.padEnd(30)} ${time.elapsed}ms (${percentage}%)`);
     });
     // console.log("=".repeat(50) + "\n");
 
@@ -1406,10 +1406,10 @@ router.get("/transactions/all", async (req, res) => {
 
 // Reference OTP endpoints
 router.post("/reference/send-otp", async (req, res) => {
-  console.log("SID =>", process.env.KALEYRA_SID);
-  console.log("API KEY =>", process.env.KALEYRA_API_KEY);
-  console.log("SENDER ID =>", process.env.KALEYRA_SENDER_ID);
-  console.log("TEMPLATE ID =>", process.env.KALEYRA_TEMPLATE_ID);
+  // console.log("SID =>", process.env.KALEYRA_SID);
+  // console.log("API KEY =>", process.env.KALEYRA_API_KEY);
+  // console.log("SENDER ID =>", process.env.KALEYRA_SENDER_ID);
+  // console.log("TEMPLATE ID =>", process.env.KALEYRA_TEMPLATE_ID);
 
   try {
     const { mobile } = req.body;

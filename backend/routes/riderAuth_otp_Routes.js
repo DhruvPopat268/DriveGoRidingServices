@@ -22,7 +22,7 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
   try {
     const updates = req.body; // expect full object { name, email, mobile, gender, ... }
 
-    console.log("Update request body:", updates);
+    // console.log("Update request body:", updates);
 
     // Allowed fields to protect against unwanted updates (e.g., password, _id)
     const allowedFields = ["name", "mobile", "gender", "email"];
@@ -471,7 +471,7 @@ router.post("/send-otp", async (req, res) => {
       template_params: otp, // ✅ Just the string value, not object or array
     };
 
-    console.log("Payload sent to Kaleyra =>", JSON.stringify(payload, null, 2));
+    // console.log("Payload sent to Kaleyra =>", JSON.stringify(payload, null, 2));
 
     // ✅ Send OTP via Kaleyra
     const response = await axios.post(apiUrl, payload, {
@@ -641,7 +641,7 @@ router.post("/save-profile", async (req, res) => {
   try {
     const { mobile, name, gender, email, referralCodeUsed } = req.body;
 
-    console.log("Save profile request body:", req.body);
+    // console.log("Save profile request body:", req.body);
 
 
     if (!name || !gender) {

@@ -151,7 +151,7 @@ router.post("/getInstructions", async (req, res) => {
     if (parcelCategoryId) query.parcelCategoryId = parcelCategoryId;
     if (vehicleTypeId) query.vehicleTypeId = vehicleTypeId;
 
-    console.log("Instruction Query =>", query);
+    // console.log("Instruction Query =>", query);
 
     // Fetch all instructions matching the given IDs
     const instructions = await Instruction.find(query);

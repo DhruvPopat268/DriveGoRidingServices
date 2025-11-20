@@ -26,7 +26,7 @@ const authMiddleware = async (req, res, next) => {
       decoded = jwt.verify(token, process.env.JWT_SECRET_DRIVER);
       // console.log("✅ Token verified:", decoded);
     } catch (err) {
-      console.log("❌ JWT verification failed:", err.message);
+      // console.log("❌ JWT verification failed:", err.message);
       return res.status(401).json({ success: false, message: "Invalid or expired token" });
     }
 
