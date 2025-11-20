@@ -154,6 +154,10 @@ export const DriverRideCostPage = () => {
     return getSelectedCategoryName().toLowerCase() === 'parcel';
   };
 
+  const isFormDriverCategory = () => {
+    return getSelectedCategoryName().toLowerCase() === 'driver';
+  };
+
   const isOutstationSubCategory = () => {
     return getSelectedSubCategoryName().toLowerCase() === 'outstation';
   };
@@ -161,6 +165,64 @@ export const DriverRideCostPage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Filter subcategories when category changes in form
+  useEffect(() => {
+    if (rideCostForm.category) {
+      const filtered = subcategories.filter(sub => sub.categoryId === rideCostForm.category);
+      setFilteredSubcategories(filtered);
+      if (!isEditing) {
+        setRideCostForm(prev => ({ ...prev, subcategory: '', subSubCategory: '', priceCategory: '' }));
+      }
+      setFilteredSubSubCategories([]);
+      setFilteredPriceCategories([]);
+    } else {
+      setFilteredSubcategories([]);
+      setFilteredSubSubCategories([]);
+      setFilteredPriceCategories([]);
+    }
+  }, [rideCostForm.category, subcategories, isEditing]);
+
+  // Filter sub-subcategories when subcategory changes in form
+  useEffect(() => {
+    if (rideCostForm.subcategory) {
+      const filtered = subSubCategories.filter(subSub =>
+        subSub.categoryId === rideCostForm.category &&
+        subSub.subCategoryId === rideCostForm.subcategory
+      );
+      setFilteredSubSubCategories(filtered);
+      if (!isEditing) {
+        setRideCostForm(prev => ({ ...prev, subSubCategory: '', priceCategory: '' }));
+      }
+
+      // Show price categories if not outstation or if outstation and subSubCategory selected
+      if (!isOutstationSubCategory()) {
+        setFilteredPriceCategories(priceCategories);
+      } else {
+        setFilteredPriceCategories([]);
+      }
+    } else {
+      setFilteredSubSubCategories([]);
+      setFilteredPriceCategories([]);
+    }
+  }, [rideCostForm.subcategory, subSubCategories, priceCategories, isEditing]);
+
+  // Show price categories when sub-subcategory is selected for outstation
+  useEffect(() => {
+    if (rideCostForm.subSubCategory && isOutstationSubCategory()) {
+      setFilteredPriceCategories(priceCategories);
+      if (!isEditing) {
+        setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      }
+    }
+  }, [rideCostForm.subSubCategory, priceCategories, isEditing]);
+
+  // Fetch parcel vehicles when category is parcel
+  useEffect(() => {
+    if (isFormParcelCategory()) {
+      fetchParcelVehicles();
+    }
+  }, [rideCostForm.category]);
 
   // Filter subcategories for filter dropdown
   useEffect(() => {
@@ -298,29 +360,33 @@ export const DriverRideCostPage = () => {
 
       setEditingRideCost(fetchedRideCost);
 
-      const matchedSubcategory = subcategories.find(
-        (sub) => sub.id === fetchedRideCost.subcategory
-      );
-      const filteredSubs = matchedSubcategory ? [matchedSubcategory] : [];
+      const categoryId = extractId(fetchedRideCost.category);
+      const subcategoryId = extractId(fetchedRideCost.subcategory);
+      const subSubCategoryId = fetchedRideCost.subSubCategory ? extractId(fetchedRideCost.subSubCategory) : '';
+      const priceCategoryId = extractId(fetchedRideCost.priceCategory);
+
+      // Set filtered subcategories first
+      const filteredSubs = subcategories.filter(sub => sub.id === subcategoryId);
       setFilteredSubcategories(filteredSubs);
 
-      const filteredSubSubs = subSubCategories.filter(
-        (subSub) =>
-          subSub.categoryId === fetchedRideCost.category &&
-          subSub.subCategoryId === fetchedRideCost.subcategory
+      // Set filtered sub-subcategories
+      const filteredSubSubs = subSubCategories.filter(subSub =>
+        subSub.categoryId === categoryId && subSub.subCategoryId === subcategoryId
       );
       setFilteredSubSubCategories(filteredSubSubs);
+
+      // Set filtered price categories - show all when subcategory is selected
       setFilteredPriceCategories(priceCategories);
 
       setRideCostForm({
-        category: fetchedRideCost.category,
-        subcategory: fetchedRideCost.subcategory,
-        subSubCategory: fetchedRideCost.subSubCategory || "",
-        priceCategory: fetchedRideCost.priceCategory,
-        weight: fetchedRideCost.weight?.toString() || "",
+        category: categoryId,
+        subcategory: subcategoryId,
+        subSubCategory: subSubCategoryId,
+        priceCategory: priceCategoryId,
+        weight: fetchedRideCost.weight?.toString() || '',
         baseFare: fetchedRideCost.baseFare.toString(),
-        includedKm: fetchedRideCost.includedKm?.toString() || "",
-        includedMinutes: fetchedRideCost.includedMinutes.toString(),
+        includedKm: fetchedRideCost.includedKm || '',
+        includedMinutes: fetchedRideCost.includedMinutes || '',
         extraChargePerKm: fetchedRideCost.extraChargePerKm.toString(),
         extraChargePerMinute: fetchedRideCost.extraChargePerMinute.toString(),
         pickCharges: fetchedRideCost.pickCharges.toString(),
@@ -331,22 +397,16 @@ export const DriverRideCostPage = () => {
         extraChargesFromAdmin: fetchedRideCost.extraChargesFromAdmin.toString(),
         gst: fetchedRideCost.gst.toString(),
         discount: fetchedRideCost.discount.toString(),
-        driverCancellationCharges:
-          fetchedRideCost.driverCancellationCharges?.toString() || "0",
-        driverCancellationCredits:
-          fetchedRideCost.driverCancellationCredits?.toString() || "0",
+        driverCancellationCharges: fetchedRideCost.driverCancellationCharges?.toString() || '0',
+        driverCancellationCredits: fetchedRideCost.driverCancellationCredits?.toString() || '0'
       });
-
-      setTimeout(() => {
-        setDialogOpen(true);
-        setLoading(false);
-        setIsEditing(false);
-      }, 200);
-
+      
+      setDialogOpen(true);
     } catch (error) {
       console.error('Error fetching ride cost:', error);
-      setLoading(false);
       setIsEditing(false);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -450,22 +510,27 @@ export const DriverRideCostPage = () => {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    value={rideCostForm.category}
-                    onValueChange={(value) => setRideCostForm(prev => ({ ...prev, category: value }))}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat._id} value={cat._id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Select
+                      value={rideCostForm.category}
+                      onValueChange={(value) => setRideCostForm(prev => ({ ...prev, category: value }))}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {rideCostForm.category && !isFormDriverCategory() && (
+                      <p className="text-red-500 text-sm mt-1">Only driver category is allowed</p>
+                    )}
+                  </div>
 
                   <Select
                     value={rideCostForm.subcategory}
@@ -711,7 +776,7 @@ export const DriverRideCostPage = () => {
                   />
 
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || (rideCostForm.category && !isFormDriverCategory())}>
                   {loading ? 'Saving...' : editingRideCost ? 'Update' : 'Create'}
                 </Button>
               </form>
