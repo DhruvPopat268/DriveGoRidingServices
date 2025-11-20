@@ -233,7 +233,7 @@ router.get('/wallet', authMiddleware, async (req, res) => {
 // Deduct money from wallet (for ride payments, etc.)
 router.post('/deduct', authMiddleware, async (req, res) => {
   try {
-    const { amount, description = 'Wallet payment' } = req.body;
+    const { amount, description = 'Wallet payment', rideId } = req.body;
     const riderId = req.rider.riderId;
 
     if (!amount || amount <= 0) {
@@ -251,13 +251,19 @@ router.post('/deduct', authMiddleware, async (req, res) => {
     }
 
     // Add spend transaction to wallet
-    wallet.transactions.push({
+    const transaction = {
       amount: amount,
       status: 'paid',
       type: 'spend',
       description: description,
       paidAt: new Date()
-    });
+    };
+    
+    if (rideId) {
+      transaction.rideId = rideId;
+    }
+    
+    wallet.transactions.push(transaction);
 
     // Update wallet
     wallet.balance -= amount;

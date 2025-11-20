@@ -588,6 +588,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               status: 'paid',
               type: 'cancellation_charges',
               description: description,
+              rideId: bookingId,
               paidAt: new Date()
             });
 
@@ -614,6 +615,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
                 status: 'paid',
                 type: 'cancellation_charges',
                 description: `${description} (Partial payment)`,
+                rideId: bookingId,
                 paidAt: new Date()
               });
             }

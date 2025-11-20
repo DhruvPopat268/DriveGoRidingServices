@@ -40,6 +40,10 @@ const transactionSchema = new mongoose.Schema({
     type: Object,
     default: {}
   },
+  rideId: {
+    type: String,
+    required: false
+  },
   paidAt: {
     type: Date,
     default: null
