@@ -578,11 +578,10 @@ router.post("/verify-otp", async (req, res) => {
 
 router.post("/save-profile", async (req, res) => {
   try {
-    const {  name, gender, email, referralCodeUsed } = req.body;
+    const {  mobile , name, gender, email, referralCodeUsed } = req.body;
 
     console.log("Save profile request body:", req.body);
 
-    const mobile = req.rider.mobile;
 
     if(!name || !gender) {
       return res.status(400).json({ success: false, message: "Name and gender are required" });
