@@ -140,6 +140,7 @@ export const ParcelRideCostPage = () => {
   const [viewingRideCost, setViewingRideCost] = useState<RideCost | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Helper function to extract ID from objects that might have either _id or id
   const extractId = (item: string | { _id?: string; id?: string }) => {
@@ -186,7 +187,9 @@ export const ParcelRideCostPage = () => {
     if (rideCostForm.category) {
       const filtered = subcategories.filter(sub => sub.categoryId === rideCostForm.category);
       setFilteredSubcategories(filtered);
-      setRideCostForm(prev => ({ ...prev, subcategory: '', subSubCategory: '', priceCategory: '', car: '' }));
+      if (!isEditing) {
+        setRideCostForm(prev => ({ ...prev, subcategory: '', subSubCategory: '', priceCategory: '', car: '' }));
+      }
       setFilteredSubSubCategories([]);
       setFilteredPriceCategories([]);
 
@@ -196,7 +199,7 @@ export const ParcelRideCostPage = () => {
       setFilteredPriceCategories([]);
 
     }
-  }, [rideCostForm.category, subcategories]);
+  }, [rideCostForm.category, subcategories, isEditing]);
 
   // Filter sub-subcategories when subcategory changes in form
   useEffect(() => {
@@ -206,7 +209,9 @@ export const ParcelRideCostPage = () => {
         subSub.subCategoryId === rideCostForm.subcategory
       );
       setFilteredSubSubCategories(filtered);
-      setRideCostForm(prev => ({ ...prev, subSubCategory: '', priceCategory: '' }));
+      if (!isEditing) {
+        setRideCostForm(prev => ({ ...prev, subSubCategory: '', priceCategory: '' }));
+      }
 
       // Show price categories if not outstation or if outstation and subSubCategory selected
       if (!isOutstationSubCategory()) {
@@ -218,15 +223,17 @@ export const ParcelRideCostPage = () => {
       setFilteredSubSubCategories([]);
       setFilteredPriceCategories([]);
     }
-  }, [rideCostForm.subcategory, subSubCategories, priceCategories]);
+  }, [rideCostForm.subcategory, subSubCategories, priceCategories, isEditing]);
 
   // Show price categories when sub-subcategory is selected for outstation
   useEffect(() => {
     if (rideCostForm.subSubCategory && isOutstationSubCategory()) {
       setFilteredPriceCategories(priceCategories);
-      setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      if (!isEditing) {
+        setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      }
     }
-  }, [rideCostForm.subSubCategory, priceCategories]);
+  }, [rideCostForm.subSubCategory, priceCategories, isEditing]);
 
   // Fetch parcel categories and vehicle types when category is parcel
   useEffect(() => {
@@ -243,11 +250,13 @@ export const ParcelRideCostPage = () => {
         type => type.parcelCategory._id === rideCostForm.parcelCategory
       );
       setFilteredParcelVehicleTypes(filtered);
-      setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      if (!isEditing) {
+        setRideCostForm(prev => ({ ...prev, priceCategory: '' }));
+      }
     } else {
       setFilteredParcelVehicleTypes([]);
     }
-  }, [rideCostForm.parcelCategory, parcelVehicleTypes]);
+  }, [rideCostForm.parcelCategory, parcelVehicleTypes, isEditing]);
 
   // Filter subcategories for filter dropdown
   useEffect(() => {
@@ -385,66 +394,79 @@ export const ParcelRideCostPage = () => {
     }
   };
 
-  const handleEdit = (rideCost: RideCost) => {
-    // console.log('Editing ride cost:', rideCost);
-    setEditingRideCost(rideCost);
+  const handleEdit = async (rideCost: RideCost) => {
+    if (!rideCost._id) return;
+    
+    setIsEditing(true);
+    setLoading(true);
 
-    const categoryId = extractId(rideCost.category);
-    const subcategoryId = extractId(rideCost.subcategory);
-    const subSubCategoryId = rideCost.subSubCategory ? extractId(rideCost.subSubCategory) : '';
-    const priceCategoryId = rideCost.priceCategory ? extractId(rideCost.priceCategory) : '';
-    const parcelCategoryId = rideCost.parcelCategory ? extractId(rideCost.parcelCategory) : '';
-    const parcelVehicleTypeId = rideCost.parcelVehicleType ? extractId(rideCost.parcelVehicleType) : '';
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/ParcelRideCosts/${rideCost._id}`
+      );
+      const fetchedRideCost = response.data.data;
 
-    // Set filtered subcategories first
-    const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
-    setFilteredSubcategories(filteredSubs);
+      setEditingRideCost(fetchedRideCost);
 
-    // Set filtered sub-subcategories
-    const filteredSubSubs = subSubCategories.filter(subSub =>
-      subSub.categoryId === categoryId && subSub.subCategoryId === subcategoryId
-    );
-    setFilteredSubSubCategories(filteredSubSubs);
+      const categoryId = extractId(fetchedRideCost.category);
+      const subcategoryId = extractId(fetchedRideCost.subcategory);
+      const subSubCategoryId = fetchedRideCost.subSubCategory ? extractId(fetchedRideCost.subSubCategory) : '';
+      const priceCategoryId = fetchedRideCost.priceCategory ? extractId(fetchedRideCost.priceCategory) : '';
+      const parcelCategoryId = fetchedRideCost.parcelCategory ? extractId(fetchedRideCost.parcelCategory) : '';
+      const parcelVehicleTypeId = fetchedRideCost.parcelVehicleType ? extractId(fetchedRideCost.parcelVehicleType) : '';
 
-    // Set filtered price categories - show all when subcategory is selected
-    setFilteredPriceCategories(priceCategories);
+      // Set filtered subcategories first
+      const filteredSubs = subcategories.filter(sub => sub.id === subcategoryId);
+      setFilteredSubcategories(filteredSubs);
 
-    // If it's a parcel category, set parcel data
-    const selectedCategory = categories.find(cat => cat._id === categoryId);
-    if (selectedCategory && selectedCategory.name.toLowerCase() === 'parcel') {
-      // Set filtered parcel vehicle types if parcel category exists
-      if (parcelCategoryId && parcelVehicleTypes.length > 0) {
-        const filtered = parcelVehicleTypes.filter(
-          type => type.parcelCategory._id === parcelCategoryId
-        );
-        setFilteredParcelVehicleTypes(filtered);
+      
+
+      // Set filtered price categories - show all when subcategory is selected
+      setFilteredPriceCategories(priceCategories);
+
+      // If it's a parcel category, set parcel data
+      const selectedCategory = categories.find(cat => cat._id === categoryId);
+      if (selectedCategory && selectedCategory.name.toLowerCase() === 'parcel') {
+        // Set filtered parcel vehicle types if parcel category exists
+        if (parcelCategoryId && parcelVehicleTypes.length > 0) {
+          const filtered = parcelVehicleTypes.filter(
+            type => type.parcelCategory._id === parcelCategoryId
+          );
+          setFilteredParcelVehicleTypes(filtered);
+        }
       }
-    }
 
-    setRideCostForm({
-      category: categoryId,
-      subcategory: subcategoryId,
-      subSubCategory: subSubCategoryId,
-      parcelCategory: parcelCategoryId,
-      priceCategory: parcelVehicleTypeId || priceCategoryId,
-      car: rideCost.car ? extractId(rideCost.car) : '',
-      baseFare: rideCost.baseFare.toString(),
-      includedKm: rideCost.includedKm || '',
-      includedMinutes: rideCost.includedMinutes || '',
-      extraChargePerKm: rideCost.extraChargePerKm.toString(),
-      extraChargePerMinute: rideCost.extraChargePerMinute.toString(),
-      pickCharges: rideCost.pickCharges.toString(),
-      nightCharges: rideCost.nightCharges.toString(),
-      cancellationFee: rideCost.cancellationFee.toString(),
-      cancellationBufferTime: rideCost.cancellationBufferTime.toString(),
-      insurance: rideCost.insurance.toString(),
-      extraChargesFromAdmin: rideCost.extraChargesFromAdmin.toString(),
-      gst: rideCost.gst.toString(),
-      discount: rideCost.discount.toString(),
-      driverCancellationCharges: rideCost.driverCancellationCharges?.toString() || '0',
-      driverCancellationCredits: rideCost.driverCancellationCredits?.toString() || '0'
-    });
-    setDialogOpen(true);
+      setRideCostForm({
+        category: categoryId,
+        subcategory: subcategoryId,
+        subSubCategory: subSubCategoryId,
+        parcelCategory: parcelCategoryId,
+        priceCategory: parcelVehicleTypeId || priceCategoryId,
+        car: fetchedRideCost.car ? extractId(fetchedRideCost.car) : '',
+        baseFare: fetchedRideCost.baseFare.toString(),
+        includedKm: fetchedRideCost.includedKm || '',
+        includedMinutes: fetchedRideCost.includedMinutes || '',
+        extraChargePerKm: fetchedRideCost.extraChargePerKm.toString(),
+        extraChargePerMinute: fetchedRideCost.extraChargePerMinute.toString(),
+        pickCharges: fetchedRideCost.pickCharges.toString(),
+        nightCharges: fetchedRideCost.nightCharges.toString(),
+        cancellationFee: fetchedRideCost.cancellationFee.toString(),
+        cancellationBufferTime: fetchedRideCost.cancellationBufferTime.toString(),
+        insurance: fetchedRideCost.insurance.toString(),
+        extraChargesFromAdmin: fetchedRideCost.extraChargesFromAdmin.toString(),
+        gst: fetchedRideCost.gst.toString(),
+        discount: fetchedRideCost.discount.toString(),
+        driverCancellationCharges: fetchedRideCost.driverCancellationCharges?.toString() || '0',
+        driverCancellationCredits: fetchedRideCost.driverCancellationCredits?.toString() || '0'
+      });
+      
+      setDialogOpen(true);
+    } catch (error) {
+      console.error('Error fetching ride cost:', error);
+      setIsEditing(false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id?: string) => {
@@ -462,6 +484,7 @@ export const ParcelRideCostPage = () => {
 
   const resetForm = () => {
     setEditingRideCost(null);
+    setIsEditing(false);
     setRideCostForm({
       category: '',
       subcategory: '',
