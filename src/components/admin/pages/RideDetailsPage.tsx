@@ -27,6 +27,10 @@ interface RideDetails {
     riderName: string;
     riderMobile: string;
   };
+  driverInfo?: {
+    driverName: string;
+    driverMobile: string;
+  };
   rideInfo: {
     categoryName: string;
     subcategoryName: string;
@@ -220,6 +224,33 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
             </CardContent>
           </Card>
 
+          {/* Driver Information */}
+          {rideDetails.driverInfo && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Car className="w-5 h-5 mr-2" />
+                  Driver Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Name</label>
+                    <p className="text-lg">{rideDetails.driverInfo.driverName}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Mobile</label>
+                    <p className="text-lg flex items-center">
+                      <Phone className="w-4 h-4 mr-2" />
+                      {rideDetails.driverInfo.driverMobile}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Trip Details */}
           <Card>
             <CardHeader>
@@ -325,6 +356,18 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                 <span>Driver Charges</span>
                 <span>{formatCurrency(rideDetails.rideInfo.driverCharges)}</span>
               </div>
+              {rideDetails.rideInfo.extraMinutesCharges > 0 && (
+                <div className="flex justify-between">
+                  <span>Extra Minutes Charges</span>
+                  <span>{formatCurrency(rideDetails.rideInfo.extraMinutesCharges)}</span>
+                </div>
+              )}
+              {rideDetails.rideInfo.extraKmCharges > 0 && (
+                <div className="flex justify-between">
+                  <span>Extra KM Charges</span>
+                  <span>{formatCurrency(rideDetails.rideInfo.extraKmCharges)}</span>
+                </div>
+              )}
               {rideDetails.rideInfo.pickCharges > 0 && (
                 <div className="flex justify-between">
                   <span>Pick Charges</span>
@@ -352,21 +395,8 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
               </div>
               {rideDetails.rideInfo.cancellationCharges > 0 && (
                 <div className="flex justify-between">
-                  <span>Cancellation Charges</span>
+                  <span>User Cancellation Charges</span>
                   <span>{formatCurrency(rideDetails.rideInfo.cancellationCharges)}</span>
-                </div>
-              )}
-              {Number(rideDetails.rideInfo.extraKmCharges) > 0 && (
-                <div className="flex justify-between">
-                  <span>Extra KM Charges</span>
-                  <span>{formatCurrency(rideDetails.rideInfo.extraKmCharges)}</span>
-                </div>
-              )}
-
-              {Number(rideDetails.rideInfo.extraMinutesCharges) > 0 && (
-                <div className="flex justify-between">
-                  <span>Extra Time Charges</span>
-                  <span>{formatCurrency(rideDetails.rideInfo.extraMinutesCharges)}</span>
                 </div>
               )}
 

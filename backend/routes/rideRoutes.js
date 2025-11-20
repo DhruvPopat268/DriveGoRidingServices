@@ -1914,35 +1914,30 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
 
     const driverName = driverInfo.personalInformation?.fullName;
 
-    // Get ride data for validation before updating
+    // Get ride data before updating
     const currentRide = await Ride.findById(rideId);
     if (!currentRide) {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    // ✅ Date validation
+    // 📅 Date validation
     const currentDate = new Date().toISOString().split('T')[0];
     const subcategoryName = currentRide.rideInfo.subcategoryName?.toLowerCase() || '';
-    
+
     if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
-      // Validate selectedDates and completedDates for weekly/monthly rides
       const selectedDates = currentRide.rideInfo.selectedDates || [];
       const completedDates = currentRide.rideInfo.completedDates || [];
 
       if (selectedDates.length > 0 && completedDates.length > 0) {
-        const sortedSelectedDates = [...selectedDates].sort();
-        const sortedCompletedDates = [...completedDates].sort();
-
-        if (JSON.stringify(sortedSelectedDates) !== JSON.stringify(sortedCompletedDates)) {
+        if (JSON.stringify([...selectedDates].sort()) !== JSON.stringify([...completedDates].sort())) {
           return res.status(400).json({
             message: "Cannot complete ride. Selected dates and completed dates must match.",
-            selectedDates: sortedSelectedDates,
-            completedDates: sortedCompletedDates
+            selectedDates,
+            completedDates
           });
         }
       }
     } else {
-      // Validate current date for non-weekly/monthly rides
       const selectedDate = new Date(currentRide.rideInfo.selectedDate).toISOString().split('T')[0];
       if (selectedDate !== currentDate) {
         return res.status(400).json({
@@ -1952,13 +1947,13 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       }
     }
 
-    // 🔹 Update the ride status to COMPLETED (only if ONGOING or EXTENDED)
+    // 🔹 Update ride to COMPLETED
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: { $in: ["ONGOING", "EXTENDED"] } },
       {
         status: "COMPLETED",
-        driverId: driverId,
-        driverInfo: { driverName, driverMobile },
+        driverId,
+        driverInfo: { driverName, driverMobile }
       },
       { new: true }
     );
@@ -1967,9 +1962,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride already completed or not found" });
     }
 
-    // console.log("Updated ride on completion:", updatedRide);
-
-    // 🔹 Update driver's ride status and add to completedRides
+    // 🔹 Update driver status
     await Driver.findByIdAndUpdate(driverId, {
       rideStatus: "WAITING",
       $push: { completedRides: rideId }
@@ -1982,12 +1975,38 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       await rider.save();
     }
 
+    // ---------------------------------------------------
+    // 💳 RIDER WALLET UPDATE (ONLY WHEN PAYMENT IS CASH)
+    // ---------------------------------------------------
+
+    const riderId = updatedRide.riderId;
+    const payableAmount = updatedRide.totalPayable;
+    const paymentType = updatedRide.paymentType; // cash or wallet
+
+    if (paymentType === "cash") {
+      // Read Wallet model and update totalSpent
+      let riderWalletDoc = await Wallet.findOne({ riderId });
+
+      if (riderWalletDoc) {
+        riderWalletDoc.totalSpent += payableAmount;
+        await riderWalletDoc.save();
+      } else {
+        // Create wallet if it does not exist
+        await Wallet.create({
+          riderId,
+          balance: 0,
+          totalDeposited: 0,
+          totalSpent: payableAmount
+        });
+      }
+    }
+
     // -------------------------
     // 💰 DRIVER WALLET LOGIC
     // -------------------------
+
     const rideInfo = updatedRide.rideInfo;
 
-    // Calculate total credit for driver
     const driverEarning =
       (rideInfo.driverCharges || 0) +
       (rideInfo.pickCharges || 0) +
@@ -1995,14 +2014,11 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       (rideInfo.peakCharges || 0) +
       (rideInfo.extraKmCharges || 0) +
       (rideInfo.extraMinutesCharges || 0) +
-      (rideInfo.cancellationCharges || 0)
-
-    // console.log("💰 Calculated driver earning:", driverEarning);
+      (rideInfo.cancellationCharges || 0);
 
     if (driverEarning > 0) {
       let wallet = await driverWallet.findOne({ driverId });
 
-      // Create wallet if not exists
       if (!wallet) {
         wallet = await driverWallet.create({
           driverId,
@@ -2014,24 +2030,19 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         });
       }
 
-      // Add ride payment transaction
       wallet.transactions.push({
         type: "ride_payment",
         amount: driverEarning,
         rideId: updatedRide._id,
-        paymentMethod: updatedRide.paymentType || "cash",
+        paymentMethod: updatedRide.paymentType,
         description: `Ride completed (${rideInfo.categoryName} - ${rideInfo.subcategoryName})`,
         status: "completed",
       });
 
       wallet.balance += driverEarning;
       wallet.totalEarnings += driverEarning;
-
       await wallet.save();
 
-      // console.log("✅ Wallet updated for driver:", driverId);
-
-      // 🔹 Process uncleared cancellation charges
       const driver = await Driver.findById(driverId);
       const unclearedCharges = driver?.unclearedCancellationCharges || 0;
 
@@ -2039,25 +2050,20 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         const currentBalance = wallet.balance;
 
         if (currentBalance >= unclearedCharges) {
-          // Deduct full uncleared charges from wallet
           wallet.balance -= unclearedCharges;
           wallet.totalDeductions += unclearedCharges;
           wallet.transactions.push({
             type: "cancellation_charge",
             amount: -unclearedCharges,
             rideId: updatedRide._id,
-            description: `Uncleared cancellation charges deducted`,
+            description: "Uncleared cancellation charges deducted",
             status: "completed"
           });
           await wallet.save();
 
-          // Clear uncleared charges
           driver.unclearedCancellationCharges = 0;
           await driver.save();
-
-          console.log(`✅ Deducted full uncleared charges: ${unclearedCharges}`);
         } else {
-          // Partial deduction from wallet
           const remainingCharges = unclearedCharges - currentBalance;
 
           if (currentBalance > 0) {
@@ -2067,28 +2073,23 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
               type: "cancellation_charge",
               amount: -currentBalance,
               rideId: updatedRide._id,
-              description: `Partial uncleared cancellation charges deducted`,
+              description: "Partial uncleared cancellation charge deducted",
               status: "completed"
             });
             await wallet.save();
           }
 
-          // Update remaining uncleared charges
           driver.unclearedCancellationCharges = remainingCharges;
           await driver.save();
-
-          console.log(`✅ Deducted ${currentBalance} from wallet, remaining charges: ${remainingCharges}`);
         }
       }
-    } else {
-      // console.log("⚠️ No earning added (amount <= 0)");
     }
 
-    // 🔹 Final response
     res.json({
       message: "Ride completed successfully and wallet updated",
       ride: updatedRide,
     });
+
   } catch (error) {
     console.error("Error completing ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });

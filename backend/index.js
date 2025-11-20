@@ -229,11 +229,10 @@ io.on('connection', (socket) => {
   });
 });
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCYJrI4qi8sgD5DsKn9lVlUtQtKr_y13t4';
-
+const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCYJrI4qi8sgD5DsKn9lVlUtQtKr_y13t4';
 
 app.get('/api/google-maps-script', (req, res) => {
-  
+
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Google Maps API key not configured' });
@@ -257,7 +256,6 @@ app.get('/api/google-maps-script', (req, res) => {
 
 app.get('/api/places/autocomplete', async (req, res) => {
   const { input, sessiontoken } = req.query;
-
 
   if (!apiKey) {
     return res.status(500).json({ error: 'Google Maps API key not configured' });

@@ -127,7 +127,8 @@ const menuItems = [
       { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rejected-withdrawals" },
       { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" },
       { icon: Wallet, label: "Min Withdrawal Balance", key: "min-withdraw-balance" },
-      { icon: Calculator, label: "Service Wise Min Wallet Balance", key: "service-wallet-balance" }
+      { icon: Calculator, label: "Service Wise Min Wallet Balance", key: "service-wallet-balance" },
+      { icon: Gift, label: "Driver Incentives", key: "driver-incentives" }
     ]
   },
   {
@@ -148,6 +149,15 @@ const menuItems = [
     subItems: [
       { icon: Users, label: "User Ratings", key: "user-ratings" },
       { icon: UserCheck, label: "Driver Ratings", key: "driver-ratings" }
+    ]
+  },
+  {
+    icon: Users,
+    label: "Users Management",
+    key: "users-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Users, label: "Users", key: "users" }
     ]
   },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },

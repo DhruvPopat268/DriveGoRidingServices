@@ -23,6 +23,7 @@ const fs = require("fs").promises;
 const path = require("path");
 const sharp = require("sharp");
 const DriverReferanceOtpSession = require("../DriverModel/DriverReferanceOtpSession");
+const DriverIncentive = require("../models/DriverIncentive");
 
 // Helper function to get field name by step number
 function getFieldByStep(step) {
@@ -1517,6 +1518,102 @@ router.post("/reference/verify-otp", async (req, res) => {
       message: "OTP verification failed",
       error: error.message
     });
+  }
+});
+
+// Admin: Create driver incentive
+router.post("/admin/create-incentive", async (req, res) => {
+  try {
+    const { driverIds, amount, description } = req.body;
+
+    if (!driverIds || !Array.isArray(driverIds) || driverIds.length === 0) {
+      return res.status(400).json({ message: "Driver IDs array is required" });
+    }
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Valid incentive amount is required" });
+    }
+
+    if (!description || description.trim() === "") {
+      return res.status(400).json({ message: "Description is required" });
+    }
+
+    // Create incentive record
+    const incentive = await DriverIncentive.create({
+      drivers: driverIds,
+      amount,
+      description: description.trim()
+    });
+
+    const results = [];
+    
+    for (const driverId of driverIds) {
+      try {
+        // Find or create wallet
+        let wallet = await driverWallet.findOne({ driverId });
+        if (!wallet) {
+          wallet = await driverWallet.create({
+            driverId,
+            balance: 0,
+            totalEarnings: 0,
+            totalWithdrawn: 0,
+            totalDeductions: 0,
+            totalIncentives: 0,
+            transactions: []
+          });
+        }
+
+        // Add incentive to wallet
+        wallet.balance += amount;
+        wallet.totalIncentives += amount;
+        wallet.transactions.push({
+          type: "incentive",
+          amount,
+          status: "completed",
+          description: description.trim(),
+          adminRemarks: "Incentive added by admin"
+        });
+
+        await wallet.save();
+        results.push({ driverId, success: true });
+      } catch (error) {
+        console.error(`Error adding incentive for driver ${driverId}:`, error);
+        results.push({ driverId, success: false, error: error.message });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    res.json({
+      success: true,
+      message: `Incentive processed: ${successCount} successful, ${failCount} failed`,
+      results,
+      incentiveId: incentive._id,
+      summary: {
+        total: driverIds.length,
+        successful: successCount,
+        failed: failCount,
+        amount,
+        description
+      }
+    });
+  } catch (error) {
+    console.error("Create incentive error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+// Get incentive history
+router.get("/admin/incentive-history", async (req, res) => {
+  try {
+    const incentives = await DriverIncentive.find()
+      .populate("drivers", "personalInformation.fullName mobile")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: incentives });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

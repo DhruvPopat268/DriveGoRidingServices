@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Rider = require("../models/Rider");
 const OtpSession = require("../models/OtpSession");
+const { Wallet } = require("../models/Wallet");
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const Session = require("../models/Session");
@@ -128,15 +129,75 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User Web            >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Get all riders with non-empty names
-router.get("/all", async (req, res) => {
+router.get("/completeProfile", async (req, res) => {
   try {
-    const riders = await Rider.find({ name: { $ne: "" } }).sort({ createdAt: -1 });
-    res.json({ success: true, data: riders });
+    const riders = await Rider.find({
+      name: { $ne: "" },
+      gender: { $ne: "" }   // <-- added gender filter
+    }).sort({ createdAt: -1 });
+
+    const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
+      const wallet = await Wallet.findOne({ riderId: rider._id.toString() });
+      return {
+        ...rider.toObject(),
+        wallet: {
+          totalDeposited: wallet?.totalDeposited || 0,
+          totalSpent: wallet?.totalSpent || 0,
+          balance: wallet?.balance || 0
+        }
+      };
+    }));
+
+    res.json({ success: true, data: ridersWithWallet });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
+
+router.get("/inCompleteProfile", async (req, res) => {
+  try {
+    const riders = await Rider.find({ name: "" , gender: "" }).sort({ createdAt: -1 });
+    
+    const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
+      const wallet = await Wallet.findOne({ riderId: rider._id.toString() });
+      return {
+        ...rider.toObject(),
+        wallet: {
+          totalDeposited: wallet?.totalDeposited || 0,
+          totalSpent: wallet?.totalSpent || 0,
+          balance: wallet?.balance || 0
+        }
+      };
+    }));
+
+    res.json({ success: true, data: ridersWithWallet });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/all", async (req, res) => {
+  try {
+    const riders = await Rider.find({}).sort({ createdAt: -1 });
+    
+    const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
+      const wallet = await Wallet.findOne({ riderId: rider._id.toString() });
+      return {
+        ...rider.toObject(),
+        wallet: {
+          totalDeposited: wallet?.totalDeposited || 0,
+          totalSpent: wallet?.totalSpent || 0,
+          balance: wallet?.balance || 0
+        }
+      };
+    }));
+
+    res.json({ success: true, data: ridersWithWallet });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 router.get("/auth/check", (req, res) => {
   // Get token from "Authorization: Bearer <token>"
@@ -450,24 +511,24 @@ router.post("/verify-otp", async (req, res) => {
     const mobileStr = String(mobile).trim();
 
     // ✅ Find the latest OTP session for this mobile
-    const otpSession = await OtpSession.findOne({ 
+    const otpSession = await OtpSession.findOne({
       mobile: mobileStr,
-      isVerified: false 
+      isVerified: false
     }).sort({ createdAt: -1 });
 
     // ✅ Check if OTP session exists
     if (!otpSession) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "No OTP found. Please request a new OTP." 
+        message: "No OTP found. Please request a new OTP."
       });
     }
 
     // ✅ Check if OTP has expired
     if (new Date() > otpSession.otpExpiresAt) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "OTP has expired. Please request a new OTP." 
+        message: "OTP has expired. Please request a new OTP."
       });
     }
 
@@ -475,9 +536,9 @@ router.post("/verify-otp", async (req, res) => {
 
     // ✅ Verify OTP matches
     if (otpSession.otp != otp) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Invalid OTP" 
+        message: "Invalid OTP"
       });
     }
 
@@ -517,10 +578,10 @@ router.post("/verify-otp", async (req, res) => {
     });
   } catch (error) {
     console.error("Verify OTP error:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "OTP verification failed",
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -578,12 +639,12 @@ router.post("/verify-otp", async (req, res) => {
 
 router.post("/save-profile", async (req, res) => {
   try {
-    const {  mobile , name, gender, email, referralCodeUsed } = req.body;
+    const { mobile, name, gender, email, referralCodeUsed } = req.body;
 
     console.log("Save profile request body:", req.body);
 
 
-    if(!name || !gender) {
+    if (!name || !gender) {
       return res.status(400).json({ success: false, message: "Name and gender are required" });
     }
 

@@ -64,6 +64,8 @@ import { ServiceWiseMinWalletPage } from "@/components/admin/pages/ServiceWiseMi
 import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/UniversalCategoryAssignmentPage";
 import UserRatingsPage from "@/components/admin/pages/UserRatingsPage";
 import DriverRatingsPage from "@/components/admin/pages/DriverRatingsPage";
+import DriverIncentivePage from "@/components/admin/pages/DriverIncentivePage";
+import { UsersPage } from "@/components/admin/pages/UsersPage";
 import axios from "axios";
 
 const Index = () => {
@@ -389,6 +391,10 @@ const Index = () => {
         );
       case "file-upload-test":
         return <FileUploadTest />;
+      case "driver-incentives":
+        return <DriverIncentivePage />;
+      case "users":
+        return <UsersPage />;
 
       case "category-assignment":
         return categoryAssignment ? (

@@ -35,7 +35,7 @@ const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider-auth/all`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider-auth/completeProfile`);
       const data = await response.json();
       if (data.success) {
         setUsers(data.data);

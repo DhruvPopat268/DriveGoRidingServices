@@ -4,7 +4,7 @@ const transactionSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["ride_payment", "withdrawal", "cancellation_charge", "refunded"],
+      enum: ["ride_payment", "withdrawal", "cancellation_charge", "refunded", "incentive"],
       required: true,
     },
     amount: {
@@ -65,6 +65,10 @@ const driverWalletSchema = new mongoose.Schema(
       default: 0,
     },
     totalDeductions: {
+      type: Number,
+      default: 0,
+    },
+    totalIncentives: {
       type: Number,
       default: 0,
     },
