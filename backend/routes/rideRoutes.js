@@ -259,14 +259,8 @@ router.post("/book", authMiddleware, async (req, res) => {
         receiverDetails,
         includeInsurance,
         notes,
-
         selectedCategoryId,
         selectedCategory,
-
-        selectedCarCategory: selectedCarCategory.name,
-        selectedCarCategoryId: selectedCarCategory._id,
-        selectedParcelCategory: selectedParcelCategory.categoryName,
-        selectedParcelCategoryId: selectedParcelCategory._id,
 
         selectedDate: rideDate, // ✅ store as Date
         selectedTime,
@@ -293,7 +287,15 @@ router.post("/book", authMiddleware, async (req, res) => {
       status: "BOOKED",
     });
 
-   
+    if(selectedCarCategory){
+      newRide.rideInfo.selectedCarCategory = selectedCarCategory.name;
+      newRide.rideInfo.selectedCarCategoryId = selectedCarCategory._id;
+    }
+
+    if(selectedParcelCategory){
+      newRide.rideInfo.selectedParcelCategory = selectedParcelCategory.categoryName;
+      newRide.rideInfo.selectedParcelCategoryId = selectedParcelCategory._id;
+    }
 
     await newRide.save();
 
@@ -311,10 +313,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         subSubcategoryName: subSubcategoryName,
         carType: carType,
         selectedCategory: selectedCategory,
-        selectedCarCategory:  selectedCarCategory.name ,
-        selectedParcelCategory: selectedParcelCategory.categoryName,
-        senderDetails: senderDetails,
-        receiverDetails: receiverDetails,
+        
         transmissionType: transmissionType,
         selectedUsage: selectedUsage,
         fromLocation: fromLocationData,
@@ -325,7 +324,15 @@ router.post("/book", authMiddleware, async (req, res) => {
         status: 'BOOKED'
       };
 
-      
+      if(selectedCarCategory){
+      rideData.selectedCarCategory = selectedCarCategory.name;
+    }
+
+    if(selectedParcelCategory){
+      rideData.selectedParcelCategory = selectedParcelCategory.categoryName;
+      rideData.senderDetails = senderDetails;
+      rideData.receiverDetails = receiverDetails;
+    }
 
       // Get drivers with rideStatus 'WAITING', isOnline: true, and matching categories
       const waitingDrivers = await Driver.find({
