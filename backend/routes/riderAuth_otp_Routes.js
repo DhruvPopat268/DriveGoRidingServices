@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Rider = require("../models/Rider");
 const OtpSession = require("../models/OtpSession");
-const { Wallet } = require("../models/Wallet");
+const { Wallet } = require("../models/Payment&Wallet");
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
 const Session = require("../models/Session");
@@ -671,6 +671,18 @@ router.post("/save-profile", async (req, res) => {
       await referrer.save();
     } else {
       await rider.save();
+    }
+
+    // Initialize empty wallet for the rider
+    const existingWallet = await Wallet.findOne({ riderId: rider._id.toString() });
+    if (!existingWallet) {
+      await Wallet.create({
+        riderId: rider._id.toString(),
+        balance: 0,
+        totalDeposited: 0,
+        totalSpent: 0,
+        transactions: []
+      });
     }
 
     res.json({ success: true, message: "Profile saved", rider });

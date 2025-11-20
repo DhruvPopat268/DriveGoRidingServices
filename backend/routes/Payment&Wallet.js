@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const Payment = require('../models/Payment');
-const { Wallet } = require('../models/Wallet');
+const { Wallet } = require('../models/Payment&Wallet');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // Initialize Razorpay
@@ -43,12 +42,23 @@ router.post('/create-order', authMiddleware, async (req, res) => {
 
     const order = await razorpay.orders.create(options);
 
-    // Save order in database
-    const payment = new Payment({
-      riderId: riderId,
+    // Find or create wallet and add transaction
+    let wallet = await Wallet.findOne({ riderId });
+    if (!wallet) {
+      wallet = new Wallet({
+        riderId: riderId,
+        balance: 0,
+        totalDeposited: 0,
+        totalSpent: 0,
+        transactions: []
+      });
+    }
+
+    // Add transaction to wallet
+    wallet.transactions.push({
       orderId: orderId,
       razorpayOrderId: order.id,
-      amount: amount, // Store in rupees
+      amount: amount,
       currency: currency,
       status: 'created',
       type: 'deposit',
@@ -56,7 +66,7 @@ router.post('/create-order', authMiddleware, async (req, res) => {
       notes: options.notes
     });
 
-    await payment.save();
+    await wallet.save();
 
     res.json({
       id: order.id,
@@ -81,14 +91,15 @@ router.post('/verify', authMiddleware, async (req, res) => {
     } = req.body;
     const riderId = req.rider.riderId;
 
-    // Find the payment record
-    const payment = await Payment.findOne({ 
-      razorpayOrderId: razorpay_order_id,
-      riderId: riderId 
-    });
+    // Find the wallet and transaction record
+    const wallet = await Wallet.findOne({ riderId });
+    if (!wallet) {
+      return res.status(404).json({ error: 'Wallet not found' });
+    }
 
-    if (!payment) {
-      return res.status(404).json({ error: 'Payment record not found' });
+    const transaction = wallet.transactions.find(t => t.razorpayOrderId === razorpay_order_id);
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction record not found' });
     }
 
     // Verify signature
@@ -99,45 +110,30 @@ router.post('/verify', authMiddleware, async (req, res) => {
       .digest("hex");
 
     if (razorpay_signature !== expectedSign) {
-      // Update payment status to failed
-      payment.status = 'failed';
-      await payment.save();
+      // Update transaction status to failed
+      transaction.status = 'failed';
+      await wallet.save();
       
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    // Payment is valid, update payment record
-    payment.razorpayPaymentId = razorpay_payment_id;
-    payment.razorpaySignature = razorpay_signature;
-    payment.status = 'paid';
-    payment.paidAt = new Date();
+    // Payment is valid, update transaction record
+    transaction.razorpayPaymentId = razorpay_payment_id;
+    transaction.razorpaySignature = razorpay_signature;
+    transaction.status = 'paid';
+    transaction.paidAt = new Date();
     
     // Get payment details from Razorpay
     try {
       const paymentDetails = await razorpay.payments.fetch(razorpay_payment_id);
-      payment.paymentMethod = paymentDetails.method;
+      transaction.paymentMethod = paymentDetails.method;
     } catch (error) {
       console.error('Error fetching payment details:', error);
     }
 
-    await payment.save();
-
-    // Update wallet balance
-    let wallet = await Wallet.findOne({ riderId: riderId });
-    
-    if (!wallet) {
-      // Create new wallet if doesn't exist
-      wallet = new Wallet({
-        riderId: riderId,
-        balance: 0,
-        totalDeposited: 0,
-        totalSpent: 0
-      });
-    }
-
-    // Update wallet (payment.amount is in rupees)
-    wallet.balance += payment.amount;
-    wallet.totalDeposited += payment.amount;
+    // Update wallet balance (transaction.amount is in rupees)
+    wallet.balance += transaction.amount;
+    wallet.totalDeposited += transaction.amount;
     wallet.lastTransactionAt = new Date();
     
     await wallet.save();
@@ -164,25 +160,34 @@ router.get('/history', authMiddleware, async (req, res) => {
     // Build query
     let query = { riderId };
 
-    // ✅ Get all payments (no pagination)
-    const payments = await Payment.find(query).sort({ createdAt: -1 });
+    // Get wallet with transactions
+    const wallet = await Wallet.findOne({ riderId });
+    
+    if (!wallet) {
+      return res.json({
+        payments: [],
+        totalItems: 0
+      });
+    }
 
-    // Format response
-    const formattedPayments = payments.map(payment => ({
-      id: payment._id,
-      amount: payment.amount, // Amount in rupees
-      type: payment.type,
-      description: payment.description,
-      status: payment.status,
-      paymentMethod: payment.paymentMethod,
-      razorpayPaymentId: payment.razorpayPaymentId,
-      date: payment.createdAt,
-      paidAt: payment.paidAt
-    }));
+    // Format response from wallet transactions
+    const formattedPayments = wallet.transactions
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map(transaction => ({
+        id: transaction._id,
+        amount: transaction.amount,
+        type: transaction.type,
+        description: transaction.description,
+        status: transaction.status,
+        paymentMethod: transaction.paymentMethod,
+        razorpayPaymentId: transaction.razorpayPaymentId,
+        date: transaction.createdAt,
+        paidAt: transaction.paidAt
+      }));
 
     res.json({
       payments: formattedPayments,
-      totalItems: payments.length
+      totalItems: formattedPayments.length
     });
 
   } catch (error) {
@@ -190,7 +195,6 @@ router.get('/history', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch payment history' });
   }
 });
-
 
 // Get wallet details
 router.get('/wallet', authMiddleware, async (req, res) => {
@@ -246,19 +250,14 @@ router.post('/deduct', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
-    // Create spend transaction record
-    const payment = new Payment({
-      riderId: riderId,
-      orderId: `spend_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      razorpayOrderId: `local_${Date.now()}`,
-      amount: amount, // Amount in rupees
+    // Add spend transaction to wallet
+    wallet.transactions.push({
+      amount: amount,
       status: 'paid',
       type: 'spend',
       description: description,
       paidAt: new Date()
     });
-
-    await payment.save();
 
     // Update wallet
     wallet.balance -= amount;
@@ -271,7 +270,7 @@ router.post('/deduct', authMiddleware, async (req, res) => {
       success: true, 
       message: 'Amount deducted successfully',
       walletBalance: wallet.balance,
-      transactionId: payment._id
+      transactionId: wallet.transactions[wallet.transactions.length - 1]._id
     });
 
   } catch (error) {
@@ -317,32 +316,24 @@ router.post('/webhook', express.raw({type: 'application/json'}), async (req, res
 // Helper function to handle payment captured event
 const handlePaymentCaptured = async (paymentEntity) => {
   try {
-    const payment = await Payment.findOne({ 
-      razorpayPaymentId: paymentEntity.id 
+    // Find wallet with the transaction
+    const wallet = await Wallet.findOne({
+      'transactions.razorpayPaymentId': paymentEntity.id
     });
 
-    if (payment && payment.status !== 'paid') {
-      payment.status = 'paid';
-      payment.paidAt = new Date();
-      await payment.save();
-
-      // Update wallet if not already updated
-      const wallet = await Wallet.findOne({ riderId: payment.riderId });
-      if (wallet) {
-        // Check if this payment was already processed
-        // This is a safety check to prevent double crediting
-        const existingTransaction = await Payment.findOne({
-          razorpayPaymentId: paymentEntity.id,
-          status: 'paid',
-          createdAt: { $lt: payment.createdAt }
-        });
-
-        if (!existingTransaction) {
-          wallet.balance += payment.amount; // Amount in rupees
-          wallet.totalDeposited += payment.amount;
-          wallet.lastTransactionAt = new Date();
-          await wallet.save();
-        }
+    if (wallet) {
+      const transaction = wallet.transactions.find(t => t.razorpayPaymentId === paymentEntity.id);
+      
+      if (transaction && transaction.status !== 'paid') {
+        transaction.status = 'paid';
+        transaction.paidAt = new Date();
+        
+        // Update wallet balance
+        wallet.balance += transaction.amount;
+        wallet.totalDeposited += transaction.amount;
+        wallet.lastTransactionAt = new Date();
+        
+        await wallet.save();
       }
     }
   } catch (error) {
@@ -353,13 +344,17 @@ const handlePaymentCaptured = async (paymentEntity) => {
 // Helper function to handle payment failed event
 const handlePaymentFailed = async (paymentEntity) => {
   try {
-    const payment = await Payment.findOne({ 
-      razorpayPaymentId: paymentEntity.id 
+    const wallet = await Wallet.findOne({
+      'transactions.razorpayPaymentId': paymentEntity.id
     });
 
-    if (payment) {
-      payment.status = 'failed';
-      await payment.save();
+    if (wallet) {
+      const transaction = wallet.transactions.find(t => t.razorpayPaymentId === paymentEntity.id);
+      
+      if (transaction) {
+        transaction.status = 'failed';
+        await wallet.save();
+      }
     }
   } catch (error) {
     console.error('Handle payment failed error:', error);

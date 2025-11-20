@@ -4,8 +4,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Ensure this p
 const router = express.Router();
 const Rider = require("../models/Rider");
 const Driver = require("../DriverModel/DriverModel");
-const { Wallet } = require("../models/Wallet");
-const Payment = require("../models/Payment");
+const { Wallet } = require("../models/Payment&Wallet");
 const axios = require("axios");
 const referralRules = require("../models/ReferralRule");
 const driverAuthMiddleware = require("../middleware/driverAuthMiddleware");
@@ -583,18 +582,14 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
           const currentBalance = wallet.balance;
 
           if (currentBalance >= cancellationFee) {
-            // Create Payment record for full deduction
-            const payment = new Payment({
-              riderId: riderId.toString(),
-              orderId: `cancel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              razorpayOrderId: `cancel_${Date.now()}`,
+            // Add transaction to wallet for full deduction
+            wallet.transactions.push({
               amount: cancellationFee,
               status: 'paid',
-              type: 'spend',
+              type: 'cancellation_charges',
               description: description,
               paidAt: new Date()
             });
-            await payment.save();
 
             // Deduct full cancellation fee from wallet
             wallet.balance -= cancellationFee;
@@ -612,19 +607,15 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
             console.log(`Deducted full cancellation fee: ${cancellationFee} from wallet`);
           } else {
-            // Create Payment record for partial deduction
+            // Add transaction to wallet for partial deduction
             if (currentBalance > 0) {
-              const payment = new Payment({
-                riderId: riderId.toString(),
-                orderId: `cancel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                razorpayOrderId: `cancel_${Date.now()}`,
+              wallet.transactions.push({
                 amount: currentBalance,
                 status: 'paid',
-                type: 'spend',
+                type: 'cancellation_charges',
                 description: `${description} (Partial payment)`,
                 paidAt: new Date()
               });
-              await payment.save();
             }
 
             // Partial deduction from wallet, store remaining in rider model
@@ -951,8 +942,6 @@ router.get("/driver/rides/cancelled", driverAuthMiddleware, async (req, res) => 
     });
   }
 });
-
-
 
 // update status to confirm and assign driver ride by driver
 router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {

@@ -186,6 +186,7 @@ export const UsersPage = () => {
                     <TableHead>Profile Status</TableHead>
                     <TableHead>Referral Code</TableHead>
                     <TableHead>Wallet</TableHead>
+                    <TableHead>Referral Earnings</TableHead>
                     <TableHead>Rating</TableHead>
                     <TableHead>Joined Date</TableHead>
                   </TableRow>
@@ -237,6 +238,13 @@ export const UsersPage = () => {
                           <p>Deposited: ₹{user.wallet?.totalDeposited || 0}</p>
                           <p>Spent: ₹{user.wallet?.totalSpent || 0}</p>
                           <p className="font-medium">Balance: ₹{user.wallet?.balance || 0}</p>
+                        </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="text-sm space-y-1">
+                          <p>Total: ₹{user.referralEarning?.totalEarnings || 0}</p>
+                          <p className="font-medium">Balance: ₹{user.referralEarning?.currentBalance || 0}</p>
                         </div>
                       </TableCell>
                       
