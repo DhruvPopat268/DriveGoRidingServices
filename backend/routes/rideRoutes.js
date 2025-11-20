@@ -327,6 +327,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status and matching categories`);
 
       // Send to online drivers who have WAITING rideStatus
+      console.log('ride data to send:', rideData);
       let sentCount = 0;
       Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
         // Only send to drivers with WAITING status
