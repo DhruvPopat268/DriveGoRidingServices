@@ -261,6 +261,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         notes,
         selectedCategoryId,
         selectedCategory,
+
         selectedDate: rideDate, // ✅ store as Date
         selectedTime,
         selectedUsage,
@@ -312,8 +313,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         subSubcategoryName: subSubcategoryName,
         carType: carType,
         selectedCategory: selectedCategory,
-        selectedCarCategory: selectedCarCategory.name,
-        selectedParcelCategory: selectedParcelCategory.categoryName,
+        
         transmissionType: transmissionType,
         selectedUsage: selectedUsage,
         fromLocation: fromLocationData,
@@ -323,6 +323,14 @@ router.post("/book", authMiddleware, async (req, res) => {
         totalPayable: adjustedTotalPayable,
         status: 'BOOKED'
       };
+
+      if(selectedCarCategory){
+      rideData.selectedCarCategory = selectedCarCategory.name;
+    }
+
+    if(selectedParcelCategory){
+      rideData.selectedParcelCategory = selectedParcelCategory.categoryName;
+    }
 
       // Get drivers with rideStatus 'WAITING', isOnline: true, and matching categories
       const waitingDrivers = await Driver.find({
