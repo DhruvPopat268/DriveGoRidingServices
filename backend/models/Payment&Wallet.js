@@ -43,7 +43,8 @@ const transactionSchema = new mongoose.Schema({
   paidAt: {
     type: Date,
     default: null
-  }
+  },
+  _id: false
 }, {
   timestamps: true
 });
