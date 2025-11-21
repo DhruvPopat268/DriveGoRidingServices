@@ -16,6 +16,11 @@ const carSchema = new mongoose.Schema({
     ref: 'CarCategory',
     required: true
   },
+  vehicleType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'VehicleType',
+    required: true
+  },
   image: {
     type: String,
     required: true

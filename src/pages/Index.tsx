@@ -37,6 +37,7 @@ import  ReferEarnPage  from "@/components/admin/pages/ReferEarnPage";
 import { StatesPage } from "@/components/admin/pages/StatesPage";
 import { CitiesPage } from "@/components/admin/pages/CitiesPage";
 import { CarCategoryPage } from "@/components/admin/pages/CarCategoryPage";
+import { VehicleTypePage } from "@/components/admin/pages/VehicleTypePage";
 import { CarManagementPage } from "@/components/admin/pages/CarManagementPage";
 import { ParcelCategoryPage } from "@/components/admin/pages/ParcelCategoryPage";
 import { ParcelVehicleManagementPage } from "@/components/admin/pages/ParcelVehicleManagementPage";
@@ -282,6 +283,8 @@ const Index = () => {
         return <RBACManagementPage />;
       case "carcategory":
         return <CarCategoryPage />;
+      case "vehicletype":
+        return <VehicleTypePage />;
       case "carmanagement":
         return <CarManagementPage />;
       case "cabridecost":

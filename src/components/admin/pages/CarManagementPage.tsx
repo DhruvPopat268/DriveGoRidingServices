@@ -20,6 +20,10 @@ interface Car {
     _id: string;
     name: string;
   } | null;
+  vehicleType: {
+    _id: string;
+    name: string;
+  } | null;
   image: string;
   seater: number;
   status: boolean;
@@ -35,6 +39,7 @@ interface CarForm {
   name: string;
   description: string;
   category: string;
+  vehicleType: string;
   image: File | null;
   seater: string;
   existingImageUrl?: string;
@@ -45,6 +50,7 @@ export const CarManagementPage = () => {
   const [cars, setCars] = useState<Car[]>([]);
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   const [categories, setCategories] = useState<CarCategory[]>([]);
+  const [vehicleTypes, setVehicleTypes] = useState<CarCategory[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -53,6 +59,7 @@ export const CarManagementPage = () => {
     name: '',
     description: '',
     category: '',
+    vehicleType: '',
     image: null,
     seater: '',
     existingImageUrl: ''
@@ -61,6 +68,7 @@ export const CarManagementPage = () => {
   useEffect(() => {
     fetchCars();
     fetchCategories();
+    fetchVehicleTypes();
   }, []);
 
   useEffect(() => {
@@ -89,6 +97,15 @@ export const CarManagementPage = () => {
       setCategories(response.data.filter((cat: CarCategory & { status: boolean }) => cat.status));
     } catch (error) {
       console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchVehicleTypes = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/vehicle-types`);
+      setVehicleTypes(response.data.filter((vt: CarCategory & { status: boolean }) => vt.status));
+    } catch (error) {
+      console.error('Error fetching vehicle types:', error);
     }
   };
 
@@ -122,6 +139,7 @@ export const CarManagementPage = () => {
         name: carForm.name,
         description: carForm.description,
         category: carForm.category,
+        vehicleType: carForm.vehicleType,
         seater: parseInt(carForm.seater),
         ...(imageUrl && { image: imageUrl })
       };
@@ -148,6 +166,7 @@ export const CarManagementPage = () => {
       name: car.name,
       description: car.description,
       category: car.category?._id || '',
+      vehicleType: car.vehicleType?._id || '',
       image: null,
       seater: car.seater.toString(),
       existingImageUrl: car.image
@@ -184,6 +203,7 @@ export const CarManagementPage = () => {
       name: '',
       description: '',
       category: '',
+      vehicleType: '',
       image: null,
       seater: '',
       existingImageUrl: ''
@@ -239,6 +259,23 @@ export const CarManagementPage = () => {
                     {categories.map((category) => (
                       <SelectItem key={category._id} value={category._id}>
                         {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={carForm.vehicleType}
+                  onValueChange={(value) => setCarForm(prev => ({ ...prev, vehicleType: value }))}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Vehicle Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vehicleTypes.map((vehicleType) => (
+                      <SelectItem key={vehicleType._id} value={vehicleType._id}>
+                        {vehicleType.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -305,6 +342,7 @@ export const CarManagementPage = () => {
                 <TableHead>#</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Vehicle Type</TableHead>
                 <TableHead>Seater</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
@@ -323,6 +361,7 @@ export const CarManagementPage = () => {
                   <TableCell>{index+1}</TableCell>
                   <TableCell className="font-medium">{car.name}</TableCell>
                   <TableCell>{car.category?.name || 'No Category'}</TableCell>
+                  <TableCell>{car.vehicleType?.name || 'No Vehicle Type'}</TableCell>
                   <TableCell>{car.seater}</TableCell>
                   <TableCell>{car.description}</TableCell>
                   <TableCell>

@@ -70,6 +70,7 @@ const menuItems = [
     isDropdown: true,
     subItems: [
       { icon: Tags, label: "Cab Category", key: "carcategory" },
+      { icon: Truck, label: "Vehicle Type", key: "vehicletype" },
       { icon: Car, label: "Cab Management", key: "carmanagement" },
       { icon: Calculator, label: "Cab Ride Cost Management", key: "cabridecost" }
     ]
