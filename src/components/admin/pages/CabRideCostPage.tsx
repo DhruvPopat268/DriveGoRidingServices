@@ -410,7 +410,7 @@ export const CabRideCostPage = () => {
             console.log('categoryId:', categoryId, 'subcategoryId:', subcategoryId, 'subSubCategoryId:', subSubCategoryId, 'priceCategoryId:', priceCategoryId);
 
             // Set filtered subcategories first
-            const filteredSubs = subcategories.filter(sub => sub.id === subcategoryId);
+            const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
             setFilteredSubcategories(filteredSubs);
             console.log('Filtered Subcategories:', filteredSubs);
             // Set filtered sub-subcategories

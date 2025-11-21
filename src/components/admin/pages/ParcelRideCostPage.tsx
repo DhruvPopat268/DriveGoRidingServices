@@ -416,7 +416,7 @@ export const ParcelRideCostPage = () => {
       const parcelVehicleTypeId = fetchedRideCost.parcelVehicleType ? extractId(fetchedRideCost.parcelVehicleType) : '';
 
       // Set filtered subcategories first
-      const filteredSubs = subcategories.filter(sub => sub.id === subcategoryId);
+      const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
       setFilteredSubcategories(filteredSubs);
 
       

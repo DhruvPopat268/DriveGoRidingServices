@@ -284,6 +284,7 @@ export const DriverRideCostPage = () => {
       setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
       setCategories(categoriesRes.data);
       setSubcategories(subcategoriesRes.data);
+      console.log(subcategoriesRes.data);
       setSubSubCategories(subSubCategoriesRes.data);
       setPriceCategories(priceCategoriesRes.data);
     } catch (error) {
@@ -366,7 +367,7 @@ export const DriverRideCostPage = () => {
       const priceCategoryId = extractId(fetchedRideCost.priceCategory);
 
       // Set filtered subcategories first
-      const filteredSubs = subcategories.filter(sub => sub.id === subcategoryId);
+      const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
       setFilteredSubcategories(filteredSubs);
 
       // Set filtered sub-subcategories
