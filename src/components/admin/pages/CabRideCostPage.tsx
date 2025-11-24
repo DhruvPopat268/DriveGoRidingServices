@@ -863,14 +863,7 @@ export const CabRideCostPage = () => {
                                         value={rideCostForm.driverCancellationCharges}
                                         onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCharges: e.target.value }))}
                                     />
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="Driver Cancellation Credits"
-                                        value={rideCostForm.driverCancellationCredits}
-                                        onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCredits: e.target.value }))}
-                                    />
-
+                                    
                                 </div>
                                 <Button type="submit" className="w-full" disabled={loading || (rideCostForm.category && !isFormCabCategory())}>
                                     {loading ? 'Saving...' : editingRideCost ? 'Update' : 'Create'}
@@ -1237,10 +1230,7 @@ export const CabRideCostPage = () => {
                                     <label className="text-sm font-medium">Driver Cancellation Charges</label>
                                     <p className="text-sm text-gray-600">₹{viewingRideCost.driverCancellationCharges || 0}</p>
                                 </div>
-                                <div>
-                                    <label className="text-sm font-medium">Driver Cancellation Credits</label>
-                                    <p className="text-sm text-gray-600">₹{viewingRideCost.driverCancellationCredits || 0}</p>
-                                </div>
+                         
                             </div>
                         )}
                     </DialogContent>
