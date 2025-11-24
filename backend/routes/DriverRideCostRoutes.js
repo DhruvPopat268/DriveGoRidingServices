@@ -9,6 +9,7 @@ const SubCategory = require('../models/SubCategory');
 const SubSubCategory = require('../models/SubSubCategory');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const Rider = require('../models/Rider');
+const mongoose = require('mongoose');
 
 
 router.post('/', async (req, res) => {
@@ -110,34 +111,44 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     const subSubCategory = subSubcategoryId ? await SubSubCategory.findById(subSubcategoryId) : null;
     if (subSubcategoryId && !subSubCategory) return res.status(404).json({ error: 'Sub-Subcategory not found' });
 
-    let usageValue = parseFloat(selectedUsage) || 0;
     const formattedSubcategory = subcategory.name.toLowerCase();
     const formattedSubSubCategory = subSubCategory ? subSubCategory.name.toLowerCase() : null;
 
-    // Convert hours to minutes if hourly, roundtrip, weekly or monthly
-    if (
-      formattedSubcategory === 'hourly' ||
-      formattedSubSubCategory === 'roundtrip' ||
-      formattedSubcategory === 'monthly' ||
-      formattedSubcategory === 'weekly'
-    ) {
-      usageValue = usageValue * 60;
-    }
+    // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km")
+    const parseUsage = (usageStr) => {
+      const usage = { km: 0, minutes: 0 };
+      if (!usageStr) return usage;
+      
+      const parts = usageStr.split('&').map(part => part.trim());
+      
+      parts.forEach(part => {
+        const kmMatch = part.match(/(\d+)\s*km/i);
+        const hrMatch = part.match(/(\d+)\s*hrs?/i);
+        const minMatch = part.match(/(\d+)\s*min/i);
+        
+        if (kmMatch) usage.km = parseInt(kmMatch[1]);
+        if (hrMatch) usage.minutes += parseInt(hrMatch[1]) * 60;
+        if (minMatch) usage.minutes += parseInt(minMatch[1]);
+      });
+      
+      return usage;
+    };
+
+    const parsedUsage = parseUsage(selectedUsage);
 
     // 3. Fetch all ride cost models
-    let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId };
-
-    if (
-      formattedSubcategory === 'hourly' ||
-      formattedSubSubCategory === 'roundtrip' ||
-      formattedSubcategory === 'monthly' ||
-      formattedSubcategory === 'weekly'
-    ) {
-      rideCostQuery.includedMinutes = usageValue.toString();
-    } else {
-      rideCostQuery.includedKm = usageValue.toString();
+    let rideCostQuery = { category: categoryId, subcategory: subcategoryId };
+    if (subSubcategoryId) {
+      rideCostQuery.subSubCategory = subSubcategoryId;
     }
-
+    // Add both km and minutes to query if they exist
+    if (parsedUsage.km > 0) {
+      rideCostQuery.includedKm = parsedUsage.km.toString();
+    }
+    if (parsedUsage.minutes > 0) {
+      rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
+    }
+    console.log('Ride Cost Query:', rideCostQuery);
     const rideCostModels = await DriverRideCost.find(rideCostQuery);
     if (rideCostModels.length === 0) {
       return res.status(404).json({ error: 'No ride cost models found' });
@@ -330,35 +341,69 @@ router.post("/get-included-data", async (req, res) => {
       });
     }
 
-    // Get distinct includedKm
-    const includedKm = await DriverRideCost.distinct("includedKm", {
-      category: categoryId,
-      subcategory: subcategoryId,
-      subSubCategory: subSubcategoryId
-    });
+    const subcategory = await SubCategory.findById(subcategoryId);
+    if (!subcategory) {
+      return res.status(404).json({
+        success: false,
+        message: "Subcategory not found",
+      });
+    }
 
-    // Get distinct includedMinutes
-    const includedMinutes = await DriverRideCost.distinct("includedMinutes", {
-      category: categoryId,
-      subcategory: subcategoryId,
-      subSubCategory: subSubcategoryId
-    });
+    const formattedSubcategory = subcategory.name.toLowerCase();
 
-    // If nothing found
-    if (!includedMinutes.length && !includedKm.length) {
+    const records = await DriverRideCost.aggregate([
+      {
+        $match: {
+          category: new mongoose.Types.ObjectId(categoryId),
+          subcategory: new mongoose.Types.ObjectId(subcategoryId),
+          ...(subSubcategoryId && {
+            subSubCategory: new mongoose.Types.ObjectId(subSubcategoryId),
+          }),
+        },
+      },
+      {
+        $group: {
+          _id: {
+            includedKm: "$includedKm",
+            includedMinutes: "$includedMinutes",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          includedKm: "$_id.includedKm",
+          includedMinutes: "$_id.includedMinutes",
+        },
+      },
+      // --- Sorting logic using pre-calculated field ---
+      {
+        $addFields: {
+          sortField:
+            formattedSubcategory === "oneway"
+              ? { $toInt: "$includedKm" }
+              : { $toInt: "$includedMinutes" },
+        },
+      },
+      {
+        $sort: { sortField: 1 },
+      },
+      {
+        $project: {
+          sortField: 0,
+        },
+      },
+    ]);
+
+    if (!records.length) {
       return res.status(404).json({
         success: false,
         message: "No record found for given category and subcategory",
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      data: {
-        includedKm,
-        includedMinutes,
-      },
-    });
+    return res.status(200).json(records);
+
   } catch (error) {
     console.error("Error fetching included data:", error);
     return res.status(500).json({
