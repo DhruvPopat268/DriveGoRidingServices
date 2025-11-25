@@ -7,9 +7,63 @@ const referenceSchema = new mongoose.Schema({
   mobileNumber: { type: String }
 });
 
+const cabVehicleDetailsSchema = new mongoose.Schema({
+  rcNumber: { type: String },
+  ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
+  vehicleType: [{ type: String }],
+  modelType: [{ type: String }],
+  seatCapacity: { type: String },
+  color: { type: String },
+  fuelType: { type: String, enum: ["Petrol", "Diesel", "Electric", "CNG"] },
+  vehiclePhotos: [{ type: String }],
+  insuranceValidUpto: { type: Date },
+  pollutionValidUpto: { type: Date },
+  taxValidUpto: { type: Date },
+  fitnessValidUpto: { type: Date },
+  permitValidUpto: { type: Date },
+  rc: { type: String },
+  insurance: { type: String },
+  pollutionCertificate: { type: String },
+  taxReceipt: { type: String },
+  fitnessCertificate: { type: String },
+  permit: { type: String },
+  _id: false // 👈 disables auto _id for each object
+});
+
+const parcelVehicleDetailsSchema = new mongoose.Schema({
+  rcNumber: { type: String },
+  ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
+  vehicleType: [{ type: String }],
+  modelType: [{ type: String }],
+  length: { type: Number },
+  width: { type: Number },
+  height: { type: Number },
+  weightCapacity: { type: Number },
+  color: { type: String },
+  fuelType: { type: String, enum: ["Petrol", "Diesel", "Electric", "CNG"] },
+  vehiclePhotos: [{ type: String }],
+  insuranceValidUpto: { type: Date },
+  pollutionValidUpto: { type: Date },
+  taxValidUpto: { type: Date },
+  fitnessValidUpto: { type: Date },
+  permitValidUpto: { type: Date },
+  rc: { type: String },
+  insurance: { type: String },
+  pollutionCertificate: { type: String },
+  taxReceipt: { type: String },
+  fitnessCertificate: { type: String },
+  permit: { type: String },
+  _id: false // 👈 disables auto _id for each object
+});
+
 const driverSchema = new mongoose.Schema(
   {
     mobile: { type: String, required: true, unique: true, index: true },
+
+    selectedCategory: {
+      id: { type: String},
+      name: { type: String, enum: ["Driver", "Cab", "Parcel"] }
+    },
 
     personalInformation: {
       fullName: { type: String },
@@ -37,6 +91,8 @@ const driverSchema = new mongoose.Schema(
       canDrive: [{ type: String }], // Hatchback, Sedan, SUV, Luxury Cars
       preferredWork: { type: String, enum: ["Full-Time", "Part-Time", "Guest/On-Call"] }
     },
+    cabVehicleDetails: cabVehicleDetailsSchema,
+    parcelVehicleDetails: parcelVehicleDetailsSchema,
 
     paymentAndSubscription: {
       preferredPaymentCycle: { type: String, enum: ["Daily", "Weekly", "Monthly"] },

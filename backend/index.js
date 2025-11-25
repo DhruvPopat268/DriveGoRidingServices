@@ -88,7 +88,7 @@ app.use('/api/instructions', instructionRoutes);
 app.use('/api/states', stateRoutes);
 app.use('/api/cities', cityRoutes);
 app.use('/api/car-categories', carCategoryRoutes);
-app.use('/api/vehicle-types', vehicleTypeRoutes);
+app.use('/api/cabVehicleTypes', vehicleTypeRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/upload', uploadRoutes);
 console.log('✅ Test upload routes registered at /api/test-upload');

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Car = require('../models/Car');
+const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 
 // Get all cars
 router.get('/', async (req, res) => {
@@ -81,6 +82,8 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
+
+
 // Delete car
 router.delete('/:id', async (req, res) => {
   try {
@@ -89,6 +92,28 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Car not found' });
     }
     res.json({ message: 'Car deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Driver <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
+
+// Get cars by vehicle type
+router.post('/by-vehicle-type',driverAuthMiddleware, async (req, res) => {
+  try {
+    const { vehicleTypeId } = req.body;
+    
+    if (!vehicleTypeId) {
+      return res.status(400).json({ message: 'vehicleTypeId is required' });
+    }
+    
+    const cars = await Car.find({ vehicleType: vehicleTypeId, status: true })
+      .populate('category', 'name')
+      .populate('vehicleType', 'name')
+      .sort({ createdAt: -1 });
+    
+    res.json(cars);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

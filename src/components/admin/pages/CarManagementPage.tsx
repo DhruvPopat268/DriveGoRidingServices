@@ -7,8 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, Loader, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
+
 
 import axios from 'axios';
 
@@ -46,7 +46,6 @@ interface CarForm {
 }
 
 export const CarManagementPage = () => {
-  const navigate = useNavigate();
   const [cars, setCars] = useState<Car[]>([]);
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
   const [categories, setCategories] = useState<CarCategory[]>([]);
@@ -102,7 +101,7 @@ export const CarManagementPage = () => {
 
   const fetchVehicleTypes = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/vehicle-types`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes`);
       setVehicleTypes(response.data.filter((vt: CarCategory & { status: boolean }) => vt.status));
     } catch (error) {
       console.error('Error fetching vehicle types:', error);
@@ -210,9 +209,7 @@ export const CarManagementPage = () => {
     });
   };
 
-  const handleViewDrivers = (car: Car) => {
-    navigate(`/admin/category-assignment/car/${car._id}`);
-  };
+
 
   return (
     <div className="space-y-8">
@@ -373,13 +370,6 @@ export const CarManagementPage = () => {
                   <TableCell>{new Date(car.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDrivers(car)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
                       <Button
                         variant="outline"
                         size="sm"

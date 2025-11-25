@@ -26,27 +26,13 @@ const categoryConfig = {
     endpoint: '/api/driver/assign-category',
     displayField: 'priceCategoryName',
     title: 'Driver Category'
-  },
-  parcel: {
-    field: 'parcelCategory',
-    endpoint: '/api/driver/assign-parcel-category', 
-    displayField: 'categoryName',
-    title: 'Parcel Category'
   }
-};
-
-const carAssignmentConfig = {
-  field: 'assignedCar',
-  endpoint: '/api/driver/assign-car',
-  displayField: 'name',
-  title: 'Assigned Car'
 };
 
 interface UniversalCategoryAssignmentPageProps {
   categoryType: string;
   categoryId: string;
   categoryName: string;
-  isCarAssignment?: boolean;
   onBack: () => void;
 }
 
@@ -54,7 +40,6 @@ export const UniversalCategoryAssignmentPage = ({
   categoryType, 
   categoryId, 
   categoryName, 
-  isCarAssignment = false, 
   onBack 
 }: UniversalCategoryAssignmentPageProps) => {
   
@@ -64,7 +49,7 @@ export const UniversalCategoryAssignmentPage = ({
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState(categoryName);
 
-  const config = isCarAssignment ? carAssignmentConfig : categoryConfig[categoryType as keyof typeof categoryConfig];
+  const config = categoryConfig[categoryType as keyof typeof categoryConfig];
 
   useEffect(() => {
     if (!config) {
@@ -77,13 +62,7 @@ export const UniversalCategoryAssignmentPage = ({
 
   const fetchDisplayName = async () => {
     try {
-      if (isCarAssignment) {
-        const carRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/cars/${categoryId}`);
-        setDisplayName(`Cab-${carRes.data.category.name}-${carRes.data.name}`);
-      } else if (categoryType === 'parcel') {
-        const vehicleRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicle-types/${categoryId}`);
-        setDisplayName(`parcel-${vehicleRes.data.parcelCategory.categoryName}-${vehicleRes.data.name}`);
-      } else if (categoryType === 'driver') {
+      if (categoryType === 'driver') {
         setDisplayName(`Driver-${categoryName}`);
       }
     } catch (err) {
@@ -96,18 +75,13 @@ export const UniversalCategoryAssignmentPage = ({
       setLoading(true);
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/driver`);
       
-      // Filter drivers: no assignments OR current assignment only
+      // Filter drivers: no driver category assignment OR current assignment only
       const filteredDrivers = res.data.filter((driver: Driver) => {
         const hasDriverCategory = driver.driverCategory;
-        const hasParcelCategory = driver.parcelCategory;
-        const hasAssignedCar = driver.assignedCar;
         
-        // Count existing assignments
-        const assignmentCount = [hasDriverCategory, hasParcelCategory, hasAssignedCar].filter(Boolean).length;
-        
-        // Allow if no assignments OR only has current assignment
-        if (assignmentCount === 0) return true;
-        if (assignmentCount === 1 && (driver[config.field as keyof Driver] as any)?._id === categoryId) return true;
+        // Allow if no driver category OR only has current assignment
+        if (!hasDriverCategory) return true;
+        if (hasDriverCategory && (driver[config.field as keyof Driver] as any)?._id === categoryId) return true;
         
         return false;
       });
@@ -138,15 +112,13 @@ export const UniversalCategoryAssignmentPage = ({
   const handleSave = async () => {
     try {
       setSaving(true);
-      const payload = isCarAssignment 
-        ? { carId: categoryId, driverIds: selectedDrivers }
-        : { categoryId, driverIds: selectedDrivers };
+      const payload = { categoryId, driverIds: selectedDrivers };
         
       await axios.put(`${import.meta.env.VITE_API_URL}${config.endpoint}`, payload);
       
      
     } catch (err) {
-      console.error(`Failed to assign drivers to ${isCarAssignment ? 'car' : categoryType + ' category'}`, err);
+      console.error(`Failed to assign drivers to ${categoryType + ' category'}`, err);
     } finally {
       setSaving(false);
     }

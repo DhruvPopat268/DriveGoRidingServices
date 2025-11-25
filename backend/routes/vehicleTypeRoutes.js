@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const VehicleType = require('../models/VehicleType');
+const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 
 // Get all vehicle types
 router.get('/', async (req, res) => {
@@ -68,6 +69,17 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Vehicle type not found' });
     }
     res.json({ message: 'Vehicle type deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Driver <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
+
+router.get('/',driverAuthMiddleware, async (req, res) => {
+  try {
+    const vehicleTypes = await VehicleType.find().sort({ createdAt: -1 });
+    res.json(vehicleTypes);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

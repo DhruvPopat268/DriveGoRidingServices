@@ -379,45 +379,95 @@ router.post("/delete-rider", async (req, res) => {
 });
 
 // dummy otp generation
-// router.post("/send-otp", async (req, res) => {
-//   try {
-//     const { mobile } = req.body;
-//     if (!mobile) {
-//       return res.status(400).json({ message: "Mobile number is required" });
-//     }
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { mobile } = req.body;
+    if (!mobile) {
+      return res.status(400).json({ message: "Mobile number is required" });
+    }
 
-//     // Use dummy OTP for testing
-//     const otp = "123456";
-//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    // Use dummy OTP for testing
+    const otp = "123456";
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-//     // Ensure Rider exists
-//     let rider = await Rider.findOne({ mobile });
-//     if (!rider) {
-//       rider = new Rider({ mobile });
-//       await rider.save();
-//     }
+    // Ensure Rider exists
+    let rider = await Rider.findOne({ mobile });
+    if (!rider) {
+      rider = new Rider({ mobile });
+      await rider.save();
+    }
 
-//     // Save OTP session
-//     const otpSession = new OtpSession({
-//       rider: rider._id,
-//       mobile,
-//       otp,
-//       otpExpiresAt
-//     });
-//     await otpSession.save();
+    // Save OTP session
+    const otpSession = new OtpSession({
+      rider: rider._id,
+      mobile,
+      otp,
+      otpExpiresAt
+    });
+    await otpSession.save();
 
-//     // No Twilio call, just respond
-//     res.json({
-//       success: true,
-//       message: "Dummy OTP generated successfully",
-//       otp // ⚠️ expose only in dev/testing, not in production
-//     });
-//   } catch (error) {
-//     console.error("Send OTP error:", error.message);
-//     res.status(500).json({ success: false, message: "Failed to generate OTP" });
-//   }
-// });
+    res.json({
+      success: true,
+      message: "Dummy OTP generated successfully",
+      otp // ⚠️ expose only in dev/testing
+    });
+  } catch (error) {
+    console.error("Send OTP error:", error.message);
+    res.status(500).json({ success: false, message: "Failed to generate OTP" });
+  }
+});
 
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { mobile, otp } = req.body;
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
+
+    // 🔒 Check against fixed dummy OTP
+    if (otp !== "123456") {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Mark last OTP as verified (optional but clean)
+    await OtpSession.findOneAndUpdate(
+      { mobile },
+      { isVerified: true },
+      { sort: { createdAt: -1 } }
+    );
+
+    // Ensure Rider exists
+    let rider = await Rider.findOne({ mobile });
+    if (!rider) {
+      rider = new Rider({ mobile });
+      await rider.save();
+    }
+
+    const isNew = !rider.name;
+
+    // Generate JWT
+    const token = jwt.sign(
+      { riderId: rider._id, mobile: rider.mobile },
+      process.env.JWT_SECRET_USER,
+      { expiresIn: "7d" }
+    );
+
+    // Store session
+    await createSession(mobile, token);
+
+    res.json({
+      success: true,
+      token,
+      isNew,
+      rider
+    });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({ success: false, message: "OTP verification failed" });
+  }
+});
+
+/*
 //kaleyra integration
 router.post("/send-otp", async (req, res) => {
   try {
@@ -585,57 +635,8 @@ router.post("/verify-otp", async (req, res) => {
     });
   }
 });
+*/
 
-//dummy otp verification
-// router.post("/verify-otp", async (req, res) => {
-//   try {
-//     const { mobile, otp } = req.body;
-//     if (!mobile || !otp) {
-//       return res.status(400).json({ message: "Mobile & OTP required" });
-//     }
-
-//     // 🔒 Check against fixed OTP
-//     if (otp !== "123456") {
-//       return res.status(400).json({ message: "Invalid OTP" });
-//     }
-
-//     // ✅ Mark last OTP session as verified (optional, for consistency)
-//     await OtpSession.findOneAndUpdate(
-//       { mobile },
-//       { isVerified: true },
-//       { sort: { createdAt: -1 } }
-//     );
-
-//     // ✅ Ensure Rider exists
-//     let rider = await Rider.findOne({ mobile });
-//     if (!rider) {
-//       rider = new Rider({ mobile });
-//       await rider.save();
-//     }
-
-//     const isNew = !rider.name;
-
-//     // ✅ Generate JWT
-//     const token = jwt.sign(
-//       { riderId: rider._id, mobile: rider.mobile },
-//       process.env.JWT_SECRET_USER,
-//       { expiresIn: "7d" }
-//     );
-
-//     // ✅ Use helper to enforce max 2 sessions
-//     await createSession(mobile, token);
-
-//     res.json({
-//       success: true,
-//       token,
-//       isNew,
-//       rider
-//     });
-//   } catch (error) {
-//     console.error("Verify OTP error:", error);
-//     res.status(500).json({ success: false, message: "OTP verification failed" });
-//   }
-// });
 
 router.post("/save-profile", async (req, res) => {
   try {

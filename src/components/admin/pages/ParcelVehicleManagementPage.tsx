@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Loader, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
@@ -32,7 +32,6 @@ interface ParcelVehicleType {
 }
 
 export const ParcelVehicleManagementPage = () => {
-  const navigate = useNavigate();
   const [parcelVehicleTypes, setParcelVehicleTypes] = useState<ParcelVehicleType[]>([]);
   const [parcelCategories, setParcelCategories] = useState<ParcelCategory[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -130,9 +129,7 @@ export const ParcelVehicleManagementPage = () => {
     setVehicleTypeForm({ parcelCategory: '', name: '', description: '', weight: '' });
   };
 
-  const handleViewDrivers = (vehicleType: ParcelVehicleType) => {
-    navigate(`/admin/category-assignment/parcel/${vehicleType._id}`);
-  };
+
 
   return (
     <div className="space-y-8">
@@ -252,13 +249,6 @@ export const ParcelVehicleManagementPage = () => {
                   <TableCell>{vehicleType.description}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDrivers(vehicleType)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleEdit(vehicleType)}>
                         <Edit className="w-4 h-4" />
                       </Button>

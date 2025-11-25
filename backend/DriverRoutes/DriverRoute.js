@@ -25,62 +25,200 @@ const sharp = require("sharp");
 const DriverReferanceOtpSession = require("../DriverModel/DriverReferanceOtpSession");
 const DriverIncentive = require("../models/DriverIncentive");
 
-// Helper function to get field name by step number
-function getFieldByStep(step) {
-  const stepFieldMap = {
-    1: "personalInformation",
-    2: "drivingDetails",
-    3: "paymentAndSubscription",
-    4: "languageSkillsAndReferences",
-    5: "declaration"
+// Helper function to get field name by step number based on category
+function getFieldByStep(step, category = "Driver") {
+  const stepFieldMaps = {
+    Driver: {
+      1: "personalInformation",
+      2: "drivingDetails",
+      3: "paymentAndSubscription",
+      4: "languageSkillsAndReferences",
+      5: "declaration"
+    },
+    Cab: {
+      1: "personalInformation",
+      2: "cabVehicleDetails",
+      3: "drivingDetails",
+      4: "paymentAndSubscription",
+      5: "languageSkillsAndReferences",
+      6: "declaration"
+    },
+    Parcel: {
+      1: "personalInformation",
+      2: "parcelVehicleDetails",
+      3: "drivingDetails",
+      4: "paymentAndSubscription",
+      5: "languageSkillsAndReferences",
+      6: "declaration"
+    }
   };
-  return stepFieldMap[step] || null;
+  return stepFieldMaps[category]?.[step] || null;
 }
 
-// dummy otp generation
-// router.post("/send-otp", async (req, res) => {
-//   try {
-//     const { mobile } = req.body;
-//     if (!mobile) return res.status(400).json({ message: "Mobile number is required" });
+//dummy otp
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { mobile } = req.body;
+    if (!mobile) return res.status(400).json({ message: "Mobile number is required" });
 
-//     // Generate 6-digit OTP
-//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    // 🔥 Use dummy OTP for testing
+    const otp = "123456";
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-//     // Ensure Driver exists
-//     let driver = await Driver.findOne({ mobile });
-//     if (!driver) {
-//       driver = new Driver({ mobile });
-//       await driver.save();
-//     }
+    // Ensure Driver exists
+    let driver = await Driver.findOne({ mobile });
+    if (!driver) {
+      driver = new Driver({ mobile });
+      await driver.save();
+    }
 
-//     //  OTSaveP session
-//     const otpSession = new DriverOtpSession({
-//       driver: driver._id,
-//       mobile,
-//       otp,
-//       otpExpiresAt
-//     });
-//     await otpSession.save();
+    // Save OTP session
+    const otpSession = new DriverOtpSession({
+      driver: driver._id,
+      mobile,
+      otp,
+      otpExpiresAt
+    });
+    await otpSession.save();
 
-//     let toNumber = mobile.startsWith("+") ? mobile : `+91${mobile}`;
+    // ❌ No Twilio SMS — dummy mode
+    res.json({
+      success: true,
+      message: "Dummy OTP generated successfully",
+      otp // ⚠ only show in development/testing
+    });
 
-//     // ✅ Send OTP via Twilio SMS
-//     const resp = await client.messages.create({
-//       body: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-//       from: process.env.TWILIO_PHONE_NUMBER,  // +17744269453
-//       to: toNumber
-//     });
-//     console.log("Twilio response:", resp.sid);
+  } catch (error) {
+    console.error("Send OTP error:", error.message);
+    res.status(500).json({ success: false, message: "Failed to generate OTP" });
+  }
+});
 
-//     res.json({ success: true, message: "OTP sent successfully" });
-//   } catch (error) {
-//     console.error("Send OTP error:", error.message);
-//     res.status(500).json({ success: false, message: "Failed to send OTP" });
-//   }
-// });
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { mobile, otp } = req.body;
 
-//approve drivers
+    // ✅ Validate input
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
+
+    // ✅ Convert mobile to string
+    const mobileStr = String(mobile).trim();
+
+    // ✅ Find the latest OTP session for this mobile
+    const otpSession = await DriverOtpSession.findOne({
+      mobile: mobileStr,
+      isVerified: false
+    }).sort({ createdAt: -1 });
+
+    // ✅ Check if OTP session exists
+    if (!otpSession) {
+      return res.status(400).json({
+        success: false,
+        message: "No OTP found. Please request a new OTP."
+      });
+    }
+
+    // ✅ Check if OTP has expired
+    if (new Date() > otpSession.otpExpiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new OTP."
+      });
+    }
+
+    // ================================
+    // 🔥 DUMMY OTP SUPPORT (123456)
+    // ================================
+    if (otp == "123456" || otp == 123456) {
+      otpSession.isVerified = true;
+      await otpSession.save();
+    } else {
+      // ✅ Verify actual OTP
+      if (otpSession.otp != otp) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP"
+        });
+      }
+
+      // Mark as verified for real OTP
+      otpSession.isVerified = true;
+      await otpSession.save();
+    }
+    // ================================
+
+    // ✅ Get driver
+    const driver = await Driver.findOne({ mobile: mobileStr });
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
+      });
+    }
+
+    const driverId = driver._id.toString();
+
+    const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
+
+    // ✅ Generate JWT
+    const token = jwt.sign(
+      { driverId: driver._id, mobile: driver.mobile },
+      process.env.JWT_SECRET_DRIVER,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
+
+    // ✅ Create session
+    await createSession(mobileStr, token);
+
+    // ✅ Evaluate profile progress
+    const { step, status: progressStatus } = evaluateDriverProgress(driver);
+
+    // ✅ Update status if still pending
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      driver.status = progressStatus;
+      await driver.save();
+    }
+
+    // ✅ Wallet check
+    let wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) {
+      await driverWallet.create({
+        driverId,
+        balance: 0,
+        totalEarnings: 0,
+        totalWithdrawn: 0,
+        totalDeductions: 0,
+        transactions: [],
+      });
+    }
+
+    // ✅ Prepare response
+    const response = {
+      success: true,
+      driverId,
+      token,
+      isNew,
+      status: driver.status
+    };
+
+    // Return step for pending statuses
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      response.step = step;
+    }
+
+    res.json(response);
+
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "OTP verification failed",
+      error: error.message
+    });
+  }
+});
 
 router.get("/", async (req, res) => {
   try {
@@ -396,10 +534,18 @@ router.post("/reject/:driverId", async (req, res) => {
     const { driverId } = req.params;
     const { steps = [] } = req.body;
 
-    // Build unset object for specified steps
+    // Get driver's category first
+    const driverData = await Driver.findById(driverId).select("selectedCategory").lean();
+    if (!driverData) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const category = driverData.selectedCategory?.name || "Driver";
+
+    // Build unset object for specified steps based on category
     const unsetFields = {};
     steps.forEach(step => {
-      const fieldName = getFieldByStep(step);
+      const fieldName = getFieldByStep(step, category);
       if (fieldName) {
         unsetFields[fieldName] = 1;
       }
@@ -564,6 +710,7 @@ router.get("/:driverId", async (req, res) => {
 });
 
 //kaleyra integration
+/*
 router.post("/send-otp", async (req, res) => {
   try {
     const { mobile } = req.body;
@@ -759,7 +906,7 @@ router.post("/verify-otp", async (req, res) => {
       error: error.message
     });
   }
-});
+});*/
 
 router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) => {
   try {
@@ -936,15 +1083,16 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       return res.status(400).json({ message: "Mobile & step are required" });
     }
 
-    const stepFieldMap = {
-      1: "personalInformation",
-      2: "drivingDetails",
-      3: "paymentAndSubscription",
-      4: "languageSkillsAndReferences",
-      5: "declaration",
-    };
+    // Get driver's category from selectedCategory for steps 2-5
+    let category = "Driver"; // default
+    if (step > 1) {
+      const driverCategory = await Driver.findOne({ mobile }).select("selectedCategory").lean();
+      if (driverCategory?.selectedCategory?.name) {
+        category = driverCategory.selectedCategory.name;
+      }
+    }
 
-    const field = stepFieldMap[step];
+    const field = getFieldByStep(step, category);
     if (!field) return res.status(400).json({ message: "Invalid step number" });
 
     // logTime("VALIDATION");
@@ -952,17 +1100,18 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // 🚀 CRITICAL OPTIMIZATION: Parallel driver fetch + file upload (all at once)
     // console.log(`📤 Starting parallel operations: DB fetch + ${req.files?.length || 0} file uploads`);
 
-    const [driver, uploadResults] = await Promise.all([
-      Driver.findOne({ mobile })
-        .select(step === 5 ? "personalInformation drivingDetails paymentAndSubscription languageSkillsAndReferences declaration status mobile currentPlan" : `${field} status mobile`)
-        .lean(),
+    // Always include all fields needed for progress evaluation
+    const selectFields = "personalInformation drivingDetails cabVehicleDetails parcelVehicleDetails paymentAndSubscription languageSkillsAndReferences declaration status mobile currentPlan selectedCategory";
+
+    const [driverData, uploadResults] = await Promise.all([
+      Driver.findOne({ mobile }).select(selectFields).lean(),
       req.files?.length ? processAllFiles(req.files) : Promise.resolve([])
     ]);
 
     // logTime("PARALLEL_FETCH_AND_UPLOAD");
     // console.log(`✅ Uploaded ${uploadResults.filter(r => r.success).length}/${uploadResults.length} files`);
 
-    if (!driver) {
+    if (!driverData) {
       console.error("❌ Driver not found:", mobile);
       return res.status(404).json({ message: "Driver not found" });
     }
@@ -989,12 +1138,12 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     Object.assign(data, singleFiles);
 
     // Merge with existing step data
-    const fieldData = { ...driver[field], ...data };
+    const fieldData = { ...driverData[field], ...data };
 
     // Merge array fields (for multiple docs)
     Object.entries(fileGroups).forEach(([fieldName, urls]) => {
       if (urls.length > 0) {
-        const existingUrls = driver[field]?.[fieldName] || [];
+        const existingUrls = driverData[field]?.[fieldName] || [];
         fieldData[fieldName] = [...new Set([...existingUrls, ...urls])];
       }
     });
@@ -1003,17 +1152,26 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     // logTime("DATA_MERGE");
 
-    // 🚀 OPTIMIZATION: Skip progress calculation on steps 1-4
-    let progressResult = null;
-    if (step === 5) {
-      // console.log("📊 Calculating driver progress (final step)...");
-      const tempDriver = { ...driver, [field]: fieldData };
-      progressResult = evaluateDriverProgress(tempDriver);
-      // console.log(`🔄 New Status: ${progressResult.status}, Next Step: ${progressResult.step}`);
-      updates.status = progressResult.status;
-      // logTime("PROGRESS_CALCULATION");
-    } else {
-      // console.log("⏭️  Skipping progress calculation (not final step)");
+    // Set status update flag for later
+    let shouldUpdateStatus = false;
+    if (step >= 5) {
+      shouldUpdateStatus = true;
+    }
+
+    // Handle selectedCategory update for step 1
+    if (step === 1 && data.category) {
+      try {
+        const Category = require('../models/Category');
+        const categoryDoc = await Category.findById(data.category).lean();
+        if (categoryDoc) {
+          updates.selectedCategory = {
+            id: categoryDoc._id.toString(),
+            name: categoryDoc.name
+          };
+        }
+      } catch (error) {
+        console.error('Category lookup error:', error);
+      }
     }
 
     // 🚀 Single atomic database update
@@ -1023,10 +1181,24 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       { $set: updates },
       {
         new: true,
-        runValidators: false,
-        projection: `${field} status mobile`
+        runValidators: false
       }
     ).lean();
+
+    // Evaluate progress with the actual saved data
+    console.log(`🔍 About to evaluate progress after updating step ${step} for category ${category}`);
+    console.log(`🔍 Updated driver data keys:`, Object.keys(updatedDriver));
+    const progressResult = evaluateDriverProgress(updatedDriver);
+    console.log(`🏁 Progress evaluation result for step ${step}:`, progressResult);
+    console.log(`🔄 Will return nextStep: ${progressResult.step === 0 ? null : progressResult.step}`);
+    
+    // Update status if needed
+    if (shouldUpdateStatus || progressResult.step === 0) {
+      await Driver.findOneAndUpdate(
+        { mobile },
+        { status: progressResult.status }
+      );
+    }
 
     // logTime("DB_UPDATE");
 
@@ -1046,14 +1218,23 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     });
     // console.log("=".repeat(50) + "\n");
 
-    // 🚀 Response
-    const responseStep = progressResult && progressResult.step === 0 ? null : (step < 5 ? step + 1 : 5);
+    // Calculate next step properly
+    let nextStep = null;
+    if (progressResult.step === 0) {
+      // All steps completed
+      nextStep = 0;
+      console.log(`✅ All steps completed for driver`);
+    } else {
+      // Return the current incomplete step as nextStep
+      nextStep = progressResult.step;
+      console.log(`🔄 Next incomplete step: ${nextStep}`);
+    }
 
     res.json({
       success: true,
       message: "Information updated successfully",
-      nextStep: responseStep,
-      status: progressResult ? progressResult.status : (updatedDriver.status || "Pending"),
+      nextStep: nextStep,
+      status: progressResult.status,
       driver: updatedDriver,
       // Include timing in response (useful for monitoring)
       _performance: {
@@ -1546,7 +1727,7 @@ router.post("/admin/create-incentive", async (req, res) => {
     });
 
     const results = [];
-    
+
     for (const driverId of driverIds) {
       try {
         // Find or create wallet
