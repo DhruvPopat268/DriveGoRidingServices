@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
     // Handle driver category
     if (driverCategoryId) {
       try {
-        const response = await axios.get('https://drivegoridingservices-backend.onrender.com/api/price-categories');
+        const response = await axios.get('https://adminbackend.hire4drive.com/api/price-categories');
         const driverCategory = response.data.find(cat => cat._id === driverCategoryId);
         if (driverCategory) {
           instructionData.driverCategoryId = driverCategoryId;
@@ -61,8 +61,8 @@ router.post('/', async (req, res) => {
     if (carCategoryId && carId) {
       try {
         const [carCatResponse, carResponse] = await Promise.all([
-          axios.get('https://drivegoridingservices-backend.onrender.com/api/car-categories'),
-          axios.get('https://drivegoridingservices-backend.onrender.com/api/cars')
+          axios.get('https://adminbackend.hire4drive.com/api/car-categories'),
+          axios.get('https://adminbackend.hire4drive.com/api/cars')
         ]);
         const carCategory = carCatResponse.data.find(cat => cat._id === carCategoryId);
         const car = carResponse.data.find(c => c._id === carId);
@@ -88,7 +88,7 @@ router.post('/', async (req, res) => {
     // Handle parcel category with explicit parcelCategoryId
     if (parcelCategoryId && vehicleTypeId) {
       try {
-        const response = await axios.get('https://drivegoridingservices-backend.onrender.com/api/parcelVehicles');
+        const response = await axios.get('https://adminbackend.hire4drive.com/api/parcelVehicles');
         const vehicleType = response.data.find(vt => vt._id === vehicleTypeId);
         if (vehicleType) {
           instructionData.parcelCategoryId = parcelCategoryId;

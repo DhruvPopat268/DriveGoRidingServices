@@ -82,6 +82,7 @@ const menuItems = [
     isDropdown: true,
     subItems: [
       { icon: Tags, label: "Parcel Category", key: "parcelcategory" },
+      { icon: Truck, label: "Parcel Vehicle Type", key: "parcelvehicletype" },
       { icon: Truck, label: "Parcel Vehicle Management", key: "parcelvehicletypes" },
       { icon: Calculator, label: "Parcel Ride Cost Management", key: "parcelridecost" }
     ]

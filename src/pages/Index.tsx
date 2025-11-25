@@ -40,6 +40,7 @@ import { CarCategoryPage } from "@/components/admin/pages/CarCategoryPage";
 import { VehicleTypePage } from "@/components/admin/pages/VehicleTypePage";
 import { CarManagementPage } from "@/components/admin/pages/CarManagementPage";
 import { ParcelCategoryPage } from "@/components/admin/pages/ParcelCategoryPage";
+import ParcelVehicleTypePage from "@/components/admin/pages/ParcelVehicleTypePage";
 import { ParcelVehicleManagementPage } from "@/components/admin/pages/ParcelVehicleManagementPage";
 import { ParcelRideCostPage } from "@/components/admin/pages/ParcelRideCostPage";
 import { DriverSubscriptionPage } from "@/components/admin/pages/DriverSubscriptionPage";
@@ -251,6 +252,8 @@ const Index = () => {
         return <PriceCategoryPage />;
       case "parcelcategory":
         return <ParcelCategoryPage />;
+      case "parcelvehicletype":
+        return <ParcelVehicleTypePage />;
       case "parcelvehicletypes":
         return <ParcelVehicleManagementPage />;
       case "parcelridecost":

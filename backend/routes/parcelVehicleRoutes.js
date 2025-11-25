@@ -5,12 +5,13 @@ const ParcelVehicleType = require('../models/ParcelVehicle');
 // Create new parcel vehicle type
 router.post('/', async (req, res) => {
   try {
-    const { parcelCategory, name, description, weight } = req.body;  // include weight
+    const { parcelCategory, name, description, weight , parcelVehicleType } = req.body;  // include weight
     const newVehicleType = new ParcelVehicleType({
       parcelCategory,
       name,
       description,
-      weight
+      weight,
+      parcelVehicleType
     });
     const saved = await newVehicleType.save();
     const populated = await ParcelVehicleType.findById(saved._id).populate('parcelCategory');
@@ -24,7 +25,7 @@ router.post('/', async (req, res) => {
 // Get all parcel vehicle types
 router.get('/', async (req, res) => {
   try {
-    const vehicleTypes = await ParcelVehicleType.find().populate('parcelCategory').sort({ createdAt: -1 });
+    const vehicleTypes = await ParcelVehicleType.find().populate('parcelCategory parcelVehicleType').sort({ createdAt: -1 });
     res.json(vehicleTypes);
   } catch (err) {
     res.status(500).json({ error: err.message });

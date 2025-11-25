@@ -77,7 +77,7 @@ function evaluateDriverProgress(driver) {
     step = 1;
   } 
   // Step 2: Category-specific details
-  else if (category === "Cab" && !isObjectComplete(driver.cabVehicleDetails, [], category, 'CabVehicleDetails')) {
+  else if (category === "Cab" && !isObjectComplete(driver.cabVehicleDetails, ['vehiclePhotos', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'], category, 'CabVehicleDetails')) {
     console.log('❌ Step 2: CabVehicleDetails incomplete');
     step = 2;
   } else if (category === "Parcel" && !isObjectComplete(driver.parcelVehicleDetails, [], category, 'ParcelVehicleDetails')) {
@@ -132,9 +132,14 @@ function evaluateDriverProgress(driver) {
                       driver.currentPlan?.expiryDate && 
                       new Date(driver.currentPlan.expiryDate) > new Date();
 
-  const status = step === 0 ? (hasValidPlan ? "Onreview" : "PendingForPayment") : "Pending";
-
+  // Determine final step and status
   if (step === 0) {
+    step = hasValidPlan ? null : 0;
+  }
+  
+  const status = step === null ? "Onreview" : (step === 0 ? "PendingForPayment" : "Pending");
+
+  if (step === null || step === 0) {
     console.log('✅ All steps completed! Driver ready for review/payment');
   }
   

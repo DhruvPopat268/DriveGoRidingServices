@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
@@ -23,51 +24,70 @@ interface ParcelCategory {
   categoryName: string;
 }
 
-interface ParcelVehicleType {
+interface ParcelVehicleTypeRef {
+  _id: string;
+  name: string;
+}
+
+interface ParcelVehicle {
   _id: string;
   parcelCategory: ParcelCategory;
+  parcelVehicleType: ParcelVehicleTypeRef;
   name: string;
   description: string;
   weight: number;
+  status: boolean;
 }
 
 export const ParcelVehicleManagementPage = () => {
-  const [parcelVehicleTypes, setParcelVehicleTypes] = useState<ParcelVehicleType[]>([]);
+  const [parcelVehicles, setParcelVehicles] = useState<ParcelVehicle[]>([]);
   const [parcelCategories, setParcelCategories] = useState<ParcelCategory[]>([]);
+  const [parcelVehicleTypes, setParcelVehicleTypes] = useState<ParcelVehicleTypeRef[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filteredVehicleTypes, setFilteredVehicleTypes] = useState<ParcelVehicleType[]>([]);
-  const [vehicleTypeForm, setVehicleTypeForm] = useState({
+  const [filteredVehicles, setFilteredVehicles] = useState<ParcelVehicle[]>([]);
+  const [vehicleForm, setVehicleForm] = useState({
     parcelCategory: '',
+    parcelVehicleType: '',
     name: '',
     description: '',
     weight: ''
   });
-  const [editingVehicleType, setEditingVehicleType] = useState<ParcelVehicleType | null>(null);
+  const [editingVehicle, setEditingVehicle] = useState<ParcelVehicle | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchParcelVehicleTypes();
+    fetchParcelVehicles();
     fetchParcelCategories();
+    fetchParcelVehicleTypes();
   }, []);
 
   useEffect(() => {
     if (filterCategory === 'all') {
-      setFilteredVehicleTypes(parcelVehicleTypes);
+      setFilteredVehicles(parcelVehicles);
     } else {
-      setFilteredVehicleTypes(parcelVehicleTypes.filter(vehicle => vehicle.parcelCategory._id === filterCategory));
+      setFilteredVehicles(parcelVehicles.filter(vehicle => vehicle.parcelCategory._id === filterCategory));
     }
-  }, [parcelVehicleTypes, filterCategory]);
+  }, [parcelVehicles, filterCategory]);
 
-  const fetchParcelVehicleTypes = async () => {
+  const fetchParcelVehicles = async () => {
     try {
       setLoading(true);
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
+      setParcelVehicles(res.data);
+    } catch (err) {
+      console.error('Failed to fetch parcel vehicles', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchParcelVehicleTypes = async () => {
+    try {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes`);
       setParcelVehicleTypes(res.data);
     } catch (err) {
       console.error('Failed to fetch parcel vehicle types', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -83,34 +103,36 @@ export const ParcelVehicleManagementPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      parcelCategory: vehicleTypeForm.parcelCategory,
-      name: vehicleTypeForm.name.trim(),
-      description: vehicleTypeForm.description.trim(),
-      weight: parseFloat(vehicleTypeForm.weight)
+      parcelCategory: vehicleForm.parcelCategory,
+      parcelVehicleType: vehicleForm.parcelVehicleType,
+      name: vehicleForm.name.trim(),
+      description: vehicleForm.description.trim(),
+      weight: parseFloat(vehicleForm.weight)
     };
 
     try {
-      if (editingVehicleType) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${editingVehicleType._id}`, payload);
+      if (editingVehicle) {
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${editingVehicle._id}`, payload);
       } else {
         await axios.post(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`, payload);
       }
-      await fetchParcelVehicleTypes();
+      await fetchParcelVehicles();
       setDialogOpen(false);
-      setEditingVehicleType(null);
-      setVehicleTypeForm({ parcelCategory: '', name: '', description: '', weight: '' });
+      setEditingVehicle(null);
+      setVehicleForm({ parcelCategory: '', parcelVehicleType: '', name: '', description: '', weight: '' });
     } catch (err) {
-      console.error('Failed to save parcel vehicle type', err);
+      console.error('Failed to save parcel vehicle', err);
     }
   };
 
-  const handleEdit = (vehicleType: ParcelVehicleType) => {
-    setEditingVehicleType(vehicleType);
-    setVehicleTypeForm({
-      parcelCategory: vehicleType.parcelCategory._id,
-      name: vehicleType.name,
-      description: vehicleType.description,
-      weight: vehicleType.weight.toString()
+  const handleEdit = (vehicle: ParcelVehicle) => {
+    setEditingVehicle(vehicle);
+    setVehicleForm({
+      parcelCategory: vehicle.parcelCategory._id,
+      parcelVehicleType: vehicle.parcelVehicleType._id,
+      name: vehicle.name,
+      description: vehicle.description,
+      weight: vehicle.weight.toString()
     });
     setDialogOpen(true);
   };
@@ -118,15 +140,26 @@ export const ParcelVehicleManagementPage = () => {
   const handleDelete = async (id: string) => {
     try {
       await axios.delete(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${id}`);
-      fetchParcelVehicleTypes();
+      fetchParcelVehicles();
     } catch (err) {
-      console.error('Failed to delete vehicle type', err);
+      console.error('Failed to delete parcel vehicle', err);
+    }
+  };
+
+  const handleStatusToggle = async (id: string, currentStatus: boolean) => {
+    try {
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${id}/status`, {
+        status: !currentStatus
+      });
+      await fetchParcelVehicles();
+    } catch (error) {
+      console.error('Error updating status:', error);
     }
   };
 
   const resetForm = () => {
-    setEditingVehicleType(null);
-    setVehicleTypeForm({ parcelCategory: '', name: '', description: '', weight: '' });
+    setEditingVehicle(null);
+    setVehicleForm({ parcelCategory: '', parcelVehicleType: '', name: '', description: '', weight: '' });
   };
 
 
@@ -165,12 +198,12 @@ export const ParcelVehicleManagementPage = () => {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingVehicleType ? 'Edit Parcel Vehicle' : 'Create Parcel Vehicle'}</DialogTitle>
+                <DialogTitle>{editingVehicle ? 'Edit Parcel Vehicle' : 'Create Parcel Vehicle'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Select
-                  value={vehicleTypeForm.parcelCategory}
-                  onValueChange={(value) => setVehicleTypeForm({ ...vehicleTypeForm, parcelCategory: value })}
+                  value={vehicleForm.parcelCategory}
+                  onValueChange={(value) => setVehicleForm({ ...vehicleForm, parcelCategory: value })}
                   required
                 >
                   <SelectTrigger>
@@ -184,28 +217,44 @@ export const ParcelVehicleManagementPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                <Select
+                  value={vehicleForm.parcelVehicleType}
+                  onValueChange={(value) => setVehicleForm({ ...vehicleForm, parcelVehicleType: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Parcel Vehicle Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {parcelVehicleTypes.map((type) => (
+                      <SelectItem key={type._id} value={type._id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
                   placeholder="Vehicle Name (e.g., Small Bike, Large Truck)"
-                  value={vehicleTypeForm.name}
-                  onChange={(e) => setVehicleTypeForm({ ...vehicleTypeForm, name: e.target.value })}
+                  value={vehicleForm.name}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, name: e.target.value })}
                   required
                 />
                 <Input
                   type="number"
                   step="0.01"
                   placeholder="Weight (kg)"
-                  value={vehicleTypeForm.weight}
-                  onChange={(e) => setVehicleTypeForm({ ...vehicleTypeForm, weight: e.target.value })}
+                  value={vehicleForm.weight}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, weight: e.target.value })}
                   required
                 />
                 <Textarea
                   placeholder="Description"
-                  value={vehicleTypeForm.description}
-                  onChange={(e) => setVehicleTypeForm({ ...vehicleTypeForm, description: e.target.value })}
+                  value={vehicleForm.description}
+                  onChange={(e) => setVehicleForm({ ...vehicleForm, description: e.target.value })}
                   required
                 />
                 <Button type="submit" className="w-full">
-                  {editingVehicleType ? 'Update' : 'Create'}
+                  {editingVehicle ? 'Update' : 'Create'}
                 </Button>
               </form>
             </DialogContent>
@@ -217,39 +266,48 @@ export const ParcelVehicleManagementPage = () => {
             <TableRow>
               <TableHead>#</TableHead>
               <TableHead>Parcel Category</TableHead>
+              <TableHead>Vehicle Type</TableHead>
               <TableHead>Vehicle Name</TableHead>
               <TableHead>Weight (kg)</TableHead>
               <TableHead>Description</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <Loader className="w-6 h-6 animate-spin mr-2" />
                     <span>Loading parcel vehicles...</span>
                   </div>
                 </TableCell>
               </TableRow>
-            ) : filteredVehicleTypes.length === 0 ? (
+            ) : filteredVehicles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  {parcelVehicleTypes.length === 0 ? 'No parcel vehicles found. Create your first one!' : 'No vehicles found for selected category.'}
+                <TableCell colSpan={8} className="text-center">
+                  {parcelVehicles.length === 0 ? 'No parcel vehicles found. Create your first one!' : 'No vehicles found for selected category.'}
                 </TableCell>
               </TableRow>
             ) : (
-              filteredVehicleTypes.map((vehicleType,index) => (
-                <TableRow key={vehicleType._id}>
+              filteredVehicles.map((vehicle, index) => (
+                <TableRow key={vehicle._id}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell className="font-medium">{vehicleType.parcelCategory.categoryName}</TableCell>
-                  <TableCell>{vehicleType.name}</TableCell>
-                  <TableCell>{vehicleType.weight} kg</TableCell>
-                  <TableCell>{vehicleType.description}</TableCell>
+                  <TableCell className="font-medium">{vehicle.parcelCategory.categoryName}</TableCell>
+                  <TableCell>{vehicle.parcelVehicleType.name}</TableCell>
+                  <TableCell>{vehicle.name}</TableCell>
+                  <TableCell>{vehicle.weight} kg</TableCell>
+                  <TableCell>{vehicle.description}</TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={vehicle.status}
+                      onCheckedChange={() => handleStatusToggle(vehicle._id, vehicle.status)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(vehicleType)}>
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(vehicle)}>
                         <Edit className="w-4 h-4" />
                       </Button>
                       <AlertDialog>
@@ -267,7 +325,7 @@ export const ParcelVehicleManagementPage = () => {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(vehicleType._id)}>
+                            <AlertDialogAction onClick={() => handleDelete(vehicle._id)}>
                               Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>

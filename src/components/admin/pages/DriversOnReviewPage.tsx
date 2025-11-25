@@ -21,6 +21,10 @@ interface Driver {
     currentAddress: string;
     permanentAddress: string;
   };
+  selectedCategory: {
+    id: string;
+    name: string;
+  };
   status: string;
   createdAt: string;
 }
@@ -35,16 +39,39 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [selectedSteps, setSelectedSteps] = useState<number[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const stepOptions = [
-    { step: 1, label: "Personal Information" },
-    { step: 2, label: "Driving Details" },
-    { step: 3, label: "Payment & Subscription" },
-    { step: 4, label: "Language Skills & References" },
-    { step: 5, label: "Declaration" }
-  ];
+  const getStepOptions = (category: string) => {
+    if (category === "Cab") {
+      return [
+        { step: 1, label: "Personal Information" },
+        { step: 2, label: "Cab Vehicle Details" },
+        { step: 3, label: "Driving Details" },
+        { step: 4, label: "Payment & Subscription" },
+        { step: 5, label: "Language Skills & References" },
+        { step: 6, label: "Declaration" }
+      ];
+    } else if (category === "Parcel") {
+      return [
+        { step: 1, label: "Personal Information" },
+        { step: 2, label: "Parcel Vehicle Details" },
+        { step: 3, label: "Driving Details" },
+        { step: 4, label: "Payment & Subscription" },
+        { step: 5, label: "Language Skills & References" },
+        { step: 6, label: "Declaration" }
+      ];
+    } else {
+      return [
+        { step: 1, label: "Personal Information" },
+        { step: 2, label: "Driving Details" },
+        { step: 3, label: "Payment & Subscription" },
+        { step: 4, label: "Language Skills & References" },
+        { step: 5, label: "Declaration" }
+      ];
+    }
+  };
 
   useEffect(() => {
     fetchDrivers();
@@ -203,6 +230,7 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
                           variant="destructive"
                           onClick={() => {
                             setSelectedDriverId(driver._id);
+                            setSelectedDriver(driver);
                             setShowRejectDialog(true);
                           }}
                         >
@@ -244,7 +272,7 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
           <div className="space-y-4">
             <p>Select which steps to clear from the driver's profile:</p>
             <div className="space-y-3">
-              {stepOptions.map(({ step, label }) => (
+              {selectedDriver && getStepOptions(selectedDriver.selectedCategory?.name || "Driver").map(({ step, label }) => (
                 <div key={step} className="flex items-center space-x-2">
                   <Checkbox
                     id={`step-${step}`}
@@ -262,6 +290,7 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
             <Button variant="outline" onClick={() => {
               setShowRejectDialog(false);
               setSelectedSteps([]);
+              setSelectedDriver(null);
             }}>
               Cancel
             </Button>
