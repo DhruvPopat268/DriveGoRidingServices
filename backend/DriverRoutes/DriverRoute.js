@@ -200,8 +200,16 @@ router.post("/verify-otp", async (req, res) => {
       driverId,
       token,
       isNew,
-      status: driver.status
+      status: driver.status,
+      selectedCategory: driver.selectedCategory
     };
+
+    // Add ownership based on selectedCategory
+    if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
+      response.ownership = driver.cabVehicleDetails.ownership;
+    } else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
+      response.ownership = driver.parcelVehicleDetails.ownership;
+    }
 
     // Return step for pending statuses
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
@@ -889,8 +897,16 @@ router.post("/verify-otp", async (req, res) => {
       driverId,
       token,
       isNew,
-      status: driver.status
+      status: driver.status,
+      selectedCategory: driver.selectedCategory
     };
+
+    // Add ownership based on selectedCategory
+    if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
+      response.ownership = driver.cabVehicleDetails.ownership;
+    } else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
+      response.ownership = driver.parcelVehicleDetails.ownership;
+    }
 
     // ✅ Add step ONLY if status is Pending or PendingForPayment
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
@@ -1056,6 +1072,8 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   const timings = {};
   const startTime = Date.now();
   let checkpointTime = startTime;
+
+  console.log('req.files', req.files);
 
   const logTime = (label) => {
     const now = Date.now();
