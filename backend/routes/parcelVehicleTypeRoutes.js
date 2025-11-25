@@ -74,6 +74,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Driver <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
+
 // Driver routes
 router.get('/all', driverAuthMiddleware, async (req, res) => {
   try {

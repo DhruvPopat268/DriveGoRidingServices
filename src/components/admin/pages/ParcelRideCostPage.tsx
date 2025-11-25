@@ -23,7 +23,7 @@ interface RideCost {
   subcategory: string | { _id?: string; id?: string; name: string };
   subSubCategory?: string | { _id?: string; id?: string; name: string };
   parcelCategory?: string | { _id?: string; id?: string; categoryName: string };
-  parcelVehicleType?: string | { _id?: string; id?: string; name: string };
+  parcelVehicle?: string | { _id?: string; id?: string; name: string };
   priceCategory?: string | { _id?: string; id?: string; priceCategoryName?: string; name?: string };
   car?: string | { _id?: string; id?: string; name: string };
   baseFare: number;
@@ -358,7 +358,7 @@ export const ParcelRideCostPage = () => {
       subcategory: rideCostForm.subcategory,
       ...(rideCostForm.subSubCategory && { subSubCategory: rideCostForm.subSubCategory }),
       ...(isFormParcelCategory() && { parcelCategory: rideCostForm.parcelCategory }),
-      ...(isFormParcelCategory() ? { parcelVehicleType: rideCostForm.priceCategory } : { priceCategory: rideCostForm.priceCategory }),
+      ...(isFormParcelCategory() ? { parcelVehicle: rideCostForm.priceCategory } : { priceCategory: rideCostForm.priceCategory }),
       ...(rideCostForm.car && { car: rideCostForm.car }),
       baseFare: parseFloat(rideCostForm.baseFare) || 0,
       includedKm: rideCostForm.includedKm.trim(),
@@ -413,7 +413,7 @@ export const ParcelRideCostPage = () => {
       const subSubCategoryId = fetchedRideCost.subSubCategory ? extractId(fetchedRideCost.subSubCategory) : '';
       const priceCategoryId = fetchedRideCost.priceCategory ? extractId(fetchedRideCost.priceCategory) : '';
       const parcelCategoryId = fetchedRideCost.parcelCategory ? extractId(fetchedRideCost.parcelCategory) : '';
-      const parcelVehicleTypeId = fetchedRideCost.parcelVehicleType ? extractId(fetchedRideCost.parcelVehicleType) : '';
+      const parcelVehicleTypeId = fetchedRideCost.parcelVehicle ? extractId(fetchedRideCost.parcelVehicle) : '';
 
       // Set filtered subcategories first
       const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
@@ -927,7 +927,7 @@ export const ParcelRideCostPage = () => {
                     <TableCell>{getName(rideCost.category)}</TableCell>
                     <TableCell>{getName(rideCost.subcategory)}</TableCell>
                     <TableCell>{rideCost.parcelCategory ? getName(rideCost.parcelCategory) : '-'}</TableCell>
-                    <TableCell>{rideCost.parcelVehicleType ? getName(rideCost.parcelVehicleType) : getName(rideCost.priceCategory)}</TableCell>
+                    <TableCell>{rideCost.parcelVehicle ? getName(rideCost.parcelVehicle) : getName(rideCost.priceCategory)}</TableCell>
 
                     <TableCell>₹{rideCost.baseFare}</TableCell>
                     <TableCell>{rideCost.includedKm}</TableCell>
@@ -1066,7 +1066,7 @@ export const ParcelRideCostPage = () => {
                 )}
                 <div>
                   <label className="text-sm font-medium">Parcel Vehicle</label>
-                  <p className="text-sm text-gray-600">{viewingRideCost.parcelVehicleType ? getName(viewingRideCost.parcelVehicleType) : getName(viewingRideCost.priceCategory)}</p>
+                  <p className="text-sm text-gray-600">{viewingRideCost.parcelVehicle ? getName(viewingRideCost.parcelVehicle) : getName(viewingRideCost.priceCategory)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Base Fare</label>
