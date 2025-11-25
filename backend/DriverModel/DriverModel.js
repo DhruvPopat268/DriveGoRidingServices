@@ -14,7 +14,11 @@ const cabVehicleDetailsSchema = new mongoose.Schema({
   modelType: [{ type: String }],
   seatCapacity: { type: String },
   color: { type: String },
-  fuelType: { type: String, enum: ["Petrol", "Diesel", "Electric", "CNG"] },
+  fuelType: [{
+    type: String,
+    enum: ["Petrol", "Diesel", "Electric", "CNG"]
+  }],
+
   vehiclePhotos: [{ type: String }],
   insuranceValidUpto: { type: String },
   pollutionValidUpto: { type: String },
@@ -61,7 +65,7 @@ const driverSchema = new mongoose.Schema(
     mobile: { type: String, required: true, unique: true, index: true },
 
     selectedCategory: {
-      id: { type: String},
+      id: { type: String },
       name: { type: String, enum: ["Driver", "Cab", "Parcel"] }
     },
 
@@ -176,7 +180,7 @@ const driverSchema = new mongoose.Schema(
     },
 
     cancellationRideCredits: { type: Number, default: 0 },
-    
+
     // 🔹 Cancellation charges
     cancellationCharges: { type: Number, default: 0 },
     unclearedCancellationCharges: { type: Number, default: 0 },
