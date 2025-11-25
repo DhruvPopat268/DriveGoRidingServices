@@ -201,6 +201,7 @@ router.post("/verify-otp", async (req, res) => {
       token,
       isNew,
       status: driver.status,
+      step,
       selectedCategory: driver.selectedCategory
     };
 
@@ -897,6 +898,7 @@ router.post("/verify-otp", async (req, res) => {
       driverId,
       token,
       isNew,
+      step,
       status: driver.status,
       selectedCategory: driver.selectedCategory
     };
