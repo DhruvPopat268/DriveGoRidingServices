@@ -102,9 +102,9 @@ function evaluateDriverProgress(driver) {
   // Step 4/5: Language Skills and References
   else if (
     !isObjectComplete(driver.languageSkillsAndReferences, [], category, 'LanguageSkillsAndReferences') ||
-    !driver.languageSkillsAndReferences?.references?.length
+    (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length)
   ) {
-    if (!driver.languageSkillsAndReferences?.references?.length) {
+    if (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length) {
       console.log('❌ LanguageSkillsAndReferences: references array is empty or missing');
     }
     console.log(`❌ Step ${category === "Driver" ? 4 : 5}: LanguageSkillsAndReferences incomplete`);
