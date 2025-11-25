@@ -13,19 +13,19 @@ function isObjectComplete(obj, optionalFields = [], category = null, sectionName
       return true;
     }
     
-    // Skip vehicleType and canDrive for non-Driver categories in personalInformation and drivingDetails sections
-    if (category && category !== "Driver" && ["vehicleType", "canDrive"].includes(key) && 
-        (sectionName === 'PersonalInformation' || sectionName === 'DrivingDetails')) {
-      return true;
-    }
-    
     if (value === null || value === undefined || value === "") {
       missingFields.push(key);
       return false;
     }
 
-    // If array, check non-empty
+    // If array, check non-empty (but skip vehicleType and canDrive for non-Driver categories)
     if (Array.isArray(value)) {
+      // Skip vehicleType and canDrive validation for non-Driver categories in drivingDetails
+      if (category && category !== "Driver" && ["vehicleType", "canDrive"].includes(key) && 
+          sectionName === 'DrivingDetails') {
+        return true;
+      }
+      
       if (value.length === 0) {
         missingFields.push(`${key} (empty array)`);
         return false;
@@ -106,10 +106,10 @@ function evaluateDriverProgress(driver) {
   // Step 4/5: Language Skills and References
   else if (
     !isObjectComplete(driver.languageSkillsAndReferences, [], category, 'LanguageSkillsAndReferences') ||
-    !driver.languageSkillsAndReferences?.references?.length
+    (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length)
   ) {
-    if (!driver.languageSkillsAndReferences?.references?.length) {
-      console.log('❌ LanguageSkillsAndReferences: references array is empty or missing');
+    if (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length) {
+      console.log('❌ LanguageSkillsAndReferences: references array is empty or missing for Driver category');
     }
     console.log(`❌ Step ${category === "Driver" ? 4 : 5}: LanguageSkillsAndReferences incomplete`);
     console.log('🔍 LanguageSkillsAndReferences content:', JSON.stringify(driver.languageSkillsAndReferences, null, 2));
