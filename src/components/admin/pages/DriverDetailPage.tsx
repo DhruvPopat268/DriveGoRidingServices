@@ -17,49 +17,50 @@ interface DriverDetail {
   mobile: string;
   status: string;
   createdAt: string;
-  personalInformation: {
-    aadhar: string[];
-    drivingLicense: string[];
-    fullName: string;
-    dateOfBirth: string;
-    gender: string;
-    mobileNumber: string;
-    alternateNumber: string;
-    email: string;
-    currentAddress: string;
-    permanentAddress: string;
-    panCard: string;
-    passportPhoto: string;
+  personalInformation?: {
+    aadhar?: string[];
+    drivingLicense?: string[];
+    fullName?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    mobileNumber?: string;
+    alternateNumber?: string;
+    email?: string;
+    currentAddress?: string;
+    permanentAddress?: string;
+    panCard?: string;
+    passportPhoto?: string;
   };
-  drivingDetails: {
-    vehicleType: string[];
-    canDrive: string[];
-    drivingExperienceYears: number;
-    licenseType: string;
-    preferredWork: string;
+  drivingDetails?: {
+    vehicleType?: string[];
+    canDrive?: string[];
+    drivingExperienceYears?: number;
+    licenseType?: string;
+    preferredWork?: string;
   };
-  paymentAndSubscription: {
-    preferredPaymentCycle: string;
-    bankAccountHolderName: string;
-    bankName: string;
-    accountNumber: string;
-    ifscCode: string;
-    upiId: string;
-    oneTimeRegistrationFee: number;
-    subscriptionPlan: string;
+  paymentAndSubscription?: {
+    preferredPaymentCycle?: string;
+    bankAccountHolderName?: string;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+    upiId?: string;
+    oneTimeRegistrationFee?: number;
+    subscriptionPlan?: string;
+    upiQrCode?: string;
   };
-  languageSkillsAndReferences: {
-    knownLanguages: string[];
-    references: Array<{
+  languageSkillsAndReferences?: {
+    knownLanguages?: string[];
+    references?: Array<{
       name: string;
       relationship: string;
       mobileNumber: string;
       _id: string;
     }>;
   };
-  declaration: {
-    signedAt: string;
-    signature: string;
+  declaration?: {
+    signedAt?: string;
+    signature?: string;
   };
 }
 
@@ -189,83 +190,99 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-semibold">Full Name</p>
-                <p>{driver.personalInformation.fullName}</p>
+                <p>{driver.personalInformation?.fullName || 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">Gender</p>
-                <p>{driver.personalInformation.gender}</p>
+                <p>{driver.personalInformation?.gender || 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">Date of Birth</p>
-                <p>{new Date(driver.personalInformation.dateOfBirth).toLocaleDateString()}</p>
+                <p>{driver.personalInformation?.dateOfBirth ? new Date(driver.personalInformation.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">Mobile Number</p>
-                <p>{driver.mobile}</p>
+                <p>{driver.mobile || 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">Alternate Number</p>
-                <p>{driver.personalInformation.alternateNumber}</p>
+                <p>{driver.personalInformation?.alternateNumber || 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">Email</p>
-                <p>{driver.personalInformation.email}</p>
+                <p>{driver.personalInformation?.email || 'Not provided'}</p>
               </div>
             </div>
             <div>
               <p className="font-semibold">Current Address</p>
-              <p>{driver.personalInformation.currentAddress}</p>
+              <p>{driver.personalInformation?.currentAddress || 'Not provided'}</p>
             </div>
             <div>
               <p className="font-semibold">Permanent Address</p>
-              <p>{driver.personalInformation.permanentAddress}</p>
+              <p>{driver.personalInformation?.permanentAddress || 'Not provided'}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-semibold">Passport Photo</p>
-                <img
-                  src={driver.personalInformation.passportPhoto}
-                  alt="Passport"
-                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                  onClick={() => setPreviewImage(driver.personalInformation.passportPhoto)}
-                />
+                {driver.personalInformation?.passportPhoto ? (
+                  <img
+                    src={driver.personalInformation.passportPhoto}
+                    alt="Passport"
+                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
+                    onClick={() => setPreviewImage(driver.personalInformation.passportPhoto)}
+                  />
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
               </div>
               <div>
                 <p className="font-semibold">PAN Card</p>
-                <img
-                  src={driver.personalInformation.panCard}
-                  alt="PAN"
-                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                  onClick={() => setPreviewImage(driver.personalInformation.panCard)}
-                />
+                {driver.personalInformation?.panCard ? (
+                  <img
+                    src={driver.personalInformation.panCard}
+                    alt="PAN"
+                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
+                    onClick={() => setPreviewImage(driver.personalInformation.panCard)}
+                  />
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
               </div>
             </div>
             <div>
               <p className="font-semibold">Aadhar Documents</p>
               <div className="flex space-x-2">
-                {driver.personalInformation.aadhar.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`Aadhar ${index + 1}`}
-                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                    onClick={() => setPreviewImage(url)}
-                  />
-                ))}
+                {driver.personalInformation?.aadhar?.length ? (
+                  driver.personalInformation.aadhar.map((url, index) => (
+                    <img
+                      key={index}
+                      src={url}
+                      alt={`Aadhar ${index + 1}`}
+                      className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
+                      onClick={() => setPreviewImage(url)}
+                    />
+                  ))
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
               </div>
             </div>
             <div>
               <p className="font-semibold">Driving License</p>
               <div className="flex space-x-2">
-                {driver.personalInformation.drivingLicense.map((url, index) => (
-                  <img
-                    key={index}
-                    src={url}
-                    alt={`License ${index + 1}`}
-                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                    onClick={() => setPreviewImage(url)}
-                  />
-                ))}
+                {driver.personalInformation?.drivingLicense?.length ? (
+                  driver.personalInformation.drivingLicense.map((url, index) => (
+                    <img
+                      key={index}
+                      src={url}
+                      alt={`License ${index + 1}`}
+                      className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
+                      onClick={() => setPreviewImage(url)}
+                    />
+                  ))
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -278,30 +295,38 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
           <CardContent className="space-y-4">
             <div>
               <p className="font-semibold">License Type</p>
-              <p>{driver.drivingDetails.licenseType}</p>
+              <p>{driver.drivingDetails?.licenseType || 'Not provided'}</p>
             </div>
             <div>
               <p className="font-semibold">Driving Experience</p>
-              <p>{driver.drivingDetails.drivingExperienceYears} years</p>
+              <p>{driver.drivingDetails?.drivingExperienceYears ? `${driver.drivingDetails.drivingExperienceYears} years` : 'Not provided'}</p>
             </div>
             <div>
               <p className="font-semibold">Preferred Work</p>
-              <p>{driver.drivingDetails.preferredWork}</p>
+              <p>{driver.drivingDetails?.preferredWork || 'Not provided'}</p>
             </div>
             <div>
               <p className="font-semibold">Vehicle Types</p>
               <div className="flex flex-wrap gap-2">
-                {driver.drivingDetails.vehicleType.map((type, index) => (
-                  <Badge key={index} variant="outline">{type}</Badge>
-                ))}
+                {driver.drivingDetails?.vehicleType?.length ? (
+                  driver.drivingDetails.vehicleType.map((type, index) => (
+                    <Badge key={index} variant="outline">{type}</Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
               </div>
             </div>
             <div>
               <p className="font-semibold">Can Drive</p>
               <div className="flex flex-wrap gap-2">
-                {driver.drivingDetails.canDrive.map((vehicle, index) => (
-                  <Badge key={index} variant="outline">{vehicle}</Badge>
-                ))}
+                {driver.drivingDetails?.canDrive?.length ? (
+                  driver.drivingDetails.canDrive.map((vehicle, index) => (
+                    <Badge key={index} variant="outline">{vehicle}</Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -315,46 +340,50 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-semibold">Payment Cycle</p>
-                <p>{driver.paymentAndSubscription.preferredPaymentCycle}</p>
+                <p>{driver.paymentAndSubscription?.preferredPaymentCycle || 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">Registration Fee</p>
-                <p>₹{driver.paymentAndSubscription.oneTimeRegistrationFee}</p>
+                <p>{driver.paymentAndSubscription?.oneTimeRegistrationFee ? `₹${driver.paymentAndSubscription.oneTimeRegistrationFee}` : 'Not provided'}</p>
               </div>
             </div>
             <div>
               <p className="font-semibold">Bank Account Holder</p>
-              <p>{driver.paymentAndSubscription.bankAccountHolderName}</p>
+              <p>{driver.paymentAndSubscription?.bankAccountHolderName || 'Not provided'}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-semibold">Bank Name</p>
-                <p>{driver.paymentAndSubscription.bankName}</p>
+                <p>{driver.paymentAndSubscription?.bankName || 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">Account Number</p>
-                <p>{driver.paymentAndSubscription.accountNumber}</p>
+                <p>{driver.paymentAndSubscription?.accountNumber || 'Not provided'}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-semibold">IFSC Code</p>
-                <p>{driver.paymentAndSubscription.ifscCode}</p>
+                <p>{driver.paymentAndSubscription?.ifscCode || 'Not provided'}</p>
               </div>
               <div>
                 <p className="font-semibold">UPI ID</p>
-                <p>{driver.paymentAndSubscription.upiId}</p>
+                <p>{driver.paymentAndSubscription?.upiId || 'Not provided'}</p>
               </div>
             </div>
 
             <div>
               <p className="font-semibold">UPI Qr code</p>
-              <img
-                src={driver.paymentAndSubscription.upiQrCode}
-                alt="upi Qr code"
-                className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                onClick={() => setPreviewImage(driver.paymentAndSubscription.upiQrCode)}
-              />
+              {driver.paymentAndSubscription?.upiQrCode ? (
+                <img
+                  src={driver.paymentAndSubscription.upiQrCode}
+                  alt="upi Qr code"
+                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
+                  onClick={() => setPreviewImage(driver.paymentAndSubscription.upiQrCode)}
+                />
+              ) : (
+                <p className="text-gray-500">Not provided</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -367,21 +396,29 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
             <div>
               <p className="font-semibold">Known Languages</p>
               <div className="flex flex-wrap gap-2">
-                {driver.languageSkillsAndReferences.knownLanguages.map((lang, index) => (
-                  <Badge key={index} variant="outline">{lang}</Badge>
-                ))}
+                {driver.languageSkillsAndReferences?.knownLanguages?.length ? (
+                  driver.languageSkillsAndReferences.knownLanguages.map((lang, index) => (
+                    <Badge key={index} variant="outline">{lang}</Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
               </div>
             </div>
             <div>
               <p className="font-semibold">References</p>
               <div className="space-y-2">
-                {driver.languageSkillsAndReferences.references.map((ref, index) => (
-                  <div key={index} className="p-3 border rounded">
-                    <p><strong>Name:</strong> {ref.name}</p>
-                    <p><strong>Relationship:</strong> {ref.relationship}</p>
-                    <p><strong>Mobile:</strong> {ref.mobileNumber}</p>
-                  </div>
-                ))}
+                {driver.languageSkillsAndReferences?.references?.length ? (
+                  driver.languageSkillsAndReferences.references.map((ref, index) => (
+                    <div key={index} className="p-3 border rounded">
+                      <p><strong>Name:</strong> {ref.name}</p>
+                      <p><strong>Relationship:</strong> {ref.relationship}</p>
+                      <p><strong>Mobile:</strong> {ref.mobileNumber}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No references provided</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -395,21 +432,25 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="font-semibold">Signed At</p>
-                <p>{new Date(driver.declaration.signedAt).toLocaleString()}</p>
+                <p>{driver.declaration?.signedAt ? new Date(driver.declaration.signedAt).toLocaleString() : 'Not signed'}</p>
               </div>
               <div>
                 <p className="font-semibold">Created At</p>
-                <p>{new Date(driver.createdAt).toLocaleString()}</p>
+                <p>{driver.createdAt ? new Date(driver.createdAt).toLocaleString() : 'Not available'}</p>
               </div>
             </div>
             <div>
               <p className="font-semibold">Signature</p>
-              <img
-                src={driver.declaration.signature}
-                alt="Signature"
-                className="w-32 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                onClick={() => setPreviewImage(driver.declaration.signature)}
-              />
+              {driver.declaration?.signature ? (
+                <img
+                  src={driver.declaration.signature}
+                  alt="Signature"
+                  className="w-32 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                  onClick={() => setPreviewImage(driver.declaration.signature)}
+                />
+              ) : (
+                <p className="text-gray-500">Not provided</p>
+              )}
             </div>
           </CardContent>
         </Card>
