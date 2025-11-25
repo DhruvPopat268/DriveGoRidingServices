@@ -940,7 +940,15 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
       driverId,
       isNew,
       status: driver.status,
+      selectedCategory: driver.selectedCategory
     };
+
+    // Add ownership based on selectedCategory
+    if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
+      response.ownership = driver.cabVehicleDetails.ownership;
+    } else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
+      response.ownership = driver.parcelVehicleDetails.ownership;
+    }
 
     // Add step only if status is Pending or PendingForPayment
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
