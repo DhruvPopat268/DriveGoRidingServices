@@ -111,8 +111,6 @@ const driverSchema = new mongoose.Schema(
         type: String,
         validate: {
           validator: function (v) {
-            // Only validate if value exists and is not empty
-            if (!v || v.trim() === '') return true;
             return /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(v);
           },
           message: 'Invalid UPI ID format. Must be in format: username@provider'
