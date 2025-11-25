@@ -8,7 +8,23 @@ const referenceSchema = new mongoose.Schema({
 });
 
 const cabVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: { type: String , unique: true},
+  rcNumber: { 
+    type: String,
+    validate: {
+      validator: async function(rcNumber) {
+        if (!rcNumber) return true;
+        const existingDriver = await mongoose.model('Driver').findOne({
+          $or: [
+            { 'cabVehicleDetails.rcNumber': rcNumber },
+            { 'parcelVehicleDetails.rcNumber': rcNumber }
+          ],
+          _id: { $ne: this._id }
+        });
+        return !existingDriver;
+      },
+      message: 'RC Number already exists in the system'
+    }
+  },
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
   modelType: [{ type: String }],
@@ -35,7 +51,23 @@ const cabVehicleDetailsSchema = new mongoose.Schema({
 });
 
 const parcelVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: { type: String , unique: true },
+  rcNumber: { 
+    type: String,
+    validate: {
+      validator: async function(rcNumber) {
+        if (!rcNumber) return true;
+        const existingDriver = await mongoose.model('Driver').findOne({
+          $or: [
+            { 'cabVehicleDetails.rcNumber': rcNumber },
+            { 'parcelVehicleDetails.rcNumber': rcNumber }
+          ],
+          _id: { $ne: this._id }
+        });
+        return !existingDriver;
+      },
+      message: 'RC Number already exists in the system'
+    }
+  },
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
   modelType: [{ type: String }],
