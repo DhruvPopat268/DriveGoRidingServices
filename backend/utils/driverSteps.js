@@ -77,10 +77,10 @@ function evaluateDriverProgress(driver) {
     step = 1;
   } 
   // Step 2: Category-specific details
-  else if (category === "Cab" && !isObjectComplete(driver.cabVehicleDetails, ['vehiclePhotos', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'], category, 'CabVehicleDetails')) {
+  else if (category === "Cab" && !isObjectComplete(driver.cabVehicleDetails, ['rcNumber', 'vehicleType', 'modelType', 'seatCapacity', 'color', 'fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'], category, 'CabVehicleDetails')) {
     console.log('❌ Step 2: CabVehicleDetails incomplete');
     step = 2;
-  } else if (category === "Parcel" && !isObjectComplete(driver.parcelVehicleDetails, [], category, 'ParcelVehicleDetails')) {
+  } else if (category === "Parcel" && !isObjectComplete(driver.parcelVehicleDetails, ['rcNumber', 'vehicleType', 'modelType', 'length', 'width', 'height', 'weightCapacity', 'color', 'fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'], category, 'ParcelVehicleDetails')) {
     console.log('❌ Step 2: ParcelVehicleDetails incomplete');
     step = 2;
   } else if (category === "Driver" && !isObjectComplete(driver.drivingDetails, [], category, 'DrivingDetails')) {

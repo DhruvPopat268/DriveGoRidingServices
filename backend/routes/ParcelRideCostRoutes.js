@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
       .populate('category', 'name')
       .populate('subcategory', 'name')
       .populate('parcelCategory', 'categoryName')
-      .populate('parcelVehicleType', 'name')
+      .populate('parcelVehicle', 'name')
       .sort({ createdAt: -1 });
 
     res.json({ data: parcelRideCosts });
@@ -61,8 +61,8 @@ router.post('/', async (req, res) => {
       .populate('subcategory', 'name')
       .populate('parcelCategory', 'name')
       .populate({
-        path: 'parcelVehicleType',
-        select: 'name seater', // include image from parcelVehicleType model
+        path: 'parcelVehicle',
+        select: 'name seater', // include image from parcelVehicle model
       });
 
     res.status(201).json(populatedParcelRideCost);
@@ -83,8 +83,8 @@ router.put('/:id', async (req, res) => {
       .populate('subcategory', 'name')
       .populate('parcelCategory', 'name')
       .populate({
-        path: 'parcelVehicleType',
-        select: 'name seater', // include image from parcelVehicleType model
+        path: 'parcelVehicle',
+        select: 'name seater', // include image from parcelVehicle model
       });
 
     if (!parcelRideCost) {
@@ -188,7 +188,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 
     const rideCostModels = await ParcelRideCost.find(rideCostQuery)
       .populate('category', 'name')
-      .populate('parcelVehicleType', 'name');
+      .populate('parcelVehicle', 'name');
 
     if (rideCostModels.length === 0) {
       return res.status(404).json({ error: 'No ride cost models found for this parcel category' });
@@ -260,8 +260,8 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges);
 
       result.push({
-        categoryId : model.parcelVehicleType?._id,
-        category: model.parcelVehicleType?.name, // keep price category also if needed
+        categoryId : model.parcelVehicle?._id,
+        category: model.parcelVehicle?.name, // keep price category also if needed
         driverCharges: Math.round(driverCharges),
         pickCharges: Math.round(modelPickCharges),
         peakCharges: Math.round(peakCharges),

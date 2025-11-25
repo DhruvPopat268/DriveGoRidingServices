@@ -16,9 +16,9 @@ const parcelRideCostSchema = new mongoose.Schema({
     ref: 'ParcelCategory',
     required: true
   },
-  parcelVehicleType: {
+  parcelVehicle: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'ParcelVehicleType'
+    ref: 'ParcelVehicle'
   },
   baseFare: {
     type: Number,
