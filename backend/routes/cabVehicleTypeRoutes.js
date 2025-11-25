@@ -79,7 +79,7 @@ router.delete('/:id', async (req, res) => {
 router.get('/all',driverAuthMiddleware, async (req, res) => {
   try {
     const vehicleTypes = await VehicleType.find().sort({ createdAt: -1 });
-    res.json(vehicleTypes);
+    res.json({ status: true, data: vehicleTypes });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

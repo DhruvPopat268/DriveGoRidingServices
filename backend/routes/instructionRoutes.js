@@ -88,7 +88,7 @@ router.post('/', async (req, res) => {
     // Handle parcel category with explicit parcelCategoryId
     if (parcelCategoryId && vehicleTypeId) {
       try {
-        const response = await axios.get('https://drivegoridingservices-backend.onrender.com/api/parcel-vehicle-types');
+        const response = await axios.get('https://drivegoridingservices-backend.onrender.com/api/parcelVehicles');
         const vehicleType = response.data.find(vt => vt._id === vehicleTypeId);
         if (vehicleType) {
           instructionData.parcelCategoryId = parcelCategoryId;

@@ -95,7 +95,7 @@ const Index = () => {
       
       switch (categoryType) {
         case 'parcel':
-          endpoint = `/api/parcel-vehicle-types/${categoryId}`;
+          endpoint = `/api/parcelVehicles/${categoryId}`;
           nameField = 'name';
           break;
         case 'driver':

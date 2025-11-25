@@ -113,9 +113,9 @@ router.post('/by-vehicle-type',driverAuthMiddleware, async (req, res) => {
       .populate('vehicleType', 'name')
       .sort({ createdAt: -1 });
     
-    res.json(cars);
+    res.json({ status: true, data: cars });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ status: false, message: error.message });
   }
 });
 

@@ -11,7 +11,7 @@ const subSubCategoryRoutes = require('./routes/subSubCategoryRoutes');
 const vehicleCategories = require('./routes/vehicleCategory')
 const priceCategoryRoutes = require('./routes/priceCategoryRoutes');
 const parcelCategoryRoutes = require('./routes/parcelCategoryRoutes');
-const parcelVehicleTypeRoutes = require('./routes/parcelVehicleTypeRoutes');
+const parcelVehicleRoutes = require('./routes/parcelVehicleRoutes');
 const ParcelRideCostRoutes = require('./routes/ParcelRideCostRoutes');
 const DriverRideCostRoutes = require('./routes/DriverRideCostRoutes');
 const peakRoutes = require('./routes/peakRoutes');
@@ -80,7 +80,7 @@ app.use('/api/subsubcategories', subSubCategoryRoutes);
 app.use('/api/vehiclecategories', vehicleCategories)
 app.use('/api/price-categories', priceCategoryRoutes);
 app.use('/api/parcel-categories', parcelCategoryRoutes);
-app.use('/api/parcel-vehicle-types', parcelVehicleTypeRoutes);
+app.use('/api/parcelVehicles', parcelVehicleRoutes);
 app.use('/api/ParcelRideCosts', ParcelRideCostRoutes);
 app.use('/api/DriverRideCosts', DriverRideCostRoutes);
 app.use('/api/peaks', peakRoutes);

@@ -342,7 +342,7 @@ export const ParcelRideCostPage = () => {
 
   const fetchParcelVehicleTypes = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicle-types`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
       setParcelVehicleTypes(response.data);
     } catch (error) {
       console.error('Error fetching parcel vehicle types:', error);

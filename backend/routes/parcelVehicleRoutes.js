@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ParcelVehicleType = require('../models/ParcelVehicleType');
+const ParcelVehicleType = require('../models/ParcelVehicle');
 
 // Create new parcel vehicle type
 router.post('/', async (req, res) => {

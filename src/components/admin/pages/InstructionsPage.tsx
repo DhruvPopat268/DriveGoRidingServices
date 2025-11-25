@@ -167,7 +167,7 @@ export const InstructionsPage = () => {
   const { data: parcelVehicleTypes = [] } = useQuery({
     queryKey: ["parcel-vehicle-types", selectedCategory],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicle-types`);
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
       return response.data || [];
     },
     enabled: !!selectedCategory && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'parcel',

@@ -7,4 +7,4 @@ const parcelVehicleTypeSchema = new mongoose.Schema({
   weight: { type: Number, required: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('ParcelVehicleType', parcelVehicleTypeSchema);
+module.exports = mongoose.model('ParcelVehicle', parcelVehicleTypeSchema);
