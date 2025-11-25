@@ -178,7 +178,7 @@ router.post("/verify-otp", async (req, res) => {
     // ✅ Update status if still pending
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       driver.status = progressStatus;
-      await driver.save();
+      await driver.save({ validateBeforeSave: false });
     }
 
     // ✅ Wallet check

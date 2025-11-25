@@ -8,7 +8,7 @@ const referenceSchema = new mongoose.Schema({
 });
 
 const cabVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: { type: String },
+  rcNumber: { type: String , unique: true},
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
   modelType: [{ type: String }],
@@ -35,7 +35,7 @@ const cabVehicleDetailsSchema = new mongoose.Schema({
 });
 
 const parcelVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: { type: String },
+  rcNumber: { type: String , unique: true },
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
   modelType: [{ type: String }],
