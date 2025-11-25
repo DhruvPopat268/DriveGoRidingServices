@@ -76,7 +76,7 @@ router.delete('/:id', async (req, res) => {
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Driver <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
 
-router.get('/',driverAuthMiddleware, async (req, res) => {
+router.get('/all',driverAuthMiddleware, async (req, res) => {
   try {
     const vehicleTypes = await VehicleType.find().sort({ createdAt: -1 });
     res.json(vehicleTypes);
