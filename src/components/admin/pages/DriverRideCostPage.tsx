@@ -1129,7 +1129,7 @@ export const DriverRideCostPage = () => {
                   <label className="text-sm font-medium">Driver Cancellation Charges</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.driverCancellationCharges || 0}</p>
                 </div>
-              
+              </div>
             )}
           </DialogContent>
         </Dialog>
@@ -1137,3 +1137,5 @@ export const DriverRideCostPage = () => {
     </div>
   );
 };
+
+export default DriverRideCostPage;

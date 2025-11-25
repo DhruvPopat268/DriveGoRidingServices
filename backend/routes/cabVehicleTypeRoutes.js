@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const VehicleType = require('../models/VehicleType');
+const VehicleType = require('../models/cabVehicleType');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 
 // Get all vehicle types
