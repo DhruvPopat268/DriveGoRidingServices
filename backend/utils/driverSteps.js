@@ -1,46 +1,42 @@
+function getRequiredFields(sectionName, category) {
+  const schemas = {
+    PersonalInformation: ['fullName', 'dateOfBirth', 'gender', 'alternateNumber', 'email', 'currentAddress', 'permanentAddress', 'category', 'subCategory', 'aadhar', 'panCard', 'drivingLicense', 'passportPhoto'],
+    CabVehicleDetails: ['ownership'],
+    ParcelVehicleDetails: ['ownership'],
+    DrivingDetails: category === 'Driver' ? ['drivingExperienceYears', 'licenseType', 'vehicleType', 'canDrive', 'preferredWork'] : ['drivingExperienceYears', 'licenseType', 'preferredWork'],
+    PaymentAndSubscription: ['preferredPaymentCycle', 'bankAccountHolderName', 'bankName', 'accountNumber', 'ifscCode', 'upiId', 'oneTimeRegistrationFee', 'subscriptionPlan'],
+    LanguageSkillsAndReferences: category === 'Driver' ? ['knownLanguages', 'references'] : ['knownLanguages'],
+    Declaration: ['signature']
+  };
+  return schemas[sectionName] || [];
+}
+
 function isObjectComplete(obj, optionalFields = [], category = null, sectionName = '') {
   if (!obj) {
     if (sectionName) console.log(`❌ ${sectionName}: Object is null/undefined`);
     return false;
   }
   
+  const requiredFields = getRequiredFields(sectionName, category);
   const missingFields = [];
-  const result = Object.entries(obj).every(([key, value]) => {
-    // Skip optional fields, MongoDB auto-generated fields, and Mongoose internal properties
-    if (optionalFields.includes(key) || 
-        key === "_id" || key === "__v" || 
-        key.startsWith("$") || key.startsWith("_")) {
+  
+  const result = requiredFields.every(field => {
+    if (optionalFields.includes(field)) {
       return true;
     }
     
+    const value = obj[field];
+    
     if (value === null || value === undefined || value === "") {
-      missingFields.push(key);
+      missingFields.push(field);
       return false;
     }
 
-    // If array, check non-empty (but skip vehicleType and canDrive for non-Driver categories)
-    if (Array.isArray(value)) {
-      // Skip vehicleType and canDrive validation for non-Driver categories in drivingDetails
-      if (category && category !== "Driver" && ["vehicleType", "canDrive"].includes(key) && 
-          sectionName === 'DrivingDetails') {
-        return true;
-      }
-      
-      if (value.length === 0) {
-        missingFields.push(`${key} (empty array)`);
-        return false;
-      }
-      return true;
+    if (Array.isArray(value) && value.length === 0) {
+      missingFields.push(`${field} (empty array)`);
+      return false;
     }
 
-    // If object, recursively check
-    if (typeof value === "object" && !(value instanceof Date)) {
-      const nestedResult = isObjectComplete(value, [], category, `${sectionName}.${key}`);
-      if (!nestedResult) {
-        missingFields.push(`${key} (nested object incomplete)`);
-      }
-      return nestedResult;
-    }
     return true;
   });
   
@@ -77,10 +73,10 @@ function evaluateDriverProgress(driver) {
     step = 1;
   } 
   // Step 2: Category-specific details
-  else if (category === "Cab" && !isObjectComplete(driver.cabVehicleDetails, ['rcNumber', 'vehicleType', 'modelType', 'seatCapacity', 'color', 'fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'], category, 'CabVehicleDetails')) {
+  else if (category === "Cab" && !isObjectComplete(driver.cabVehicleDetails, [], category, 'CabVehicleDetails')) {
     console.log('❌ Step 2: CabVehicleDetails incomplete');
     step = 2;
-  } else if (category === "Parcel" && !isObjectComplete(driver.parcelVehicleDetails, ['rcNumber', 'vehicleType', 'modelType', 'length', 'width', 'height', 'weightCapacity', 'color', 'fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'], category, 'ParcelVehicleDetails')) {
+  } else if (category === "Parcel" && !isObjectComplete(driver.parcelVehicleDetails, [], category, 'ParcelVehicleDetails')) {
     console.log('❌ Step 2: ParcelVehicleDetails incomplete');
     step = 2;
   } else if (category === "Driver" && !isObjectComplete(driver.drivingDetails, [], category, 'DrivingDetails')) {
@@ -106,10 +102,10 @@ function evaluateDriverProgress(driver) {
   // Step 4/5: Language Skills and References
   else if (
     !isObjectComplete(driver.languageSkillsAndReferences, [], category, 'LanguageSkillsAndReferences') ||
-    (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length)
+    !driver.languageSkillsAndReferences?.references?.length
   ) {
-    if (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length) {
-      console.log('❌ LanguageSkillsAndReferences: references array is empty or missing for Driver category');
+    if (!driver.languageSkillsAndReferences?.references?.length) {
+      console.log('❌ LanguageSkillsAndReferences: references array is empty or missing');
     }
     console.log(`❌ Step ${category === "Driver" ? 4 : 5}: LanguageSkillsAndReferences incomplete`);
     console.log('🔍 LanguageSkillsAndReferences content:', JSON.stringify(driver.languageSkillsAndReferences, null, 2));
@@ -132,14 +128,9 @@ function evaluateDriverProgress(driver) {
                       driver.currentPlan?.expiryDate && 
                       new Date(driver.currentPlan.expiryDate) > new Date();
 
-  // Determine final step and status
-  if (step === 0) {
-    step = hasValidPlan ? null : 0;
-  }
-  
-  const status = step === null ? "Onreview" : (step === 0 ? "PendingForPayment" : "Pending");
+  const status = step === 0 ? (hasValidPlan ? "Onreview" : "PendingForPayment") : "Pending";
 
-  if (step === null || step === 0) {
+  if (step === 0) {
     console.log('✅ All steps completed! Driver ready for review/payment');
   }
   
