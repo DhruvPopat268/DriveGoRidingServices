@@ -1207,7 +1207,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       { $set: updates },
       {
         new: true,
-        runValidators: false
+        runValidators: true
       }
     ).lean();
 
