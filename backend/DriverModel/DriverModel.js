@@ -8,22 +8,28 @@ const referenceSchema = new mongoose.Schema({
 });
 
 const cabVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: { 
+  rcNumber: {
     type: String,
     validate: {
-      validator: async function(rcNumber) {
-        if (!rcNumber) return true;
-        const existingDriver = await mongoose.model('Driver').findOne({
-          $or: [
-            { 'cabVehicleDetails.rcNumber': rcNumber },
-            { 'parcelVehicleDetails.rcNumber': rcNumber }
-          ],
+      validator: async function (value) {
+        // allow empty
+        if (!value) return true;
+
+        // Run only when creating OR modifying rcNumber
+        if (!this.isNew && !this.isModified('cabVehicleDetails.rcNumber')) {
+          return true;
+        }
+
+        const exists = await mongoose.model('Driver').findOne({
+          'cabVehicleDetails.rcNumber': value,
           _id: { $ne: this._id }
         });
-        return !existingDriver;
+
+        return !exists;
       },
       message: 'RC Number already exists in the system'
     }
+
   },
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
@@ -51,19 +57,24 @@ const cabVehicleDetailsSchema = new mongoose.Schema({
 });
 
 const parcelVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: { 
+  rcNumber: {
     type: String,
     validate: {
-      validator: async function(rcNumber) {
-        if (!rcNumber) return true;
-        const existingDriver = await mongoose.model('Driver').findOne({
-          $or: [
-            { 'cabVehicleDetails.rcNumber': rcNumber },
-            { 'parcelVehicleDetails.rcNumber': rcNumber }
-          ],
+      validator: async function (value) {
+        // allow empty
+        if (!value) return true;
+
+        // Run only when creating OR modifying rcNumber
+        if (!this.isNew && !this.isModified('parcelVehicleDetails.rcNumber')) {
+          return true;
+        }
+
+        const exists = await mongoose.model('Driver').findOne({
+          'parcelVehicleDetails.rcNumber': value,
           _id: { $ne: this._id }
         });
-        return !existingDriver;
+
+        return !exists;
       },
       message: 'RC Number already exists in the system'
     }
