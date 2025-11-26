@@ -3,10 +3,53 @@ const Vehicle = require("../DriverModel/VehicleModel");
 const Driver = require("../DriverModel/DriverModel");
 const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
 const { evaluateDriverProgress } = require("../utils/driverSteps");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs").promises;
+const sharp = require("sharp");
+const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
+// Helper function for file upload
+const uploadToServerFast = async (fileBuffer, filename, isImage = true) => {
+  const folder = isImage ? "images" : "documents";
+  const uploadPath = path.join(__dirname, `../cloud/${folder}`);
+  
+  await fs.mkdir(uploadPath, { recursive: true });
+  const filePath = path.join(uploadPath, filename);
+  
+  if (isImage) {
+    await sharp(fileBuffer)
+      .resize({ width: 800, withoutEnlargement: true })
+      .webp({ quality: 70, effort: 1, smartSubsample: true })
+      .toFile(filePath);
+  } else {
+    await fs.writeFile(filePath, fileBuffer);
+  }
+  
+  return `https://adminbackend.hire4drive.com/app/cloud/${folder}/${filename}`;
+};
+
+// Process files function
+const processAllFiles = async (files) => {
+  return Promise.all(
+    files.map(async (file) => {
+      try {
+        const isImage = file.mimetype.startsWith("image/");
+        const ext = path.extname(file.originalname) || (isImage ? ".webp" : ".pdf");
+        const filename = `${file.fieldname}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}${ext}`;
+        
+        const url = await uploadToServerFast(file.buffer, filename, isImage);
+        return { fieldname: file.fieldname, url, success: true };
+      } catch (error) {
+        return { fieldname: file.fieldname, error: error.message, success: false };
+      }
+    })
+  );
+};
+
 // Create vehicle (Owner/Owner_With_Vehicle only)
-router.post("/create", DriverAuthMiddleware, async (req, res) => {
+router.post("/create", DriverAuthMiddleware, upload.any(), async (req, res) => {
   try {
     const driverId = req.driver.driverId;
     
@@ -20,14 +63,66 @@ router.post("/create", DriverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: "Driver must have a selected category" });
     }
 
-    const { rcNumber, vehicleDetails } = req.body;
+    // Parse JSON data from form
+    let vehicleData = {};
+    try {
+      vehicleData = JSON.parse(req.body.data || "{}");
+    } catch (err) {
+      return res.status(400).json({ success: false, message: "Invalid JSON in data field" });
+    }
 
+    const { rcNumber } = vehicleData;
+    if (!rcNumber) {
+      return res.status(400).json({ success: false, message: "RC Number is required" });
+    }
+
+    // Debug: Log received files
+    console.log('Received files:', req.files?.map(f => ({ fieldname: f.fieldname, mimetype: f.mimetype, size: f.size })));
+    
+    // Process uploaded files
+    const uploadResults = req.files?.length ? await processAllFiles(req.files) : [];
+    console.log('Upload results:', uploadResults);
+    
+    // Organize files
+    const fileGroups = {};
+    const singleFiles = {};
+    const arrayFields = ["vehiclePhotos"];
+    
+    uploadResults.forEach((result) => {
+      if (result.success) {
+        const fieldname = result.fieldname.trim(); // Trim whitespace
+        if (arrayFields.includes(fieldname)) {
+          if (!fileGroups[fieldname]) fileGroups[fieldname] = [];
+          fileGroups[fieldname].push(result.url);
+        } else {
+          singleFiles[fieldname] = result.url;
+        }
+      }
+    });
+
+    console.log('File groups:', fileGroups);
+    console.log('Single files:', singleFiles);
+
+    // Merge file URLs with vehicle data
+    Object.assign(vehicleData, singleFiles);
+    Object.entries(fileGroups).forEach(([fieldName, urls]) => {
+      if (urls.length > 0) {
+        vehicleData[fieldName] = urls;
+      }
+    });
+    
+    console.log('Final vehicle data:', vehicleData);
+
+    // Determine vehicle type and prepare details
+    const vehicleType = driver.selectedCategory.name; // "Cab" or "Parcel"
+    const vehicleDetailsField = vehicleType === "Cab" ? "cabVehicleDetails" : "parcelVehicleDetails";
+    
     const newVehicle = new Vehicle({
       owner: driverId,
       category: driver.selectedCategory.id,
       rcNumber,
       status: true,
-      [vehicleDetails.type === "Cab" ? "cabVehicleDetails" : "parcelVehicleDetails"]: vehicleDetails
+      [vehicleDetailsField]: vehicleData
     });
 
     const savedVehicle = await newVehicle.save();
