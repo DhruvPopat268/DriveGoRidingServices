@@ -85,12 +85,10 @@ const vehicleSchema = new mongoose.Schema({
     default: true
   },
 
-  assignedTo: {
+  assignedTo: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Driver",
-    default: null
-  },
-
+    ref: "Driver"
+  }],
   cabVehicleDetails: cabVehicleDetailsSchema,
   parcelVehicleDetails: parcelVehicleDetailsSchema
 

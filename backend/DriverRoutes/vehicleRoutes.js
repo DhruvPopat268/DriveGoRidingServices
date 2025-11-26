@@ -144,6 +144,7 @@ router.get("/owner-vehicles", DriverAuthMiddleware, async (req, res) => {
     const driverId = req.driver.driverId;
     
     const vehicles = await Vehicle.find({ owner: driverId })
+    .populate('owner', 'personalInformation.fullName mobile')
       .populate('category', 'name')
       .populate('assignedTo', 'personalInformation.fullName mobile')
       .populate('cabVehicleDetails.vehicleType')
@@ -227,7 +228,7 @@ router.put("/update", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
-// Assign vehicle to driver
+// Assign vehicle to driver (supports multiple assignments)
 router.post("/assign", DriverAuthMiddleware, async (req, res) => {
   try {
     const { vehicleId, driverIdToAssign } = req.body;
@@ -245,19 +246,28 @@ router.post("/assign", DriverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
 
-    // Remove from previous driver if assigned
-    if (vehicle.assignedTo) {
-      await Driver.findByIdAndUpdate(vehicle.assignedTo, {
-        $pull: { vehiclesAssigned: vehicleId }
-      });
-    }
-
-    // Update vehicle assignment
-    vehicle.assignedTo = driverIdToAssign;
-    await vehicle.save();
+    // Handle null assignedTo field and add driver
+    await Vehicle.findByIdAndUpdate(vehicleId, [
+      {
+        $set: {
+          assignedTo: {
+            $cond: {
+              if: { $eq: ["$assignedTo", null] },
+              then: [driverIdToAssign],
+              else: { $setUnion: ["$assignedTo", [driverIdToAssign]] }
+            }
+          }
+        }
+      }
+    ]);
 
     // Add to assigned driver's vehiclesAssigned
     await Driver.findByIdAndUpdate(driverIdToAssign, {
+      $addToSet: { vehiclesAssigned: vehicleId }
+    });
+
+    // Also add to owner's vehiclesAssigned
+    await Driver.findByIdAndUpdate(ownerId, {
       $addToSet: { vehiclesAssigned: vehicleId }
     });
 
@@ -267,10 +277,10 @@ router.post("/assign", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
-// Remove vehicle from driver (unassign)
+// Remove vehicle from specific driver (unassign)
 router.post("/remove-from-driver", DriverAuthMiddleware, async (req, res) => {
   try {
-    const { vehicleId } = req.body;
+    const { vehicleId, driverIdToRemove } = req.body;
     const ownerId = req.driver.driverId;
 
     const vehicle = await Vehicle.findOne({ _id: vehicleId, owner: ownerId });
@@ -278,18 +288,15 @@ router.post("/remove-from-driver", DriverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: "Vehicle not found or not owned by you" });
     }
 
-    const previousAssignedTo = vehicle.assignedTo;
-    
-    // Remove assignment
-    vehicle.assignedTo = null;
-    await vehicle.save();
+    // Remove from vehicle's assignedTo array
+    await Vehicle.findByIdAndUpdate(vehicleId, {
+      $pull: { assignedTo: driverIdToRemove }
+    });
 
-    // Remove from previous driver's vehiclesAssigned
-    if (previousAssignedTo) {
-      await Driver.findByIdAndUpdate(previousAssignedTo, {
-        $pull: { vehiclesAssigned: vehicleId }
-      });
-    }
+    // Remove from driver's vehiclesAssigned
+    await Driver.findByIdAndUpdate(driverIdToRemove, {
+      $pull: { vehiclesAssigned: vehicleId }
+    });
 
     res.json({ success: true, message: "Vehicle removed from driver successfully" });
   } catch (error) {
@@ -302,9 +309,10 @@ router.get("/assigned-vehicles", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
     
-    const vehicles = await Vehicle.find({ assignedTo: driverId })
+    const vehicles = await Vehicle.find({ assignedTo: { $in: [driverId] } })
       .populate('category', 'name')
       .populate('owner', 'personalInformation.fullName mobile')
+      .populate('assignedTo', 'personalInformation.fullName mobile')
       .populate('cabVehicleDetails.vehicleType')
       .populate('cabVehicleDetails.modelType')
       .populate('parcelVehicleDetails.vehicleType')
@@ -325,7 +333,7 @@ router.post("/get-vehicle", DriverAuthMiddleware, async (req, res) => {
 
     const vehicle = await Vehicle.findOne({
       _id: vehicleId,
-      $or: [{ owner: driverId }, { assignedTo: driverId }]
+      $or: [{ owner: driverId }, { assignedTo: { $in: [driverId] } }]
     })
     .populate('category', 'name')
     .populate('owner', 'personalInformation.fullName mobile')

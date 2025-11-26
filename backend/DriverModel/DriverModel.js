@@ -7,8 +7,6 @@ const referenceSchema = new mongoose.Schema({
   mobileNumber: { type: String }
 });
 
-
-
 const driverSchema = new mongoose.Schema(
   {
     mobile: { type: String, required: true, unique: true, index: true },
