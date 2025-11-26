@@ -88,7 +88,7 @@ rcNumber: {
     },
     message: 'RC Number already exists in the system'
   }
-}
+},
 
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
