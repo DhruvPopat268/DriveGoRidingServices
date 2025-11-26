@@ -256,7 +256,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       const cancellationCharges = rider.cancellationCharges || 0;
 
       const subtotal = baseTotal + adminCommission;
-      const gstCharges = Math.ceil((subtotal * (model.gst || 0)) / 100);
+      const gstCharges = Math.round((subtotal * (model.gst || 0)) / 100);
       const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges);
 
       result.push({
