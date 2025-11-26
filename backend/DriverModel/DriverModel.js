@@ -7,115 +7,7 @@ const referenceSchema = new mongoose.Schema({
   mobileNumber: { type: String }
 });
 
-const cabVehicleDetailsSchema = new mongoose.Schema({
-rcNumber: {
-  type: String,
-  validate: {
-    validator: async function (value) {
-      if (!value) return true;
 
-      // Run validator only when rcNumber is new or updated
-      const isCabModified = this.isModified('cabVehicleDetails.rcNumber');
-      const isParcelModified = this.isModified('parcelVehicleDetails.rcNumber');
-
-      if (!this.isNew && !isCabModified && !isParcelModified) {
-        return true;
-      }
-
-      const existingDriver = await mongoose.model('Driver').findOne({
-        $or: [
-          { 'cabVehicleDetails.rcNumber': value },
-          { 'parcelVehicleDetails.rcNumber': value }
-        ],
-        _id: { $ne: this._id }
-      });
-
-      return !existingDriver;
-    },
-    message: 'RC Number already exists in the system'
-  }
-},
-
-  ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
-  vehicleType: [{ type: String }],
-  modelType: [{ type: String }],
-  seatCapacity: { type: String },
-  color: { type: String },
-  fuelType: [{
-    type: String,
-    enum: ["Petrol", "Diesel", "Electric", "CNG"]
-  }],
-
-  vehiclePhotos: [{ type: String }],
-  insuranceValidUpto: { type: String },
-  pollutionValidUpto: { type: String },
-  taxValidUpto: { type: String },
-  fitnessValidUpto: { type: String },
-  permitValidUpto: { type: String },
-  rc: { type: String },
-  insurance: { type: String },
-  pollutionCertificate: { type: String },
-  taxReceipt: { type: String },
-  fitnessCertificate: { type: String },
-  permit: { type: String },
-  _id: false // 👈 disables auto _id for each object
-});
-
-const parcelVehicleDetailsSchema = new mongoose.Schema({
-rcNumber: {
-  type: String,
-  validate: {
-    validator: async function (value) {
-      if (!value) return true;
-
-      // Run validator only when rcNumber is new or updated
-      const isCabModified = this.isModified('cabVehicleDetails.rcNumber');
-      const isParcelModified = this.isModified('parcelVehicleDetails.rcNumber');
-
-      if (!this.isNew && !isCabModified && !isParcelModified) {
-        return true;
-      }
-
-      const existingDriver = await mongoose.model('Driver').findOne({
-        $or: [
-          { 'cabVehicleDetails.rcNumber': value },
-          { 'parcelVehicleDetails.rcNumber': value }
-        ],
-        _id: { $ne: this._id }
-      });
-
-      return !existingDriver;
-    },
-    message: 'RC Number already exists in the system'
-  }
-},
-
-  ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
-  vehicleType: [{ type: String }],
-  modelType: [{ type: String }],
-  length: { type: String },
-  width: { type: String },
-  height: { type: String },
-  weightCapacity: { type: String },
-  color: { type: String },
-  fuelType: [{
-    type: String,
-    enum: ["Petrol", "Diesel", "Electric", "CNG"]
-  }],
-  vehiclePhotos: [{ type: String }],
-  insuranceValidUpto: { type: String },
-  pollutionValidUpto: { type: String },
-  taxValidUpto: { type: String },
-  fitnessValidUpto: { type: String },
-  permitValidUpto: { type: String },
-  rc: { type: String },
-  insurance: { type: String },
-  pollutionCertificate: { type: String },
-  taxReceipt: { type: String },
-  fitnessCertificate: { type: String },
-  permit: { type: String },
-  _id: false // 👈 disables auto _id for each object
-});
 
 const driverSchema = new mongoose.Schema(
   {
@@ -125,6 +17,8 @@ const driverSchema = new mongoose.Schema(
       id: { type: String },
       name: { type: String, enum: ["Driver", "Cab", "Parcel"] }
     },
+
+    ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"], default: null },
 
     personalInformation: {
       fullName: { type: String },
@@ -152,8 +46,6 @@ const driverSchema = new mongoose.Schema(
       canDrive: [{ type: String }], // Hatchback, Sedan, SUV, Luxury Cars
       preferredWork: { type: String, enum: ["Full-Time", "Part-Time", "Guest/On-Call"] }
     },
-    cabVehicleDetails: cabVehicleDetailsSchema,
-    parcelVehicleDetails: parcelVehicleDetailsSchema,
 
     paymentAndSubscription: {
       preferredPaymentCycle: { type: String, enum: ["Daily", "Weekly", "Monthly"] },
@@ -249,7 +141,18 @@ const driverSchema = new mongoose.Schema(
     ratings: {
       ratingHistory: [{ type: Number }],
       avgRating: { type: Number, default: 0 }
-    }
+    },
+
+    // 🔹 Multi-vehicle management
+    vehiclesOwned: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vehicle"
+    }],
+
+    vehiclesAssigned: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vehicle"
+    }]
   },
   { timestamps: true }
 );

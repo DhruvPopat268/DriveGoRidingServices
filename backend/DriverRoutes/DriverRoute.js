@@ -1,5 +1,6 @@
 const express = require("express");
 const Driver = require("../DriverModel/DriverModel");
+const Vehicle = require("../DriverModel/VehicleModel");
 const router = express.Router();
 
 const DriverOtpSession = require("../DriverModel/DriverOtpSession");
@@ -37,7 +38,7 @@ function getFieldByStep(step, category = "Driver") {
     },
     Cab: {
       1: "personalInformation",
-      2: "cabVehicleDetails",
+      2: "ownership",
       3: "drivingDetails",
       4: "paymentAndSubscription",
       5: "languageSkillsAndReferences",
@@ -45,7 +46,7 @@ function getFieldByStep(step, category = "Driver") {
     },
     Parcel: {
       1: "personalInformation",
-      2: "parcelVehicleDetails",
+      2: "ownership",
       3: "drivingDetails",
       4: "paymentAndSubscription",
       5: "languageSkillsAndReferences",
@@ -205,11 +206,9 @@ router.post("/verify-otp", async (req, res) => {
       selectedCategory: driver.selectedCategory
     };
 
-    // Add ownership based on selectedCategory
-    if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
-      response.ownership = driver.cabVehicleDetails.ownership;
-    } else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
-      response.ownership = driver.parcelVehicleDetails.ownership;
+    // Add ownership if exists
+    if (driver.ownership) {
+      response.ownership = driver.ownership;
     }
 
     // Return step for pending statuses
@@ -961,11 +960,9 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
       selectedCategory: driver.selectedCategory
     };
 
-    // Add ownership based on selectedCategory
-    if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
-      response.ownership = driver.cabVehicleDetails.ownership;
-    } else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
-      response.ownership = driver.parcelVehicleDetails.ownership;
+    // Add ownership if exists
+    if (driver.ownership) {
+      response.ownership = driver.ownership;
     }
 
     // Add step only if status is Pending or PendingForPayment
@@ -1113,10 +1110,12 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
     // Get driver's category from selectedCategory for steps 2-5
     let category = "Driver"; // default
+    let categoryId = null;
     if (step > 1) {
       const driverCategory = await Driver.findOne({ mobile }).select("selectedCategory").lean();
       if (driverCategory?.selectedCategory?.name) {
         category = driverCategory.selectedCategory.name;
+        categoryId = driverCategory.selectedCategory.id;
       }
     }
 
@@ -1129,7 +1128,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // console.log(`📤 Starting parallel operations: DB fetch + ${req.files?.length || 0} file uploads`);
 
     // Always include all fields needed for progress evaluation
-    const selectFields = "personalInformation drivingDetails cabVehicleDetails parcelVehicleDetails paymentAndSubscription languageSkillsAndReferences declaration status mobile currentPlan selectedCategory";
+    const selectFields = "personalInformation drivingDetails ownership paymentAndSubscription languageSkillsAndReferences declaration status mobile currentPlan selectedCategory";
 
     const [driverData, uploadResults] = await Promise.all([
       Driver.findOne({ mobile }).select(selectFields).lean(),
@@ -1147,7 +1146,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // 🚀 Organize files efficiently
     const fileGroups = {};
     const singleFiles = {};
-    const arrayFields = ["aadhar", "drivingLicense"];
+    const arrayFields = ["aadhar", "drivingLicense", "vehiclePhotos"];
 
     uploadResults.forEach((result) => {
       if (result.success) {
@@ -1165,18 +1164,23 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // Add single file fields to data
     Object.assign(data, singleFiles);
 
-    // Merge with existing step data
-    const fieldData = { ...driverData[field], ...data };
-
     // Merge array fields (for multiple docs)
     Object.entries(fileGroups).forEach(([fieldName, urls]) => {
       if (urls.length > 0) {
         const existingUrls = driverData[field]?.[fieldName] || [];
-        fieldData[fieldName] = [...new Set([...existingUrls, ...urls])];
+        data[fieldName] = [...new Set([...existingUrls, ...urls])];
       }
     });
 
-    const updates = { [field]: fieldData };
+    // For step 2 (ownership), store the ownership value directly
+    let updates;
+    if (step === 2 && (category === "Cab" || category === "Parcel")) {
+      updates = { ownership: data.ownership };
+    } else {
+      // Merge with existing step data for other steps
+      const fieldData = { ...driverData[field], ...data };
+      updates = { [field]: fieldData };
+    }
 
     // logTime("DATA_MERGE");
 
@@ -1212,6 +1216,67 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
         runValidators: true
       }
     ).lean();
+
+    // 🚗 Create Vehicle record for Owner/Owner_With_Vehicle with vehicle details
+    if ((category === "Cab" || category === "Parcel") && step === 2 && data.ownership && data.rcNumber) {
+      const ownership = data.ownership;
+      
+      if (ownership === "Owner" || ownership === "Owner_With_Vehicle") {
+        // Prepare vehicle details based on category
+        const vehicleDetailsField = category === "Cab" ? "cabVehicleDetails" : "parcelVehicleDetails";
+        const vehicleDetails = {
+          vehicleType: Array.isArray(data.vehicleType) ? data.vehicleType[0] : data.vehicleType,
+          modelType: Array.isArray(data.modelType) ? data.modelType[0] : data.modelType,
+          color: data.color,
+          fuelType: data.fuelType,
+          insuranceValidUpto: data.insuranceValidUpto,
+          pollutionValidUpto: data.pollutionValidUpto,
+          taxValidUpto: data.taxValidUpto,
+          fitnessValidUpto: data.fitnessValidUpto,
+          permitValidUpto: data.permitValidUpto,
+          rc: data.rc,
+          insurance: data.insurance,
+          pollutionCertificate: data.pollutionCertificate,
+          taxReceipt: data.taxReceipt,
+          fitnessCertificate: data.fitnessCertificate,
+          permit: data.permit,
+          vehiclePhotos: data.vehiclePhotos || []
+        };
+        
+        // Add category-specific fields
+        if (category === "Cab") {
+          vehicleDetails.seatCapacity = data.seatCapacity;
+        } else if (category === "Parcel") {
+          vehicleDetails.length = data.length;
+          vehicleDetails.width = data.width;
+          vehicleDetails.height = data.height;
+          vehicleDetails.weightCapacity = data.weightCapacity;
+        }
+        
+        const newVehicle = new Vehicle({
+          owner: updatedDriver._id,
+          category: categoryId,
+          rcNumber: data.rcNumber,
+          status: true,
+          assignedTo: ownership === "Owner_With_Vehicle" ? updatedDriver._id : null,
+          [vehicleDetailsField]: vehicleDetails
+        });
+        
+        const savedVehicle = await newVehicle.save();
+        
+        // Prepare driver updates based on ownership
+        const driverUpdates = { $push: { vehiclesOwned: savedVehicle._id } };
+        
+        // For Owner_With_Vehicle, also add to vehiclesAssigned
+        if (ownership === "Owner_With_Vehicle") {
+          driverUpdates.$push.vehiclesAssigned = savedVehicle._id;
+        }
+        
+        await Driver.findByIdAndUpdate(updatedDriver._id, driverUpdates);
+        
+        console.log(`✅ Vehicle created for ${ownership} driver: ${savedVehicle._id}`);
+      }
+    }
 
     // Evaluate progress with the actual saved data
     console.log(`🔍 About to evaluate progress after updating step ${step} for category ${category}`);

@@ -1,8 +1,7 @@
 function getRequiredFields(sectionName, category) {
   const schemas = {
     PersonalInformation: ['fullName', 'dateOfBirth', 'gender', 'alternateNumber', 'email', 'currentAddress', 'permanentAddress', 'category', 'subCategory', 'aadhar', 'panCard', 'drivingLicense', 'passportPhoto'],
-    CabVehicleDetails: ['ownership'],
-    ParcelVehicleDetails: ['ownership'],
+    Ownership: ['ownership'],
     DrivingDetails: category === 'Driver' ? ['drivingExperienceYears', 'licenseType', 'vehicleType', 'canDrive', 'preferredWork'] : ['drivingExperienceYears', 'licenseType', 'preferredWork'],
     PaymentAndSubscription: ['preferredPaymentCycle', 'bankAccountHolderName', 'bankName', 'accountNumber', 'ifscCode', 'upiId', 'oneTimeRegistrationFee', 'subscriptionPlan'],
     LanguageSkillsAndReferences: category === 'Driver' ? ['knownLanguages', 'references'] : ['knownLanguages'],
@@ -59,8 +58,7 @@ function evaluateDriverProgress(driver) {
   console.log(`🔍 Evaluating progress for category: ${category}`);
   console.log(`🔍 Driver sections available:`, {
     personalInformation: !!driver.personalInformation,
-    cabVehicleDetails: !!driver.cabVehicleDetails,
-    parcelVehicleDetails: !!driver.parcelVehicleDetails,
+    ownership: !!driver.ownership,
     drivingDetails: !!driver.drivingDetails,
     paymentAndSubscription: !!driver.paymentAndSubscription,
     languageSkillsAndReferences: !!driver.languageSkillsAndReferences,
@@ -73,11 +71,8 @@ function evaluateDriverProgress(driver) {
     step = 1;
   } 
   // Step 2: Category-specific details
-  else if (category === "Cab" && !isObjectComplete(driver.cabVehicleDetails, [], category, 'CabVehicleDetails')) {
-    console.log('❌ Step 2: CabVehicleDetails incomplete');
-    step = 2;
-  } else if (category === "Parcel" && !isObjectComplete(driver.parcelVehicleDetails, [], category, 'ParcelVehicleDetails')) {
-    console.log('❌ Step 2: ParcelVehicleDetails incomplete');
+  else if ((category === "Cab" || category === "Parcel") && !driver.ownership) {
+    console.log('❌ Step 2: Ownership incomplete for', category);
     step = 2;
   } else if (category === "Driver" && !isObjectComplete(driver.drivingDetails, [], category, 'DrivingDetails')) {
     console.log('❌ Step 2: DrivingDetails incomplete for Driver category');
