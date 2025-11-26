@@ -10,6 +10,8 @@ const referenceSchema = new mongoose.Schema({
 const driverSchema = new mongoose.Schema(
   {
     mobile: { type: String, required: true, unique: true, index: true },
+    
+    uniqueId: { type: String},
 
     selectedCategory: {
       id: { type: String },

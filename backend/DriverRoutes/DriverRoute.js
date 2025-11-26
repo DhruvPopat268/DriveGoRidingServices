@@ -497,6 +497,31 @@ router.post("/approve/:driverId", async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
+    // Generate unique ID with collision handling
+    const driverName = driver.personalInformation?.fullName || "DRIVER";
+    const mobile = driver.mobile || "0000";
+    const namePrefix = driverName.substring(0, 5).toUpperCase().replace(/[^A-Z]/g, 'X');
+    const mobileSuffix = mobile.slice(-4);
+    
+    let uniqueId;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    do {
+      const randomDigits = Math.floor(10 + Math.random() * 90);
+      const extraChars = attempts > 0 ? String.fromCharCode(65 + Math.floor(Math.random() * 26)) + Math.floor(Math.random() * 10) : '';
+      uniqueId = `${namePrefix}${mobileSuffix}${randomDigits}${extraChars}`;
+      
+      const existingDriver = await Driver.findOne({ uniqueId, _id: { $ne: driverId } });
+      if (!existingDriver) break;
+      
+      attempts++;
+    } while (attempts < maxAttempts);
+    
+    if (attempts >= maxAttempts) {
+      uniqueId = `${namePrefix}${mobileSuffix}${Date.now().toString().slice(-4)}`;
+    }
+
     let currentPlanUpdate = {};
 
     // Check if driver has subscriptionPlan in paymentAndSubscription
@@ -518,11 +543,12 @@ router.post("/approve/:driverId", async (req, res) => {
     const latestCredit = await CancellationCredit.findOne().sort({ createdAt: -1 });
     const cancellationCredits = latestCredit ? latestCredit.credits : 0;
 
-    // Update driver status to Approved and set currentPlan and cancellation credits
+    // Update driver status to Approved and set currentPlan, cancellation credits, and uniqueId
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
       {
         status: "Approved",
+        uniqueId,
         cancellationRideCredits: cancellationCredits,
         ...currentPlanUpdate
       },
@@ -581,6 +607,33 @@ router.post("/reject/:driverId", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to reject driver" });
+  }
+});
+
+// Get driver by uniqueId
+router.post("/get-by-uniqueid", async (req, res) => {
+  try {
+    const { uniqueId } = req.body;
+
+    if (!uniqueId) {
+      return res.status(400).json({ success: false, message: "uniqueId is required" });
+    }
+
+    const driver = await Driver.findOne({ uniqueId })
+      .populate('selectedCategory')
+      .populate('driverCategory', 'name')
+      .populate('parcelCategory', 'name')
+      .populate('assignedCar', 'name model')
+      .populate('vehiclesOwned')
+      .populate('vehiclesAssigned');
+
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    res.json({ success: true, data: driver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
