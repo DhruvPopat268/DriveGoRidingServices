@@ -131,6 +131,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 
 //Driver Mobile Application Routes
 app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
+app.use('/api/driver/vehicles', require('./DriverRoutes/vehicleRoutes'));
 
 // Global object to store online drivers
 const onlineDrivers = {};

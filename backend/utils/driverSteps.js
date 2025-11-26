@@ -12,7 +12,8 @@ function getRequiredFields(sectionName, category) {
 
 function isObjectComplete(obj, optionalFields = [], category = null, sectionName = '') {
   if (!obj) {
-    if (sectionName) console.log(`❌ ${sectionName}: Object is null/undefined`);
+    if (sectionName) 
+      //console.log(`❌ ${sectionName}: Object is null/undefined`);
     return false;
   }
   
@@ -40,7 +41,7 @@ function isObjectComplete(obj, optionalFields = [], category = null, sectionName
   });
   
   if (!result && sectionName && missingFields.length > 0) {
-    console.log(`❌ ${sectionName} missing fields:`, missingFields);
+    //console.log(`❌ ${sectionName} missing fields:`, missingFields);
   }
   
   return result;
@@ -55,8 +56,9 @@ function evaluateDriverProgress(driver) {
   let step = 0;
   const category = driver.selectedCategory?.name || "Driver";
   
-  console.log(`🔍 Evaluating progress for category: ${category}`);
-  console.log(`🔍 Driver sections available:`, {
+  //console.log(`🔍 Evaluating progress for category: ${category}`);
+  console.log(`🔍 Driver sections available:`
+    , {
     personalInformation: !!driver.personalInformation,
     ownership: !!driver.ownership,
     drivingDetails: !!driver.drivingDetails,
@@ -67,31 +69,31 @@ function evaluateDriverProgress(driver) {
 
   // Step 1: Personal Information (common for all categories)
   if (!isObjectComplete(driver.personalInformation, [], category, 'PersonalInformation')) {
-    console.log('❌ Step 1: PersonalInformation incomplete');
+    //console.log('❌ Step 1: PersonalInformation incomplete');
     step = 1;
   } 
   // Step 2: Category-specific details
   else if ((category === "Cab" || category === "Parcel") && !driver.ownership) {
-    console.log('❌ Step 2: Ownership incomplete for', category);
+    //console.log('❌ Step 2: Ownership incomplete for', category);
     step = 2;
   } else if (category === "Driver" && !isObjectComplete(driver.drivingDetails, [], category, 'DrivingDetails')) {
-    console.log('❌ Step 2: DrivingDetails incomplete for Driver category');
+    //console.log('❌ Step 2: DrivingDetails incomplete for Driver category');
     step = 2;
   } 
   // Step 3: Driving details for Cab/Parcel, Payment for Driver
   else if ((category === "Cab" || category === "Parcel") && !isObjectComplete(driver.drivingDetails, [], category, 'DrivingDetails')) {
-    console.log('❌ Step 3: DrivingDetails incomplete for', category);
-    console.log('🔍 DrivingDetails content:', JSON.stringify(driver.drivingDetails, null, 2));
+    //console.log('❌ Step 3: DrivingDetails incomplete for', category);
+    //console.log('🔍 DrivingDetails content:', JSON.stringify(driver.drivingDetails, null, 2));
     step = 3;
   } else if (category === "Driver" && !isObjectComplete(driver.paymentAndSubscription, ['upiQrCode'], category, 'PaymentAndSubscription')) {
-    console.log('❌ Step 3: PaymentAndSubscription incomplete for Driver category');
+    //console.log('❌ Step 3: PaymentAndSubscription incomplete for Driver category');
     step = 3;
   }
   // Step 4: Payment and Subscription for Cab/Parcel
   else if ((category === "Cab" || category === "Parcel") && !isObjectComplete(driver.paymentAndSubscription, ['upiQrCode'], category, 'PaymentAndSubscription')) {
-    console.log('❌ Step 4: PaymentAndSubscription incomplete for', category);
-    console.log('🔍 PaymentAndSubscription exists:', !!driver.paymentAndSubscription);
-    console.log('🔍 PaymentAndSubscription content:', JSON.stringify(driver.paymentAndSubscription, null, 2));
+    //console.log('❌ Step 4: PaymentAndSubscription incomplete for', category);
+    //console.log('🔍 PaymentAndSubscription exists:', !!driver.paymentAndSubscription);
+    //console.log('🔍 PaymentAndSubscription content:', JSON.stringify(driver.paymentAndSubscription, null, 2));
     step = 4;
   } 
   // Step 4/5: Language Skills and References
@@ -100,10 +102,10 @@ function evaluateDriverProgress(driver) {
     (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length)
   ) {
     if (category === "Driver" && !driver.languageSkillsAndReferences?.references?.length) {
-      console.log('❌ LanguageSkillsAndReferences: references array is empty or missing');
+      //console.log('❌ LanguageSkillsAndReferences: references array is empty or missing');
     }
-    console.log(`❌ Step ${category === "Driver" ? 4 : 5}: LanguageSkillsAndReferences incomplete`);
-    console.log('🔍 LanguageSkillsAndReferences content:', JSON.stringify(driver.languageSkillsAndReferences, null, 2));
+    //console.log(`❌ Step ${category === "Driver" ? 4 : 5}: LanguageSkillsAndReferences incomplete`);
+    //console.log('🔍 LanguageSkillsAndReferences content:', JSON.stringify(driver.languageSkillsAndReferences, null, 2));
     step = category === "Driver" ? 4 : 5;
   } 
   // Step 5/6: Declaration
@@ -112,9 +114,9 @@ function evaluateDriverProgress(driver) {
     !driver.declaration?.signature
   ) {
     if (!driver.declaration?.signature) {
-      console.log('❌ Declaration: signature field is missing');
+      //console.log('❌ Declaration: signature field is missing');
     }
-    console.log(`❌ Step ${category === "Driver" ? 5 : 6}: Declaration incomplete`);
+    //console.log(`❌ Step ${category === "Driver" ? 5 : 6}: Declaration incomplete`);
     step = category === "Driver" ? 5 : 6;
   }
 
@@ -126,15 +128,15 @@ function evaluateDriverProgress(driver) {
   const status = step === 0 ? (hasValidPlan ? "Onreview" : "PendingForPayment") : "Pending";
 
   if (step === 0) {
-    console.log('✅ All steps completed! Driver ready for review/payment');
+    //console.log('✅ All steps completed! Driver ready for review/payment');
   }
   
-  console.log(`🏁 FINAL EVALUATION RESULT:`);
-  console.log(`   Category: ${category}`);
-  console.log(`   Current Step: ${step}`);
-  console.log(`   Status: ${status}`);
-  console.log(`   Driver ID: ${driver._id || 'N/A'}`);
-  console.log(`Driver Progress Evaluated from driverStep.js: Step ${step}, Status: ${status}, Category: ${category}`);
+  //console.log(`🏁 FINAL EVALUATION RESULT:`);
+  //console.log(`   Category: ${category}`);
+  //console.log(`   Current Step: ${step}`);
+  //console.log(`   Status: ${status}`);
+  //console.log(`   Driver ID: ${driver._id || 'N/A'}`);
+  //console.log(`Driver Progress Evaluated from driverStep.js: Step ${step}, Status: ${status}, Category: ${category}`);
 
   return { step, status };
 }

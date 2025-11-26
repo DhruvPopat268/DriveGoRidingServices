@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 
 const cabVehicleDetailsSchema = new mongoose.Schema({
-  vehicleType: { type: String },
-  modelType: { type: String },
+  vehicleType: { type: mongoose.Schema.Types.ObjectId, ref: "VehicleType" },
+  modelType: { type: mongoose.Schema.Types.ObjectId, ref: "Car" },
   seatCapacity: { type: String },
   color: { type: String },
   fuelType: [{
@@ -25,8 +25,8 @@ const cabVehicleDetailsSchema = new mongoose.Schema({
 });
 
 const parcelVehicleDetailsSchema = new mongoose.Schema({
-  vehicleType: { type: String },
-  modelType: { type: String },
+  vehicleType: { type: mongoose.Schema.Types.ObjectId, ref: "ParcelVehicleType" },
+  modelType: { type: mongoose.Schema.Types.ObjectId, ref: "ParcelVehicle" },
   length: { type: String },
   width: { type: String },
   height: { type: String },
