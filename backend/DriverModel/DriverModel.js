@@ -8,29 +8,34 @@ const referenceSchema = new mongoose.Schema({
 });
 
 const cabVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: {
-    type: String,
-    validate: {
-      validator: async function (value) {
-        // allow empty
-        if (!value) return true;
+rcNumber: {
+  type: String,
+  validate: {
+    validator: async function (value) {
+      if (!value) return true;
 
-        // Run only when creating OR modifying rcNumber
-        if (!this.isNew && !this.isModified('cabVehicleDetails.rcNumber')) {
-          return true;
-        }
+      // Run validator only when rcNumber is new or updated
+      const isCabModified = this.isModified('cabVehicleDetails.rcNumber');
+      const isParcelModified = this.isModified('parcelVehicleDetails.rcNumber');
 
-        const exists = await mongoose.model('Driver').findOne({
-          'cabVehicleDetails.rcNumber': value,
-          _id: { $ne: this._id }
-        });
+      if (!this.isNew && !isCabModified && !isParcelModified) {
+        return true;
+      }
 
-        return !exists;
-      },
-      message: 'RC Number already exists in the system'
-    }
+      const existingDriver = await mongoose.model('Driver').findOne({
+        $or: [
+          { 'cabVehicleDetails.rcNumber': value },
+          { 'parcelVehicleDetails.rcNumber': value }
+        ],
+        _id: { $ne: this._id }
+      });
 
-  },
+      return !existingDriver;
+    },
+    message: 'RC Number already exists in the system'
+  }
+},
+
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
   modelType: [{ type: String }],
@@ -57,28 +62,34 @@ const cabVehicleDetailsSchema = new mongoose.Schema({
 });
 
 const parcelVehicleDetailsSchema = new mongoose.Schema({
-  rcNumber: {
-    type: String,
-    validate: {
-      validator: async function (value) {
-        // allow empty
-        if (!value) return true;
+rcNumber: {
+  type: String,
+  validate: {
+    validator: async function (value) {
+      if (!value) return true;
 
-        // Run only when creating OR modifying rcNumber
-        if (!this.isNew && !this.isModified('parcelVehicleDetails.rcNumber')) {
-          return true;
-        }
+      // Run validator only when rcNumber is new or updated
+      const isCabModified = this.isModified('cabVehicleDetails.rcNumber');
+      const isParcelModified = this.isModified('parcelVehicleDetails.rcNumber');
 
-        const exists = await mongoose.model('Driver').findOne({
-          'parcelVehicleDetails.rcNumber': value,
-          _id: { $ne: this._id }
-        });
+      if (!this.isNew && !isCabModified && !isParcelModified) {
+        return true;
+      }
 
-        return !exists;
-      },
-      message: 'RC Number already exists in the system'
-    }
-  },
+      const existingDriver = await mongoose.model('Driver').findOne({
+        $or: [
+          { 'cabVehicleDetails.rcNumber': value },
+          { 'parcelVehicleDetails.rcNumber': value }
+        ],
+        _id: { $ne: this._id }
+      });
+
+      return !existingDriver;
+    },
+    message: 'RC Number already exists in the system'
+  }
+}
+
   ownership: { type: String, enum: ["Driver", "Owner", "Owner_With_Vehicle"] },
   vehicleType: [{ type: String }],
   modelType: [{ type: String }],
