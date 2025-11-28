@@ -393,15 +393,13 @@ router.get("/get-all-drivers", DriverAuthMiddleware, async (req, res) => {
     const owner = await Driver.findById(ownerId)
       .populate({
         path: 'assignedDrivers.driverId',
-        select: 'personalInformation.fullName mobile uniqueId vehiclesAssigned status',
+        select: 'personalInformation.fullName mobile uniqueId vehiclesAssigned passportPhoto rideStatus isOnline',
         populate: {
           path: 'vehiclesAssigned',
-          select: 'rcNumber status category cabVehicleDetails parcelVehicleDetails',
+          select: 'rcNumber cabVehicleDetails.modelType parcelVehicleDetails.modelType',
           populate: [
-            
-            { path: 'cabVehicleDetails.modelType' },
-           
-            { path: 'parcelVehicleDetails.modelType' }
+            { path: 'cabVehicleDetails.modelType', select: 'name' },
+            { path: 'parcelVehicleDetails.modelType', select: 'name' }
           ]
         }
       })
@@ -410,7 +408,27 @@ router.get("/get-all-drivers", DriverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: "Owner not found" });
     }
 
-    res.json({ success: true, data: owner.assignedDrivers });
+    // Add computed status to each driver
+    const driversWithStatus = owner.assignedDrivers.map(assignment => {
+      const driver = assignment.driverId;
+      let status = 'online';
+      
+      if (!driver.isOnline) {
+        status = 'offline';
+      } else if (['ONGOING', 'CONFIRMED', 'EXTENDED', 'REACHED'].includes(driver.rideStatus)) {
+        status = 'onTrip';
+      }
+      
+      return {
+        ...assignment.toObject(),
+        driverId: {
+          ...driver.toObject(),
+          status
+        }
+      };
+    });
+
+    res.json({ success: true, data: driversWithStatus });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
