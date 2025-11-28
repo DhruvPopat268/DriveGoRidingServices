@@ -246,6 +246,24 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Get approved drivers with selectedCategory.name as 'Driver'
+router.get("/approved-driver-category", async (req, res) => {
+  try {
+    const drivers = await Driver.find({
+      status: "Approved",
+      "selectedCategory.name": "Driver"
+    })
+      .populate('driverCategory')
+      .populate('parcelCategory')
+      .populate('assignedCar')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Get driver profile data (name, isOnline, passportPhoto, completedRides, totalEarnings)
 router.get("/profile", DriverAuthMiddleware, async (req, res) => {
   try {

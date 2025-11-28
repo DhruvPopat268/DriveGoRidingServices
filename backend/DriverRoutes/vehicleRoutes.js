@@ -187,10 +187,53 @@ router.patch("/update-status", DriverAuthMiddleware, async (req, res) => {
 });
 
 // Update vehicle details
-router.put("/update", DriverAuthMiddleware, async (req, res) => {
+router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
   try {
-    const { vehicleId, ...updateData } = req.body;
     const ownerId = req.driver.driverId;
+    
+    // Parse JSON data from form
+    let updateData = {};
+    try {
+      updateData = JSON.parse(req.body.data || "{}");
+    } catch (err) {
+      return res.status(400).json({ success: false, message: "Invalid JSON in data field" });
+    }
+
+    const { vehicleId } = updateData;
+    if (!vehicleId) {
+      return res.status(400).json({ success: false, message: "Vehicle ID is required" });
+    }
+
+    // Process uploaded files
+    const uploadResults = req.files?.length ? await processAllFiles(req.files) : [];
+    
+    // Organize files
+    const fileGroups = {};
+    const singleFiles = {};
+    const arrayFields = ["vehiclePhotos"];
+    
+    uploadResults.forEach((result) => {
+      if (result.success) {
+        const fieldname = result.fieldname.trim();
+        if (arrayFields.includes(fieldname)) {
+          if (!fileGroups[fieldname]) fileGroups[fieldname] = [];
+          fileGroups[fieldname].push(result.url);
+        } else {
+          singleFiles[fieldname] = result.url;
+        }
+      }
+    });
+
+    // Merge file URLs with update data
+    Object.assign(updateData, singleFiles);
+    Object.entries(fileGroups).forEach(([fieldName, urls]) => {
+      if (urls.length > 0) {
+        updateData[fieldName] = urls;
+      }
+    });
+
+    // Remove vehicleId from updateData to avoid updating it
+    delete updateData.vehicleId;
 
     const vehicle = await Vehicle.findOneAndUpdate(
       { _id: vehicleId, owner: ownerId },
@@ -445,7 +488,7 @@ router.post("/get-driver-by-uniqueid", DriverAuthMiddleware, async (req, res) =>
     // Find driver by uniqueId and check category match
     const driver = await Driver.findOne({ 
       uniqueId,
-      selectedCategory: searcher.selectedCategory._id
+      'selectedCategory.id': searcher.selectedCategory.id
     })
       .populate('vehiclesOwned')
       .populate('vehiclesAssigned')
