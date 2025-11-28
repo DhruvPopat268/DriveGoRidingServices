@@ -203,17 +203,36 @@ io.on('connection', (socket) => {
               } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
                 const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
                 
+                // Debug: Check all vehicles with this modelType
+                const allVehiclesWithModel = await Vehicle.find({
+                  [vehicleField]: selectedCategoryId
+                });
+                
+                // Debug: Check vehicles with status true
+                const activeVehiclesWithModel = await Vehicle.find({
+                  [vehicleField]: selectedCategoryId,
+                  status: true
+                });
+                
+                // Final query with driver assignment
                 const vehicles = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true,
                   assignedTo: { $in: [driverId] }
                 });
                 
-                console.log(`🚙 Vehicle query for ${categoryNameLower}:`, {
+                console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
                   vehicleField,
                   selectedCategoryId,
-                  foundVehicles: vehicles.length,
-                  vehicleIds: vehicles.map(v => v._id)
+                  driverId,
+                  allVehiclesWithModel: allVehiclesWithModel.length,
+                  activeVehiclesWithModel: activeVehiclesWithModel.length,
+                  assignedToDriver: vehicles.length,
+                  activeVehicleAssignments: activeVehiclesWithModel.map(v => ({
+                    id: v._id,
+                    assignedTo: v.assignedTo,
+                    status: v.status
+                  }))
                 });
                 
                 driverMatches = vehicles.length > 0;
