@@ -233,7 +233,9 @@ io.on('connection', (socket) => {
                   driverId,
                   driverObjectId,
                   queryField: vehicleField,
-                  queryValue: selectedCategoryId
+                  queryValue: selectedCategoryId,
+                  actualVehicleModelType: activeVehiclesWithModel[0]?.cabVehicleDetails?.modelType?.toString(),
+                  modelTypeMatches: activeVehiclesWithModel[0]?.cabVehicleDetails?.modelType?.toString() === selectedCategoryId
                 });
                 
                 console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
