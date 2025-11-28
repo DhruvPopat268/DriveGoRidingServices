@@ -1,5 +1,8 @@
 const express = require("express");
 const Driver = require("../DriverModel/DriverModel");
+const Category = require('../models/Category');
+const SubCategory = require('../models/SubCategory');
+const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 const Vehicle = require("../DriverModel/VehicleModel");
 const router = express.Router();
 
@@ -753,6 +756,49 @@ router.post("/manage-credits", async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get driver personal information with category details
+router.get("/driverDetail", driverAuthMiddleware, async (req, res) => {
+  try {
+    const driver = await Driver.findById(req.driver.driverId);
+    
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const Category = require('../models/Category');
+    const SubCategory = require('../models/SubCategory');
+
+    let categoryName = null;
+    let subCategoryNames = [];
+
+    // Get category name
+    if (driver.personalInformation?.category) {
+      const category = await Category.findById(driver.personalInformation.category);
+      categoryName = category?.name || null;
+    }
+
+    // Get subcategory names
+    if (driver.personalInformation?.subCategory?.length > 0) {
+      const subCategories = await SubCategory.find({
+        _id: { $in: driver.personalInformation.subCategory }
+      });
+      subCategoryNames = subCategories.map(sub => sub.name);
+    }
+
+    const response = {
+      personalInformation: driver.personalInformation,
+      mobile: driver.mobile,
+      uniqueId: driver.uniqueId,
+      categoryName,
+      subCategoryNames
+    };
+
+    res.json({ success: true, data: response });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch driver profile", error: error.message });
   }
 });
 

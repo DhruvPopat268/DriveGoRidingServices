@@ -339,9 +339,11 @@ router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) =
 
     // Process current plan
     let currentPlanInfo = null;
+    
     if (driver.currentPlan && driver.currentPlan.planId) {
       const now = new Date();
       const isExpired = driver.currentPlan.expiryDate < now;
+      console.log('expiry date',driver.currentPlan.expiryDate)
       const daysRemaining = isExpired 
         ? 0 
         : Math.ceil((driver.currentPlan.expiryDate - now) / (1000 * 60 * 60 * 24));
