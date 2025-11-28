@@ -223,11 +223,35 @@ io.on('connection', (socket) => {
                   driverObjectId = driverId; // fallback to string if conversion fails
                 }
                 
+                // Test the query step by step
+                console.log(`🔍 Testing query components:`);
+                
+                // Test 1: Just modelType
+                const testQuery1 = await Vehicle.find({
+                  [vehicleField]: selectedCategoryId
+                });
+                console.log(`Test 1 - modelType only: ${testQuery1.length} vehicles`);
+                
+                // Test 2: modelType + status
+                const testQuery2 = await Vehicle.find({
+                  [vehicleField]: selectedCategoryId,
+                  status: true
+                });
+                console.log(`Test 2 - modelType + status: ${testQuery2.length} vehicles`);
+                
+                // Test 3: Just assignedTo
+                const testQuery3 = await Vehicle.find({
+                  assignedTo: { $in: [driverId, driverObjectId] }
+                });
+                console.log(`Test 3 - assignedTo only: ${testQuery3.length} vehicles`);
+                
+                // Final query
                 const vehicles = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true,
                   assignedTo: { $in: [driverId, driverObjectId] }
                 });
+                console.log(`Final query result: ${vehicles.length} vehicles`);
                 
                 console.log(`🔧 Query details:`, {
                   driverId,
