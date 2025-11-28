@@ -393,12 +393,18 @@ router.get("/get-all-drivers", DriverAuthMiddleware, async (req, res) => {
     const owner = await Driver.findById(ownerId)
       .populate({
         path: 'assignedDrivers.driverId',
-        select: 'personalInformation.fullName mobile uniqueId vehiclesOwned vehiclesAssigned status'
+        select: 'personalInformation.fullName mobile uniqueId vehiclesAssigned status',
+        populate: {
+          path: 'vehiclesAssigned',
+          select: 'rcNumber status category cabVehicleDetails parcelVehicleDetails',
+          populate: [
+            
+            { path: 'cabVehicleDetails.modelType' },
+           
+            { path: 'parcelVehicleDetails.modelType' }
+          ]
+        }
       })
-      .populate({
-        path: 'assignedDrivers.vehicleIds',
-        select: 'vehicleNumber category'
-      });
 
     if (!owner) {
       return res.status(404).json({ success: false, message: "Owner not found" });
@@ -508,6 +514,7 @@ router.post("/get-driver-by-uniqueid", DriverAuthMiddleware, async (req, res) =>
 router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.body;
+    const ownerId = req.driver?.driverId
 
     if (!driverId) {
       return res.status(400).json({ success: false, message: "driverId is required" });
@@ -515,7 +522,7 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
 
     const vehicles = await Vehicle.find({
       $or: [
-        { owner: driverId },
+        { owner: ownerId },
         { assignedTo: { $in: [driverId] } }
       ]
     })
