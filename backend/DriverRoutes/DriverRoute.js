@@ -598,6 +598,17 @@ router.post("/reject/:driverId", async (req, res) => {
 
     const category = driverData.selectedCategory?.name || "Driver";
 
+    // Check if step 2 (ownership) is being rejected for Cab/Parcel drivers
+    if ((category === "Cab" || category === "Parcel") && steps.includes(2)) {
+      // Delete all vehicles owned by this driver
+      await Vehicle.deleteMany({ owner: driverId });
+      
+      // Remove vehicle references from driver
+      await Driver.findByIdAndUpdate(driverId, {
+        $unset: { vehiclesOwned: 1, vehiclesAssigned: 1, assignedDrivers: 1 }
+      });
+    }
+
     // Build unset object for specified steps based on category
     const unsetFields = {};
     steps.forEach(step => {
