@@ -240,6 +240,11 @@ router.post("/assign", DriverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: "Vehicle not found or not owned by you" });
     }
 
+    // Check if vehicle status is true (active)
+    if (!vehicle.status) {
+      return res.status(400).json({ success: false, message: "Cannot assign inactive vehicle. Please activate the vehicle first." });
+    }
+
     // Check if driver exists
     const driverToAssign = await Driver.findById(driverIdToAssign);
     if (!driverToAssign) {
