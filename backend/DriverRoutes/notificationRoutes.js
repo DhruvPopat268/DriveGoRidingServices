@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Driver = require('../DriverModel/DriverModel');
 const DriverAuthMiddleware = require('../middleware/driverAuthMiddleware');
-const NotificationService = require('../services/notificationService');
+const NotificationService = require('../Services/notificationService');
 
 // Update OneSignal Player ID
 router.post('/update-player-id', DriverAuthMiddleware, async (req, res) => {

@@ -20,7 +20,7 @@ const { calculateDriverRideCharges, calculateCabRideCharges } = require("../Serv
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const { checkDriverWalletBalance } = require('../utils/walletBalanceChecker');
-const NotificationService = require('../services/notificationService');
+const NotificationService = require('../Services/notificationService');
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
