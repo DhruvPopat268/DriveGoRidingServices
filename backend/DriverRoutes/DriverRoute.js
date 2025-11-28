@@ -206,7 +206,8 @@ router.post("/verify-otp", async (req, res) => {
       isNew,
       status: driver.status,
       step,
-      selectedCategory: driver.selectedCategory
+      selectedCategory: driver.selectedCategory,
+      uniqueId: driver.uniqueId
     };
 
     // Add ownership if exists
@@ -998,7 +999,8 @@ router.post("/verify-otp", async (req, res) => {
       isNew,
       step,
       status: driver.status,
-      selectedCategory: driver.selectedCategory
+      selectedCategory: driver.selectedCategory,
+      uniqueId: driver.uniqueId
     };
 
     // Add ownership based on selectedCategory
@@ -1056,7 +1058,8 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
       driverId,
       isNew,
       status: driver.status,
-      selectedCategory: driver.selectedCategory
+      selectedCategory: driver.selectedCategory,
+      uniqueId: driver.uniqueId
     };
 
     // Add ownership if exists
