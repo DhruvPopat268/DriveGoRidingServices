@@ -177,24 +177,54 @@ io.on('connection', (socket) => {
               const categoryName = ride.rideInfo.categoryName;
               const categoryNameLower = categoryName.toLowerCase();
 
+              console.log(`🔍 Checking ride ${ride._id} for driver ${driverId}:`, {
+                categoryName: categoryNameLower,
+                selectedCategoryId,
+                categoryId,
+                subcategoryId
+              });
+
               let driverMatches = false;
-              const categoryMatches = driver.personalInformation?.category === categoryId;
+              const categoryMatches = driver.personalInformation?.category?.toString() === categoryId?.toString();
               const subcategoryMatches = driver.personalInformation?.subCategory?.includes(subcategoryId);
+
+              console.log(`📋 Driver info:`, {
+                driverCategory: driver.driverCategory?.toString(),
+                personalCategory: driver.personalInformation?.category?.toString(),
+                personalSubCategory: driver.personalInformation?.subCategory,
+                categoryMatches,
+                subcategoryMatches
+              });
 
               // Check driver eligibility based on category
               if (categoryNameLower === 'driver') {
                 driverMatches = driver.driverCategory?.toString() === selectedCategoryId?.toString();
+                console.log(`🚗 Driver category match:`, driverMatches);
               } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
                 const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
                 
                 const vehicles = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true,
-                  assignedTo: driverId
+                  assignedTo: { $in: [driverId] }
+                });
+                
+                console.log(`🚙 Vehicle query for ${categoryNameLower}:`, {
+                  vehicleField,
+                  selectedCategoryId,
+                  foundVehicles: vehicles.length,
+                  vehicleIds: vehicles.map(v => v._id)
                 });
                 
                 driverMatches = vehicles.length > 0;
               }
+
+              console.log(`✅ Final match result:`, {
+                driverMatches,
+                categoryMatches,
+                subcategoryMatches,
+                willSendRide: driverMatches && categoryMatches && subcategoryMatches
+              });
 
               if (driverMatches && categoryMatches && subcategoryMatches) {
                 const rideData = {
@@ -212,6 +242,7 @@ io.on('connection', (socket) => {
                   totalPayable: ride.totalPayable,
                   status: 'BOOKED'
                 };
+                console.log(`📤 Sending ride ${ride._id} to driver ${driverId}`);
                 socket.emit('new-ride', rideData);
               }
             }
