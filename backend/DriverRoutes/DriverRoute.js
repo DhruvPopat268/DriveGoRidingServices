@@ -100,23 +100,30 @@ router.post("/send-otp", async (req, res) => {
 
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { mobile, otp } = req.body;
+    const { mobile, otp, playerId } = req.body;   // ⬅️ Added playerId
 
     // ✅ Validate input
     if (!mobile || !otp) {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
 
-    // ✅ Convert mobile to string
+    // ✅ Validate playerId
+    if (!playerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Player ID is required"
+      });
+    }
+
+    // Convert mobile to string
     const mobileStr = String(mobile).trim();
 
-    // ✅ Find the latest OTP session for this mobile
+    // Find latest OTP session
     const otpSession = await DriverOtpSession.findOne({
       mobile: mobileStr,
       isVerified: false
     }).sort({ createdAt: -1 });
 
-    // ✅ Check if OTP session exists
     if (!otpSession) {
       return res.status(400).json({
         success: false,
@@ -124,7 +131,7 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    // ✅ Check if OTP has expired
+    // Check expiry
     if (new Date() > otpSession.otpExpiresAt) {
       return res.status(400).json({
         success: false,
@@ -139,21 +146,17 @@ router.post("/verify-otp", async (req, res) => {
       otpSession.isVerified = true;
       await otpSession.save();
     } else {
-      // ✅ Verify actual OTP
       if (otpSession.otp != otp) {
         return res.status(400).json({
           success: false,
           message: "Invalid OTP"
         });
       }
-
-      // Mark as verified for real OTP
       otpSession.isVerified = true;
       await otpSession.save();
     }
-    // ================================
 
-    // ✅ Get driver
+    // Get driver
     const driver = await Driver.findOne({ mobile: mobileStr });
     if (!driver) {
       return res.status(404).json({
@@ -164,28 +167,32 @@ router.post("/verify-otp", async (req, res) => {
 
     const driverId = driver._id.toString();
 
+    // ⬅️🔥 SAVE PLAYER ID HERE
+    await Driver.findByIdAndUpdate(driverId, {
+      oneSignalPlayerId: playerId
+    });
+
     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
-    // ✅ Generate JWT
+    // Generate JWT
     const token = jwt.sign(
       { driverId: driver._id, mobile: driver.mobile },
       process.env.JWT_SECRET_DRIVER,
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    // ✅ Create session
+    // Create session
     await createSession(mobileStr, token);
 
-    // ✅ Evaluate profile progress
+    // Evaluate profile progress
     const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
-    // ✅ Update status if still pending
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       driver.status = progressStatus;
       await driver.save({ validateBeforeSave: false });
     }
 
-    // ✅ Wallet check
+    // Wallet check
     let wallet = await driverWallet.findOne({ driverId });
     if (!wallet) {
       await driverWallet.create({
@@ -198,7 +205,7 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    // ✅ Prepare response
+    // Prepare response
     const response = {
       success: true,
       driverId,
@@ -210,12 +217,10 @@ router.post("/verify-otp", async (req, res) => {
       uniqueId: driver.uniqueId
     };
 
-    // Add ownership if exists
     if (driver.ownership) {
       response.ownership = driver.ownership;
     }
 
-    // Return step for pending statuses
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       response.step = step;
     }
@@ -231,6 +236,7 @@ router.post("/verify-otp", async (req, res) => {
     });
   }
 });
+
 
 router.get("/", async (req, res) => {
   try {
@@ -419,22 +425,22 @@ router.post("/approve/:driverId", async (req, res) => {
     const mobile = driver.mobile || "0000";
     const namePrefix = driverName.substring(0, 5).toUpperCase().replace(/[^A-Z]/g, 'X');
     const mobileSuffix = mobile.slice(-4);
-    
+
     let uniqueId;
     let attempts = 0;
     const maxAttempts = 10;
-    
+
     do {
       const randomDigits = Math.floor(10 + Math.random() * 90);
       const extraChars = attempts > 0 ? String.fromCharCode(65 + Math.floor(Math.random() * 26)) + Math.floor(Math.random() * 10) : '';
       uniqueId = `${namePrefix}${mobileSuffix}${randomDigits}${extraChars}`;
-      
+
       const existingDriver = await Driver.findOne({ uniqueId, _id: { $ne: driverId } });
       if (!existingDriver) break;
-      
+
       attempts++;
     } while (attempts < maxAttempts);
-    
+
     if (attempts >= maxAttempts) {
       uniqueId = `${namePrefix}${mobileSuffix}${Date.now().toString().slice(-4)}`;
     }
@@ -497,7 +503,7 @@ router.post("/reject/:driverId", async (req, res) => {
     if ((category === "Cab" || category === "Parcel") && steps.includes(2)) {
       // Delete all vehicles owned by this driver
       await Vehicle.deleteMany({ owner: driverId });
-      
+
       // Remove vehicle references from driver
       await Driver.findByIdAndUpdate(driverId, {
         $unset: { vehiclesOwned: 1, vehiclesAssigned: 1, assignedDrivers: 1 }
@@ -688,7 +694,7 @@ router.post("/manage-credits", async (req, res) => {
 router.get("/driverDetail", driverAuthMiddleware, async (req, res) => {
   try {
     const driver = await Driver.findById(req.driver.driverId);
-    
+
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
@@ -825,23 +831,26 @@ router.post("/send-otp", async (req, res) => {
 
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { mobile, otp } = req.body;
+    const { mobile, otp, playerId } = req.body; // ⬅️ Added playerId
 
-    // ✅ Validate input
+    // Validate required fields
     if (!mobile || !otp) {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
 
-    // ✅ Convert mobile to string
+    if (!playerId) {
+      return res.status(400).json({ success: false, message: "Player ID is required" });
+    }
+
+    // Convert mobile to string
     const mobileStr = String(mobile).trim();
 
-    // ✅ Find the latest OTP session for this mobile
+    // Find latest OTP session
     const otpSession = await DriverOtpSession.findOne({
       mobile: mobileStr,
       isVerified: false
     }).sort({ createdAt: -1 });
 
-    // ✅ Check if OTP session exists
     if (!otpSession) {
       return res.status(400).json({
         success: false,
@@ -849,7 +858,7 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    // ✅ Check if OTP has expired
+    // Check expiry
     if (new Date() > otpSession.otpExpiresAt) {
       return res.status(400).json({
         success: false,
@@ -857,7 +866,7 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    // ✅ Verify OTP matches
+    // Verify OTP
     if (otpSession.otp != otp) {
       return res.status(400).json({
         success: false,
@@ -865,11 +874,11 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    // ✅ Mark OTP session as verified
+    // Mark OTP session verified
     otpSession.isVerified = true;
     await otpSession.save();
 
-    // ✅ Get driver
+    // Get driver
     const driver = await Driver.findOne({ mobile: mobileStr });
     if (!driver) {
       return res.status(404).json({
@@ -880,28 +889,33 @@ router.post("/verify-otp", async (req, res) => {
 
     const driverId = driver._id.toString();
 
+    // 🔥 SAVE PLAYER ID HERE
+    await Driver.findByIdAndUpdate(driverId, {
+      oneSignalPlayerId: playerId
+    });
+
     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
-    // ✅ Generate JWT
+    // Generate JWT
     const token = jwt.sign(
       { driverId: driver._id, mobile: driver.mobile },
       process.env.JWT_SECRET_DRIVER,
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
-    // ✅ Create session
+    // Create session
     await createSession(mobileStr, token);
 
-    // ✅ Evaluate profile progress
+    // Evaluate progress
     const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
-    // ✅ Update status only if still pending or payment pending
+    // Update status if pending
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       driver.status = progressStatus;
       await driver.save();
     }
 
-    // ✅ Ensure wallet exists (create empty if missing)
+    // Ensure wallet exists
     let wallet = await driverWallet.findOne({ driverId });
     if (!wallet) {
       await driverWallet.create({
@@ -912,10 +926,9 @@ router.post("/verify-otp", async (req, res) => {
         totalDeductions: 0,
         transactions: [],
       });
-      // console.log(`✅ Empty wallet created for driver: ${driverId}`);
     }
 
-    // ✅ Prepare response
+    // Prepare response
     const response = {
       success: true,
       driverId,
@@ -927,19 +940,21 @@ router.post("/verify-otp", async (req, res) => {
       uniqueId: driver.uniqueId
     };
 
-    // Add ownership based on selectedCategory
+    // Ownership logic
     if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
       response.ownership = driver.cabVehicleDetails.ownership;
-    } else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
+    } 
+    else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
       response.ownership = driver.parcelVehicleDetails.ownership;
     }
 
-    // ✅ Add step ONLY if status is Pending or PendingForPayment
+    // Add step if pending
     if (["Pending", "PendingForPayment"].includes(driver.status)) {
       response.step = step;
     }
 
     res.json(response);
+
   } catch (error) {
     console.error("Verify OTP error:", error);
     res.status(500).json({
@@ -948,7 +963,8 @@ router.post("/verify-otp", async (req, res) => {
       error: error.message
     });
   }
-});*/
+});
+*/
 
 router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) => {
   try {
