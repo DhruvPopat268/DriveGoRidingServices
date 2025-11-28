@@ -157,7 +157,10 @@ const driverSchema = new mongoose.Schema(
         ref: "Driver"
       },
       _id: false 
-    }]
+    }],
+
+    // OneSignal player ID for push notifications
+    oneSignalPlayerId: { type: String, default: null }
   },
   { timestamps: true }
 );

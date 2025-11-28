@@ -20,6 +20,7 @@ const { calculateDriverRideCharges, calculateCabRideCharges } = require("../Serv
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const { checkDriverWalletBalance } = require('../utils/walletBalanceChecker');
+const NotificationService = require('../services/notificationService');
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -388,6 +389,27 @@ router.post("/book", authMiddleware, async (req, res) => {
       });
 
       console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
+      
+      // Send push notifications to eligible drivers
+      try {
+        for (const driverId of waitingDriverIds) {
+          if (onlineDrivers[driverId]) {
+            const driver = await Driver.findById(driverId);
+            if (driver && driver.oneSignalPlayerId) {
+              await NotificationService.notifyRideRequest(
+                driver.oneSignalPlayerId,
+                {
+                  pickup: fromLocationData.address,
+                  destination: toLocationData?.address || 'Destination',
+                  rideId: newRide._id
+                }
+              );
+            }
+          }
+        }
+      } catch (notifError) {
+        console.error('Push notification error:', notifError);
+      }
     } else {
       console.log('❌ Socket.io or onlineDrivers not available');
     }
