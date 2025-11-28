@@ -166,22 +166,35 @@ io.on('connection', (socket) => {
         // Only send rides if driver has WAITING status and is online
         if (driver && driver.rideStatus === 'WAITING' && driver.isOnline === true) {
           const Ride = require('./models/Ride');
+          const Vehicle = require('./DriverModel/VehicleModel');
           const availableRides = await Ride.find({ status: 'BOOKED' }).sort({ createdAt: -1 });
 
           if (availableRides.length > 0) {
-            availableRides.forEach(ride => {
+            for (const ride of availableRides) {
               const selectedCategoryId = ride.rideInfo.selectedCategoryId;
               const categoryId = ride.rideInfo.categoryId;
               const subcategoryId = ride.rideInfo.subcategoryId;
+              const categoryName = ride.rideInfo.categoryName;
+              const categoryNameLower = categoryName.toLowerCase();
 
-              // Filter rides based on driver's category matching AND personal information matching
-              const driverMatches =
-                driver.driverCategory?.toString() === selectedCategoryId?.toString() ||
-                driver.parcelCategory?.toString() === selectedCategoryId?.toString() ||
-                driver.assignedCar?.toString() === selectedCategoryId?.toString();
-
+              let driverMatches = false;
               const categoryMatches = driver.personalInformation?.category === categoryId;
               const subcategoryMatches = driver.personalInformation?.subCategory?.includes(subcategoryId);
+
+              // Check driver eligibility based on category
+              if (categoryNameLower === 'driver') {
+                driverMatches = driver.driverCategory?.toString() === selectedCategoryId?.toString();
+              } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
+                const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
+                
+                const vehicles = await Vehicle.find({
+                  [vehicleField]: selectedCategoryId,
+                  status: true,
+                  assignedTo: driverId
+                });
+                
+                driverMatches = vehicles.length > 0;
+              }
 
               if (driverMatches && categoryMatches && subcategoryMatches) {
                 const rideData = {
@@ -201,7 +214,7 @@ io.on('connection', (socket) => {
                 };
                 socket.emit('new-ride', rideData);
               }
-            });
+            }
             console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status + matching categories)`);
           }
         } else {

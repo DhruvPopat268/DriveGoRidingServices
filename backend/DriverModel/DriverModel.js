@@ -121,18 +121,6 @@ const driverSchema = new mongoose.Schema(
       default: null
     },
 
-    parcelCategory: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'ParcelCategory',
-      default: null
-    },
-
-    assignedCar: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Car',
-      default: null
-    },
-
     cancellationRideCredits: { type: Number, default: 0 },
 
     // 🔹 Cancellation charges

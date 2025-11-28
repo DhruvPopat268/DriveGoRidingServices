@@ -4,6 +4,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Ensure this p
 const router = express.Router();
 const Rider = require("../models/Rider");
 const Driver = require("../DriverModel/DriverModel");
+const Vehicle = require("../DriverModel/VehicleModel");
 const { Wallet } = require("../models/Payment&Wallet");
 const axios = require("axios");
 const referralRules = require("../models/ReferralRule");
@@ -334,24 +335,46 @@ router.post("/book", authMiddleware, async (req, res) => {
       rideData.receiverDetails = receiverDetails;
     }
 
-      // Get drivers with rideStatus 'WAITING', isOnline: true, and matching categories
-      const waitingDrivers = await Driver.find({
-        rideStatus: 'WAITING',
-        isOnline: true,
-        'personalInformation.category': categoryId,
-        'personalInformation.subCategory': { $in: [subcategoryId] },
-        $or: [
-          { driverCategory: selectedCategoryId },
-          { parcelCategory: selectedCategoryId },
-          { assignedCar: selectedCategoryId },
-        ],
-      }).select('_id');
+      // Get eligible drivers based on category
+      let waitingDrivers = [];
+      const categoryNameLower = categoryName.toLowerCase();
+      
+      if (categoryNameLower === 'driver') {
+        // For driver category, use driverCategory field
+        waitingDrivers = await Driver.find({
+          rideStatus: 'WAITING',
+          isOnline: true,
+          'personalInformation.category': categoryId,
+          'personalInformation.subCategory': { $in: [subcategoryId] },
+          driverCategory: selectedCategoryId
+        }).select('_id');
+      } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
+        // For cab and parcel, find vehicles with matching modelType and get assignedTo drivers
+        const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
+        
+        const vehicles = await Vehicle.find({
+          [vehicleField]: selectedCategoryId,
+          status: true
+        }).select('assignedTo');
+        
+        const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
+        
+        if (assignedDriverIds.length > 0) {
+          waitingDrivers = await Driver.find({
+            _id: { $in: assignedDriverIds },
+            rideStatus: 'WAITING',
+            isOnline: true,
+            'personalInformation.category': categoryId,
+            'personalInformation.subCategory': { $in: [subcategoryId] }
+          }).select('_id');
+        }
+      }
 
       console.log("waiting drivers", waitingDrivers)
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
-      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status and matching categories`);
+      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status and matching categories for ${categoryNameLower}`);
 
       // Send to online drivers who have WAITING rideStatus
       console.log('ride data to send:', rideData);
@@ -1518,17 +1541,38 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           status: 'BOOKED'
         };
 
-        const waitingDrivers = await Driver.find({
-          rideStatus: 'WAITING',
-          isOnline: true,
-          'personalInformation.category': currentRide.rideInfo.categoryId,
-          'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
-          $or: [
-            { driverCategory: currentRide.rideInfo.selectedCategoryId },
-            { parcelCategory: currentRide.rideInfo.selectedCategoryId },
-            { assignedCar: currentRide.rideInfo.selectedCategoryId },
-          ],
-        }).select('_id');
+        // Get eligible drivers based on category
+        let waitingDrivers = [];
+        const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
+        
+        if (categoryNameLower === 'driver') {
+          waitingDrivers = await Driver.find({
+            rideStatus: 'WAITING',
+            isOnline: true,
+            'personalInformation.category': currentRide.rideInfo.categoryId,
+            'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
+            driverCategory: currentRide.rideInfo.selectedCategoryId
+          }).select('_id');
+        } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
+          const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
+          
+          const vehicles = await Vehicle.find({
+            [vehicleField]: currentRide.rideInfo.selectedCategoryId,
+            status: true
+          }).select('assignedTo');
+          
+          const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
+          
+          if (assignedDriverIds.length > 0) {
+            waitingDrivers = await Driver.find({
+              _id: { $in: assignedDriverIds },
+              rideStatus: 'WAITING',
+              isOnline: true,
+              'personalInformation.category': currentRide.rideInfo.categoryId,
+              'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] }
+            }).select('_id');
+          }
+        }
 
         const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
@@ -1663,16 +1707,36 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         status: 'BOOKED'
       };
 
-      const waitingDrivers = await Driver.find({
-        rideStatus: 'WAITING',
-        'personalInformation.category': currentRide.rideInfo.categoryId,
-        'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
-        $or: [
-          { driverCategory: currentRide.rideInfo.selectedCategoryId },
-          { parcelCategory: currentRide.rideInfo.selectedCategoryId },
-          { assignedCar: currentRide.rideInfo.selectedCategoryId },
-        ],
-      }).select('_id');
+      // Get eligible drivers based on category
+      let waitingDrivers = [];
+      const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
+      
+      if (categoryNameLower === 'driver') {
+        waitingDrivers = await Driver.find({
+          rideStatus: 'WAITING',
+          'personalInformation.category': currentRide.rideInfo.categoryId,
+          'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
+          driverCategory: currentRide.rideInfo.selectedCategoryId
+        }).select('_id');
+      } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
+        const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
+        
+        const vehicles = await Vehicle.find({
+          [vehicleField]: currentRide.rideInfo.selectedCategoryId,
+          status: true
+        }).select('assignedTo');
+        
+        const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
+        
+        if (assignedDriverIds.length > 0) {
+          waitingDrivers = await Driver.find({
+            _id: { $in: assignedDriverIds },
+            rideStatus: 'WAITING',
+            'personalInformation.category': currentRide.rideInfo.categoryId,
+            'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] }
+          }).select('_id');
+        }
+      }
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
