@@ -1648,29 +1648,82 @@ router.post("/admin/withdrawal/reject", async (req, res) => {
     const wallet = await driverWallet.findOne({ driverId: withdrawal.driverId });
     if (wallet) {
       wallet.balance += withdrawal.amount;
-
+      
       // Update the corresponding transaction
       const txnIndex = wallet.transactions.findIndex(
         (t) => t.withdrawalRequestId?.toString() === requestId
       );
       if (txnIndex !== -1) {
-        wallet.transactions[txnIndex].status = "rejected";
+        wallet.transactions[txnIndex].status = "failed";
+        wallet.transactions[txnIndex].adminRemarks = adminRemarks;
       }
+      
       await wallet.save();
     }
 
     // Update withdrawal request
     withdrawal.status = "rejected";
-    withdrawal.adminRemarks = adminRemarks || "Rejected by admin";
+    withdrawal.adminRemarks = adminRemarks;
     await withdrawal.save();
 
     res.json({
       success: true,
-      message: "Withdrawal request rejected and amount refunded",
+      message: "Withdrawal request rejected successfully",
       withdrawal,
     });
   } catch (error) {
     console.error("Reject withdrawal error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+router.delete("/delete-account", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+
+    // Find driver
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    if (driver.status === "deleted") {
+      return res.status(400).json({ message: "Account already deleted" });
+    }
+
+    // Find wallet and store current balance for response
+    const wallet = await driverWallet.findOne({ driverId });
+    let withdrawnAmount = 0;
+    
+    if (wallet && wallet.balance > 0) {
+      withdrawnAmount = wallet.balance;
+      
+      // Auto-withdraw remaining balance
+      wallet.transactions.push({
+        type: "withdrawal",
+        amount: wallet.balance,
+        status: "completed",
+        paymentMethod: "bank_transfer",
+        description: "Auto-Withdraw on Account Deletion",
+      });
+      
+      wallet.totalWithdrawn += wallet.balance;
+      wallet.balance = 0;
+      await wallet.save();
+    }
+
+    // Mark driver as deleted
+    driver.status = "deleted";
+    driver.deletedDate = new Date();
+    await driver.save();
+
+    res.json({
+      success: true,
+      message: "Account deleted successfully",
+      withdrawnAmount
+    });
+  } catch (error) {
+    console.error("Delete account error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
