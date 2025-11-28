@@ -1325,6 +1325,101 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const remainingNoOfDays = remainingDates.length;
     const cancelDays = (selectedDates || []).length;
 
+    // 🔹 Process cancellation charges BEFORE branching
+    const driver = await Driver.findById(driverId);
+    if (driver) {
+      // Get cancellation charges for the ride
+      const { categoryName, categoryId, subcategoryId, selectedCategoryId, subcategoryName } = currentRide.rideInfo;
+      const categoryNameLower = categoryName.toLowerCase();
+      let cancellationDetails = null;
+
+      try {
+        if (categoryNameLower === 'driver') {
+          cancellationDetails = await driverRideCost.findOne({
+            category: categoryId,
+            subcategory: subcategoryId,
+            priceCategory: selectedCategoryId
+          }).select('driverCancellationCharges');
+        } else if (categoryNameLower === 'cab') {
+          cancellationDetails = await cabRideCost.findOne({
+            category: categoryId,
+            subcategory: subcategoryId,
+            car: selectedCategoryId
+          }).select('driverCancellationCharges');
+        } else if (categoryNameLower === 'parcel') {
+          cancellationDetails = await parcelRideCost.findOne({
+            category: categoryId,
+            subcategory: subcategoryId
+          }).select('driverCancellationCharges');
+        }
+
+        const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
+        const subcategoryNameLower = subcategoryName.toLowerCase();
+        const cancellationCharges = (subcategoryNameLower.includes('weekly') || subcategoryNameLower.includes('monthly'))
+          ? baseCancellationCharges * selectedDates.length
+          : baseCancellationCharges;
+
+        if (cancellationCharges > 0) {
+          // Check if driver has available cancellation credits
+          if (driver.cancellationRideCredits > 0) {
+            // Use one credit
+            driver.cancellationRideCredits -= 1;
+            await driver.save();
+            console.log(`✅ Used cancellation credit. Remaining credits: ${driver.cancellationRideCredits}`);
+          } else {
+            // No credits left, check wallet and deduct
+            let wallet = await driverWallet.findOne({ driverId });
+
+            if (!wallet) {
+              wallet = await driverWallet.create({
+                driverId,
+                balance: 0,
+                totalEarnings: 0,
+                totalWithdrawn: 0,
+                totalDeductions: 0,
+                transactions: [],
+              });
+            }
+
+            const currentBalance = wallet.balance;
+
+            if (currentBalance >= cancellationCharges) {
+              wallet.balance -= cancellationCharges;
+              wallet.totalDeductions += cancellationCharges;
+              wallet.transactions.push({
+                type: "cancellation_charge",
+                amount: cancellationCharges,
+                description: "Cancellation charges for ride cancellation",
+                status: "completed",
+              });
+              await wallet.save();
+              console.log(`✅ Deducted cancellation charges: ${cancellationCharges} from wallet`);
+            } else {
+              const remainingCharges = cancellationCharges - currentBalance;
+
+              if (currentBalance > 0) {
+                wallet.totalDeductions += currentBalance;
+                wallet.balance = 0;
+                wallet.transactions.push({
+                  type: "cancellation_charge",
+                  amount: currentBalance,
+                  description: "Partial cancellation charges deducted",
+                  status: "completed",
+                });
+                await wallet.save();
+              }
+
+              driver.unclearedCancellationCharges += remainingCharges;
+              await driver.save();
+              console.log(`✅ Deducted ${currentBalance} from wallet, added ${remainingCharges} to uncleared charges`);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error processing cancellation charges:', error);
+      }
+    }
+
     // ✅ Full cancellation
     if (remainingNoOfDays === 0) {
       await Ride.findByIdAndUpdate(rideId, {
@@ -1448,111 +1543,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         console.log(`🚗 New ride ${newCancelledRide._id} sent to ${sentCount} available drivers after full cancellation`);
       }
 
-      // 🔹 Process cancellation charges for driver
-      const driver = await Driver.findById(driverId);
-      if (driver) {
-        // Get cancellation charges for the ride
-        const { categoryName, categoryId, subcategoryId, selectedCategoryId, subcategoryName } = currentRide.rideInfo;
-        console.log('subcategoryName', subcategoryName);
-        const categoryNameLower = categoryName.toLowerCase();
-        let cancellationDetails = null;
 
-        try {
-          if (categoryNameLower === 'driver') {
-            cancellationDetails = await driverRideCost.findOne({
-              category: categoryId,
-              subcategory: subcategoryId,
-              priceCategory: selectedCategoryId
-
-            }).select('driverCancellationCharges');
-          } else if (categoryNameLower === 'cab') {
-            cancellationDetails = await cabRideCost.findOne({
-              category: categoryId,
-              subcategory: subcategoryId,
-              car: selectedCategoryId
-
-            }).select('driverCancellationCharges');
-          } else if (categoryNameLower === 'parcel') {
-            cancellationDetails = await parcelRideCost.findOne({
-              category: categoryId,
-              subcategory: subcategoryId
-            }).select('driverCancellationCharges');
-          }
-
-          const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
-          // For weekly/monthly rides, multiply by number of selected dates
-          console.log('full cancellation', subcategoryName, selectedDates.length);
-          const subcategoryNameLower = subcategoryName.toLowerCase();
-          const cancellationCharges = (subcategoryNameLower.includes('weekly') || subcategoryNameLower.includes('monthly'))
-            ? baseCancellationCharges * selectedDates.length
-            : baseCancellationCharges;
-          console.log('🚗 Driver cancellation charges (base):', baseCancellationCharges);
-          console.log('🚗 Driver cancellation charges:', cancellationCharges);
-
-          if (cancellationCharges > 0) {
-            // Check if driver has available cancellation credits
-            if (driver.cancellationRideCredits > 0) {
-              // Use one credit
-              driver.cancellationRideCredits -= 1;
-              await driver.save();
-              console.log(`✅ Used cancellation credit. Remaining credits: ${driver.cancellationRideCredits}`);
-            } else {
-              // No credits left, check wallet and deduct
-              let wallet = await driverWallet.findOne({ driverId });
-
-              if (!wallet) {
-                // Create wallet if not exists
-                wallet = await driverWallet.create({
-                  driverId,
-                  balance: 0,
-                  totalEarnings: 0,
-                  totalWithdrawn: 0,
-                  totalDeductions: 0,
-                  transactions: [],
-                });
-              }
-
-              const currentBalance = wallet.balance;
-
-              if (currentBalance >= cancellationCharges) {
-                // Deduct full cancellation charges from wallet
-                wallet.balance -= cancellationCharges;
-                wallet.totalDeductions += cancellationCharges;
-                wallet.transactions.push({
-                  type: "cancellation_charge",
-                  amount: cancellationCharges,
-                  description: "Cancellation charges for cancelled ride",
-                  status: "completed",
-                });
-                await wallet.save();
-                console.log(`✅ Deducted full cancellation charges: ${cancellationCharges} from wallet`);
-              } else {
-                // Partial deduction from wallet, add remaining to uncleared charges
-                const remainingCharges = cancellationCharges - currentBalance;
-
-                if (currentBalance > 0) {
-                  wallet.totalDeductions += currentBalance;
-                  wallet.balance = 0;
-                  wallet.transactions.push({
-                    type: "cancellation_charge",
-                    amount: currentBalance,
-                    description: "Partial cancellation charges deducted",
-                    status: "completed",
-                  });
-                  await wallet.save();
-                }
-
-                // Add remaining charges to uncleared
-                driver.unclearedCancellationCharges += remainingCharges;
-                await driver.save();
-                console.log(`✅ Deducted ${currentBalance} from wallet, added ${remainingCharges} to uncleared charges`);
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error processing cancellation charges:', error);
-        }
-      }
 
       return res.status(200).json({ 
         success: true, 
@@ -1590,111 +1581,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       totalPayable: Math.round(currentRide.totalPayable * remainingRatio),
     };
 
-    // 🔹 Process cancellation charges for partial cancellation
-    const driver = await Driver.findById(driverId);
-    if (driver) {
-      // Get cancellation charges for the ride
-      const { categoryName, categoryId, subcategoryId, selectedCategoryId, subcategoryName } = currentRide.rideInfo;
-      const categoryNameLower = categoryName.toLowerCase();
-      let cancellationDetails = null;
 
-      try {
-        if (categoryNameLower === 'driver') {
-          cancellationDetails = await driverRideCost.findOne({
-            category: categoryId,
-            subcategory: subcategoryId,
-            priceCategory: selectedCategoryId
-
-          }).select('driverCancellationCharges');
-        } else if (categoryNameLower === 'cab') {
-          cancellationDetails = await cabRideCost.findOne({
-            category: categoryId,
-            subcategory: subcategoryId,
-            car: selectedCategoryId
-
-          }).select('driverCancellationCharges');
-        } else if (categoryNameLower === 'parcel') {
-          cancellationDetails = await parcelRideCost.findOne({
-            category: categoryId,
-            subcategory: subcategoryId
-          }).select('driverCancellationCharges');
-        }
-
-        const baseCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
-        console.log('🚗 Driver cancellation charges (base):', baseCancellationCharges);
-        // For partial cancellation, multiply by number of cancelled days for weekly/monthly rides
-        console.log(' partial cancellation', subcategoryName, selectedDates.length);
-
-        const subcategoryNameLower = subcategoryName.toLowerCase();
-
-        const cancellationCharges = (subcategoryNameLower.includes('weekly') || subcategoryNameLower.includes('monthly'))
-          ? baseCancellationCharges * selectedDates.length
-          : baseCancellationCharges;
-
-        if (cancellationCharges > 0) {
-          // Check if driver has available cancellation credits
-          if (driver.cancellationRideCredits > 0) {
-            // Use one credit
-            driver.cancellationRideCredits -= 1;
-            await driver.save();
-            console.log(`✅ Used cancellation credit for partial cancellation (${cancelDays} days). Remaining credits: ${driver.cancellationRideCredits}`);
-          } else {
-            // No credits left, check wallet and deduct
-            let wallet = await driverWallet.findOne({ driverId });
-
-            if (!wallet) {
-              // Create wallet if not exists
-              wallet = await driverWallet.create({
-                driverId,
-                balance: 0,
-                totalEarnings: 0,
-                totalWithdrawn: 0,
-                totalDeductions: 0,
-                transactions: [],
-              });
-            }
-
-            const currentBalance = wallet.balance;
-
-            if (currentBalance >= cancellationCharges) {
-              // Deduct full cancellation charges from wallet
-              wallet.balance -= cancellationCharges;
-              wallet.totalDeductions += cancellationCharges;
-              wallet.transactions.push({
-                type: "cancellation_charge",
-                amount: cancellationCharges,
-                description: "Cancellation charges for partial ride cancellation",
-                status: "completed",
-              });
-              await wallet.save();
-              console.log(`✅ Deducted full cancellation charges: ${cancellationCharges} from wallet for partial cancellation`);
-            } else {
-              // Partial deduction from wallet, add remaining to uncleared charges
-              const remainingCharges = cancellationCharges - currentBalance;
-
-              if (currentBalance > 0) {
-                wallet.totalDeductions += currentBalance;
-                wallet.balance = 0;
-                wallet.transactions.push({
-                  type: "cancellation_charge",
-                  amount: currentBalance,
-                  description: "Partial cancellation charges deducted for partial ride cancellation",
-                  status: "completed",
-                });
-                await wallet.save();
-              }
-
-              // Add remaining charges to uncleared
-              driver.unclearedCancellationCharges += remainingCharges;
-              await driver.save();
-              console.log(`✅ Deducted ${currentBalance} from wallet, added ${remainingCharges} to uncleared charges for partial cancellation`);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error processing partial cancellation charges:', error);
-      }
-    }
 
     // ✅ Create new ride document for cancelled dates
     const partialIsWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
