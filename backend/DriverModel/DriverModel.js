@@ -152,6 +152,18 @@ const driverSchema = new mongoose.Schema(
     vehiclesAssigned: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Vehicle"
+    }],
+
+    assignedDrivers: [{
+      vehicleIds: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Vehicle"
+      }],
+      driverId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Driver"
+      },
+      _id: false 
     }]
   },
   { timestamps: true }

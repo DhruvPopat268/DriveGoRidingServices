@@ -261,6 +261,25 @@ router.post("/assign", DriverAuthMiddleware, async (req, res) => {
       }
     ]);
 
+    // Add to owner's assignedDrivers array
+    const existingAssignment = await Driver.findOne({
+      _id: ownerId,
+      "assignedDrivers.driverId": driverIdToAssign
+    });
+
+    if (existingAssignment) {
+      // Driver already exists, add vehicle to their vehicleIds array
+      await Driver.findOneAndUpdate(
+        { _id: ownerId, "assignedDrivers.driverId": driverIdToAssign },
+        { $addToSet: { "assignedDrivers.$.vehicleIds": vehicleId } }
+      );
+    } else {
+      // New driver assignment
+      await Driver.findByIdAndUpdate(ownerId, {
+        $addToSet: { assignedDrivers: { vehicleIds: [vehicleId], driverId: driverIdToAssign } }
+      });
+    }
+
     // Add to assigned driver's vehiclesAssigned
     await Driver.findByIdAndUpdate(driverIdToAssign, {
       $addToSet: { vehiclesAssigned: vehicleId }
@@ -301,30 +320,43 @@ router.post("/remove-from-driver", DriverAuthMiddleware, async (req, res) => {
       $pull: { vehiclesAssigned: vehicleId }
     });
 
+    // Remove vehicle from owner's assignedDrivers
+    await Driver.findOneAndUpdate(
+      { _id: ownerId, "assignedDrivers.driverId": driverIdToRemove },
+      { $pull: { "assignedDrivers.$.vehicleIds": vehicleId } }
+    );
+
+    // Remove driver entry if no vehicles left
+    await Driver.findByIdAndUpdate(ownerId, {
+      $pull: { assignedDrivers: { driverId: driverIdToRemove, vehicleIds: { $size: 0 } } }
+    });
+
     res.json({ success: true, message: "Vehicle removed from driver successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Get all drivers who own vehicles
-router.get("/get-all-drivers", async (req, res) => {
+// Get assigned drivers for owner
+router.get("/get-all-drivers", DriverAuthMiddleware, async (req, res) => {
   try {
-    // First get all vehicles
-    const vehicles = await Vehicle.find({}).select('owner');
-    
-    // Extract unique owner IDs
-    const ownerIds = [...new Set(vehicles.map(vehicle => vehicle.owner.toString()))];
-    
-    // Get drivers who own these vehicles
-    const drivers = await Driver.find({ 
-      _id: { $in: ownerIds },
-      status: "Approved"
-    })
-    .select('personalInformation.fullName mobile uniqueId vehiclesOwned vehiclesAssigned')
-    .sort({ createdAt: -1 });
+    const ownerId = req.driver.driverId;
 
-    res.json({ success: true, data: drivers });
+    const owner = await Driver.findById(ownerId)
+      .populate({
+        path: 'assignedDrivers.driverId',
+        select: 'personalInformation.fullName mobile uniqueId vehiclesOwned vehiclesAssigned status'
+      })
+      .populate({
+        path: 'assignedDrivers.vehicleIds',
+        select: 'vehicleNumber category'
+      });
+
+    if (!owner) {
+      return res.status(404).json({ success: false, message: "Owner not found" });
+    }
+
+    res.json({ success: true, data: owner.assignedDrivers });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -348,6 +380,7 @@ router.post("/get-driver-vehicles", async (req, res) => {
     .populate('category', 'name')
     .populate('owner', 'personalInformation.fullName mobile uniqueId')
     .populate('assignedTo', 'personalInformation.fullName mobile uniqueId')
+
     .populate('cabVehicleDetails.vehicleType')
     .populate('cabVehicleDetails.modelType')
     .populate('parcelVehicleDetails.vehicleType')
@@ -389,23 +422,62 @@ router.post("/get-vehicle", DriverAuthMiddleware, async (req, res) => {
 });
 
 // Get driver by uniqueId
-router.post("/get-driver-by-uniqueid", async (req, res) => {
+router.post("/get-driver-by-uniqueid", DriverAuthMiddleware, async (req, res) => {
   try {
     const { uniqueId } = req.body;
+    const searcherId = req.driver.driverId;
 
     if (!uniqueId) {
       return res.status(400).json({ success: false, message: "uniqueId is required" });
     }
 
-    const driver = await Driver.findOne({ uniqueId })
+    // Get the searcher (owner/owner with vehicle) details
+    const searcher = await Driver.findById(searcherId).populate('selectedCategory');
+    if (!searcher || !searcher.selectedCategory) {
+      return res.status(400).json({ success: false, message: "Searcher category not found" });
+    }
+
+    // Find driver by uniqueId and check category match
+    const driver = await Driver.findOne({ 
+      uniqueId,
+      selectedCategory: searcher.selectedCategory._id
+    })
       .populate('vehiclesOwned')
-      .populate('vehiclesAssigned');
+      .populate('vehiclesAssigned')
+      .populate('selectedCategory');
 
     if (!driver) {
-      return res.status(404).json({ success: false, message: "Driver not found" });
+      return res.status(404).json({ success: false, message: "Driver not found or category mismatch" });
     }
 
     res.json({ success: true, data: driver });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get vehicles assigned to driver
+router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const { driverId } = req.body;
+
+    if (!driverId) {
+      return res.status(400).json({ success: false, message: "driverId is required" });
+    }
+
+    const vehicles = await Vehicle.find({
+      $or: [
+        { owner: driverId },
+        { assignedTo: { $in: [driverId] } }
+      ]
+    })
+    .populate('category', 'name')
+    .populate('cabVehicleDetails.vehicleType')
+    .populate('cabVehicleDetails.modelType')
+    .populate('parcelVehicleDetails.vehicleType')
+    .populate('parcelVehicleDetails.modelType');
+
+    res.json({ success: true, data: vehicles });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
