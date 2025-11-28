@@ -214,11 +214,15 @@ io.on('connection', (socket) => {
                   status: true
                 });
                 
-                // Final query with driver assignment
+                // Final query with driver assignment - try both ObjectId and String
+                const mongoose = require('mongoose');
                 const vehicles = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true,
-                  assignedTo: { $in: [driverId] }
+                  $or: [
+                    { assignedTo: { $in: [driverId] } },
+                    { assignedTo: { $in: [new mongoose.Types.ObjectId(driverId)] } }
+                  ]
                 });
                 
                 console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
@@ -230,9 +234,16 @@ io.on('connection', (socket) => {
                   assignedToDriver: vehicles.length,
                   activeVehicleAssignments: activeVehiclesWithModel.map(v => ({
                     id: v._id,
-                    assignedTo: v.assignedTo,
-                    status: v.status
+                    assignedTo: v.assignedTo.map(id => id.toString()),
+                    status: v.status,
+                    driverInAssignedTo: v.assignedTo.map(id => id.toString()).includes(driverId)
                   }))
+                });
+                
+                console.log(`🔍 Driver assignment check:`, {
+                  lookingForDriver: driverId,
+                  vehicleAssignments: activeVehiclesWithModel[0]?.assignedTo?.map(id => id.toString()),
+                  isDriverAssigned: activeVehiclesWithModel[0]?.assignedTo?.map(id => id.toString()).includes(driverId)
                 });
                 
                 driverMatches = vehicles.length > 0;
