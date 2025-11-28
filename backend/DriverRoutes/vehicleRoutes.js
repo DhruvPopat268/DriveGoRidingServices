@@ -399,7 +399,10 @@ router.get("/get-all-drivers", DriverAuthMiddleware, async (req, res) => {
           select: 'rcNumber cabVehicleDetails.modelType parcelVehicleDetails.modelType',
           populate: [
             { path: 'cabVehicleDetails.modelType', select: 'name' },
-            { path: 'parcelVehicleDetails.modelType', select: 'name' }
+                        { path: 'cabVehicleDetails.vehicleType', select: 'name' },
+            { path: 'parcelVehicleDetails.modelType', select: 'name' },
+            { path: 'parcelVehicleDetails.vehicleType', select: 'name' }
+
           ]
         }
       })
