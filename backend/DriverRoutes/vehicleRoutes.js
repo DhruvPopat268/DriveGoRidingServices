@@ -393,7 +393,7 @@ router.get("/get-all-drivers", DriverAuthMiddleware, async (req, res) => {
     const owner = await Driver.findById(ownerId)
       .populate({
         path: 'assignedDrivers.driverId',
-        select: 'personalInformation.fullName mobile uniqueId vehiclesAssigned passportPhoto rideStatus isOnline',
+        select: 'personalInformation.fullName mobile uniqueId vehiclesAssigned personalInformation.passportPhoto rideStatus isOnline',
         populate: {
           path: 'vehiclesAssigned',
           select: 'rcNumber cabVehicleDetails.modelType parcelVehicleDetails.modelType',
