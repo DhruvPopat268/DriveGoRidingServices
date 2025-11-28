@@ -214,15 +214,26 @@ io.on('connection', (socket) => {
                   status: true
                 });
                 
-                // Final query with driver assignment - try both ObjectId and String
+                // Final query with driver assignment - convert driverId to ObjectId
                 const mongoose = require('mongoose');
+                let driverObjectId;
+                try {
+                  driverObjectId = new mongoose.Types.ObjectId(driverId);
+                } catch (e) {
+                  driverObjectId = driverId; // fallback to string if conversion fails
+                }
+                
                 const vehicles = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true,
-                  $or: [
-                    { assignedTo: { $in: [driverId] } },
-                    { assignedTo: { $in: [new mongoose.Types.ObjectId(driverId)] } }
-                  ]
+                  assignedTo: { $in: [driverId, driverObjectId] }
+                });
+                
+                console.log(`🔧 Query details:`, {
+                  driverId,
+                  driverObjectId,
+                  queryField: vehicleField,
+                  queryValue: selectedCategoryId
                 });
                 
                 console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
