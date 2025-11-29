@@ -106,16 +106,7 @@ router.post("/verify-otp", async (req, res) => {
     if (!mobile || !otp) {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
-
-    // ✅ Validate playerId
-    if (!playerId) {
-      return res.status(400).json({
-        success: false,
-        message: "Player ID is required"
-      });
-    }
-
-    // Convert mobile to string
+  // Convert mobile to string
     const mobileStr = String(mobile).trim();
 
     // Find latest OTP session
