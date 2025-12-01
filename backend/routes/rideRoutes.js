@@ -433,22 +433,29 @@ router.post("/book", authMiddleware, async (req, res) => {
 
       console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
       
-      // Send push notifications to eligible drivers
+      // Send push notifications to all approved drivers
       try {
-        for (const driverId of waitingDriverIds) {
-          if (onlineDrivers[driverId]) {
-            const driver = await Driver.findById(driverId);
-            if (driver && driver.oneSignalPlayerId) {
-              await NotificationService.notifyRideRequest(
-                driver.oneSignalPlayerId,
-                {
-                  pickup: fromLocationData.address,
-                  destination: toLocationData?.address || 'Destination',
-                  rideId: newRide._id
-                }
-              );
+        const approvedDrivers = await Driver.find({
+          status: 'Approved',
+          oneSignalPlayerId: { $ne: null, $exists: true }
+        }).select('oneSignalPlayerId');
+
+        if (approvedDrivers.length > 0) {
+          const playerIds = approvedDrivers.map(driver => driver.oneSignalPlayerId);
+          
+          await NotificationService.sendToMultipleUsers(
+            playerIds,
+            'New Ride Available',
+            'New trip alert! Be the first to accept',
+            {
+              type: 'ride_request',
+              rideId: newRide._id,
+              pickup: fromLocationData.address,
+              destination: toLocationData?.address || 'Destination'
             }
-          }
+          );
+          
+          console.log(`📱 Push notification sent to ${playerIds.length} approved drivers`);
         }
       } catch (notifError) {
         console.error('Push notification error:', notifError);
@@ -824,6 +831,23 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     // Update driver rideStatus to WAITING if driver is assigned
     if (bookingDriverId) {
       await Driver.findByIdAndUpdate(bookingDriverId, { rideStatus: 'WAITING' });
+      
+      // Send cancellation notification to the assigned driver
+      try {
+        const driver = await Driver.findById(bookingDriverId);
+        if (driver) {
+          await NotificationService.sendAndStoreDriverNotification(
+            bookingDriverId,
+            driver.oneSignalPlayerId,
+            'Trip Cancelled',
+            'The rider has cancelled this trip',
+            'ride_cancelled',
+            { rideId: bookingId }
+          );
+        }
+      } catch (notifError) {
+        console.error('Cancellation notification error:', notifError);
+      }
     }
 
     res.json({

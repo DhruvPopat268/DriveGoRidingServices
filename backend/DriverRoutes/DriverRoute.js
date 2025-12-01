@@ -28,6 +28,8 @@ const path = require("path");
 const sharp = require("sharp");
 const DriverReferanceOtpSession = require("../DriverModel/DriverReferanceOtpSession");
 const DriverIncentive = require("../models/DriverIncentive");
+const NotificationService = require('../Services/notificationService');
+const DriverNotification = require('../DriverModel/DriverNotification');
 
 // Helper function to get field name by step number based on category
 function getFieldByStep(step, category = "Driver") {
@@ -468,6 +470,20 @@ router.post("/approve/:driverId", async (req, res) => {
       { new: true }
     );
 
+    // Send approval notification to driver
+    try {
+      await NotificationService.sendAndStoreDriverNotification(
+        driverId,
+        driver.oneSignalPlayerId,
+        'Registration Approved',
+        'Your driver registration has been approved. Welcome aboard!',
+        'registration_approved',
+        { driverId }
+      );
+    } catch (notifError) {
+      console.error('Driver approval notification error:', notifError);
+    }
+
     res.json({ success: true, message: "Driver approved successfully", driver: updatedDriver });
   } catch (error) {
     console.error(error);
@@ -522,6 +538,20 @@ router.post("/reject/:driverId", async (req, res) => {
 
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
+    }
+
+    // Send rejection notification to driver
+    try {
+      await NotificationService.sendAndStoreDriverNotification(
+        driverId,
+        driver.oneSignalPlayerId,
+        'Registration Rejected',
+        'Your driver registration has been rejected.',
+        'registration_rejected',
+        { driverId }
+      );
+    } catch (notifError) {
+      console.error('Driver rejection notification error:', notifError);
     }
 
     res.json({
@@ -1517,6 +1547,23 @@ router.post("/admin/withdrawal/complete", async (req, res) => {
 
     }
 
+    // Send approval notification to driver
+    try {
+      const driver = await Driver.findById(withdrawal.driverId);
+      if (driver) {
+        await NotificationService.sendAndStoreDriverNotification(
+          withdrawal.driverId,
+          driver.oneSignalPlayerId,
+          'Withdrawal Approved',
+          `Your withdrawal request of ₹${withdrawal.amount} has been approved.`,
+          'withdrawal_approved',
+          { amount: withdrawal.amount, requestId }
+        );
+      }
+    } catch (notifError) {
+      console.error('Withdrawal approval notification error:', notifError);
+    }
+
     res.json({
       success: true,
       message: "Withdrawal completed successfully",
@@ -1566,6 +1613,23 @@ router.post("/admin/withdrawal/reject", async (req, res) => {
     withdrawal.status = "rejected";
     withdrawal.adminRemarks = adminRemarks;
     await withdrawal.save();
+
+    // Send rejection notification to driver
+    try {
+      const driver = await Driver.findById(withdrawal.driverId);
+      if (driver) {
+        await NotificationService.sendAndStoreDriverNotification(
+          withdrawal.driverId,
+          driver.oneSignalPlayerId,
+          'Withdrawal Rejected',
+          `Your withdrawal request of ₹${withdrawal.amount} has been rejected.`,
+          'withdrawal_rejected',
+          { amount: withdrawal.amount, requestId, reason: adminRemarks }
+        );
+      }
+    } catch (notifError) {
+      console.error('Withdrawal rejection notification error:', notifError);
+    }
 
     res.json({
       success: true,

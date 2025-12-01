@@ -2,6 +2,7 @@ const express = require("express");
 const UserRating = require("../DriverModel/UserRating");
 const Ride = require("../models/Ride");
 const Driver = require("../DriverModel/DriverModel");
+const NotificationService = require('../Services/notificationService');
 const router = express.Router();
 
 router.post("/", async (req, res) => {
@@ -41,6 +42,20 @@ router.post("/", async (req, res) => {
       const sumRatings = driver.ratings.ratingHistory.reduce((sum, r) => sum + r, 0);
       driver.ratings.avgRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
       await driver.save();
+      
+      // Send rating notification to driver
+      try {
+        await NotificationService.sendAndStoreDriverNotification(
+          ride.driverId,
+          driver.oneSignalPlayerId,
+          'New Rating Received',
+          'The customer rated your ride. Tap to view details',
+          'rating_received',
+          { rideId, rating }
+        );
+      } catch (notifError) {
+        console.error('Rating notification error:', notifError);
+      }
     }
 
     res.json({

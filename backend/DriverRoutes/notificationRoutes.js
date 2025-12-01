@@ -1,45 +1,73 @@
 const express = require('express');
-const router = express.Router();
-const Driver = require('../DriverModel/DriverModel');
+const DriverNotification = require('../DriverModel/DriverNotification');
 const DriverAuthMiddleware = require('../middleware/driverAuthMiddleware');
-const NotificationService = require('../Services/notificationService');
+const router = express.Router();
 
-// Update OneSignal Player ID
-router.post('/update-player-id', DriverAuthMiddleware, async (req, res) => {
+// Get driver notifications
+router.get('/', DriverAuthMiddleware, async (req, res) => {
   try {
-    const { playerId } = req.body;
     const driverId = req.driver.driverId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-    if (!playerId) {
-      return res.status(400).json({ success: false, message: 'Player ID is required' });
-    }
+    const notifications = await DriverNotification.find({ driverId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    await Driver.findByIdAndUpdate(driverId, { oneSignalPlayerId: playerId });
+    const totalNotifications = await DriverNotification.countDocuments({ driverId });
+    const unreadCount = await DriverNotification.countDocuments({ driverId, isRead: false });
 
-    res.json({ success: true, message: 'Player ID updated successfully' });
+    res.json({
+      success: true,
+      data: notifications,
+      pagination: {
+        page,
+        limit,
+        total: totalNotifications,
+        pages: Math.ceil(totalNotifications / limit)
+      },
+      unreadCount
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Send test notification
-router.post('/send-test-notification', DriverAuthMiddleware, async (req, res) => {
+// Mark notification as read
+router.patch('/read', DriverAuthMiddleware, async (req, res) => {
   try {
+    const { notificationId } = req.body;
     const driverId = req.driver.driverId;
-    const driver = await Driver.findById(driverId);
 
-    if (!driver.oneSignalPlayerId) {
-      return res.status(400).json({ success: false, message: 'OneSignal Player ID not found' });
-    }
-
-    const result = await NotificationService.sendToUser(
-      driver.oneSignalPlayerId,
-      'Test Notification',
-      'This is a test notification from DriveGo',
-      { type: 'test' }
+    const notification = await DriverNotification.findOneAndUpdate(
+      { _id: notificationId, driverId },
+      { isRead: true },
+      { new: true }
     );
 
-    res.json({ success: result.success, message: 'Test notification sent', data: result });
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+
+    res.json({ success: true, data: notification });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Mark all notifications as read
+router.patch('/read-all', DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+
+    await DriverNotification.updateMany(
+      { driverId, isRead: false },
+      { isRead: true }
+    );
+
+    res.json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
