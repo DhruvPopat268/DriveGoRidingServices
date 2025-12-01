@@ -60,7 +60,8 @@ app.use(cors({
     "http://localhost:8080",
     "https://journey-cost-estimator.vercel.app",
     "https://drive-go-riding-services.vercel.app",
-    "https://www.hire4drive.com"
+    "https://www.hire4drive.com",
+    "https://www.hire4drive.in",
   ],
   credentials: true
 }));
