@@ -435,13 +435,19 @@ router.post("/book", authMiddleware, async (req, res) => {
       
       // Send push notifications to eligible drivers only
       try {
+        console.log(`🔍 Looking for eligible drivers from ${waitingDriverIds.length} waiting drivers`);
+        
         const eligibleDrivers = await Driver.find({
           _id: { $in: waitingDriverIds },
           oneSignalPlayerId: { $ne: null, $exists: true }
         }).select('oneSignalPlayerId');
 
+        console.log(`📱 Found ${eligibleDrivers.length} eligible drivers with OneSignal player IDs`);
+
         if (eligibleDrivers.length > 0) {
           const playerIds = eligibleDrivers.map(driver => driver.oneSignalPlayerId);
+          
+          console.log(`📤 Sending push notifications to player IDs:`, playerIds);
           
           await NotificationService.sendToMultipleUsers(
             playerIds,
@@ -455,10 +461,12 @@ router.post("/book", authMiddleware, async (req, res) => {
             }
           );
           
-          console.log(`📱 Push notification sent to ${playerIds.length} eligible drivers`);
+          console.log(`✅ Push notification sent successfully to ${playerIds.length} eligible drivers`);
+        } else {
+          console.log(`❌ No eligible drivers found with OneSignal player IDs`);
         }
       } catch (notifError) {
-        console.error('Push notification error:', notifError);
+        console.error('❌ Push notification error:', notifError);
       }
     } else {
       console.log('❌ Socket.io or onlineDrivers not available');
