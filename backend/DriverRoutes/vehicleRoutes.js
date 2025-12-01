@@ -231,6 +231,12 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
 
     const updateData = {};
     
+    // Get existing vehicle to preserve old images
+    const existingVehicle = await Vehicle.findOne({ _id: vehicleId, owner: ownerId });
+    if (!existingVehicle) {
+      return res.status(404).json({ success: false, message: "Vehicle not found or not owned by you" });
+    }
+
     // Filter cabVehicleDetails
     if (cabVehicleDetails) {
       const filteredCabDetails = { ...cabVehicleDetails };
@@ -240,6 +246,14 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
       Object.entries(fileGroups).forEach(([fieldName, urls]) => {
         if (urls.length > 0) {
           filteredCabDetails[fieldName] = urls;
+        }
+      });
+      
+      // Preserve existing files if no new files uploaded
+      const fileFields = ['vehiclePhotos', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'];
+      fileFields.forEach(field => {
+        if (!filteredCabDetails[field] && existingVehicle.cabVehicleDetails?.[field]) {
+          filteredCabDetails[field] = existingVehicle.cabVehicleDetails[field];
         }
       });
       
@@ -265,6 +279,14 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
       Object.entries(fileGroups).forEach(([fieldName, urls]) => {
         if (urls.length > 0) {
           filteredParcelDetails[fieldName] = urls;
+        }
+      });
+      
+      // Preserve existing files if no new files uploaded
+      const fileFields = ['vehiclePhotos', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'];
+      fileFields.forEach(field => {
+        if (!filteredParcelDetails[field] && existingVehicle.parcelVehicleDetails?.[field]) {
+          filteredParcelDetails[field] = existingVehicle.parcelVehicleDetails[field];
         }
       });
       
