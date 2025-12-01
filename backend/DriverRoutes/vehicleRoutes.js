@@ -595,10 +595,10 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
     }
 
     const vehicles = await Vehicle.find({
-      $or: [
-        { owner: ownerId },
-        { assignedTo: { $in: [driverId] } }
-      ]
+      
+         owner: ownerId ,
+        assignedTo: { $in: [driverId]  }
+      
     })
     .populate('category', 'name')
     .populate('cabVehicleDetails.vehicleType')
