@@ -303,11 +303,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       newRide.rideInfo.selectedParcelCategoryId = selectedParcelCategory._id;
     }
 
-    await newRide.save();
-
-    // console.log('📱 New ride booked:', newRide._id);
-
-    // Get vehicle type information
+    // Get vehicle type information before saving
     let vehicleTypeId = null;
     let vehicleTypeName = null;
     
@@ -333,6 +329,16 @@ router.post("/book", authMiddleware, async (req, res) => {
         console.error('Error fetching parcel vehicle type:', error);
       }
     }
+
+    // Store vehicle type information in ride
+    if (vehicleTypeId && vehicleTypeName) {
+      newRide.rideInfo.vehicleTypeId = vehicleTypeId;
+      newRide.rideInfo.vehicleType = vehicleTypeName;
+    }
+
+    await newRide.save();
+
+    // console.log('📱 New ride booked:', newRide._id);
 
     // Emit socket event to drivers with EXTENDED rides only
     const io = req.app.get('io');
@@ -1584,6 +1590,33 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
              : currentRide.rideInfo.selectedDate)
           : currentRide.rideInfo.selectedDate;
 
+        // Get vehicle type information for cancelled ride
+        let vehicleTypeId = null;
+        let vehicleTypeName = null;
+        
+        const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
+        if (categoryNameLower === 'cab' && currentRide.rideInfo.selectedCategoryId) {
+          try {
+            const car = await Car.findById(currentRide.rideInfo.selectedCategoryId).populate('vehicleType');
+            if (car && car.vehicleType) {
+              vehicleTypeId = car.vehicleType._id;
+              vehicleTypeName = car.vehicleType.name;
+            }
+          } catch (error) {
+            console.error('Error fetching cab vehicle type:', error);
+          }
+        } else if (categoryNameLower === 'parcel' && currentRide.rideInfo.selectedCategoryId) {
+          try {
+            const parcelVehicle = await ParcelVehicle.findById(currentRide.rideInfo.selectedCategoryId).populate('parcelVehicleType');
+            if (parcelVehicle && parcelVehicle.parcelVehicleType) {
+              vehicleTypeId = parcelVehicle.parcelVehicleType._id;
+              vehicleTypeName = parcelVehicle.parcelVehicleType.name;
+            }
+          } catch (error) {
+            console.error('Error fetching parcel vehicle type:', error);
+          }
+        }
+
         const rideData = {
           rideId: newCancelledRide._id,
           categoryName: currentRide.rideInfo.categoryName,
@@ -1599,10 +1632,16 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           totalPayable: currentRide.totalPayable,
           status: 'BOOKED'
         };
+        
+        // Add vehicle type information to rideData
+        if (vehicleTypeId && vehicleTypeName) {
+          rideData.vehicleTypeId = vehicleTypeId;
+          rideData.vehicleType = vehicleTypeName;
+        }
 
         // Get eligible drivers based on category
         let waitingDrivers = [];
-        const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
+        
         
         if (categoryNameLower === 'driver') {
           waitingDrivers = await Driver.find({
@@ -1751,6 +1790,33 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         ? (selectedDates && selectedDates.length > 0 ? selectedDates[0] : currentRide.rideInfo.selectedDate)
         : currentRide.rideInfo.selectedDate;
 
+      // Get vehicle type information for partial cancelled ride
+      let vehicleTypeId = null;
+      let vehicleTypeName = null;
+      
+      
+      if (categoryNameLower === 'cab' && currentRide.rideInfo.selectedCategoryId) {
+        try {
+          const car = await Car.findById(currentRide.rideInfo.selectedCategoryId).populate('vehicleType');
+          if (car && car.vehicleType) {
+            vehicleTypeId = car.vehicleType._id;
+            vehicleTypeName = car.vehicleType.name;
+          }
+        } catch (error) {
+          console.error('Error fetching cab vehicle type:', error);
+        }
+      } else if (categoryNameLower === 'parcel' && currentRide.rideInfo.selectedCategoryId) {
+        try {
+          const parcelVehicle = await ParcelVehicle.findById(currentRide.rideInfo.selectedCategoryId).populate('parcelVehicleType');
+          if (parcelVehicle && parcelVehicle.parcelVehicleType) {
+            vehicleTypeId = parcelVehicle.parcelVehicleType._id;
+            vehicleTypeName = parcelVehicle.parcelVehicleType.name;
+          }
+        } catch (error) {
+          console.error('Error fetching parcel vehicle type:', error);
+        }
+      }
+
       const rideData = {
         rideId: newCancelledRide._id,
         categoryName: currentRide.rideInfo.categoryName,
@@ -1766,6 +1832,12 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         totalPayable: cancelledChargesForNewRide.totalPayable,
         status: 'BOOKED'
       };
+      
+      // Add vehicle type information to rideData
+      if (vehicleTypeId && vehicleTypeName) {
+        rideData.vehicleTypeId = vehicleTypeId;
+        rideData.vehicleType = vehicleTypeName;
+      }
 
       // Get eligible drivers based on category
       let waitingDrivers = [];
