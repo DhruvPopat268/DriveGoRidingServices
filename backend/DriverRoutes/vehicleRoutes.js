@@ -128,10 +128,19 @@ router.post("/create", DriverAuthMiddleware, upload.any(), async (req, res) => {
 
     const savedVehicle = await newVehicle.save();
 
-    // Add to driver's vehiclesOwned
-    await Driver.findByIdAndUpdate(driverId, {
-      $push: { vehiclesOwned: savedVehicle._id }
-    });
+    // Update driver's vehicle arrays based on ownership
+    const driverUpdate = { $push: { vehiclesOwned: savedVehicle._id } };
+    
+    if (driver.ownership === "Owner_With_Vehicle") {
+      driverUpdate.$push.vehiclesAssigned = savedVehicle._id;
+      
+      // Add driver to vehicle's assignedTo field
+      await Vehicle.findByIdAndUpdate(savedVehicle._id, {
+        $push: { assignedTo: driverId }
+      });
+    }
+    
+    await Driver.findByIdAndUpdate(driverId, driverUpdate);
 
     res.json({ success: true, data: savedVehicle, message: "Vehicle created successfully" });
   } catch (error) {

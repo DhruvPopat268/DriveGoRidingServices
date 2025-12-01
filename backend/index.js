@@ -246,12 +246,21 @@ io.on('connection', (socket) => {
                 });
                 console.log(`Test 3 - assignedTo only: ${testQuery3.length} vehicles`);
                 
-                // Final query
+                // Final query with ownership validation
                 const vehicles = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true,
                   assignedTo: { $in: [driverId, driverObjectId] }
                 });
+                
+                // Additional check: exclude drivers with 'Owner' ownership
+                if (vehicles.length > 0 && driver.ownership === 'Owner') {
+                  driverMatches = false;
+                  console.log(`🚫 Driver ${driverId} has 'Owner' ownership, excluding from ride notifications`);
+                } else {
+                  driverMatches = vehicles.length > 0;
+                }
+                
                 console.log(`Final query result: ${vehicles.length} vehicles`);
                 
                 console.log(`🔧 Query details:`, {
@@ -301,6 +310,7 @@ io.on('connection', (socket) => {
                   subcategoryName: ride.rideInfo.subcategoryName,
                   subSubcategoryName: ride.rideInfo.subSubcategoryName,
                   carType: ride.rideInfo.carType,
+                  selectedCategory: ride.rideInfo.selectedCategory,
                   transmissionType: ride.rideInfo.transmissionType,
                   selectedUsage: ride.rideInfo.selectedUsage,
                   fromLocation: ride.rideInfo.fromLocation,
@@ -310,6 +320,17 @@ io.on('connection', (socket) => {
                   totalPayable: ride.totalPayable,
                   status: 'BOOKED'
                 };
+                
+                if(ride.rideInfo.selectedCarCategory){
+                  rideData.selectedCarCategory = ride.rideInfo.selectedCarCategory;
+                }
+                
+                if(ride.rideInfo.selectedParcelCategory){
+                  rideData.selectedParcelCategory = ride.rideInfo.selectedParcelCategory;
+                  rideData.senderDetails = ride.rideInfo.senderDetails;
+                  rideData.receiverDetails = ride.rideInfo.receiverDetails;
+                }
+                
                 console.log(`📤 Sending ride ${ride._id} to driver ${driverId}`);
                 socket.emit('new-ride', rideData);
               }

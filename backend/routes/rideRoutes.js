@@ -315,7 +315,6 @@ router.post("/book", authMiddleware, async (req, res) => {
         subSubcategoryName: subSubcategoryName,
         carType: carType,
         selectedCategory: selectedCategory,
-        
         transmissionType: transmissionType,
         selectedUsage: selectedUsage,
         fromLocation: fromLocationData,
@@ -366,7 +365,8 @@ router.post("/book", authMiddleware, async (req, res) => {
             rideStatus: 'WAITING',
             isOnline: true,
             'personalInformation.category': categoryId,
-            'personalInformation.subCategory': { $in: [subcategoryId] }
+            'personalInformation.subCategory': { $in: [subcategoryId] },
+            ownership: { $ne: 'Owner' }
           }).select('_id');
         }
       }
@@ -1591,7 +1591,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
               rideStatus: 'WAITING',
               isOnline: true,
               'personalInformation.category': currentRide.rideInfo.categoryId,
-              'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] }
+              'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
+              ownership: { $ne: 'Owner' }
             }).select('_id');
           }
         }
@@ -1755,7 +1756,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             _id: { $in: assignedDriverIds },
             rideStatus: 'WAITING',
             'personalInformation.category': currentRide.rideInfo.categoryId,
-            'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] }
+            'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
+            ownership: { $ne: 'Owner' }
           }).select('_id');
         }
       }
