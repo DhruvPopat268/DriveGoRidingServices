@@ -59,7 +59,8 @@ app.use(cors({
     "http://localhost:8081",
     "http://localhost:8080",
     "https://journey-cost-estimator.vercel.app",
-    "https://drive-go-riding-services.vercel.app"
+    "https://drive-go-riding-services.vercel.app",
+    "https://hire4drive.com"
   ],
   credentials: true
 }));
@@ -260,7 +261,7 @@ io.on('connection', (socket) => {
                 } else {
                   driverMatches = vehicles.length > 0;
                 }
-                
+
                 console.log(`Final query result: ${vehicles.length} vehicles`);
                 
                 console.log(`🔧 Query details:`, {
