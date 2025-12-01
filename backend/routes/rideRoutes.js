@@ -2256,6 +2256,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = driverData.extraChargePerMinute;
       adminChargesInPercentage = driverData.extraChargesFromAdmin;
       gstChargesInPercentage = driverData.gst;
+      console.log("Driver Data:", driverData);
     } else if (catNameLower === "cab") {
       const cabData = await getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId);
       includedKm = cabData.includedKm;
@@ -2264,6 +2265,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = cabData.extraChargePerMinute;
       adminChargesInPercentage = cabData.extraChargesFromAdmin;
       gstChargesInPercentage = cabData.gst;
+      console.log("Cab Data:", cabData);
     } else if (catNameLower === "parcel") {
       const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId, selectedUsage, selectedCategoryId);
       includedKm = parcelData.includedKm;
@@ -2271,8 +2273,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = parcelData.extraChargePerMinute;
       adminChargesInPercentage = parcelData.extraChargesFromAdmin;
       gstChargesInPercentage = parcelData.gst;
+      console.log("Parcel Data:", parcelData);
     }
-
 
     // Validate inputs and calculate extraKm
     const safeTotalKm = Number(totalKm) || 0;
@@ -2355,7 +2357,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       "rideInfo.extraMinutesCharges": extraMinutesCharges,
       totalPayable
     };
-
 
     if (subcategoryNameLower.includes('weekly') || subcategoryNameLower.includes('monthly')) {
       const weeklyMonthlyRideTimings = ride.rideInfo.weeklyMonthlyRideTimings || [];

@@ -9,26 +9,26 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   const parseUsage = (usageStr) => {
     const usage = { km: 0, minutes: 0 };
     if (!usageStr) return usage;
-    
+
     const parts = usageStr.split('&').map(part => part.trim());
-    
+
     parts.forEach(part => {
       const kmMatch = part.match(/(\d+)\s*km/i);
       const hrMatch = part.match(/(\d+)\s*hrs?/i);
       const minMatch = part.match(/(\d+)\s*min/i);
-      
+
       if (kmMatch) usage.km = parseInt(kmMatch[1]);
       if (hrMatch) usage.minutes += parseInt(hrMatch[1]) * 60;
       if (minMatch) usage.minutes += parseInt(minMatch[1]);
     });
-    
+
     return usage;
   };
 
   const parsedUsage = parseUsage(selectedUsage);
-  
+
   let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId, priceCategory: selectedCategoryId };
-  
+
   // Add both km and minutes to query if they exist
   if (parsedUsage.km > 0) {
     rideCostQuery.includedKm = parsedUsage.km.toString();
@@ -60,25 +60,25 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   const parseUsage = (usageStr) => {
     const usage = { km: 0, minutes: 0 };
     if (!usageStr) return usage;
-    
+
     const parts = usageStr.split('&').map(part => part.trim());
-    
+
     parts.forEach(part => {
       const kmMatch = part.match(/(\d+)\s*km/i);
       const hrMatch = part.match(/(\d+)\s*hrs?/i);
       const minMatch = part.match(/(\d+)\s*min/i);
-      
+
       if (kmMatch) usage.km = parseInt(kmMatch[1]);
       if (hrMatch) usage.minutes += parseInt(hrMatch[1]) * 60;
       if (minMatch) usage.minutes += parseInt(minMatch[1]);
     });
-    
+
     return usage;
   };
 
   const parsedUsage = parseUsage(selectedUsage);
 
-  let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId, priceCategory: selectedCategoryId };
+  let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId, car: selectedCategoryId };
 
   // Add both km and minutes to query if they exist
   if (parsedUsage.km > 0) {
@@ -87,7 +87,7 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   if (parsedUsage.minutes > 0) {
     rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
   }
-
+  console.log("Cab Ride Cost Query:", rideCostQuery);
   const records = await CabRideCost.find(rideCostQuery).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst");
 
   const includedKm = [...new Set(records.map(r => r.includedKm))];
@@ -97,7 +97,8 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   const extraChargesFromAdmin = records[0]?.extraChargesFromAdmin || 0;
   const gst = records[0]?.gst || 0;
 
-    return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
+  console.log("Cab Ride Cost Records:", records);
+  return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
 
 }
 
@@ -109,19 +110,19 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
   const parseUsage = (usageStr) => {
     const usage = { km: 0, minutes: 0 };
     if (!usageStr) return usage;
-    
+
     const parts = usageStr.split('&').map(part => part.trim());
-    
+
     parts.forEach(part => {
       const kmMatch = part.match(/(\d+)\s*km/i);
       const hrMatch = part.match(/(\d+)\s*hrs?/i);
       const minMatch = part.match(/(\d+)\s*min/i);
-      
+
       if (kmMatch) usage.km = parseInt(kmMatch[1]);
       if (hrMatch) usage.minutes += parseInt(hrMatch[1]) * 60;
       if (minMatch) usage.minutes += parseInt(minMatch[1]);
     });
-    
+
     return usage;
   };
 
@@ -129,8 +130,8 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
   const categoryName = category.name.toLowerCase();
 
   if (categoryName === "parcel") {
-    let rideCostQuery = { category: categoryId, subcategory: subcategoryId, priceCategory: selectedCategoryId };
-    
+    let rideCostQuery = { category: categoryId, subcategory: subcategoryId, parcelVehicle: selectedCategoryId };
+
     // Add both km and minutes to query if they exist
     if (parsedUsage.km > 0) {
       rideCostQuery.includedKm = parsedUsage.km.toString();
