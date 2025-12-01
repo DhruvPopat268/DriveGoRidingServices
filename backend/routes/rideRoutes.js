@@ -2416,6 +2416,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       rideEndTime: updatedRide.rideInfo.rideEndTime,
       diffOfMinutes: diffOfMinutes,
       includedMinutes: safeIncludedMinutes,
+      includedKm: safeIncludedKm,
+      diffOfKm: extraKm,
       data: responseData
     });
 
