@@ -893,6 +893,9 @@ router.get("/driver/rides/confirmed", driverAuthMiddleware, async (req, res) => 
       status: { $in: ["CONFIRMED", "REACHED"] }
     }).sort({ createdAt: -1 }); // latest first (optional)
 
+    // Get driver's passport photo
+    const driver = await Driver.findById(driverId).select('personalInformation.passportPhoto');
+    const passportPhoto = driver?.personalInformation?.passportPhoto || null;
 
     const count = confirmedRides.length;
 
@@ -903,6 +906,7 @@ router.get("/driver/rides/confirmed", driverAuthMiddleware, async (req, res) => 
     res.json({
       success: true,
       count,
+      passportPhoto,
       data: confirmedRides
     });
   } catch (error) {
@@ -930,6 +934,10 @@ router.get("/driver/rides/ongoing", driverAuthMiddleware, async (req, res) => {
       status: "ONGOING"
     }).sort({ createdAt: -1 }); // latest first (optional)
 
+    // Get driver's passport photo
+    const driver = await Driver.findById(driverId).select('personalInformation.passportPhoto');
+    const passportPhoto = driver?.personalInformation?.passportPhoto || null;
+
     const count = confirmedRides.length;
 
     if (count === 0) {
@@ -939,6 +947,7 @@ router.get("/driver/rides/ongoing", driverAuthMiddleware, async (req, res) => {
     res.json({
       success: true,
       count,
+      passportPhoto,
       data: confirmedRides
     });
   } catch (error) {
@@ -966,6 +975,10 @@ router.get("/driver/rides/completed", driverAuthMiddleware, async (req, res) => 
       status: "COMPLETED"
     }).sort({ createdAt: -1 }); // latest first (optional)
 
+    // Get driver's passport photo
+    const driver = await Driver.findById(driverId).select('personalInformation.passportPhoto');
+    const passportPhoto = driver?.personalInformation?.passportPhoto || null;
+
     const count = confirmedRides.length;
 
     if (count === 0) {
@@ -975,6 +988,7 @@ router.get("/driver/rides/completed", driverAuthMiddleware, async (req, res) => 
     res.json({
       success: true,
       count,
+      passportPhoto,
       data: confirmedRides
     });
   } catch (error) {
@@ -1002,6 +1016,10 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
       status: "EXTENDED"
     }).sort({ createdAt: -1 }); // latest first (optional)
 
+    // Get driver's passport photo
+    const driver = await Driver.findById(driverId).select('personalInformation.passportPhoto');
+    const passportPhoto = driver?.personalInformation?.passportPhoto || null;
+
     console.log('🚗 Extended rides:', confirmedRides)
 
     const count = confirmedRides.length;
@@ -1013,6 +1031,7 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
     res.json({
       success: true,
       count,
+      passportPhoto,
       data: confirmedRides
     });
   } catch (error) {
@@ -1040,6 +1059,10 @@ router.get("/driver/rides/cancelled", driverAuthMiddleware, async (req, res) => 
       status: "CANCELLED"
     }).sort({ createdAt: -1 }); // latest first (optional)
 
+    // Get driver's passport photo
+    const driver = await Driver.findById(driverId).select('personalInformation.passportPhoto');
+    const passportPhoto = driver?.personalInformation?.passportPhoto || null;
+
     const count = confirmedRides.length;
 
     if (count === 0) {
@@ -1049,6 +1072,7 @@ router.get("/driver/rides/cancelled", driverAuthMiddleware, async (req, res) => 
     res.json({
       success: true,
       count,
+      passportPhoto,
       data: confirmedRides
     });
   } catch (error) {
