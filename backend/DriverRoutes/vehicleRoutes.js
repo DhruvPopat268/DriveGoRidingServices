@@ -229,7 +229,7 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
     const allowedCabFields = ['fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'];
     const allowedParcelFields = ['length', 'width', 'height', 'weightCapacity', 'fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'];
 
-    const updateData = {};
+    const updateData = { $set: {} };
     
     // Get existing vehicle to preserve old images
     const existingVehicle = await Vehicle.findOne({ _id: vehicleId, owner: ownerId });
@@ -257,17 +257,12 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
         }
       });
       
-      // Filter to allowed fields only
-      const finalCabDetails = {};
+      // Update only allowed fields using dot notation
       allowedCabFields.forEach(field => {
         if (filteredCabDetails[field] !== undefined) {
-          finalCabDetails[field] = filteredCabDetails[field];
+          updateData.$set[`cabVehicleDetails.${field}`] = filteredCabDetails[field];
         }
       });
-      
-      if (Object.keys(finalCabDetails).length > 0) {
-        updateData.cabVehicleDetails = finalCabDetails;
-      }
     }
 
     // Filter parcelVehicleDetails
@@ -290,17 +285,12 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
         }
       });
       
-      // Filter to allowed fields only
-      const finalParcelDetails = {};
+      // Update only allowed fields using dot notation
       allowedParcelFields.forEach(field => {
         if (filteredParcelDetails[field] !== undefined) {
-          finalParcelDetails[field] = filteredParcelDetails[field];
+          updateData.$set[`parcelVehicleDetails.${field}`] = filteredParcelDetails[field];
         }
       });
-      
-      if (Object.keys(finalParcelDetails).length > 0) {
-        updateData.parcelVehicleDetails = finalParcelDetails;
-      }
     }
 
     const vehicle = await Vehicle.findOneAndUpdate(
