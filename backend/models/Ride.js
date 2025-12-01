@@ -52,6 +52,8 @@ const rideSchema = new mongoose.Schema(
       selectedCategoryId: { type: String },
       selectedCategory: { type: String },
       selectedCarCategory: { type: String },
+      vehicleType: { type: String },
+      vehicleTypeId: { type: String },
       selectedCarCategoryId: { type: String },
       selectedParcelCategory: { type: String },
       selectedParcelCategoryId: { type: String },

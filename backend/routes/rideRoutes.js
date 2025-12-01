@@ -21,6 +21,10 @@ const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const { checkDriverWalletBalance } = require('../utils/walletBalanceChecker');
 const NotificationService = require('../Services/notificationService');
+const Car = require('../models/Car');
+const ParcelVehicle = require('../models/ParcelVehicle');
+const VehicleType = require('../models/cabVehicleType');
+const ParcelVehicleType = require('../models/parcelVehicleType');
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -303,6 +307,33 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     // console.log('📱 New ride booked:', newRide._id);
 
+    // Get vehicle type information
+    let vehicleTypeId = null;
+    let vehicleTypeName = null;
+    
+    const categoryNameLower = categoryName.toLowerCase();
+    if (categoryNameLower === 'cab' && selectedCategoryId) {
+      try {
+        const car = await Car.findById(selectedCategoryId).populate('vehicleType');
+        if (car && car.vehicleType) {
+          vehicleTypeId = car.vehicleType._id;
+          vehicleTypeName = car.vehicleType.name;
+        }
+      } catch (error) {
+        console.error('Error fetching cab vehicle type:', error);
+      }
+    } else if (categoryNameLower === 'parcel' && selectedCategoryId) {
+      try {
+        const parcelVehicle = await ParcelVehicle.findById(selectedCategoryId).populate('parcelVehicleType');
+        if (parcelVehicle && parcelVehicle.parcelVehicleType) {
+          vehicleTypeId = parcelVehicle.parcelVehicleType._id;
+          vehicleTypeName = parcelVehicle.parcelVehicleType.name;
+        }
+      } catch (error) {
+        console.error('Error fetching parcel vehicle type:', error);
+      }
+    }
+
     // Emit socket event to drivers with EXTENDED rides only
     const io = req.app.get('io');
     const onlineDrivers = req.app.get('onlineDrivers');
@@ -324,6 +355,12 @@ router.post("/book", authMiddleware, async (req, res) => {
         totalPayable: adjustedTotalPayable,
         status: 'BOOKED'
       };
+      
+      // Add vehicle type information to rideData
+      if (vehicleTypeId && vehicleTypeName) {
+        rideData.vehicleTypeId = vehicleTypeId;
+        rideData.vehicleType = vehicleTypeName;
+      }
 
       if(selectedCarCategory){
       rideData.selectedCarCategory = selectedCarCategory.name;

@@ -306,6 +306,34 @@ io.on('connection', (socket) => {
               });
 
               if (driverMatches && categoryMatches && subcategoryMatches) {
+                // Get vehicle type information
+                let vehicleTypeId = null;
+                let vehicleTypeName = null;
+                
+                if (categoryNameLower === 'cab' && selectedCategoryId) {
+                  try {
+                    const Car = require('./models/Car');
+                    const car = await Car.findById(selectedCategoryId).populate('vehicleType');
+                    if (car && car.vehicleType) {
+                      vehicleTypeId = car.vehicleType._id;
+                      vehicleTypeName = car.vehicleType.name;
+                    }
+                  } catch (error) {
+                    console.error('Error fetching cab vehicle type:', error);
+                  }
+                } else if (categoryNameLower === 'parcel' && selectedCategoryId) {
+                  try {
+                    const ParcelVehicle = require('./models/ParcelVehicle');
+                    const parcelVehicle = await ParcelVehicle.findById(selectedCategoryId).populate('parcelVehicleType');
+                    if (parcelVehicle && parcelVehicle.parcelVehicleType) {
+                      vehicleTypeId = parcelVehicle.parcelVehicleType._id;
+                      vehicleTypeName = parcelVehicle.parcelVehicleType.name;
+                    }
+                  } catch (error) {
+                    console.error('Error fetching parcel vehicle type:', error);
+                  }
+                }
+                
                 const rideData = {
                   rideId: ride._id,
                   categoryName: ride.rideInfo.categoryName,
@@ -322,6 +350,12 @@ io.on('connection', (socket) => {
                   totalPayable: ride.totalPayable,
                   status: 'BOOKED'
                 };
+                
+                // Add vehicle type information to rideData
+                if (vehicleTypeId && vehicleTypeName) {
+                  rideData.vehicleTypeId = vehicleTypeId;
+                  rideData.vehicleType = vehicleTypeName;
+                }
                 
                 if(ride.rideInfo.selectedCarCategory){
                   rideData.selectedCarCategory = ride.rideInfo.selectedCarCategory;
