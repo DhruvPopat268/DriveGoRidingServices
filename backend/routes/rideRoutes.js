@@ -2242,7 +2242,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     const subcategoryNameLower = subcategoryName.toLowerCase();
 
     if (catNameLower === "driver") {
-      const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
+      const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId);
       includedKm = driverData.includedKm;
       includedMinutes = driverData.includedMinutes;
       extraChargePerKm = driverData.extraChargePerKm;
@@ -2250,7 +2250,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       adminChargesInPercentage = driverData.extraChargesFromAdmin;
       gstChargesInPercentage = driverData.gst;
     } else if (catNameLower === "cab") {
-      const cabData = await getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId);
+      const cabData = await getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId);
       includedKm = cabData.includedKm;
       includedMinutes = cabData.includedMinutes;
       extraChargePerKm = cabData.extraChargePerKm;
