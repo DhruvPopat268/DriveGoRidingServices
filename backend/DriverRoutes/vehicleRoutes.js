@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Vehicle = require("../DriverModel/VehicleModel");
 const Driver = require("../DriverModel/DriverModel");
 const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
@@ -354,8 +355,8 @@ router.post("/assign", DriverAuthMiddleware, async (req, res) => {
           assignedTo: {
             $cond: {
               if: { $eq: ["$assignedTo", null] },
-              then: [driverIdToAssign],
-              else: { $setUnion: ["$assignedTo", [driverIdToAssign]] }
+              then: [new mongoose.Types.ObjectId(driverIdToAssign)],
+              else: { $setUnion: ["$assignedTo", [new mongoose.Types.ObjectId(driverIdToAssign)]] }
             }
           }
         }
@@ -594,6 +595,7 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
       return res.status(400).json({ success: false, message: "driverId is required" });
     }
 
+    console.log('Owner ID:', ownerId, 'Driver ID:', driverId);
     const vehicles = await Vehicle.find({
       
          owner: ownerId ,
