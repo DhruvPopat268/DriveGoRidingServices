@@ -4,7 +4,7 @@ const ParcelRideCost = require("../models/ParcelRideCost");
 const Category = require("../models/Category");
 const SubCategory = require("../models/SubCategory");
 
-async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId) {
+async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId) {
   // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km")
   const parseUsage = (usageStr) => {
     const usage = { km: 0, minutes: 0 };
@@ -49,7 +49,7 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
 }
 
-async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, subcategoryNameLower, selectedCategoryId) {
+async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId) {
 
   // console.log(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId)
 
@@ -97,11 +97,8 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   const extraChargesFromAdmin = records[0]?.extraChargesFromAdmin || 0;
   const gst = records[0]?.gst || 0;
 
-  if (subCategoryName === "oneway" || subCategoryName === "one way" || subCategoryName === "one-way") {
-    return { includedKm, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
-  } else {
-    return { includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
-  }
+    return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
+
 }
 
 async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsage, selectedCategoryId) {
