@@ -251,8 +251,7 @@ router.get("/approved-driver-category", async (req, res) => {
       "selectedCategory.name": "Driver"
     })
       .populate('driverCategory')
-      .populate('parcelCategory')
-      .populate('assignedCar')
+      
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: drivers });
