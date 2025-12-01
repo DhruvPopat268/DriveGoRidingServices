@@ -339,6 +339,14 @@ router.post("/assign", DriverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
 
+    // Validate driver ownership
+    if (driverToAssign.ownership !== "Driver") {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Only drivers with ownership type 'Driver' can be assigned to vehicles" 
+      });
+    }
+
     // Handle null assignedTo field and add driver
     await Vehicle.findByIdAndUpdate(vehicleId, [
       {
