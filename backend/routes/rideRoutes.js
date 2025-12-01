@@ -433,15 +433,15 @@ router.post("/book", authMiddleware, async (req, res) => {
 
       console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
       
-      // Send push notifications to all approved drivers
+      // Send push notifications to eligible drivers only
       try {
-        const approvedDrivers = await Driver.find({
-          status: 'Approved',
+        const eligibleDrivers = await Driver.find({
+          _id: { $in: waitingDriverIds },
           oneSignalPlayerId: { $ne: null, $exists: true }
         }).select('oneSignalPlayerId');
 
-        if (approvedDrivers.length > 0) {
-          const playerIds = approvedDrivers.map(driver => driver.oneSignalPlayerId);
+        if (eligibleDrivers.length > 0) {
+          const playerIds = eligibleDrivers.map(driver => driver.oneSignalPlayerId);
           
           await NotificationService.sendToMultipleUsers(
             playerIds,
@@ -455,7 +455,7 @@ router.post("/book", authMiddleware, async (req, res) => {
             }
           );
           
-          console.log(`📱 Push notification sent to ${playerIds.length} approved drivers`);
+          console.log(`📱 Push notification sent to ${playerIds.length} eligible drivers`);
         }
       } catch (notifError) {
         console.error('Push notification error:', notifError);
