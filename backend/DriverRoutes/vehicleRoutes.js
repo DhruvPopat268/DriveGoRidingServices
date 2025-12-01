@@ -192,14 +192,14 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
     const ownerId = req.driver.driverId;
     
     // Parse JSON data from form
-    let updateData = {};
+    let vehicleData = {};
     try {
-      updateData = JSON.parse(req.body.data || "{}");
+      vehicleData = JSON.parse(req.body.data || "{}");
     } catch (err) {
       return res.status(400).json({ success: false, message: "Invalid JSON in data field" });
     }
 
-    const { vehicleId } = updateData;
+    const { vehicleId, cabVehicleDetails, parcelVehicleDetails } = vehicleData;
     if (!vehicleId) {
       return res.status(400).json({ success: false, message: "Vehicle ID is required" });
     }
@@ -224,16 +224,61 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
       }
     });
 
-    // Merge file URLs with update data
-    Object.assign(updateData, singleFiles);
-    Object.entries(fileGroups).forEach(([fieldName, urls]) => {
-      if (urls.length > 0) {
-        updateData[fieldName] = urls;
-      }
-    });
+    // Define allowed fields (excluding vehicleType, modelType, seatCapacity, color)
+    const allowedCabFields = ['fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'];
+    const allowedParcelFields = ['length', 'width', 'height', 'weightCapacity', 'fuelType', 'vehiclePhotos', 'insuranceValidUpto', 'pollutionValidUpto', 'taxValidUpto', 'fitnessValidUpto', 'permitValidUpto', 'rc', 'insurance', 'pollutionCertificate', 'taxReceipt', 'fitnessCertificate', 'permit'];
 
-    // Remove vehicleId from updateData to avoid updating it
-    delete updateData.vehicleId;
+    const updateData = {};
+    
+    // Filter cabVehicleDetails
+    if (cabVehicleDetails) {
+      const filteredCabDetails = { ...cabVehicleDetails };
+      
+      // Merge uploaded files
+      Object.assign(filteredCabDetails, singleFiles);
+      Object.entries(fileGroups).forEach(([fieldName, urls]) => {
+        if (urls.length > 0) {
+          filteredCabDetails[fieldName] = urls;
+        }
+      });
+      
+      // Filter to allowed fields only
+      const finalCabDetails = {};
+      allowedCabFields.forEach(field => {
+        if (filteredCabDetails[field] !== undefined) {
+          finalCabDetails[field] = filteredCabDetails[field];
+        }
+      });
+      
+      if (Object.keys(finalCabDetails).length > 0) {
+        updateData.cabVehicleDetails = finalCabDetails;
+      }
+    }
+
+    // Filter parcelVehicleDetails
+    if (parcelVehicleDetails) {
+      const filteredParcelDetails = { ...parcelVehicleDetails };
+      
+      // Merge uploaded files
+      Object.assign(filteredParcelDetails, singleFiles);
+      Object.entries(fileGroups).forEach(([fieldName, urls]) => {
+        if (urls.length > 0) {
+          filteredParcelDetails[fieldName] = urls;
+        }
+      });
+      
+      // Filter to allowed fields only
+      const finalParcelDetails = {};
+      allowedParcelFields.forEach(field => {
+        if (filteredParcelDetails[field] !== undefined) {
+          finalParcelDetails[field] = filteredParcelDetails[field];
+        }
+      });
+      
+      if (Object.keys(finalParcelDetails).length > 0) {
+        updateData.parcelVehicleDetails = finalParcelDetails;
+      }
+    }
 
     const vehicle = await Vehicle.findOneAndUpdate(
       { _id: vehicleId, owner: ownerId },
