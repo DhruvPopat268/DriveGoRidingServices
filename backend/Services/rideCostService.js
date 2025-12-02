@@ -87,7 +87,7 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   if (parsedUsage.minutes > 0) {
     rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
   }
-  console.log("Cab Ride Cost Query:", rideCostQuery);
+  //console.log("Cab Ride Cost Query:", rideCostQuery);
   const records = await CabRideCost.find(rideCostQuery).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst");
 
   const includedKm = [...new Set(records.map(r => r.includedKm))];
@@ -97,7 +97,7 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   const extraChargesFromAdmin = records[0]?.extraChargesFromAdmin || 0;
   const gst = records[0]?.gst || 0;
 
-  console.log("Cab Ride Cost Records:", records);
+  //console.log("Cab Ride Cost Records:", records);
   return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst };
 
 }

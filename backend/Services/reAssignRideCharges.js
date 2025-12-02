@@ -156,11 +156,7 @@ const calculateDriverRideCharges = async ({
         // + cancellationCharges
     );
 
-    console.log('📊 Driver Final calculations:', {
-        baseTotal, adminCommission, adjustedAdminCommission, gstCharges,
-        // cancellationCharges , 
-        totalPayable
-    });
+    
 
     return {
         categoryId: priceCategory?._id,

@@ -147,7 +147,7 @@ server.listen(PORT, () => {
 
 // Socket connection handling
 io.on('connection', (socket) => {
-  console.log('🔗 Client connected:', socket.id);
+  //console.log('🔗 Client connected:', socket.id);
   console.log('📊 Total clients:', io.engine.clientsCount);
 
   // Register driver when they connect
@@ -158,7 +158,7 @@ io.on('connection', (socket) => {
         socketId: socket.id
       };
       socket.join('drivers');
-      console.log(`🚗 Driver registered: ${driverId}`);
+      //console.log(`🚗 Driver registered: ${driverId}`);
       console.log(`📊 Online drivers count: ${Object.keys(onlineDrivers).length}`);
 
       // Send all available BOOKED rides to newly connected driver (only if driver has WAITING status)
@@ -258,7 +258,7 @@ io.on('connection', (socket) => {
                 // Additional check: exclude drivers with 'Owner' ownership
                 if (vehicles.length > 0 && driver.ownership === 'Owner') {
                   driverMatches = false;
-                  console.log(`🚫 Driver ${driverId} has 'Owner' ownership, excluding from ride notifications`);
+                  //console.log(`🚫 Driver ${driverId} has 'Owner' ownership, excluding from ride notifications`);
                 } else {
                   driverMatches = vehicles.length > 0;
                 }
@@ -298,12 +298,12 @@ io.on('connection', (socket) => {
                 driverMatches = vehicles.length > 0;
               }
 
-              console.log(`✅ Final match result:`, {
+              /*console.log(`✅ Final match result:`, {
                 driverMatches,
                 categoryMatches,
                 subcategoryMatches,
                 willSendRide: driverMatches && categoryMatches && subcategoryMatches
-              });
+              });*/
 
               if (driverMatches && categoryMatches && subcategoryMatches) {
                 // Get vehicle type information
@@ -371,7 +371,7 @@ io.on('connection', (socket) => {
                 socket.emit('new-ride', rideData);
               }
             }
-            console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status + matching categories)`);
+            //console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status + matching categories)`);
           }
         } else {
           console.log(`🚫 Driver ${driverId} does not have WAITING status, no rides sent`);

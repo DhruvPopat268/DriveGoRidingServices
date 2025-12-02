@@ -72,7 +72,7 @@ const authMiddleware = async (req, res, next) => {
       const expiry = new Date(currentPlan.expiryDate);
 
       if (expiry < now) {
-        console.log("❌ Driver plan expired");
+        //console.log("❌ Driver plan expired");
         return res.status(402).json({
           success: false,
           message: "Subscription plan expired. Please renew to continue."

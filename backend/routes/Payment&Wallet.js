@@ -308,7 +308,7 @@ router.post('/webhook', express.raw({type: 'application/json'}), async (req, res
         await handlePaymentFailed(event.payload.payment.entity);
         break;
       default:
-        console.log('Unhandled event:', event.event);
+        //console.log('Unhandled event:', event.event);
     }
 
     res.json({ status: 'ok' });

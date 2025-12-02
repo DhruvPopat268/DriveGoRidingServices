@@ -57,15 +57,7 @@ function evaluateDriverProgress(driver) {
   const category = driver.selectedCategory?.name || "Driver";
   
   //console.log(`🔍 Evaluating progress for category: ${category}`);
-  console.log(`🔍 Driver sections available:`
-    , {
-    personalInformation: !!driver.personalInformation,
-    ownership: !!driver.ownership,
-    drivingDetails: !!driver.drivingDetails,
-    paymentAndSubscription: !!driver.paymentAndSubscription,
-    languageSkillsAndReferences: !!driver.languageSkillsAndReferences,
-    declaration: !!driver.declaration
-  });
+
 
   // Step 1: Personal Information (common for all categories)
   if (!isObjectComplete(driver.personalInformation, [], category, 'PersonalInformation')) {

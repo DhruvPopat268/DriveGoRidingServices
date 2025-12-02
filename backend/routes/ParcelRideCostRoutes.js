@@ -222,7 +222,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     // --- final calculation ---
     const result = [];
     for (const model of rideCostModels) {
-      console.log('model',model)
+      //console.log('model',model)
 
       let driverCharges = model.baseFare || 0;
       // console.log(model)

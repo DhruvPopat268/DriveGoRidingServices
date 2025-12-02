@@ -32,7 +32,7 @@ const sendWelcomeEmail = async (userEmail, userName, password, roleName) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('Welcome email sent successfully');
+    //console.log('Welcome email sent successfully');
   } catch (error) {
     console.error('Error sending email:', error);
     throw error;

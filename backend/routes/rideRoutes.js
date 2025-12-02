@@ -414,14 +414,14 @@ router.post("/book", authMiddleware, async (req, res) => {
         }
       }
 
-      console.log("waiting drivers", waitingDrivers)
+      //console.log("waiting drivers", waitingDrivers)
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
       console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status and matching categories for ${categoryNameLower}`);
 
       // Send to online drivers who have WAITING rideStatus
-      console.log('ride data to send:', rideData);
+      //console.log('ride data to send:', rideData);
       let sentCount = 0;
       Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
         // Only send to drivers with WAITING status
@@ -431,11 +431,11 @@ router.post("/book", authMiddleware, async (req, res) => {
         }
       });
 
-      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
+      //console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
       
       // Send push notifications to eligible drivers only
       try {
-        console.log(`🔍 Looking for eligible drivers from ${waitingDriverIds.length} waiting drivers`);
+        //console.log(`🔍 Looking for eligible drivers from ${waitingDriverIds.length} waiting drivers`);
         
         const eligibleDrivers = await Driver.find({
           _id: { $in: waitingDriverIds },
@@ -1173,7 +1173,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
         rideId: rideId,
         driverId: driverId
       });
-      console.log('🚗 Ride assigned event emitted:', rideId);
+      //console.log('🚗 Ride assigned event emitted:', rideId);
     }
 
     res.json({

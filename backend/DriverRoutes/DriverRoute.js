@@ -1134,7 +1134,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   const startTime = Date.now();
   let checkpointTime = startTime;
 
-  console.log('req.files', req.files);
+  //console.log('req.files', req.files);
 
   const logTime = (label) => {
     const now = Date.now();
@@ -1336,7 +1336,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
         
         await Driver.findByIdAndUpdate(updatedDriver._id, driverUpdates);
         
-        console.log(`✅ Vehicle created for ${ownership} driver: ${savedVehicle._id}`);
+        //console.log(`✅ Vehicle created for ${ownership} driver: ${savedVehicle._id}`);
       }
     }
     
@@ -1371,11 +1371,11 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     if (progressResult.step === 0) {
       // All steps completed
       nextStep = 0;
-      console.log(`✅ All steps completed for driver`);
+      //console.log(`✅ All steps completed for driver`);
     } else {
       // Return the current incomplete step as nextStep
       nextStep = progressResult.step;
-      console.log(`🔄 Next incomplete step: ${nextStep}`);
+      //console.log(`🔄 Next incomplete step: ${nextStep}`);
     }
 
     res.json({
