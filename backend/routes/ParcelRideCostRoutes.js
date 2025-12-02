@@ -185,12 +185,12 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     if (parsedUsage.minutes > 0) {
       rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
     }
-    console.log('rideCostQuery', rideCostQuery)
+    
     const rideCostModels = await ParcelRideCost.find(rideCostQuery)
       .populate('category', 'name')
       .populate('parcelVehicle', 'name');
     
-      console.log('rideCostModels', rideCostModels)
+      
 
     if (rideCostModels.length === 0) {
       return res.status(404).json({ error: 'No ride cost models found for this parcel category' });
