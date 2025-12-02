@@ -1340,6 +1340,9 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
       }
     }
     
+    // Evaluate progress after update
+    const progressResult = evaluateDriverProgress(updatedDriver);
+    
     // Update status if needed
     if (shouldUpdateStatus || progressResult.step === 0) {
       await Driver.findOneAndUpdate(
