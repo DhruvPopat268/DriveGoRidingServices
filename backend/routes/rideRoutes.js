@@ -781,7 +781,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             await rider.save();
           }
 
-          console.log(`No wallet found, stored ${cancellationFee} as pending charges`);
+          //console.log(`No wallet found, stored ${cancellationFee} as pending charges`);
         }
       };
 
@@ -817,20 +817,10 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
         // Apply charges if conditions are met
         if (shouldApplyCharges) {
           await applyCancellationCharges(chargeReason);
-          console.log(`Cancellation charges applied: ${chargeReason}`);
+          
         }
       }
 
-      console.log('Cancellation Details:', {
-        categoryName,
-        categoryId,
-        subcategoryId,
-        driverId: bookingDriverId,
-        cancellationFee,
-        cancellationBufferTime,
-        shouldApplyCharges,
-        chargeReason
-      });
 
     } catch (modelError) {
       console.error('Error processing cancellation:', modelError);
@@ -1039,7 +1029,7 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
     }).sort({ createdAt: -1 }); // latest first (optional)
 
 
-    console.log('🚗 Extended rides:', confirmedRides)
+   
 
     const count = confirmedRides.length;
 
@@ -1107,7 +1097,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
+ 
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -1152,7 +1142,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     const driverName = driverInfo.personalInformation?.fullName
 
-    console.log('🚗 Driver name:', driverName)
+   
 
     // Find and update the ride only if status is BOOKED
     const updatedRide = await Ride.findOneAndUpdate(
@@ -1175,8 +1165,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to CONFIRMED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
 
-    console.log('✅ Ride confirmed by driver:', driverId, 'for ride:', rideId);
-
+   
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
     if (io) {
@@ -1305,7 +1294,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver confirming ride:', driverId, 'for ride:', rideId);
+   
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -1380,7 +1369,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to ONGOING
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "ONGOING" });
 
-    console.log('✅ Ride ongoing by driver:', driverId, 'for ride:', rideId);
+  
 
 
 
@@ -1492,7 +1481,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             // Use one credit
             driver.cancellationRideCredits -= 1;
             await driver.save();
-            console.log(`✅ Used cancellation credit. Remaining credits: ${driver.cancellationRideCredits}`);
+          
           } else {
             // No credits left, check wallet and deduct
             let wallet = await driverWallet.findOne({ driverId });
@@ -1520,7 +1509,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
                 status: "completed",
               });
               await wallet.save();
-              console.log(`✅ Deducted cancellation charges: ${cancellationCharges} from wallet`);
+            
             } else {
               const remainingCharges = cancellationCharges - currentBalance;
 
@@ -1538,7 +1527,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
               driver.unclearedCancellationCharges += remainingCharges;
               await driver.save();
-              console.log(`✅ Deducted ${currentBalance} from wallet, added ${remainingCharges} to uncleared charges`);
+            
             }
           }
         }
@@ -1722,7 +1711,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           }
         });
 
-        console.log(`🚗 New ride ${newCancelledRide._id} sent to ${sentCount} available drivers after full cancellation`);
+        
       }
 
 
@@ -1920,7 +1909,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         }
       });
 
-      console.log(`🚗 New cancelled ride ${newCancelledRide._id} sent to ${sentCount} available drivers`);
+      
     }
 
     // ✅ Update current ride with remaining dates and recalculated charges
@@ -1960,7 +1949,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver extending ride:', driverId, 'for ride:', rideId);
+  
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -2022,8 +2011,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to EXTENDED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "EXTENDED" });
 
-    console.log('✅ Ride extended by driver:', driverId, 'for ride:', rideId);
-
+    
 
 
     res.json({
@@ -2042,7 +2030,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    console.log('🚗 Driver completing ride:', driverId, 'for ride:', rideId);
+ 
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -2288,7 +2276,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = driverData.extraChargePerMinute;
       adminChargesInPercentage = driverData.extraChargesFromAdmin;
       gstChargesInPercentage = driverData.gst;
-      console.log("Driver Data:", driverData);
+    
     } else if (catNameLower === "cab") {
       const cabData = await getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId);
       includedKm = cabData.includedKm;
@@ -2297,7 +2285,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = cabData.extraChargePerMinute;
       adminChargesInPercentage = cabData.extraChargesFromAdmin;
       gstChargesInPercentage = cabData.gst;
-      console.log("Cab Data:", cabData);
+    
     } else if (catNameLower === "parcel") {
       const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId, selectedUsage, selectedCategoryId);
       includedKm = parcelData.includedKm;
@@ -2305,7 +2293,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = parcelData.extraChargePerMinute;
       adminChargesInPercentage = parcelData.extraChargesFromAdmin;
       gstChargesInPercentage = parcelData.gst;
-      console.log("Parcel Data:", parcelData);
+   
     }
 
     // Validate inputs and calculate extraKm
@@ -2521,7 +2509,7 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
 
     // Get cancellation charges for the ride
     const { categoryName, categoryId, subcategoryId, selectedCategoryId } = ride.rideInfo;
-    console.log("Fetching cancellation info for ride:", rideId, { categoryName, categoryId, subcategoryId, selectedCategoryId });
+    
     const categoryNameLower = categoryName.toLowerCase();
     let cancellationDetails = null;
 
@@ -2548,7 +2536,7 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
 
       const currentRideCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
 
-      console.log("Fetched cancellation details:", { cancellationDetails });
+      
 
       res.json({
         success: true,

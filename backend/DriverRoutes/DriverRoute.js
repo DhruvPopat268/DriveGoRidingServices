@@ -1339,13 +1339,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
         console.log(`✅ Vehicle created for ${ownership} driver: ${savedVehicle._id}`);
       }
     }
-
-    // Evaluate progress with the actual saved data
-    console.log(`🔍 About to evaluate progress after updating step ${step} for category ${category}`);
-    console.log(`🔍 Updated driver data keys:`, Object.keys(updatedDriver));
-    const progressResult = evaluateDriverProgress(updatedDriver);
-    console.log(`🏁 Progress evaluation result for step ${step}:`, progressResult);
-    console.log(`🔄 Will return nextStep: ${progressResult.step === 0 ? null : progressResult.step}`);
     
     // Update status if needed
     if (shouldUpdateStatus || progressResult.step === 0) {

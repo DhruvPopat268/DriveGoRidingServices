@@ -30,7 +30,7 @@ router.post('/image', upload.single('image'), async (req, res) => {
       const isImage = req.file.mimetype.startsWith('image/');
       const folder = isImage ? 'images' : 'documents';
       
-      console.log(`File MIME type: ${req.file.mimetype}, isImage: ${isImage}, folder: ${folder}`);
+    
       
       // Create cloud directory if it doesn't exist
       const uploadPath = path.join(__dirname, `../cloud/${folder}`);

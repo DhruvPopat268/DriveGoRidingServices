@@ -23,13 +23,13 @@ const calculateDriverRideCharges = async ({
     NoOfDays,
     selectedCategoryId // ✅ new param for specific price category
 }) => {
-    // console.log('🔍 calculateDriverRideCharges - Input params:', {
+    // //console.log('🔍 calculateDriverRideCharges - Input params:', {
     //     riderId, categoryId, selectedDate, selectedTime, includeInsurance,
     //     selectedUsage, subcategoryId, subSubcategoryId, durationType, NoOfDays, selectedCategoryId
     // });
 
     const rider = await Rider.findById(riderId);
-    console.log('👤 Rider found:', rider ? 'Yes' : 'No');
+    //console.log('👤 Rider found:', rider ? 'Yes' : 'No');
     if (!rider) throw new Error("Rider not found");
 
     const category = await Category.findById(categoryId);
@@ -87,9 +87,9 @@ const calculateDriverRideCharges = async ({
         rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
     }
 
-    console.log('🔍 Driver rideCostQuery:', rideCostQuery);
+    //console.log('🔍 Driver rideCostQuery:', rideCostQuery);
     const model = await DriverRideCost.findOne(rideCostQuery);
-    console.log('📊 Driver model found:', model ? 'Yes' : 'No', model ? model._id : 'None');
+    //console.log('📊 Driver model found:', model ? 'Yes' : 'No', model ? model._id : 'None');
     if (!model) throw new Error("No ride cost model found for this category");
 
     // peak hour logic
@@ -115,13 +115,13 @@ const calculateDriverRideCharges = async ({
 
     const hour = bookingDateTime.hour();
     const isNight = hour >= 22 || hour < 6;
-    console.log('🌙 Night time check:', { hour, isNight });
-    console.log('📈 Peak charges calculated:', peakCharges);
+    //console.log('🌙 Night time check:', { hour, isNight });
+    //console.log('📈 Peak charges calculated:', peakCharges);
 
     const priceCategory = await pricecategories.findById(model.priceCategory);
-    console.log('🏷️ Price category:', priceCategory?.priceCategoryName);
+    //console.log('🏷️ Price category:', priceCategory?.priceCategoryName);
     let driverCharges = model.baseFare || 0;
-    console.log('💰 Base fare:', driverCharges);
+    //console.log('💰 Base fare:', driverCharges);
 
     // apply duration logic
     if (durationType && NoOfDays) {
@@ -255,12 +255,12 @@ const calculateCabRideCharges = async ({
         rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
     }
 
-    console.log('🚗 Cab rideCostQuery:', rideCostQuery);
+    //console.log('🚗 Cab rideCostQuery:', rideCostQuery);
     const model = await CabRideCost.findOne(rideCostQuery)
         .populate("category", "name")
         .populate("car", "name");
 
-    console.log('📊 Cab model found:', model ? 'Yes' : 'No', model ? model._id : 'None');
+    //console.log('📊 Cab model found:', model ? 'Yes' : 'No', model ? model._id : 'None');
     if (!model) throw new Error("No ride cost model found for this car category");
 
     const peakChargesList = await peakHours.find({});

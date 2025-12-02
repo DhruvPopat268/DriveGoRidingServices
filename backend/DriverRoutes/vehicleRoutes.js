@@ -78,11 +78,11 @@ router.post("/create", DriverAuthMiddleware, upload.any(), async (req, res) => {
     }
 
     // Debug: Log received files
-    console.log('Received files:', req.files?.map(f => ({ fieldname: f.fieldname, mimetype: f.mimetype, size: f.size })));
+    //console.log('Received files:', req.files?.map(f => ({ fieldname: f.fieldname, mimetype: f.mimetype, size: f.size })));
     
     // Process uploaded files
     const uploadResults = req.files?.length ? await processAllFiles(req.files) : [];
-    console.log('Upload results:', uploadResults);
+    //console.log('Upload results:', uploadResults);
     
     // Organize files
     const fileGroups = {};
@@ -101,8 +101,8 @@ router.post("/create", DriverAuthMiddleware, upload.any(), async (req, res) => {
       }
     });
 
-    console.log('File groups:', fileGroups);
-    console.log('Single files:', singleFiles);
+    //console.log('File groups:', fileGroups);
+    //console.log('Single files:', singleFiles);
 
     // Merge file URLs with vehicle data
     Object.assign(vehicleData, singleFiles);
@@ -112,7 +112,7 @@ router.post("/create", DriverAuthMiddleware, upload.any(), async (req, res) => {
       }
     });
     
-    console.log('Final vehicle data:', vehicleData);
+    //console.log('Final vehicle data:', vehicleData);
 
     // Determine vehicle type and prepare details
     const vehicleType = driver.selectedCategory.name; // "Cab" or "Parcel"
@@ -616,7 +616,7 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
       return res.status(400).json({ success: false, message: "driverId is required" });
     }
 
-    console.log('Owner ID:', ownerId, 'Driver ID:', driverId);
+    //console.log('Owner ID:', ownerId, 'Driver ID:', driverId);
     const vehicles = await Vehicle.find({
       
          owner: ownerId ,

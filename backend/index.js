@@ -95,7 +95,7 @@ app.use('/api/cabVehicleTypes', cabVehicleTypeRoutes);
 app.use('/api/parcelVehicleTypes', parcelVehicleTypeRoutes);
 app.use('/api/cars', carRoutes);
 app.use('/api/upload', uploadRoutes);
-console.log('✅ Test upload routes registered at /api/test-upload');
+//console.log('✅ Test upload routes registered at /api/test-upload');
 app.use('/api/CabRideCosts', CabRideCostRoutes);
 app.use('/api/service-wallet-balances', serviceWalletBalanceRoutes);
 
@@ -180,29 +180,29 @@ io.on('connection', (socket) => {
               const categoryName = ride.rideInfo.categoryName;
               const categoryNameLower = categoryName.toLowerCase();
 
-              console.log(`🔍 Checking ride ${ride._id} for driver ${driverId}:`, {
+             /* console.log(`🔍 Checking ride ${ride._id} for driver ${driverId}:`, {
                 categoryName: categoryNameLower,
                 selectedCategoryId,
                 categoryId,
                 subcategoryId
-              });
+              });*/
 
               let driverMatches = false;
               const categoryMatches = driver.personalInformation?.category?.toString() === categoryId?.toString();
               const subcategoryMatches = driver.personalInformation?.subCategory?.includes(subcategoryId);
 
-              console.log(`📋 Driver info:`, {
+              /*console.log(`📋 Driver info:`, {
                 driverCategory: driver.driverCategory?.toString(),
                 personalCategory: driver.personalInformation?.category?.toString(),
                 personalSubCategory: driver.personalInformation?.subCategory,
                 categoryMatches,
                 subcategoryMatches
-              });
+              });*/
 
               // Check driver eligibility based on category
               if (categoryNameLower === 'driver') {
                 driverMatches = driver.driverCategory?.toString() === selectedCategoryId?.toString();
-                console.log(`🚗 Driver category match:`, driverMatches);
+                //console.log(`🚗 Driver category match:`, driverMatches);
               } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
                 const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
                 
@@ -227,26 +227,26 @@ io.on('connection', (socket) => {
                 }
                 
                 // Test the query step by step
-                console.log(`🔍 Testing query components:`);
+                //console.log(`🔍 Testing query components:`);
                 
                 // Test 1: Just modelType
                 const testQuery1 = await Vehicle.find({
                   [vehicleField]: selectedCategoryId
                 });
-                console.log(`Test 1 - modelType only: ${testQuery1.length} vehicles`);
+                //console.log(`Test 1 - modelType only: ${testQuery1.length} vehicles`);
                 
                 // Test 2: modelType + status
                 const testQuery2 = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true
                 });
-                console.log(`Test 2 - modelType + status: ${testQuery2.length} vehicles`);
+                //console.log(`Test 2 - modelType + status: ${testQuery2.length} vehicles`);
                 
                 // Test 3: Just assignedTo
                 const testQuery3 = await Vehicle.find({
                   assignedTo: { $in: [driverId, driverObjectId] }
                 });
-                console.log(`Test 3 - assignedTo only: ${testQuery3.length} vehicles`);
+                //console.log(`Test 3 - assignedTo only: ${testQuery3.length} vehicles`);
                 
                 // Final query with ownership validation
                 const vehicles = await Vehicle.find({
@@ -263,18 +263,18 @@ io.on('connection', (socket) => {
                   driverMatches = vehicles.length > 0;
                 }
 
-                console.log(`Final query result: ${vehicles.length} vehicles`);
+                //console.log(`Final query result: ${vehicles.length} vehicles`);
                 
-                console.log(`🔧 Query details:`, {
+                /*console.log(`🔧 Query details:`, {
                   driverId,
                   driverObjectId,
                   queryField: vehicleField,
                   queryValue: selectedCategoryId,
                   actualVehicleModelType: activeVehiclesWithModel[0]?.cabVehicleDetails?.modelType?.toString(),
                   modelTypeMatches: activeVehiclesWithModel[0]?.cabVehicleDetails?.modelType?.toString() === selectedCategoryId
-                });
+                });*/
                 
-                console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
+                /*console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
                   vehicleField,
                   selectedCategoryId,
                   driverId,
@@ -287,13 +287,13 @@ io.on('connection', (socket) => {
                     status: v.status,
                     driverInAssignedTo: v.assignedTo.map(id => id.toString()).includes(driverId)
                   }))
-                });
+                });*/
                 
-                console.log(`🔍 Driver assignment check:`, {
+               /* console.log(`🔍 Driver assignment check:`, {
                   lookingForDriver: driverId,
                   vehicleAssignments: activeVehiclesWithModel[0]?.assignedTo?.map(id => id.toString()),
                   isDriverAssigned: activeVehiclesWithModel[0]?.assignedTo?.map(id => id.toString()).includes(driverId)
-                });
+                });*/
                 
                 driverMatches = vehicles.length > 0;
               }
@@ -380,12 +380,6 @@ io.on('connection', (socket) => {
         console.error('Error sending available rides to new driver:', error);
       }
     }
-  });
-
-  // Test event for debugging
-  socket.on('test-connection', () => {
-    console.log('🧪 Test connection from:', socket.id);
-    socket.emit('test-response', { message: 'Connection working!', socketId: socket.id });
   });
 
   socket.on('disconnect', () => {
