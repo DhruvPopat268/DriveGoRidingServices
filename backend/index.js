@@ -180,24 +180,24 @@ io.on('connection', (socket) => {
               const categoryName = ride.rideInfo.categoryName;
               const categoryNameLower = categoryName.toLowerCase();
 
-             /* console.log(`🔍 Checking ride ${ride._id} for driver ${driverId}:`, {
+              console.log(`🔍 Checking ride ${ride._id} for driver ${driverId}:`, {
                 categoryName: categoryNameLower,
                 selectedCategoryId,
                 categoryId,
                 subcategoryId
-              });*/
+              });
 
               let driverMatches = false;
               const categoryMatches = driver.personalInformation?.category?.toString() === categoryId?.toString();
               const subcategoryMatches = driver.personalInformation?.subCategory?.includes(subcategoryId);
 
-              /*console.log(`📋 Driver info:`, {
+              console.log(`📋 Driver info:`, {
                 driverCategory: driver.driverCategory?.toString(),
                 personalCategory: driver.personalInformation?.category?.toString(),
                 personalSubCategory: driver.personalInformation?.subCategory,
                 categoryMatches,
                 subcategoryMatches
-              });*/
+              });
 
               // Check driver eligibility based on category
               if (categoryNameLower === 'driver') {
@@ -227,26 +227,26 @@ io.on('connection', (socket) => {
                 }
                 
                 // Test the query step by step
-                //console.log(`🔍 Testing query components:`);
+                console.log(`🔍 Testing query components:`);
                 
                 // Test 1: Just modelType
                 const testQuery1 = await Vehicle.find({
                   [vehicleField]: selectedCategoryId
                 });
-                //console.log(`Test 1 - modelType only: ${testQuery1.length} vehicles`);
+                console.log(`Test 1 - modelType only: ${testQuery1.length} vehicles`);
                 
                 // Test 2: modelType + status
                 const testQuery2 = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
                   status: true
                 });
-                //console.log(`Test 2 - modelType + status: ${testQuery2.length} vehicles`);
+                console.log(`Test 2 - modelType + status: ${testQuery2.length} vehicles`);
                 
                 // Test 3: Just assignedTo
                 const testQuery3 = await Vehicle.find({
                   assignedTo: { $in: [driverId, driverObjectId] }
                 });
-                //console.log(`Test 3 - assignedTo only: ${testQuery3.length} vehicles`);
+                console.log(`Test 3 - assignedTo only: ${testQuery3.length} vehicles`);
                 
                 // Final query with ownership validation
                 const vehicles = await Vehicle.find({
@@ -258,23 +258,23 @@ io.on('connection', (socket) => {
                 // Additional check: exclude drivers with 'Owner' ownership
                 if (vehicles.length > 0 && driver.ownership === 'Owner') {
                   driverMatches = false;
-                  //console.log(`🚫 Driver ${driverId} has 'Owner' ownership, excluding from ride notifications`);
+                  console.log(`🚫 Driver ${driverId} has 'Owner' ownership, excluding from ride notifications`);
                 } else {
                   driverMatches = vehicles.length > 0;
                 }
 
-                //console.log(`Final query result: ${vehicles.length} vehicles`);
+                console.log(`Final query result: ${vehicles.length} vehicles`);
                 
-                /*console.log(`🔧 Query details:`, {
+                console.log(`🔧 Query details:`, {
                   driverId,
                   driverObjectId,
                   queryField: vehicleField,
                   queryValue: selectedCategoryId,
                   actualVehicleModelType: activeVehiclesWithModel[0]?.cabVehicleDetails?.modelType?.toString(),
                   modelTypeMatches: activeVehiclesWithModel[0]?.cabVehicleDetails?.modelType?.toString() === selectedCategoryId
-                });*/
+                });
                 
-                /*console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
+                console.log(`🚙 Vehicle debug for ${categoryNameLower}:`, {
                   vehicleField,
                   selectedCategoryId,
                   driverId,
@@ -287,23 +287,23 @@ io.on('connection', (socket) => {
                     status: v.status,
                     driverInAssignedTo: v.assignedTo.map(id => id.toString()).includes(driverId)
                   }))
-                });*/
+                });
                 
-               /* console.log(`🔍 Driver assignment check:`, {
+                console.log(`🔍 Driver assignment check:`, {
                   lookingForDriver: driverId,
                   vehicleAssignments: activeVehiclesWithModel[0]?.assignedTo?.map(id => id.toString()),
                   isDriverAssigned: activeVehiclesWithModel[0]?.assignedTo?.map(id => id.toString()).includes(driverId)
-                });*/
+                });
                 
                 driverMatches = vehicles.length > 0;
               }
 
-              /*console.log(`✅ Final match result:`, {
+              console.log(`✅ Final match result:`, {
                 driverMatches,
                 categoryMatches,
                 subcategoryMatches,
                 willSendRide: driverMatches && categoryMatches && subcategoryMatches
-              });*/
+              });
 
               if (driverMatches && categoryMatches && subcategoryMatches) {
                 // Get vehicle type information
@@ -371,7 +371,7 @@ io.on('connection', (socket) => {
                 socket.emit('new-ride', rideData);
               }
             }
-            //console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status + matching categories)`);
+            console.log(`📤 Sent filtered available rides to new driver ${driverId} (WAITING status + matching categories)`);
           }
         } else {
           console.log(`🚫 Driver ${driverId} does not have WAITING status, no rides sent`);

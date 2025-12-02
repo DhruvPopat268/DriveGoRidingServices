@@ -414,7 +414,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         }
       }
 
-      //console.log("waiting drivers", waitingDrivers)
+      console.log("waiting drivers", waitingDrivers)
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
@@ -431,11 +431,11 @@ router.post("/book", authMiddleware, async (req, res) => {
         }
       });
 
-      //console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
+      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
       
       // Send push notifications to eligible drivers only
       try {
-        //console.log(`🔍 Looking for eligible drivers from ${waitingDriverIds.length} waiting drivers`);
+        console.log(`🔍 Looking for eligible drivers from ${waitingDriverIds.length} waiting drivers`);
         
         const eligibleDrivers = await Driver.find({
           _id: { $in: waitingDriverIds },
