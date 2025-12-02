@@ -254,6 +254,9 @@ io.on('connection', (socket) => {
                   status: true,
                   assignedTo: { $in: [driverId, driverObjectId] }
                 });
+                console.log('selected category id', selectedCategoryId)
+        console.log('vehicles', vehicles)
+        console.log("matched vehicles", vehicles)
                 
                 // Additional check: exclude drivers with 'Owner' ownership
                 if (vehicles.length > 0 && driver.ownership === 'Owner') {

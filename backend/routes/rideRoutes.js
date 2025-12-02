@@ -399,6 +399,9 @@ router.post("/book", authMiddleware, async (req, res) => {
           [vehicleField]: selectedCategoryId,
           status: true
         }).select('assignedTo');
+        console.log('selected category id', selectedCategoryId)
+        console.log('vehicles', vehicles)
+        console.log("matched vehicles", vehicles)
         
         const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
         

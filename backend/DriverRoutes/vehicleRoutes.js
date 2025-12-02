@@ -616,7 +616,7 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
       return res.status(400).json({ success: false, message: "driverId is required" });
     }
 
-    //console.log('Owner ID:', ownerId, 'Driver ID:', driverId);
+    console.log('Owner ID:', ownerId, 'Driver ID:', driverId);
     const vehicles = await Vehicle.find({
       
          owner: ownerId ,
