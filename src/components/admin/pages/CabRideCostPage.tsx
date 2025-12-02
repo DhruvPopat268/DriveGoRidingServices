@@ -231,6 +231,10 @@ export const CabRideCostPage = () => {
             // Show price categories if not outstation or if outstation and subSubCategory selected
             if (!isOutstationSubCategory()) {
                 setFilteredPriceCategories(priceCategories);
+                // Clear subSubCategory when switching away from outstation
+                if (isEditing) {
+                    setRideCostForm(prev => ({ ...prev, subSubCategory: '' }));
+                }
             } else {
                 setFilteredPriceCategories([]);
             }
@@ -350,7 +354,7 @@ export const CabRideCostPage = () => {
         const payload = {
             category: rideCostForm.category,
             subcategory: rideCostForm.subcategory,
-            ...(rideCostForm.subSubCategory && { subSubCategory: rideCostForm.subSubCategory }),
+            subSubCategory: rideCostForm.subSubCategory || null,
             priceCategory: rideCostForm.priceCategory,
             car: rideCostForm.car,
             ...(isFormParcelCategory() && { weight: parseFloat(rideCostForm.weight) || 0 }),
