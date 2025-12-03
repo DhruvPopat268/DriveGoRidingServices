@@ -49,6 +49,7 @@ import { DriversPendingPage } from "@/components/admin/pages/DriversPendingPage"
 import { DriversApprovedPage } from "@/components/admin/pages/DriversApprovedPage";
 import { DriversPendingForPaymentPage } from "@/components/admin/pages/DriversPendingForPaymentPage";
 import { DriversRejectedPage } from "@/components/admin/pages/DriversRejectedPage";
+import { DriversDeletedPage } from "@/components/admin/pages/DriversDeletedPage";
 import { DriverDetailPage } from "@/components/admin/pages/DriverDetailPage";
 import { DriverTransactionsPage } from "@/components/admin/pages/DriverTransactionsPage";
 import { RBACManagementPage } from "@/components/admin/pages/RBACManagementPage";
@@ -352,6 +353,17 @@ const Index = () => {
           />
         ) : (
           <DriversRejectedPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
+      case "drivers-deleted":
+        return selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)} 
+          />
+        ) : (
+          <DriversDeletedPage 
             onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
           />
         );

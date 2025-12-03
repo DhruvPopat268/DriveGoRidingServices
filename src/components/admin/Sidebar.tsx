@@ -98,7 +98,8 @@ const menuItems = [
       { icon: Clock, label: "Pending Registration Requests", key: "drivers-pending" },
       { icon: CheckCircle, label: "Approved Registration Requests", key: "drivers-approved" },
       { icon: Wallet, label: "Pending For Payment Requests", key: "drivers-pending-payment" },
-      { icon: XCircle, label: "Rejected Registration Requests", key: "drivers-rejected" }
+      { icon: XCircle, label: "Rejected Registration Requests", key: "drivers-rejected" },
+      { icon: Ban, label: "Deleted Drivers", key: "drivers-deleted" }
     ]
   },
   { icon: BookOpen, label: "T & C", key: "t&c" },

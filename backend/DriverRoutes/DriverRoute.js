@@ -409,6 +409,19 @@ router.get("/PendingForPayment", async (req, res) => {
   }
 });
 
+router.get("/deleted", async (req, res) => {
+  try {
+    const drivers = await Driver.find({ status: "deleted" }).sort({ deletedDate: -1 });
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+    res.status(200).json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Approve driver
 router.post("/approve/:driverId", async (req, res) => {
   try {
@@ -2147,11 +2160,19 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
 // Webhook for Razorpay payment updates
 router.post("/webhook", async (req, res) => {
   try {
-    const { payment_id, status } = req.body;
-
-    if (!payment_id || !status) {
-      return res.status(400).json({ error: "Payment ID and status required" });
+    const webhookPayload = req.body;
+    console.log('🔔 Razorpay Webhook Received:', JSON.stringify(webhookPayload, null, 2));
+    
+    // Extract payment info from Razorpay webhook payload
+    const event = webhookPayload.event;
+    const paymentEntity = webhookPayload.payload?.payment?.entity;
+    
+    if (!paymentEntity || !paymentEntity.id) {
+      return res.status(400).json({ error: "Invalid webhook payload" });
     }
+
+    const payment_id = paymentEntity.id;
+    const status = paymentEntity.status;
 
     // Status mapping
     const statusMap = {
@@ -2166,7 +2187,7 @@ router.post("/webhook", async (req, res) => {
 
     const mappedStatus = statusMap[status];
     if (!mappedStatus) {
-      return res.json({ status: 'ignored' });
+      return res.json({ status: 'ignored', event });
     }
 
     // Find wallet with pending transaction
@@ -2176,7 +2197,7 @@ router.post("/webhook", async (req, res) => {
     });
 
     if (!wallet) {
-      return res.json({ status: 'transaction_not_found' });
+      return res.json({ status: 'transaction_not_found', payment_id });
     }
 
     // Find and update the transaction
@@ -2197,7 +2218,7 @@ router.post("/webhook", async (req, res) => {
       await wallet.save();
     }
 
-    res.json({ status: 'ok', updated: !!transaction });
+    res.json({ status: 'ok', updated: !!transaction, event });
   } catch (error) {
     console.error("Webhook error:", error);
     res.status(500).json({ error: "Webhook processing failed" });
