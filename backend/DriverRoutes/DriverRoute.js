@@ -2096,7 +2096,8 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
 
     // Check minimum deposit amount
     const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
-    const minDepositAmount = config?.minDepositAmount || 0;
+    //const minDepositAmount = config?.minDepositAmount || 0;
+    const minDepositAmount = 1; // Set to 1 for testing purposes
     
     if (amount < minDepositAmount) {
       return res.status(400).json({ 
