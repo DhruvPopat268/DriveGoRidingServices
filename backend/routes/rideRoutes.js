@@ -452,16 +452,21 @@ router.post("/book", authMiddleware, async (req, res) => {
           
           console.log(`📤 Sending push notifications to player IDs:`, playerIds);
           
+          const notificationData = {
+            type: 'ride_request',
+            rideId: newRide._id.toString(),
+            riderName: newRide.riderInfo.riderName,
+            pickup: newRide.riderInfo.fromLocation.address,
+            destination: newRide.riderInfo.toLocation?.address || 'Destination',
+            date: newRide.rideInfo.selectedDate ? formattedSelectedDate : '',
+            time: newRide.rideInfo.selectedTime || ''
+          };
+
           await NotificationService.sendToMultipleUsers(
             playerIds,
             'New Ride Available',
-            'New trip alert! Be the first to accept',
-            {
-              type: 'ride_request',
-              rideId: newRide._id,
-              pickup: fromLocationData.address,
-              destination: toLocationData?.address || 'Destination'
-            }
+            `${notificationData.riderName} needs a ride from ${notificationData.pickup} on ${notificationData.date} at ${notificationData.time}`,
+            notificationData
           );
           
           console.log(`✅ Push notification sent successfully to ${playerIds.length} eligible drivers`);

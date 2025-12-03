@@ -25,13 +25,15 @@ class NotificationService {
   // Send notification to multiple users
   static async sendToMultipleUsers(playerIds, title, message, data = {}) {
     try {
+      // Encode data in message for free OneSignal accounts
+      const encodedMessage = data && Object.keys(data).length > 0 
+        ? `${message}|DATA:${JSON.stringify(data)}`
+        : message;
+
       const notification = {
-        contents: { en: message },
+        contents: { en: encodedMessage },
         headings: { en: title },
-        include_player_ids: playerIds,
-        data: data,
-        content_available: true,
-        mutable_content: true
+        include_player_ids: playerIds
       };
 
       console.log('Notification payload:', notification);
