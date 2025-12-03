@@ -9,7 +9,9 @@ class NotificationService {
         contents: { en: message },
         headings: { en: title },
         include_player_ids: [playerId],
-        data: data
+        data: data,
+        content_available: true,
+        mutable_content: true
       };
 
       const response = await client.createNotification(notification);
@@ -27,7 +29,9 @@ class NotificationService {
         contents: { en: message },
         headings: { en: title },
         include_player_ids: playerIds,
-        data: data
+        data: data,
+        content_available: true,
+        mutable_content: true
       };
 
       console.log('Notification payload:', notification);
