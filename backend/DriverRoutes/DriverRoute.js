@@ -2086,8 +2086,8 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
     const { status, amount, paymentId } = req.body;
     const driverId = req.driver.driverId;
 
-    if (!status || !amount || !paymentId) {
-      return res.status(400).json({ message: "Status, amount, and paymentId are required" });
+    if (!amount || !paymentId) {
+      return res.status(400).json({ message: "Amount and paymentId are required" });
     }
 
     if (amount <= 0) {
@@ -2104,22 +2104,6 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Status mapping
-    const statusMap = {
-      'created': 'pending',
-      'authorized': 'pending',
-      'authentication_pending': 'pending',
-      'captured': 'completed',
-      'paid': 'completed',
-      'failed': 'failed',
-      'voided': 'failed',
-      'cancelled': 'failed',
-      'refunded': 'refunded',
-      'partial_refunded': 'partial_refund'
-    };
-
-    const mappedStatus = statusMap[status] || 'pending';
-
     // Find or create wallet
     let wallet = await driverWallet.findOne({ driverId });
     if (!wallet) {
@@ -2134,28 +2118,24 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Create transaction
+    // Store frontend status but always keep as pending initially
+    // Only webhook will update the final status for security
     const transaction = {
       type: "deposit",
       amount,
-      status: mappedStatus,
+      status: "pending", // Always pending initially, webhook will update
       razorpayPaymentId: paymentId,
-      description: `Wallet deposit via Razorpay - ${status}`,
-      paymentMethod: "razorpay"
+      description: `Wallet deposit initiated - ${status || 'unknown'}`,
+      paymentMethod: "razorpay",
+      frontendStatus: status // Store what frontend sent for reference
     };
 
     wallet.transactions.push(transaction);
-
-    // Add money to wallet only if completed
-    if (mappedStatus === 'completed') {
-      wallet.balance += amount;
-    }
-
     await wallet.save();
 
     res.json({
       success: true,
-      message: `Deposit ${mappedStatus}`,
+      message: "Deposit initiated, awaiting payment confirmation",
       transaction: wallet.transactions[wallet.transactions.length - 1],
       walletBalance: wallet.balance
     });
@@ -2181,8 +2161,9 @@ router.post("/webhook", async (req, res) => {
 
     const payment_id = paymentEntity.id;
     const status = paymentEntity.status;
+    const webhookAmount = paymentEntity.amount ? paymentEntity.amount / 100 : null; // Convert paise to rupees
 
-    // Status mapping
+    // Status mapping - only webhook determines final status
     const statusMap = {
       'captured': 'completed',
       'paid': 'completed',
@@ -2205,6 +2186,7 @@ router.post("/webhook", async (req, res) => {
     });
 
     if (!wallet) {
+      console.log(`⚠️ Transaction not found for payment_id: ${payment_id}`);
       return res.json({ status: 'transaction_not_found', payment_id });
     }
 
@@ -2214,19 +2196,31 @@ router.post("/webhook", async (req, res) => {
     );
 
     if (transaction) {
-      const oldStatus = transaction.status;
-      transaction.status = mappedStatus;
-      transaction.description = `Wallet deposit via Razorpay - ${status} (webhook)`;
+      // SECURITY: Verify amount matches what was stored
+      if (webhookAmount && transaction.amount !== webhookAmount) {
+        console.error(`⚠️ Amount mismatch for ${payment_id}: stored=${transaction.amount}, webhook=${webhookAmount}`);
+        transaction.status = 'failed';
+        transaction.description = `Amount verification failed - stored: ₹${transaction.amount}, webhook: ₹${webhookAmount}`;
+        await wallet.save();
+        return res.json({ status: 'amount_mismatch', payment_id, stored: transaction.amount, webhook: webhookAmount });
+      }
 
-      // Add money to wallet if completed
+      const oldStatus = transaction.status;
+      transaction.status = mappedStatus; // Always use webhook status
+      transaction.description = `Wallet deposit via Razorpay - ${status} (verified by webhook)`;
+      transaction.webhookVerified = true;
+      transaction.webhookTimestamp = new Date();
+
+      // Add money to wallet only if completed and verified
       if (mappedStatus === 'completed' && oldStatus === 'pending') {
         wallet.balance += transaction.amount;
+        console.log(`✅ Payment verified and completed: ${payment_id}, Amount: ₹${transaction.amount}`);
       }
 
       await wallet.save();
     }
 
-    res.json({ status: 'ok', updated: !!transaction, event });
+    res.json({ status: 'ok', updated: !!transaction, event, verified: true });
   } catch (error) {
     console.error("Webhook error:", error);
     res.status(500).json({ error: "Webhook processing failed" });
