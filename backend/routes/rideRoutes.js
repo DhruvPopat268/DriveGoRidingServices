@@ -453,9 +453,17 @@ router.post("/book", authMiddleware, async (req, res) => {
           console.log(`📤 Sending push notifications to player IDs:`, playerIds);
           console.log('new ride data for notification:', newRide);
           
+          // Convert time to 12-hour format
+          const formatTo12Hour = (time24) => {
+            const [hours, minutes] = time24.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const hour12 = hour % 12 || 12;
+            return `${hour12}:${minutes} ${ampm}`;
+          };
 
-
-          const message = `${newRide.riderInfo.riderName} books a ride pick up at ${formattedSelectedDate} on ${newRide.rideInfo.selectedTime}.`; 
+          const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
+          const message = `${newRide.riderInfo.riderName} books a ${newRide.rideInfo.subcategoryName} ride  pick up on ${formattedSelectedDate} at ${formattedTime}.`; 
 
           await NotificationService.sendToMultipleUsers(
             playerIds,
