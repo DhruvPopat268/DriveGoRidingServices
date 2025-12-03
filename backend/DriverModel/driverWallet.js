@@ -18,7 +18,7 @@ const transactionSchema = new mongoose.Schema(
 
     paymentMethod: {
       type: String,
-      enum: ["cash", "wallet", "bank_transfer", "upi", "other"],
+      enum: ["cash", "wallet", "bank_transfer", "upi", "other", "razorpay"],
       default: "wallet",
     },
     withdrawalRequestId: {
