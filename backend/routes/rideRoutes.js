@@ -453,20 +453,9 @@ router.post("/book", authMiddleware, async (req, res) => {
           console.log(`📤 Sending push notifications to player IDs:`, playerIds);
           console.log('new ride data for notification:', newRide);
           
-          const notificationData = {
-            type: 'ride_request',
-            rideId: newRide._id.toString(),
-            riderName: newRide.riderInfo.riderName,
-            subcategoryName: newRide.rideInfo?.subcategoryName,
-            pickup: newRide.rideInfo?.fromLocation?.address,
-            destination: newRide.rideInfo?.toLocation?.address || 'Destination',
-            date: newRide.rideInfo?.selectedDate ? formattedSelectedDate : '',
-            time: newRide.rideInfo?.selectedTime || ''
-          };
 
-          const message = newRide.rideInfo?.toLocation 
-            ? `${notificationData.riderName} books a ${notificationData.subcategoryName} ride from ${notificationData.pickup} to ${notificationData.destination} ${notificationData.date} at ${notificationData.time}`
-            : `${notificationData.riderName} books a ${notificationData.subcategoryName} ride from ${notificationData.pickup} ${notificationData.date} at ${notificationData.time}`;
+
+          const message = `${newRide.riderInfo.riderName} books a ride pick up at ${newRide.rideInfo.selectedDate} on ${newRide.rideInfo.selectedTime}.`; 
 
           await NotificationService.sendToMultipleUsers(
             playerIds,
