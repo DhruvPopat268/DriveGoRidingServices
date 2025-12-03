@@ -848,9 +848,8 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             bookingDriverId,
             driver.oneSignalPlayerId,
             'Trip Cancelled',
-            'The rider has cancelled this trip',
+            `${updatedBooking.riderInfo.riderName} has cancelled the ${updatedBooking.rideInfo.subcategoryName} trip`,
             'ride_cancelled',
-            { rideId: bookingId }
           );
         }
       } catch (notifError) {
