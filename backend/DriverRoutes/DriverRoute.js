@@ -1042,9 +1042,14 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
       await driver.save();
     }
 
-    // Get minDepositAmount
+    // Get wallet configuration amounts
     const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
     const minDepositAmount = config?.minDepositAmount || 0;
+    const minWithdrawAmount = config?.minWithdrawAmount || 0;
+
+    // Get notification counts
+    const totalNotifications = await DriverNotification.countDocuments({ driverId });
+    const unreadCount = await DriverNotification.countDocuments({ driverId, isRead: false });
 
     // Prepare response
     const response = {
@@ -1054,7 +1059,10 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
       status: driver.status,
       selectedCategory: driver.selectedCategory,
       uniqueId: driver.uniqueId,
-      minDepositAmount
+      minDepositAmount,
+      minWithdrawAmount,
+      totalNotifications,
+      unreadCount
     };
 
     // Add ownership if exists
