@@ -2149,7 +2149,32 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
 router.post("/webhook", async (req, res) => {
   try {
     const webhookPayload = req.body;
-    console.log('🔔 Razorpay Webhook Received:', JSON.stringify(webhookPayload, null, 2));
+    const receivedSignature = req.headers['x-razorpay-signature'];
+    
+    // Verify webhook signature
+    if (!receivedSignature) {
+      return res.status(400).json({ error: "Missing webhook signature" });
+    }
+
+    const crypto = require('crypto');
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    
+    if (!webhookSecret) {
+      console.error('⚠️ RAZORPAY_WEBHOOK_SECRET not configured');
+      return res.status(500).json({ error: "Webhook secret not configured" });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(JSON.stringify(webhookPayload))
+      .digest('hex');
+
+    if (receivedSignature !== expectedSignature) {
+      console.error('⚠️ Invalid webhook signature');
+      return res.status(400).json({ error: "Invalid webhook signature" });
+    }
+
+    console.log('🔔 Razorpay Webhook Verified & Received:', JSON.stringify(webhookPayload, null, 2));
     
     // Extract payment info from Razorpay webhook payload
     const event = webhookPayload.event;
