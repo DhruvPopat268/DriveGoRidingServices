@@ -456,10 +456,10 @@ router.post("/book", authMiddleware, async (req, res) => {
             type: 'ride_request',
             rideId: newRide._id.toString(),
             riderName: newRide.riderInfo.riderName,
-            pickup: newRide.riderInfo.fromLocation.address,
-            destination: newRide.riderInfo.toLocation?.address || 'Destination',
-            date: newRide.rideInfo.selectedDate ? formattedSelectedDate : '',
-            time: newRide.rideInfo.selectedTime || ''
+            pickup: newRide.riderInfo?.fromLocation?.address,
+            destination: newRide.riderInfo?.toLocation?.address || 'Destination',
+            date: newRide.rideInfo?.selectedDate ? formattedSelectedDate : '',
+            time: newRide.rideInfo?.selectedTime || ''
           };
 
           await NotificationService.sendToMultipleUsers(
