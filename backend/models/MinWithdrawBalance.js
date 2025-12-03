@@ -12,6 +12,12 @@ const minHoldBalanceSchema = new mongoose.Schema({
     required: true,
     default: 0,
     min: 0
+  },
+  minDepositAmount: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0
   }
 }, {
   timestamps: true

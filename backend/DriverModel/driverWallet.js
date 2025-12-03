@@ -4,7 +4,7 @@ const transactionSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["ride_payment", "withdrawal", "cancellation_charge", "refunded", "incentive"],
+      enum: ["ride_payment", "withdrawal", "cancellation_charge", "refunded", "incentive", "deposit"],
       required: true,
     },
     amount: {
@@ -21,13 +21,17 @@ const transactionSchema = new mongoose.Schema(
       enum: ["cash", "wallet", "bank_transfer", "upi", "other"],
       default: "wallet",
     },
-    withdrawalRequestId: {   // ← add this field
+    withdrawalRequestId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "WithdrawalRequest",
     },
+    // Razorpay fields for deposits
+    razorpayPaymentId: {
+      type: String,
+    },
     status: {
       type: String,
-      enum: ["pending", "completed" , "failed"],
+      enum: ["pending", "completed", "failed", "refunded", "partial_refund"],
       default: "pending",
     },
     description: {

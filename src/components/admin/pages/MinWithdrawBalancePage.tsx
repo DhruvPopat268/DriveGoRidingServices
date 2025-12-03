@@ -14,6 +14,7 @@ interface MinHoldBalanceEntry {
   _id: string;
   minHoldBalance: number;
   minWithdrawAmount: number;
+  minDepositAmount: number;
   updatedBy: string;
   createdAt: string;
 }
@@ -21,6 +22,7 @@ interface MinHoldBalanceEntry {
 const MinWithdrawBalancePage = () => {
   const [minHoldBalance, setMinHoldBalance] = useState('');
   const [minWithdrawAmount, setMinWithdrawAmount] = useState('');
+  const [minDepositAmount, setMinDepositAmount] = useState('');
   const [loading, setLoading] = useState(false);
   const [entries, setEntries] = useState<MinHoldBalanceEntry[]>([]);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -43,7 +45,7 @@ const MinWithdrawBalancePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!minHoldBalance || !minWithdrawAmount || parseFloat(minHoldBalance) < 0 || parseFloat(minWithdrawAmount) < 0) {
+    if (!minHoldBalance || !minWithdrawAmount || !minDepositAmount || parseFloat(minHoldBalance) < 0 || parseFloat(minWithdrawAmount) < 0 || parseFloat(minDepositAmount) < 0) {
       setMessage({ type: 'error', text: 'Please enter valid amounts' });
       return;
     }
@@ -54,13 +56,15 @@ const MinWithdrawBalancePage = () => {
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/min-withdraw-balance`, {
         minHoldBalance: parseFloat(minHoldBalance),
-        minWithdrawAmount: parseFloat(minWithdrawAmount)
+        minWithdrawAmount: parseFloat(minWithdrawAmount),
+        minDepositAmount: parseFloat(minDepositAmount)
       });
 
       if (response.data.success) {
         setMessage({ type: 'success', text: 'New configuration created successfully!' });
         setMinHoldBalance('');
         setMinWithdrawAmount('');
+        setMinDepositAmount('');
         fetchEntries();
         setTimeout(() => {
           setIsDialogOpen(false);
@@ -132,6 +136,19 @@ const MinWithdrawBalancePage = () => {
                   placeholder="Enter minimum withdraw amount"
                 />
               </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="minDepositAmount">Minimum Deposit Amount (₹)</Label>
+                <Input
+                  id="minDepositAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={minDepositAmount}
+                  onChange={(e) => setMinDepositAmount(e.target.value)}
+                  placeholder="Enter minimum deposit amount"
+                />
+              </div>
 
               {message.text && (
                 <Alert className={message.type === 'error' ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'}>
@@ -150,6 +167,7 @@ const MinWithdrawBalancePage = () => {
                     setIsDialogOpen(false);
                     setMinHoldBalance('');
                     setMinWithdrawAmount('');
+                    setMinDepositAmount('');
                     setMessage({ type: '', text: '' });
                   }}
                   className="flex-1"
@@ -181,7 +199,7 @@ const MinWithdrawBalancePage = () => {
                 <TableRow>
                   <TableHead>Hold Balance</TableHead>
                   <TableHead>Min Withdraw Amount</TableHead>
-
+                  <TableHead>Min Deposit Amount</TableHead>
                   <TableHead>Created At</TableHead>
                 </TableRow>
               </TableHeader>
@@ -197,6 +215,7 @@ const MinWithdrawBalancePage = () => {
                     <TableRow key={entry._id}>
                       <TableCell className="font-medium">₹{entry.minHoldBalance}</TableCell>
                       <TableCell className="font-medium">₹{entry.minWithdrawAmount}</TableCell>
+                      <TableCell className="font-medium">₹{entry.minDepositAmount}</TableCell>
                       <TableCell>{new Date(entry.createdAt).toLocaleString()}</TableCell>
                     </TableRow>
                   ))

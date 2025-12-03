@@ -299,6 +299,7 @@ router.post('/webhook', express.raw({type: 'application/json'}), async (req, res
     }
 
     const event = req.body;
+    console.log('Razorpay Webhook user Event:', event);
 
     switch (event.event) {
       case 'payment.captured':

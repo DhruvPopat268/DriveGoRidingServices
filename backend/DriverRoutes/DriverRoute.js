@@ -5,7 +5,6 @@ const SubCategory = require('../models/SubCategory');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 const Vehicle = require("../DriverModel/VehicleModel");
 const router = express.Router();
-
 const DriverOtpSession = require("../DriverModel/DriverOtpSession");
 const twilio = require("twilio");
 const jwt = require("jsonwebtoken");
@@ -60,6 +59,7 @@ function getFieldByStep(step, category = "Driver") {
   };
   return stepFieldMaps[category]?.[step] || null;
 }
+// Get wallet configuration (minimum amounts)
 
 //dummy otp
 router.post("/send-otp", async (req, res) => {
@@ -715,6 +715,54 @@ router.post("/manage-credits", async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+router.get("/wallet-config", DriverAuthMiddleware, async (req, res) => {
+  try {
+    console.log('=== WALLET CONFIG DEBUG ===');
+    console.log('Driver from middleware:', req.driver);
+    console.log('Driver ID:', req.driver?.driverId);
+    
+    if (!req.driver || !req.driver.driverId) {
+      return res.status(401).json({
+        success: false,
+        message: "Driver authentication failed"
+      });
+    }
+    
+    const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
+    console.log('Found config:', config);
+    
+    if (!config) {
+      console.log('No config found, returning defaults');
+      return res.json({
+        success: true,
+        data: {
+          minHoldBalance: 0,
+          minWithdrawAmount: 0,
+          minDepositAmount: 0
+        }
+      });
+    }
+
+    console.log('Returning config data');
+    res.json({
+      success: true,
+      data: {
+        minHoldBalance: config.minHoldBalance,
+        minWithdrawAmount: config.minWithdrawAmount,
+        minDepositAmount: config.minDepositAmount
+      }
+    });
+  } catch (error) {
+    console.error('=== WALLET CONFIG ERROR ===');
+    console.error('Error details:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch wallet configuration",
+      error: error.message 
+    });
   }
 });
 
@@ -1721,21 +1769,22 @@ router.get("/admin/min-withdraw-balance/all", async (req, res) => {
 // Create new minimum hold balance entry
 router.post("/admin/min-withdraw-balance", async (req, res) => {
   try {
-    const { minHoldBalance, minWithdrawAmount } = req.body;
+    const { minHoldBalance, minWithdrawAmount, minDepositAmount } = req.body;
 
-    if (minHoldBalance < 0 || minWithdrawAmount < 0) {
+    if (minHoldBalance < 0 || minWithdrawAmount < 0 || minDepositAmount < 0) {
       return res.status(400).json({ message: "Values cannot be negative" });
     }
 
     // Create new config (latest entry becomes active)
     const newConfig = await MinHoldBalance.create({
       minHoldBalance: minHoldBalance || 0,
-      minWithdrawAmount: minWithdrawAmount || 0
+      minWithdrawAmount: minWithdrawAmount || 0,
+      minDepositAmount: minDepositAmount || 0
     });
 
     res.json({
       success: true,
-      message: "New hold balance configuration created successfully",
+      message: "New wallet configuration created successfully",
       data: newConfig
     });
   } catch (error) {
@@ -2049,6 +2098,153 @@ router.get("/admin/incentive-history", async (req, res) => {
     res.status(200).json({ success: true, data: incentives });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
+
+// Deposit money to driver wallet
+router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const { status, amount, paymentId } = req.body;
+    const driverId = req.driver.driverId;
+
+    if (!status || !amount || !paymentId) {
+      return res.status(400).json({ message: "Status, amount, and paymentId are required" });
+    }
+
+    if (amount <= 0) {
+      return res.status(400).json({ message: "Amount must be greater than 0" });
+    }
+
+    // Check minimum deposit amount
+    const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
+    const minDepositAmount = config?.minDepositAmount || 0;
+    
+    if (amount < minDepositAmount) {
+      return res.status(400).json({ 
+        message: `Minimum deposit amount is ₹${minDepositAmount}` 
+      });
+    }
+
+    // Status mapping
+    const statusMap = {
+      'created': 'pending',
+      'authorized': 'pending',
+      'authentication_pending': 'pending',
+      'captured': 'completed',
+      'paid': 'completed',
+      'failed': 'failed',
+      'voided': 'failed',
+      'cancelled': 'failed',
+      'refunded': 'refunded',
+      'partial_refunded': 'partial_refund'
+    };
+
+    const mappedStatus = statusMap[status] || 'pending';
+
+    // Find or create wallet
+    let wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) {
+      wallet = await driverWallet.create({
+        driverId,
+        balance: 0,
+        totalEarnings: 0,
+        totalWithdrawn: 0,
+        totalDeductions: 0,
+        totalIncentives: 0,
+        transactions: []
+      });
+    }
+
+    // Create transaction
+    const transaction = {
+      type: "deposit",
+      amount,
+      status: mappedStatus,
+      razorpayPaymentId: paymentId,
+      description: `Wallet deposit via Razorpay - ${status}`,
+      paymentMethod: "razorpay"
+    };
+
+    wallet.transactions.push(transaction);
+
+    // Add money to wallet only if completed
+    if (mappedStatus === 'completed') {
+      wallet.balance += amount;
+    }
+
+    await wallet.save();
+
+    res.json({
+      success: true,
+      message: `Deposit ${mappedStatus}`,
+      transaction: wallet.transactions[wallet.transactions.length - 1],
+      walletBalance: wallet.balance
+    });
+  } catch (error) {
+    console.error("Deposit error:", error);
+    res.status(500).json({ success: false, message: "Deposit failed", error: error.message });
+  }
+});
+
+// Webhook for Razorpay payment updates
+router.post("/webhook", async (req, res) => {
+  try {
+    const { payment_id, status } = req.body;
+
+    if (!payment_id || !status) {
+      return res.status(400).json({ error: "Payment ID and status required" });
+    }
+
+    // Status mapping
+    const statusMap = {
+      'captured': 'completed',
+      'paid': 'completed',
+      'failed': 'failed',
+      'voided': 'failed',
+      'cancelled': 'failed',
+      'refunded': 'refunded',
+      'partial_refunded': 'partial_refund'
+    };
+
+    const mappedStatus = statusMap[status];
+    if (!mappedStatus) {
+      return res.json({ status: 'ignored' });
+    }
+
+    // Find wallet with pending transaction
+    const wallet = await driverWallet.findOne({
+      'transactions.razorpayPaymentId': payment_id,
+      'transactions.status': 'pending'
+    });
+
+    if (!wallet) {
+      return res.json({ status: 'transaction_not_found' });
+    }
+
+    // Find and update the transaction
+    const transaction = wallet.transactions.find(
+      t => t.razorpayPaymentId === payment_id && t.status === 'pending'
+    );
+
+    if (transaction) {
+      const oldStatus = transaction.status;
+      transaction.status = mappedStatus;
+      transaction.description = `Wallet deposit via Razorpay - ${status} (webhook)`;
+
+      // Add money to wallet if completed
+      if (mappedStatus === 'completed' && oldStatus === 'pending') {
+        wallet.balance += transaction.amount;
+      }
+
+      await wallet.save();
+    }
+
+    res.json({ status: 'ok', updated: !!transaction });
+  } catch (error) {
+    console.error("Webhook error:", error);
+    res.status(500).json({ error: "Webhook processing failed" });
   }
 });
 
