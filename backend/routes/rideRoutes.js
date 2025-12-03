@@ -458,8 +458,8 @@ router.post("/book", authMiddleware, async (req, res) => {
             rideId: newRide._id.toString(),
             riderName: newRide.riderInfo.riderName,
             subcategoryName: newRide.rideInfo?.subcategoryName,
-            pickup: newRide.riderInfo?.fromLocation?.address,
-            destination: newRide.riderInfo?.toLocation?.address || 'Destination',
+            pickup: newRide.rideInfo?.fromLocation?.address,
+            destination: newRide.rideInfo?.toLocation?.address || 'Destination',
             date: newRide.rideInfo?.selectedDate ? formattedSelectedDate : '',
             time: newRide.rideInfo?.selectedTime || ''
           };
@@ -472,7 +472,6 @@ router.post("/book", authMiddleware, async (req, res) => {
             playerIds,
             'New Ride Available',
             message,
-            
           );
           
           console.log(`✅ Push notification sent successfully to ${playerIds.length} eligible drivers`);
