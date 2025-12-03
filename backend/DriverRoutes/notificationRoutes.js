@@ -22,12 +22,8 @@ router.get('/', DriverAuthMiddleware, async (req, res) => {
     res.json({
       success: true,
       data: notifications,
-      pagination: {
-        page,
-        limit,
-        total: totalNotifications,
-        pages: Math.ceil(totalNotifications / limit)
-      },
+     totalNotifications,
+    
       unreadCount
     });
   } catch (error) {

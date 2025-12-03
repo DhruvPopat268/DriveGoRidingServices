@@ -463,7 +463,7 @@ router.post("/book", authMiddleware, async (req, res) => {
           };
 
           const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
-          const message = `${newRide.riderInfo.riderName} books a ${newRide.rideInfo.subcategoryName} ride  pick up on ${formattedSelectedDate} at ${formattedTime}.`; 
+          const message = `${newRide.riderInfo.riderName} books a ${newRide.rideInfo.subcategoryName} ride  pick up on ${formattedSelectedDate.replace(/ /g, '/')} at ${formattedTime}.`; 
 
           await NotificationService.sendToMultipleUsers(
             playerIds,
