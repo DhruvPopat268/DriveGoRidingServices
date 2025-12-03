@@ -2086,6 +2086,8 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
     const { status, amount, paymentId } = req.body;
     const driverId = req.driver.driverId;
 
+    console.log("💰 Deposit request received:", { driverId, status, amount, paymentId });
+
     if (!amount || !paymentId) {
       return res.status(400).json({ message: "Amount and paymentId are required" });
     }
@@ -2119,15 +2121,19 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Store frontend status but always keep as pending initially
-    // Only webhook will update the final status for security
+    // Handle frontend status - if failed, mark as failed immediately
+    // Otherwise keep as pending for webhook verification
+    const transactionStatus = status === "failed" ? "failed" : "pending";
+    
     const transaction = {
       type: "deposit",
       amount,
-      status: "pending", // Always pending initially, webhook will update
+      status: transactionStatus,
       razorpayPaymentId: paymentId,
-      description: `Wallet deposit initiated - ${status || 'unknown'}`,
-      paymentMethod: "razorpay",
+      description: status === "failed" 
+        ? `Wallet deposit failed - ${status}` 
+        : `Wallet deposit initiated - ${status || 'unknown'}`,
+      paymentMethod: "razorpay", // Using correct enum value from model
       frontendStatus: status // Store what frontend sent for reference
     };
 
