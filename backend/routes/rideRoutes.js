@@ -472,7 +472,7 @@ router.post("/book", authMiddleware, async (req, res) => {
             playerIds,
             'New Ride Available',
             message,
-            notificationData
+            
           );
           
           console.log(`✅ Push notification sent successfully to ${playerIds.length} eligible drivers`);
