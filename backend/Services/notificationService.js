@@ -36,7 +36,7 @@ class NotificationService {
         include_player_ids: playerIds
       };
 
-      console.log('Notification payload:', notification);
+     
 
       const response = await client.createNotification(notification);
       return { success: true, response };

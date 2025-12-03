@@ -399,9 +399,7 @@ router.post("/book", authMiddleware, async (req, res) => {
           [vehicleField]: selectedCategoryId,
           status: true
         }).select('assignedTo');
-        console.log('selected category id', selectedCategoryId)
-        console.log('vehicles', vehicles)
-        console.log("matched vehicles", vehicles)
+
         
         const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
         
@@ -424,7 +422,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status and matching categories for ${categoryNameLower}`);
 
       // Send to online drivers who have WAITING rideStatus
-      console.log('ride data to send:', rideData);
+      //console.log('ride data to send:', rideData);
       let sentCount = 0;
       Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
         // Only send to drivers with WAITING status

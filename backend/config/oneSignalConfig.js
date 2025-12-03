@@ -7,11 +7,6 @@ const oneSignalConfig = {
   userAuthKey: process.env.ONESIGNAL_USER_AUTH_KEY // Optional
 };
 
-// Debug logging
-console.log('🔧 OneSignal Config Check:');
-console.log('App ID:', oneSignalConfig.appId ? 'Found' : 'Missing',oneSignalConfig.appId);
-console.log('REST API Key:', oneSignalConfig.restApiKey ? 'Found' : 'Missing',oneSignalConfig.restApiKey);
-
 // Initialize OneSignal client
 const client = new OneSignal.Client(oneSignalConfig.appId, oneSignalConfig.restApiKey);
 
