@@ -455,7 +455,7 @@ router.post("/book", authMiddleware, async (req, res) => {
           
 
 
-          const message = `${newRide.riderInfo.riderName} books a ride pick up at ${newRide.rideInfo.selectedDate} on ${newRide.rideInfo.selectedTime}.`; 
+          const message = `${newRide.riderInfo.riderName} books a ride pick up at ${formattedSelectedDate} on ${newRide.rideInfo.selectedTime}.`; 
 
           await NotificationService.sendToMultipleUsers(
             playerIds,
