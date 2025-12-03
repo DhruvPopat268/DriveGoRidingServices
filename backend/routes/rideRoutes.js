@@ -1030,10 +1030,7 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
       driverId,
       status: "EXTENDED"
     }).sort({ createdAt: -1 }); // latest first (optional)
-
-
    
-
     const count = confirmedRides.length;
 
     if (count === 0) {

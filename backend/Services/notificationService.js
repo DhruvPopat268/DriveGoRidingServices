@@ -30,6 +30,8 @@ class NotificationService {
         data: data
       };
 
+      console.log('Notification payload:', notification);
+
       const response = await client.createNotification(notification);
       return { success: true, response };
     } catch (error) {
