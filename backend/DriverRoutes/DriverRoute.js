@@ -2088,8 +2088,13 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
 
     console.log("💰 Deposit request received:", { driverId, status, amount, paymentId });
 
-    if (!amount || !paymentId) {
-      return res.status(400).json({ message: "Amount and paymentId are required" });
+    if (!amount) {
+      return res.status(400).json({ message: "Amount is required" });
+    }
+
+    // PaymentId is only required for non-failed transactions
+    if (status !== "failed" && !paymentId) {
+      return res.status(400).json({ message: "PaymentId is required for successful transactions" });
     }
 
     if (amount <= 0) {
@@ -2129,7 +2134,7 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
       type: "deposit",
       amount,
       status: transactionStatus,
-      razorpayPaymentId: paymentId,
+      razorpayPaymentId: paymentId || null, // Can be null for failed transactions
       description: status === "failed" 
         ? `Wallet deposit failed - ${status}` 
         : `Wallet deposit initiated - ${status || 'unknown'}`,
