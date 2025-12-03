@@ -717,54 +717,7 @@ router.post("/manage-credits", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-router.get("/wallet-config", DriverAuthMiddleware, async (req, res) => {
-  try {
-    console.log('=== WALLET CONFIG DEBUG ===');
-    console.log('Driver from middleware:', req.driver);
-    console.log('Driver ID:', req.driver?.driverId);
-    
-    if (!req.driver || !req.driver.driverId) {
-      return res.status(401).json({
-        success: false,
-        message: "Driver authentication failed"
-      });
-    }
-    
-    const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
-    console.log('Found config:', config);
-    
-    if (!config) {
-      console.log('No config found, returning defaults');
-      return res.json({
-        success: true,
-        data: {
-          minHoldBalance: 0,
-          minWithdrawAmount: 0,
-          minDepositAmount: 0
-        }
-      });
-    }
 
-    console.log('Returning config data');
-    res.json({
-      success: true,
-      data: {
-        minHoldBalance: config.minHoldBalance,
-        minWithdrawAmount: config.minWithdrawAmount,
-        minDepositAmount: config.minDepositAmount
-      }
-    });
-  } catch (error) {
-    console.error('=== WALLET CONFIG ERROR ===');
-    console.error('Error details:', error);
-    console.error('Stack trace:', error.stack);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to fetch wallet configuration",
-      error: error.message 
-    });
-  }
-});
 
 // Get driver personal information with category details
 router.get("/driverDetail", driverAuthMiddleware, async (req, res) => {
@@ -1076,6 +1029,10 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
       await driver.save();
     }
 
+    // Get minDepositAmount
+    const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
+    const minDepositAmount = config?.minDepositAmount || 0;
+
     // Prepare response
     const response = {
       success: true,
@@ -1083,7 +1040,8 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
       isNew,
       status: driver.status,
       selectedCategory: driver.selectedCategory,
-      uniqueId: driver.uniqueId
+      uniqueId: driver.uniqueId,
+      minDepositAmount
     };
 
     // Add ownership if exists
@@ -2100,8 +2058,6 @@ router.get("/admin/incentive-history", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
-
 
 // Deposit money to driver wallet
 router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
