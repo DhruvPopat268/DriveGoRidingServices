@@ -28,6 +28,7 @@ const DriverRideCostSchema = new mongoose.Schema({
   discount: { type: Number, default: 0 },
   minimumFare: { type: Number, default: 0 },
   driverCancellationCharges: { type: Number, default: 0 },
+  status: { type: Boolean, default: true },
 }, { timestamps: true });
 
 module.exports = mongoose.model('RideCost', DriverRideCostSchema);

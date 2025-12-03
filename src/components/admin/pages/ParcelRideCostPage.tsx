@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Plus, Edit, Trash2, Eye, X, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
@@ -42,6 +43,7 @@ interface RideCost {
   minimumFare?: number;
   driverCancellationCharges: number;
   driverCancellationCredits: number;
+  status?: boolean;
 }
 
 interface Category {
@@ -470,6 +472,17 @@ export const ParcelRideCostPage = () => {
       setIsEditing(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusToggle = async (id: string, currentStatus: boolean) => {
+    try {
+      await axios.patch(`${import.meta.env.VITE_API_URL}/api/ParcelRideCosts/${id}/status`, {
+        status: !currentStatus
+      });
+      await fetchData();
+    } catch (error) {
+      console.error('Error updating status:', error);
     }
   };
 
@@ -902,13 +915,14 @@ export const ParcelRideCostPage = () => {
                 <TableHead>Incl. Min</TableHead>
                 <TableHead>Extra/Km</TableHead>
                 <TableHead>Extra/Min</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-8">
+                  <TableCell colSpan={13} className="text-center py-8">
                     <div className="flex justify-center items-center">
                       <Loader className="w-6 h-6 animate-spin mr-2" />
                       <span>Loading parcel ride costs...</span>
@@ -917,7 +931,7 @@ export const ParcelRideCostPage = () => {
                 </TableRow>
               ) : filteredRideCosts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center py-6">
+                  <TableCell colSpan={13} className="text-center py-6">
                     {rideCosts.length === 0
                       ? "No ride cost models found. Create your first one!"
                       : "No models match the selected filters."
@@ -938,7 +952,12 @@ export const ParcelRideCostPage = () => {
                     <TableCell>{formatMinutesDisplay(rideCost.includedMinutes, rideCost.subcategory)}</TableCell>
                     <TableCell>₹{rideCost.extraChargePerKm}</TableCell>
                     <TableCell>₹{rideCost.extraChargePerMinute}</TableCell>
-
+                    <TableCell>
+                      <Switch
+                        checked={rideCost.status ?? true}
+                        onCheckedChange={() => handleStatusToggle(rideCost._id!, rideCost.status ?? true)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button

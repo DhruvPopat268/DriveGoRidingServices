@@ -306,6 +306,36 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// PATCH - Update status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const rideCost = await DriverRideCost.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!rideCost) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ride cost model not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Status updated successfully',
+      data: rideCost
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
 // DELETE - Delete ride cost model
 router.delete('/:id', async (req, res) => {
   try {

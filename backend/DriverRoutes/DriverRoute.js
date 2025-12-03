@@ -78,6 +78,14 @@ router.post("/send-otp", async (req, res) => {
       await driver.save();
     }
 
+    // Check if driver account is deleted
+    if (driver.status === "deleted") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Your account has been deleted. Please contact support for assistance." 
+      });
+    }
+
     // Save OTP session
     const otpSession = new DriverOtpSession({
       driver: driver._id,
@@ -795,6 +803,14 @@ router.post("/send-otp", async (req, res) => {
     if (!driver) {
       driver = new Driver({ mobile: mobileStr });
       await driver.save();
+    }
+
+    // ✅ Check if driver account is deleted
+    if (driver.status === "deleted") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Your account has been deleted. Please contact support for assistance." 
+      });
     }
 
     // ✅ Save OTP session

@@ -97,6 +97,26 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Update status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const parcelRideCost = await ParcelRideCost.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!parcelRideCost) {
+      return res.status(404).json({ message: 'Parcel ride cost not found' });
+    }
+
+    res.json({ message: 'Status updated successfully', data: parcelRideCost });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // Delete parcel ride cost
 router.delete('/:id', async (req, res) => {
   try {

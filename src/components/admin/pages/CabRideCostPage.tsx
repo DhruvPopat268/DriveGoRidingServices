@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Plus, Edit, Trash2, Eye, X, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
 } from '@/components/ui/dialog';
@@ -40,6 +41,7 @@ interface RideCost {
     minimumFare: number;
     driverCancellationCharges: number;
     driverCancellationCredits: number;
+    status?: boolean;
 }
 
 interface Category {
@@ -461,6 +463,17 @@ export const CabRideCostPage = () => {
             setIsEditing(false);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleStatusToggle = async (id: string, currentStatus: boolean) => {
+        try {
+            await axios.patch(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}/status`, {
+                status: !currentStatus
+            });
+            await fetchData();
+        } catch (error) {
+            console.error('Error updating status:', error);
         }
     };
 
@@ -993,13 +1006,14 @@ export const CabRideCostPage = () => {
                                 {filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) && (
                                     <TableHead>Weight (kg)</TableHead>
                                 )}
+                                <TableHead>Status</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-8">
+                                    <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 13 : 12} className="text-center py-8">
                                         <div className="flex justify-center items-center">
                                             <Loader className="w-6 h-6 animate-spin mr-2" />
                                             <span>Loading cab ride costs...</span>
@@ -1008,7 +1022,7 @@ export const CabRideCostPage = () => {
                                 </TableRow>
                             ) : filteredRideCosts.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-6">
+                                    <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 13 : 12} className="text-center py-6">
                                         {rideCosts.length === 0
                                             ? "No ride cost models found. Create your first one!"
                                             : "No models match the selected filters."
@@ -1035,6 +1049,12 @@ export const CabRideCostPage = () => {
                                                 {isParcelCategory(rideCost.category) ? `${rideCost.weight || 0} kg` : '-'}
                                             </TableCell>
                                         )}
+                                        <TableCell>
+                                            <Switch
+                                                checked={rideCost.status ?? true}
+                                                onCheckedChange={() => handleStatusToggle(rideCost._id!, rideCost.status ?? true)}
+                                            />
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex space-x-2">
                                                 <Button
