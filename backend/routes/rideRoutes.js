@@ -451,21 +451,27 @@ router.post("/book", authMiddleware, async (req, res) => {
           const playerIds = eligibleDrivers.map(driver => driver.oneSignalPlayerId);
           
           console.log(`📤 Sending push notifications to player IDs:`, playerIds);
+          console.log('new ride data for notification:', newRide);
           
           const notificationData = {
             type: 'ride_request',
             rideId: newRide._id.toString(),
             riderName: newRide.riderInfo.riderName,
+            subcategoryName: newRide.rideInfo?.subcategoryName,
             pickup: newRide.riderInfo?.fromLocation?.address,
             destination: newRide.riderInfo?.toLocation?.address || 'Destination',
             date: newRide.rideInfo?.selectedDate ? formattedSelectedDate : '',
             time: newRide.rideInfo?.selectedTime || ''
           };
 
+          const message = newRide.rideInfo?.toLocation 
+            ? `${notificationData.riderName} books a ${notificationData.subcategoryName} ride from ${notificationData.pickup} to ${notificationData.destination} ${notificationData.date} at ${notificationData.time}`
+            : `${notificationData.riderName} books a ${notificationData.subcategoryName} ride from ${notificationData.pickup} ${notificationData.date} at ${notificationData.time}`;
+
           await NotificationService.sendToMultipleUsers(
             playerIds,
             'New Ride Available',
-            `${notificationData.riderName} needs a ride from ${notificationData.pickup} on ${notificationData.date} at ${notificationData.time}`,
+            message,
             notificationData
           );
           
