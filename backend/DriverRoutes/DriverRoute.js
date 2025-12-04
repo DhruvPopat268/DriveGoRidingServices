@@ -29,6 +29,14 @@ const DriverReferanceOtpSession = require("../DriverModel/DriverReferanceOtpSess
 const DriverIncentive = require("../models/DriverIncentive");
 const NotificationService = require('../Services/notificationService');
 const DriverNotification = require('../DriverModel/DriverNotification');
+const { processPayment } = require('../utils/razorpayPaymentHandler');
+const Razorpay = require('razorpay');
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 // Helper function to get field name by step number based on category
 function getFieldByStep(step, category = "Driver") {
@@ -2093,6 +2101,50 @@ router.get("/admin/incentive-history", async (req, res) => {
   }
 });
 
+router.post("/create-order", async (req, res) => {
+  try {
+    const { amount, currency, receipt, notes } = req.body;
+
+    if (!amount) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount is required",
+      });
+    }
+
+    const options = {
+      amount: amount * 100,          // ₹ to paise
+      currency: currency || "INR",
+      receipt: receipt || `rcpt_${Date.now()}`,
+
+      // 🔥 THIS ENABLES AUTO CAPTURE
+      payment_capture: 1,
+
+      notes: notes || {},            // { type, driverId, ... }
+    };
+
+    console.log("Creating Razorpay order with: ", options);
+
+    const order = await razorpay.orders.create(options);
+
+    // order has: id, amount, currency, status, notes, etc.
+    return res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,          // in paise
+      currency: order.currency,
+      raw: order,                    // optional: for debugging
+    });
+  } catch (err) {
+    console.error("Create order error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create order",
+      error: err.message || err.toString(),
+    });
+  }
+});
+
 // Deposit money to driver wallet
 router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
   try {
@@ -2204,6 +2256,7 @@ router.post("/webhook", async (req, res) => {
     // Extract payment info from Razorpay webhook payload
     const event = webhookPayload.event;
     const paymentEntity = webhookPayload.payload?.payment?.entity;
+    const orderEntity = webhookPayload.payload?.order?.entity;
     
     if (!paymentEntity || !paymentEntity.id) {
       return res.status(400).json({ error: "Invalid webhook payload" });
@@ -2212,65 +2265,26 @@ router.post("/webhook", async (req, res) => {
     const payment_id = paymentEntity.id;
     const status = paymentEntity.status;
     const webhookAmount = paymentEntity.amount ? paymentEntity.amount / 100 : null; // Convert paise to rupees
+    
+    // Get payment notes from order or payment entity
+    const notes = orderEntity?.notes || paymentEntity.notes || {};
+    
+    console.log('📝 Payment notes:', notes);
 
-    // Status mapping - only webhook determines final status
-    const statusMap = {
-      'captured': 'completed',
-      'paid': 'completed',
-      'failed': 'failed',
-      'voided': 'failed',
-      'cancelled': 'failed',
-      'refunded': 'refunded',
-      'partial_refunded': 'partial_refund'
-    };
-
-    const mappedStatus = statusMap[status];
-    if (!mappedStatus) {
-      return res.json({ status: 'ignored', event });
+    // Only process supported payment events
+    const supportedEvents = ['payment.captured', 'payment.failed', 'payment.authorized'];
+    if (!supportedEvents.includes(event)) {
+      return res.json({ status: 'ignored', event, reason: 'Unsupported event type' });
     }
 
-    // Find wallet with pending transaction
-    const wallet = await driverWallet.findOne({
-      'transactions.razorpayPaymentId': payment_id,
-      'transactions.status': 'pending'
-    });
-
-    if (!wallet) {
-      console.log(`⚠️ Transaction not found for payment_id: ${payment_id}`);
-      return res.json({ status: 'transaction_not_found', payment_id });
+    const result = await processPayment(payment_id, status, webhookAmount, notes);
+    
+    if (result.success) {
+      return res.json({ status: 'ok', event, verified: true, result: result.details });
+    } else {
+      return res.json({ status: 'error', event, error: result.error });
     }
 
-    // Find and update the transaction
-    const transaction = wallet.transactions.find(
-      t => t.razorpayPaymentId === payment_id && t.status === 'pending'
-    );
-
-    if (transaction) {
-      // SECURITY: Verify amount matches what was stored
-      if (webhookAmount && transaction.amount !== webhookAmount) {
-        console.error(`⚠️ Amount mismatch for ${payment_id}: stored=${transaction.amount}, webhook=${webhookAmount}`);
-        transaction.status = 'failed';
-        transaction.description = `Amount verification failed - stored: ₹${transaction.amount}, webhook: ₹${webhookAmount}`;
-        await wallet.save();
-        return res.json({ status: 'amount_mismatch', payment_id, stored: transaction.amount, webhook: webhookAmount });
-      }
-
-      const oldStatus = transaction.status;
-      transaction.status = mappedStatus; // Always use webhook status
-      transaction.description = `Wallet deposit via Razorpay - ${status} (verified by webhook)`;
-      transaction.webhookVerified = true;
-      transaction.webhookTimestamp = new Date();
-
-      // Add money to wallet only if completed and verified
-      if (mappedStatus === 'completed' && oldStatus === 'pending') {
-        wallet.balance += transaction.amount;
-        console.log(`✅ Payment verified and completed: ${payment_id}, Amount: ₹${transaction.amount}`);
-      }
-
-      await wallet.save();
-    }
-
-    res.json({ status: 'ok', updated: !!transaction, event, verified: true });
   } catch (error) {
     console.error("Webhook error:", error);
     res.status(500).json({ error: "Webhook processing failed" });
