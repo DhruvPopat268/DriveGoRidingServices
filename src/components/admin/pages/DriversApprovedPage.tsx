@@ -21,6 +21,7 @@ interface Driver {
   };
   status: string;
   createdAt: string;
+  approvedDate: string;
 }
 
 interface DriversApprovedPageProps {
@@ -77,13 +78,14 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
                 <TableHead>Permanent Address</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
+                <TableHead>Approved Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {drivers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     No drivers registration requests found
                   </TableCell>
                 </TableRow>
@@ -101,6 +103,9 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
                     </TableCell>
                     <TableCell>
                       {new Date(driver.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {driver.approvedDate ? new Date(driver.approvedDate).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell>
                       <Button

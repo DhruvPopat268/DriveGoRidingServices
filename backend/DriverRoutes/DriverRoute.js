@@ -389,7 +389,7 @@ router.get("/Onreview", async (req, res) => {
 
 router.get("/Approved", async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Approved" }).sort({ createdAt: -1 });
+    const drivers = await Driver.find({ status: "Approved" }).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -485,8 +485,15 @@ router.post("/approve/:driverId", async (req, res) => {
     if (driver.paymentAndSubscription?.subscriptionPlan) {
       const subscriptionPlan = await DriverSubscriptionPlan.findById(driver.paymentAndSubscription.subscriptionPlan);
       if (subscriptionPlan) {
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days); // Add plan days to today
+        const now = new Date();
+        let expiryDate;
+        if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
+          expiryDate = new Date(driver.currentPlan.expiryDate);
+          expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days); // extend from current expiry
+        } else {
+          expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days); // start from today
+        }
         currentPlanUpdate = {
           currentPlan: {
             planId: subscriptionPlan._id,
@@ -500,13 +507,14 @@ router.post("/approve/:driverId", async (req, res) => {
     const latestCredit = await CancellationCredit.findOne().sort({ createdAt: -1 });
     const cancellationCredits = latestCredit ? latestCredit.credits : 0;
 
-    // Update driver status to Approved and set currentPlan, cancellation credits, and uniqueId
+    // Update driver status to Approved and set currentPlan, cancellation credits, uniqueId, and approvedDate
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
       {
         status: "Approved",
         uniqueId,
         cancellationRideCredits: cancellationCredits,
+        approvedDate: new Date(),
         ...currentPlanUpdate
       },
       { new: true }

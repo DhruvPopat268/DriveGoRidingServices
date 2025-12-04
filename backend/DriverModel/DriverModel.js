@@ -85,6 +85,11 @@ const driverSchema = new mongoose.Schema(
       default: "Pending"
     },
 
+    approvedDate: {
+      type: Date,
+      default: null
+    },
+
     deletedDate: {
       type: Date,
       default: null

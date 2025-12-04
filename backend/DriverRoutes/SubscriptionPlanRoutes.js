@@ -209,23 +209,9 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Subscription plan not found" });
     }
 
-    const planDuration = await SubscriptionPlan.findById(subscriptionPlan).select("days");
     const currentPlan = await SubscriptionPlan.findById(subscriptionPlan);
     const amount = currentPlan?.amount;
 
-    // Calculate expiry date and set currentPlan
-    const now = new Date();
-    let expiryDate;
-    if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
-      expiryDate = new Date(driver.currentPlan.expiryDate);
-      expiryDate.setDate(expiryDate.getDate() + planDuration.days); // extend from current expiry
-    } else {
-      expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + planDuration.days); // start from today
-    }
-
-    // Set currentPlan to activate the purchased plan
-    driver.currentPlan = { planId: subscriptionPlan, expiryDate };
     driver.purchasedPlans.push({ paymentId, status, plan: subscriptionPlan, amount });
     await driver.save();
 
