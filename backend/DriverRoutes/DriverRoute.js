@@ -29,7 +29,7 @@ const DriverReferanceOtpSession = require("../DriverModel/DriverReferanceOtpSess
 const DriverIncentive = require("../models/DriverIncentive");
 const NotificationService = require('../Services/notificationService');
 const DriverNotification = require('../DriverModel/DriverNotification');
-const { processPayment } = require('../utils/razorpayPaymentHandler');
+const { processDeposit } = require('../utils/depositHandler');
 const Razorpay = require('razorpay');
 
 // Initialize Razorpay
@@ -2278,12 +2278,12 @@ router.post("/webhook", async (req, res) => {
     console.log('📝 Payment notes:', notes);
 
     // Only process supported payment events
-    const supportedEvents = ['payment.captured', 'payment.failed', 'payment.authorized'];
+    const supportedEvents = ['payment.captured', 'payment.failed', 'payment.authorized', 'payment.refunded'];
     if (!supportedEvents.includes(event)) {
       return res.json({ status: 'ignored', event, reason: 'Unsupported event type' });
     }
 
-    const result = await processPayment(payment_id, status, webhookAmount, notes);
+    const result = await processDeposit(payment_id, status, webhookAmount, notes);
     
     if (result.success) {
       return res.json({ status: 'ok', event, verified: true, result: result.details });

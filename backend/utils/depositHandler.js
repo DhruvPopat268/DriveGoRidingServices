@@ -69,6 +69,7 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
       const statusMap = {
         'captured': 'completed',
         'paid': 'completed',
+        'authorized': 'pending',
         'failed': 'failed',
         'voided': 'failed',
         'cancelled': 'failed',
@@ -94,10 +95,20 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
 
       wallet.transactions.push(transaction);
       
-      // Add money to wallet if completed
+      // Handle balance updates based on status
       if (mappedStatus === 'completed') {
         wallet.balance += webhookAmount;
         console.log(`✅ Webhook first - deposit completed: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
+      } else if (mappedStatus === 'refunded') {
+        // For refund webhook first, deduct from wallet balance
+        wallet.balance = Math.max(0, wallet.balance - webhookAmount);
+        console.log(`🔄 Webhook first - refund processed: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
+      } else if (mappedStatus === 'failed') {
+        // For failed webhook first, just log - no balance change
+        console.log(`❌ Webhook first - deposit failed: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
+      } else if (mappedStatus === 'pending') {
+        // For authorized webhook first, just log - no balance change yet
+        console.log(`🕑 Webhook first - payment authorized: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
       }
 
       await wallet.save();
@@ -135,6 +146,7 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
     const statusMap = {
       'captured': 'completed',
       'paid': 'completed',
+      'authorized': 'pending',
       'failed': 'failed',
       'voided': 'failed',
       'cancelled': 'failed',
@@ -153,10 +165,29 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
     transaction.webhookVerified = true;
     transaction.webhookTimestamp = new Date();
 
-    // Add money to wallet only if completed and verified
+    // Handle balance updates based on status
     if (mappedStatus === 'completed' && oldStatus === 'pending') {
       wallet.balance += transaction.amount;
       console.log(`✅ Driver deposit verified and completed: ${paymentId}, Amount: ₹${transaction.amount}, Driver: ${driverId}`);
+    } else if (mappedStatus === 'refunded') {
+      // Create new refund transaction and deduct amount from wallet
+      const refundTransaction = {
+        type: "refund",
+        amount: transaction.amount,
+        status: "completed",
+        razorpayPaymentId: paymentId,
+        description: `Refund for payment ${paymentId} - ${status}`,
+        paymentMethod: "razorpay",
+        webhookVerified: true,
+        webhookTimestamp: new Date()
+      };
+      
+      wallet.transactions.push(refundTransaction);
+      wallet.balance = Math.max(0, wallet.balance - transaction.amount); // Ensure balance doesn't go negative
+      console.log(`🔄 Driver deposit refunded: ${paymentId}, Amount: ₹${transaction.amount}, Driver: ${driverId}`);
+    } else if (mappedStatus === 'failed' && oldStatus === 'pending') {
+      // For failed transactions, just log - no balance change needed
+      console.log(`❌ Driver deposit failed: ${paymentId}, Amount: ₹${transaction.amount}, Driver: ${driverId}`);
     }
 
     await wallet.save();
