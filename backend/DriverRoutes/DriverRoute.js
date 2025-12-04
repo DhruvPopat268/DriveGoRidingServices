@@ -270,7 +270,7 @@ router.get("/approved-driver-category", async (req, res) => {
   }
 });
 
-// Get driver profile data (name, isOnline, passportPhoto, completedRides, totalEarnings)
+// Get driver profile data (name, isOnline, passportPhoto, completedRides, totalEarnings, minWithdrawAmount, minDepositAmount, totalNotifications, unreadCount)
 router.get("/profile", DriverAuthMiddleware, async (req, res) => {
   try {
     const driverId = req.driver.driverId;
@@ -285,6 +285,15 @@ router.get("/profile", DriverAuthMiddleware, async (req, res) => {
 
     const wallet = await driverWallet.findOne({ driverId }).select("totalEarnings").lean();
 
+    // Get wallet configuration amounts
+    const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
+    const minDepositAmount = config?.minDepositAmount || 0;
+    const minWithdrawAmount = config?.minWithdrawAmount || 0;
+
+    // Get notification counts
+    const totalNotifications = await DriverNotification.countDocuments({ driverId });
+    const unreadCount = await DriverNotification.countDocuments({ driverId, isRead: false });
+
     res.json({
       success: true,
       data: {
@@ -293,7 +302,11 @@ router.get("/profile", DriverAuthMiddleware, async (req, res) => {
         passportPhoto: driver.personalInformation?.passportPhoto || null,
         completedRides: driver.completedRides?.length || 0,
         totalEarnings: wallet?.totalEarnings || 0,
-        avgRating: driver.ratings?.avgRating || 0
+        avgRating: driver.ratings?.avgRating || 0,
+        minWithdrawAmount,
+        minDepositAmount,
+        totalNotifications,
+        unreadCount
       }
     });
   } catch (error) {
