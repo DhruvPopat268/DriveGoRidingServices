@@ -2113,7 +2113,7 @@ router.post("/create-order",DriverAuthMiddleware, async (req, res) => {
     }
 
     const options = {
-      amount: amount ,
+      amount: amount * 100,          // ₹ to paise
       currency: currency || "INR",
       receipt: receipt || `rcpt_${Date.now()}`,
 
