@@ -97,12 +97,12 @@ router.get("/drivers/purchased-plans", async (req, res) => {
     const drivers = await Driver.find(
       { "purchasedPlans.0": { $exists: true } } // only drivers with purchasedPlans
     )
-    .select("mobile personalInformation purchasedPlans")
-    .populate({
-      path: "purchasedPlans.plan", // populate the plan ObjectId
-      model: "SubscriptionPlan",
-      select: "name" // only fetch the plan name
-    }).sort({ 'purchasedPlans.purchasedAt': -1 }); // sort by purchasedAt descending
+      .select("mobile personalInformation purchasedPlans")
+      .populate({
+        path: "purchasedPlans.plan", // populate the plan ObjectId
+        model: "SubscriptionPlan",
+        select: "name" // only fetch the plan name
+      }).sort({ 'purchasedPlans.purchasedAt': -1 }); // sort by purchasedAt descending
 
     // Transform response to include driver info and plan name
     const result = drivers.map(driver => {
@@ -193,7 +193,7 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
     if (paymentId) {
       const existingPlan = driver.purchasedPlans.find(p => p.paymentId === paymentId);
       if (existingPlan) {
-        console.log(`🔄 Plan purchase already exists: ${paymentId}, Status: ${existingPlan.status}`);
+  
         return res.json({
           success: true,
           message: `Plan purchase already processed by webhook with status: ${existingPlan.status}`,
@@ -216,16 +216,16 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
     const amount = currentPlan?.amount;
 
     // Create pending plan purchase - webhook will update status later
-    const planPurchase = { 
-      status: "Pending", 
-      plan: subscriptionPlan, 
-      amount 
+    const planPurchase = {
+      status: "Pending",
+      plan: subscriptionPlan,
+      amount
     };
-    
+
     if (paymentId) {
       planPurchase.paymentId = paymentId;
     }
-    
+
     driver.purchasedPlans.push(planPurchase);
     await driver.save();
 
@@ -244,11 +244,12 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
 router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
   try {
     const { planId, paymentId, amount } = req.body;
-    
+
+
     if (!planId || !amount) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "planId and amount are required" 
+      return res.status(400).json({
+        success: false,
+        message: "planId and amount are required"
       });
     }
 
@@ -258,26 +259,31 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
     // 1️⃣ Fetch subscription plan
     const plan = await SubscriptionPlan.findById(planId);
     if (!plan) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Subscription plan not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Subscription plan not found"
       });
     }
 
+
+
+
+
     // 2️⃣ Validate amount
-    if (plan.amount !== amount) {
+    if (Number(plan.amount) !== Number(amount)) {
       return res.status(400).json({
         success: false,
-        message: `Amount mismatch. Plan amount is ${plan.amount}`
+        message: `Amount mismatch. Expected ${plan.amount}, got ${amount}`
       });
     }
+
 
     // 3️⃣ Get driver and check for duplicate payment
     const driver = await Driver.findById(driverId);
     if (!driver) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Driver not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
       });
     }
 
@@ -285,7 +291,7 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
     if (paymentId) {
       const existingPlan = driver.purchasedPlans.find(p => p.paymentId === paymentId);
       if (existingPlan) {
-        console.log(`🔄 Plan purchase already exists: ${paymentId}, Status: ${existingPlan.status}`);
+
         return res.json({
           success: true,
           message: `Plan purchase already processed by webhook with status: ${existingPlan.status}`,
@@ -305,26 +311,26 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
       plan: plan._id,
       amount
     };
-    
+
     if (paymentId) {
       planPurchase.paymentId = paymentId;
     }
-    
+
     driver.purchasedPlans.push(planPurchase);
 
     await driver.save();
 
-    res.json({ 
-      success: true, 
-      message: "Plan purchase initiated, awaiting payment confirmation", 
+    res.json({
+      success: true,
+      message: "Plan purchase initiated, awaiting payment confirmation",
       planPurchase: driver.purchasedPlans[driver.purchasedPlans.length - 1]
     });
 
   } catch (error) {
     console.error("Update plan error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to update driver plan" 
+    res.status(500).json({
+      success: false,
+      message: "Failed to update driver plan"
     });
   }
 });
@@ -341,21 +347,21 @@ router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) =
       .lean();
 
     if (!driver) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Driver not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
       });
     }
 
     // Process current plan
     let currentPlanInfo = null;
-    
+
     if (driver.currentPlan && driver.currentPlan.planId) {
       const now = new Date();
       const isExpired = driver.currentPlan.expiryDate < now;
       //console.log('expiry date',driver.currentPlan.expiryDate)
-      const daysRemaining = isExpired 
-        ? 0 
+      const daysRemaining = isExpired
+        ? 0
         : Math.ceil((driver.currentPlan.expiryDate - now) / (1000 * 60 * 60 * 24));
 
       currentPlanInfo = {
@@ -373,9 +379,10 @@ router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) =
     }
 
     // Process purchased plans
-    const purchasedPlans = (driver.purchasedPlans || []).sort((a, b) => 
+    const purchasedPlans = (driver.purchasedPlans || []).sort((a, b) =>
       new Date(b.purchasedAt) - new Date(a.purchasedAt)
     );
+
 
     // Calculate statistics
     const stats = {
@@ -388,8 +395,8 @@ router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) =
         .reduce((sum, p) => sum + (p.amount || 0), 0)
     };
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: "Subscription info fetched successfully",
       currentPlan: currentPlanInfo,
       purchasedPlans,
@@ -398,9 +405,9 @@ router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) =
 
   } catch (error) {
     console.error("Get subscription info error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to fetch subscription info" 
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch subscription info"
     });
   }
 });

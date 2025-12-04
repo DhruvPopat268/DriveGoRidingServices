@@ -2131,7 +2131,7 @@ router.post("/create-order",DriverAuthMiddleware, async (req, res) => {
       notes: notes || {},            // { type, driverId, ... }
     };
 
-    console.log("Creating Razorpay order with: ", options);
+
 
     const order = await razorpay.orders.create(options);
 
@@ -2159,7 +2159,7 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
     const { amount, paymentId } = req.body;
     const driverId = req.driver.driverId;
 
-    console.log("💰 Deposit request received:", { driverId, amount, paymentId });
+
 
     if (!amount) {
       return res.status(400).json({ message: "Amount is required" });
@@ -2202,12 +2202,8 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
     );
     
     if (existingTransaction) {
-      console.log(`🔄 Transaction already exists: ${paymentId}, Status: ${existingTransaction.status}`);
-      return res.json({
-        success: true,
-        message: `Transaction already processed by webhook with status: ${existingTransaction.status}`,
-        transaction: existingTransaction,
-        walletBalance: wallet.balance
+      return res.status(400).json({ 
+        message: "This payment has already been processed" 
       });
     }
 
@@ -2265,7 +2261,7 @@ router.post("/webhook", async (req, res) => {
       return res.status(400).json({ error: "Invalid webhook signature" });
     }
 
-    console.log('🔔 Razorpay Webhook Verified & Received:', JSON.stringify(webhookPayload, null, 2));
+
     
     // Extract payment info from Razorpay webhook payload
     const event = webhookPayload.event;
@@ -2283,7 +2279,7 @@ router.post("/webhook", async (req, res) => {
     // Get payment notes from order or payment entity
     const notes = orderEntity?.notes || paymentEntity.notes || {};
     
-    console.log('📝 Payment notes:', notes);
+
 
     // Only process supported payment events
     const supportedEvents = ['payment.captured', 'payment.failed', 'payment.authorized', 'payment.refunded'];
