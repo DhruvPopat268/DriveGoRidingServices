@@ -2148,19 +2148,16 @@ router.post("/create-order",DriverAuthMiddleware, async (req, res) => {
 // Deposit money to driver wallet
 router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
   try {
-    const { status, amount, paymentId } = req.body;
+    const { amount, paymentId } = req.body;
     const driverId = req.driver.driverId;
 
-    console.log("💰 Deposit request received:", { driverId, status, amount, paymentId });
+    console.log("💰 Deposit request received:", { driverId, amount, paymentId });
 
     if (!amount) {
       return res.status(400).json({ message: "Amount is required" });
     }
 
-    // PaymentId is only required for non-failed transactions
-    if (status !== "failed" && !paymentId) {
-      return res.status(400).json({ message: "PaymentId is required for successful transactions" });
-    }
+
 
     if (amount <= 0) {
       return res.status(400).json({ message: "Amount must be greater than 0" });
@@ -2191,20 +2188,29 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Handle frontend status - if failed, mark as failed immediately
-    // Otherwise keep as pending for webhook verification
-    const transactionStatus = status === "failed" ? "failed" : "pending";
+    // Check if transaction already exists (webhook processed first)
+    const existingTransaction = wallet.transactions.find(
+      t => t.razorpayPaymentId === paymentId
+    );
     
+    if (existingTransaction) {
+      console.log(`🔄 Transaction already exists: ${paymentId}, Status: ${existingTransaction.status}`);
+      return res.json({
+        success: true,
+        message: `Transaction already processed by webhook with status: ${existingTransaction.status}`,
+        transaction: existingTransaction,
+        walletBalance: wallet.balance
+      });
+    }
+
+    // Create pending transaction - webhook will update status later
     const transaction = {
       type: "deposit",
       amount,
-      status: transactionStatus,
-      razorpayPaymentId: paymentId || null, // Can be null for failed transactions
-      description: status === "failed" 
-        ? `Wallet deposit failed - ${status}` 
-        : `Wallet deposit initiated - ${status || 'unknown'}`,
-      paymentMethod: "razorpay", // Using correct enum value from model
-      frontendStatus: status // Store what frontend sent for reference
+      status: "pending",
+      razorpayPaymentId: paymentId,
+      description: "Wallet deposit initiated, awaiting webhook confirmation",
+      paymentMethod: "razorpay"
     };
 
     wallet.transactions.push(transaction);

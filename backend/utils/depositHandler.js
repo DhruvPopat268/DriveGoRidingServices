@@ -17,24 +17,106 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
       return { success: false, error: "Driver ID not found in payment notes" };
     }
 
-    // Find wallet with pending transaction
-    const wallet = await driverWallet.findOne({
-      'transactions.razorpayPaymentId': paymentId,
-      'transactions.status': 'pending'
+    // First, check if transaction already exists (any status)
+    let wallet = await driverWallet.findOne({
+      driverId: driverId,
+      'transactions.razorpayPaymentId': paymentId
     });
 
-    if (!wallet) {
-      return { success: false, error: `Transaction not found for payment_id: ${paymentId}` };
+    let transaction;
+    
+    if (wallet) {
+      // Transaction exists - find it
+      transaction = wallet.transactions.find(
+        t => t.razorpayPaymentId === paymentId
+      );
+      
+      if (transaction && transaction.status !== 'pending') {
+        // Transaction already processed
+        console.log(`⚠️ Transaction already processed: ${paymentId}, Status: ${transaction.status}`);
+        return {
+          success: true,
+          message: `Transaction already processed with status: ${transaction.status}`,
+          details: {
+            paymentId,
+            driverId,
+            amount: transaction.amount,
+            status: transaction.status,
+            newBalance: wallet.balance
+          }
+        };
+      }
+    } else {
+      // No wallet found, get or create wallet for this driver
+      wallet = await driverWallet.findOne({ driverId });
+      if (!wallet) {
+        wallet = await driverWallet.create({
+          driverId,
+          balance: 0,
+          totalEarnings: 0,
+          totalWithdrawn: 0,
+          totalDeductions: 0,
+          totalIncentives: 0,
+          transactions: []
+        });
+      }
     }
-
-    // Find and update the transaction
-    const transaction = wallet.transactions.find(
-      t => t.razorpayPaymentId === paymentId && t.status === 'pending'
-    );
 
     if (!transaction) {
-      return { success: false, error: "Pending transaction not found" };
+      // Webhook came first - create new transaction with webhook status
+      console.log(`🔔 Webhook first: Creating new transaction for ${paymentId}`);
+      
+      const statusMap = {
+        'captured': 'completed',
+        'paid': 'completed',
+        'failed': 'failed',
+        'voided': 'failed',
+        'cancelled': 'failed',
+        'refunded': 'refunded',
+        'partial_refunded': 'partial_refund'
+      };
+
+      const mappedStatus = statusMap[status];
+      if (!mappedStatus) {
+        return { success: false, error: `Unsupported status: ${status}` };
+      }
+
+      transaction = {
+        type: "deposit",
+        amount: webhookAmount,
+        status: mappedStatus,
+        razorpayPaymentId: paymentId,
+        description: `Driver wallet deposit via Razorpay - ${status} (webhook first)`,
+        paymentMethod: "razorpay",
+        webhookVerified: true,
+        webhookTimestamp: new Date()
+      };
+
+      wallet.transactions.push(transaction);
+      
+      // Add money to wallet if completed
+      if (mappedStatus === 'completed') {
+        wallet.balance += webhookAmount;
+        console.log(`✅ Webhook first - deposit completed: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
+      }
+
+      await wallet.save();
+
+      return {
+        success: true,
+        message: `Driver deposit ${mappedStatus} (webhook first)`,
+        details: {
+          paymentId,
+          driverId,
+          amount: webhookAmount,
+          status: mappedStatus,
+          newBalance: wallet.balance
+        }
+      };
     }
+
+    // Transaction exists and is pending - update it
+    console.log(`🔍 Found pending transaction for payment_id: ${paymentId}, Driver: ${driverId}`);
 
     // SECURITY: Verify amount matches what was stored
     if (webhookAmount && transaction.amount !== webhookAmount) {
