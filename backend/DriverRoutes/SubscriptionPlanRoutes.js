@@ -175,50 +175,64 @@ router.get('/planPayment', DriverAuthMiddleware, async (req, res) => {
 
 router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
   try {
-
-    const { paymentId, status } = req.body;
+    const { paymentId } = req.body;
     const mobile = req.driver?.mobile;
 
-    if (!mobile || !paymentId || !status) {
-      
+    if (!mobile) {
       return res.status(400).json({
-        message: "Mobile, paymentId, status, and plan are required"
+        message: "Mobile is required"
       });
     }
 
-  
-
-    const driver = await Driver.findOneAndUpdate(
-      { mobile, status: "PendingForPayment" },
-      { status: "Onreview" },
-      { new: true }
-    );
-
+    const driver = await Driver.findOne({ mobile });
     if (!driver) {
-     
-      return res.status(404).json({ message: "Driver not found or not pending payment" });
+      return res.status(404).json({ message: "Driver not found" });
     }
 
-  
+    // Check if plan purchase already exists (webhook processed first)
+    if (paymentId) {
+      const existingPlan = driver.purchasedPlans.find(p => p.paymentId === paymentId);
+      if (existingPlan) {
+        console.log(`🔄 Plan purchase already exists: ${paymentId}, Status: ${existingPlan.status}`);
+        return res.json({
+          success: true,
+          message: `Plan purchase already processed by webhook with status: ${existingPlan.status}`,
+          existingPlan: {
+            paymentId: existingPlan.paymentId,
+            status: existingPlan.status,
+            amount: existingPlan.amount,
+            purchasedAt: existingPlan.purchasedAt
+          }
+        });
+      }
+    }
 
     const subscriptionPlan = driver.paymentAndSubscription?.subscriptionPlan;
-   
-
     if (!subscriptionPlan) {
-      
       return res.status(400).json({ message: "Subscription plan not found" });
     }
 
     const currentPlan = await SubscriptionPlan.findById(subscriptionPlan);
     const amount = currentPlan?.amount;
 
-    driver.purchasedPlans.push({ paymentId, status, plan: subscriptionPlan, amount });
+    // Create pending plan purchase - webhook will update status later
+    const planPurchase = { 
+      status: "Pending", 
+      plan: subscriptionPlan, 
+      amount 
+    };
+    
+    if (paymentId) {
+      planPurchase.paymentId = paymentId;
+    }
+    
+    driver.purchasedPlans.push(planPurchase);
     await driver.save();
 
     res.json({
       success: true,
-      message: "Purchased plan added successfully",
-      purchasedPlans: driver.purchasedPlans
+      message: "Plan purchase initiated, awaiting payment confirmation",
+      planPurchase: driver.purchasedPlans[driver.purchasedPlans.length - 1]
     });
   } catch (error) {
     console.error("❌ Add purchased plan error:", error);
@@ -229,18 +243,17 @@ router.post("/add-purchased-plan", DriverAuthMiddleware, async (req, res) => {
 
 router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
   try {
-    const { planId, paymentId, status, amount } = req.body;
+    const { planId, paymentId, amount } = req.body;
     
-    if (!planId || !paymentId || !status || !amount) {
+    if (!planId || !amount) {
       return res.status(400).json({ 
         success: false, 
-        message: "planId, paymentId, status, and amount are required" 
+        message: "planId and amount are required" 
       });
     }
 
     // ✅ Get driverId from middleware
     const driverId = req.driver.driverId;
-    // console.log("Driver ID from middleware:", driverId);
 
     // 1️⃣ Fetch subscription plan
     const plan = await SubscriptionPlan.findById(planId);
@@ -259,7 +272,7 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // 3️⃣ Calculate expiry date (stacking logic)
+    // 3️⃣ Get driver and check for duplicate payment
     const driver = await Driver.findById(driverId);
     if (!driver) {
       return res.status(404).json({ 
@@ -268,32 +281,43 @@ router.post("/driver/update-plan", DriverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const now = new Date();
-    let expiryDate;
-    if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
-      expiryDate = new Date(driver.currentPlan.expiryDate);
-      expiryDate.setDate(expiryDate.getDate() + plan.days); // extend from current expiry
-    } else {
-      expiryDate = new Date();
-      expiryDate.setDate(expiryDate.getDate() + plan.days); // start from today
+    // Check if plan purchase already exists (webhook processed first)
+    if (paymentId) {
+      const existingPlan = driver.purchasedPlans.find(p => p.paymentId === paymentId);
+      if (existingPlan) {
+        console.log(`🔄 Plan purchase already exists: ${paymentId}, Status: ${existingPlan.status}`);
+        return res.json({
+          success: true,
+          message: `Plan purchase already processed by webhook with status: ${existingPlan.status}`,
+          existingPlan: {
+            paymentId: existingPlan.paymentId,
+            status: existingPlan.status,
+            amount: existingPlan.amount,
+            purchasedAt: existingPlan.purchasedAt
+          }
+        });
+      }
     }
 
-    // 4️⃣ Update driver document
-    driver.paymentAndSubscription.subscriptionPlan = plan._id;
-    driver.currentPlan = { planId: plan._id, expiryDate };
-    driver.purchasedPlans.push({
-      paymentId,
-      status,
-      plan: plan._id, // store ObjectId instead of name
+    // 4️⃣ Create pending plan purchase - webhook will update status and activate plan later
+    const planPurchase = {
+      status: "Pending",
+      plan: plan._id,
       amount
-    });
+    };
+    
+    if (paymentId) {
+      planPurchase.paymentId = paymentId;
+    }
+    
+    driver.purchasedPlans.push(planPurchase);
 
     await driver.save();
 
     res.json({ 
       success: true, 
-      message: "Driver plan updated successfully", 
-      driver 
+      message: "Plan purchase initiated, awaiting payment confirmation", 
+      planPurchase: driver.purchasedPlans[driver.purchasedPlans.length - 1]
     });
 
   } catch (error) {

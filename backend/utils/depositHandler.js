@@ -1,14 +1,8 @@
 const driverWallet = require("../DriverModel/driverWallet");
 const MinHoldBalance = require("../models/MinWithdrawBalance");
+const Driver = require("../DriverModel/DriverModel");
+const SubscriptionPlan = require("../DriverModel/SubscriptionPlan");
 
-/**
- * Handle driver wallet deposit
- * @param {string} paymentId - Razorpay payment ID
- * @param {string} status - Payment status from webhook
- * @param {number} webhookAmount - Amount from webhook (in rupees)
- * @param {Object} notes - Payment notes containing type and driverId
- * @returns {Object} - Processing result
- */
 const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
   try {
     const { driverId } = notes;
@@ -210,29 +204,156 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
   }
 };
 
-/**
- * Handle user wallet deposit (placeholder for future implementation)
- * @param {string} paymentId - Razorpay payment ID
- * @param {string} status - Payment status from webhook
- * @param {number} webhookAmount - Amount from webhook (in rupees)
- * @param {Object} notes - Payment notes containing type and userId
- * @returns {Object} - Processing result
- */
 const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) => {
   try {
-    const { userId } = notes;
+    const { riderId } = notes;
     
-    if (!userId) {
-      return { success: false, error: "User ID not found in payment notes" };
+    if (!riderId) {
+      return { success: false, error: "Rider ID not found in payment notes" };
     }
 
-    // TODO: Implement user wallet deposit logic
-    console.log(`📝 User wallet deposit handler called: ${paymentId}, User: ${userId}, Amount: ₹${webhookAmount}`);
+    const { Wallet } = require('../models/Payment&Wallet');
+
+    // Check if transaction already exists
+    let wallet = await Wallet.findOne({
+      riderId: riderId,
+      'transactions.razorpayPaymentId': paymentId
+    });
+
+    let transaction;
     
+    if (wallet) {
+      // Transaction exists - find it
+      transaction = wallet.transactions.find(
+        t => t.razorpayPaymentId === paymentId
+      );
+      
+      if (transaction && transaction.status !== 'created') {
+        // Transaction already processed
+        console.log(`⚠️ User transaction already processed: ${paymentId}, Status: ${transaction.status}`);
+        return {
+          success: true,
+          message: `Transaction already processed with status: ${transaction.status}`,
+          details: {
+            paymentId,
+            riderId,
+            amount: transaction.amount,
+            status: transaction.status,
+            newBalance: wallet.balance
+          }
+        };
+      }
+    } else {
+      // Get or create wallet
+      wallet = await Wallet.findOne({ riderId });
+      if (!wallet) {
+        wallet = await Wallet.create({
+          riderId,
+          balance: 0,
+          totalDeposited: 0,
+          totalSpent: 0,
+          transactions: []
+        });
+      }
+    }
+
+    // Status mapping
+    const statusMap = {
+      'captured': 'paid',
+      'paid': 'paid',
+      'authorized': 'created',
+      'failed': 'failed',
+      'voided': 'failed',
+      'cancelled': 'failed',
+      'refunded': 'refunded'
+    };
+
+    const mappedStatus = statusMap[status];
+    if (!mappedStatus) {
+      return { success: false, error: `Unsupported status: ${status}` };
+    }
+
+    if (!transaction) {
+      // Webhook came first - create new transaction
+      console.log(`🔔 Webhook first: Creating new user transaction for ${paymentId}`);
+      
+      transaction = {
+        amount: webhookAmount,
+        status: mappedStatus,
+        type: 'deposit',
+        razorpayPaymentId: paymentId,
+        description: `Wallet recharge via Razorpay - ${status} (webhook first)`,
+        paidAt: mappedStatus === 'paid' ? new Date() : null
+      };
+
+      wallet.transactions.push(transaction);
+      
+      // Handle balance updates
+      if (mappedStatus === 'paid') {
+        wallet.balance += webhookAmount;
+        wallet.totalDeposited += webhookAmount;
+        wallet.lastTransactionAt = new Date();
+        console.log(`✅ Webhook first - user deposit completed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
+      } else if (mappedStatus === 'failed') {
+        console.log(`❌ Webhook first - user deposit failed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
+      }
+
+      await wallet.save();
+
+      return {
+        success: true,
+        message: `User deposit ${mappedStatus} (webhook first)`,
+        details: {
+          paymentId,
+          riderId,
+          amount: webhookAmount,
+          status: mappedStatus,
+          newBalance: wallet.balance
+        }
+      };
+    }
+
+    // Transaction exists and is pending - update it
+    console.log(`🔍 Found pending user transaction for payment_id: ${paymentId}, Rider: ${riderId}`);
+
+    // SECURITY: Verify amount matches
+    if (webhookAmount && transaction.amount !== webhookAmount) {
+      console.error(`⚠️ Amount mismatch for ${paymentId}: stored=${transaction.amount}, webhook=${webhookAmount}`);
+      transaction.status = 'failed';
+      await wallet.save();
+      return { 
+        success: false, 
+        error: "Amount mismatch", 
+        details: { stored: transaction.amount, webhook: webhookAmount }
+      };
+    }
+
+    const oldStatus = transaction.status;
+    transaction.status = mappedStatus;
+    transaction.paidAt = mappedStatus === 'paid' ? new Date() : transaction.paidAt;
+
+    // Handle balance updates
+    if (mappedStatus === 'paid' && oldStatus === 'created') {
+      wallet.balance += transaction.amount;
+      wallet.totalDeposited += transaction.amount;
+      wallet.lastTransactionAt = new Date();
+      console.log(`✅ User deposit verified and completed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
+    } else if (mappedStatus === 'failed' && oldStatus === 'created') {
+      console.log(`❌ User deposit failed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
+    }
+
+    await wallet.save();
+
     return {
       success: true,
-      message: "User wallet deposit handler - Not implemented yet",
-      details: { paymentId, userId, amount: webhookAmount, status }
+      message: `User deposit ${mappedStatus}`,
+      details: {
+        paymentId,
+        riderId,
+        amount: transaction.amount,
+        status: mappedStatus,
+        newBalance: wallet.balance
+      }
     };
 
   } catch (error) {
@@ -241,14 +362,6 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
   }
 };
 
-/**
- * Handle driver plan purchase (placeholder for future implementation)
- * @param {string} paymentId - Razorpay payment ID
- * @param {string} status - Payment status from webhook
- * @param {number} webhookAmount - Amount from webhook (in rupees)
- * @param {Object} notes - Payment notes containing type and driverId
- * @returns {Object} - Processing result
- */
 const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes) => {
   try {
     const { driverId, planId } = notes;
@@ -257,13 +370,184 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
       return { success: false, error: "Driver ID not found in payment notes" };
     }
 
-    // TODO: Implement driver plan purchase logic
-    console.log(`📝 Driver plan purchase handler called: ${paymentId}, Driver: ${driverId}, Plan: ${planId}, Amount: ₹${webhookAmount}`);
+    if (!planId) {
+      return { success: false, error: "Plan ID not found in payment notes" };
+    }
+
+    // Check if plan purchase already exists
+    let driver = await Driver.findOne({
+      _id: driverId,
+      'purchasedPlans.paymentId': paymentId
+    });
+
+    let existingPlan;
     
+    if (driver) {
+      // Plan purchase exists - find it
+      existingPlan = driver.purchasedPlans.find(
+        p => p.paymentId === paymentId
+      );
+      
+      if (existingPlan && existingPlan.status !== 'Pending') {
+        // Plan purchase already processed
+        console.log(`⚠️ Plan purchase already processed: ${paymentId}, Status: ${existingPlan.status}`);
+        return {
+          success: true,
+          message: `Plan purchase already processed with status: ${existingPlan.status}`,
+          details: {
+            paymentId,
+            driverId,
+            planId,
+            amount: existingPlan.amount,
+            status: existingPlan.status
+          }
+        };
+      }
+    } else {
+      // Get driver
+      driver = await Driver.findById(driverId);
+      if (!driver) {
+        return { success: false, error: "Driver not found" };
+      }
+    }
+
+    // Get plan details
+    const plan = await SubscriptionPlan.findById(planId);
+    if (!plan) {
+      return { success: false, error: "Subscription plan not found" };
+    }
+
+    // Status mapping
+    const statusMap = {
+      'captured': 'Success',
+      'paid': 'Success',
+      'authorized': 'Pending',
+      'failed': 'Failed',
+      'voided': 'Failed',
+      'cancelled': 'Failed',
+      'refunded': 'Failed'
+    };
+
+    const mappedStatus = statusMap[status];
+    if (!mappedStatus) {
+      return { success: false, error: `Unsupported status: ${status}` };
+    }
+
+    if (!existingPlan) {
+      // Webhook came first - create new plan purchase
+      console.log(`🔔 Webhook first: Creating new plan purchase for ${paymentId}`);
+      
+      const planPurchase = {
+        paymentId,
+        status: mappedStatus,
+        plan: planId,
+        amount: webhookAmount,
+        purchasedAt: new Date()
+      };
+
+      driver.purchasedPlans.push(planPurchase);
+      
+      // Handle plan activation for successful payments
+      if (mappedStatus === 'Success') {
+        // Update current plan and expiry date
+        const now = new Date();
+        let expiryDate;
+        if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
+          expiryDate = new Date(driver.currentPlan.expiryDate);
+          expiryDate.setDate(expiryDate.getDate() + plan.days);
+        } else {
+          expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + plan.days);
+        }
+        
+        driver.currentPlan = { planId: plan._id, expiryDate };
+        driver.paymentAndSubscription.subscriptionPlan = plan._id;
+        
+        // Update status from PendingForPayment to Onreview if applicable
+        if (driver.status === 'PendingForPayment') {
+          driver.status = 'Onreview';
+        }
+        
+        console.log(`✅ Webhook first - plan purchase completed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
+      } else if (mappedStatus === 'Failed') {
+        console.log(`❌ Webhook first - plan purchase failed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
+      } else if (mappedStatus === 'Pending') {
+        console.log(`🕑 Webhook first - plan purchase pending: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
+      }
+
+      await driver.save();
+
+      return {
+        success: true,
+        message: `Driver plan purchase ${mappedStatus.toLowerCase()} (webhook first)`,
+        details: {
+          paymentId,
+          driverId,
+          planId,
+          planName: plan.name,
+          amount: webhookAmount,
+          status: mappedStatus
+        }
+      };
+    }
+
+    // Plan purchase exists and is pending - update it
+    console.log(`🔍 Found pending plan purchase for payment_id: ${paymentId}, Driver: ${driverId}`);
+
+    // SECURITY: Verify amount matches what was stored
+    if (webhookAmount && existingPlan.amount !== webhookAmount) {
+      console.error(`⚠️ Amount mismatch for ${paymentId}: stored=${existingPlan.amount}, webhook=${webhookAmount}`);
+      existingPlan.status = 'Failed';
+      await driver.save();
+      return { 
+        success: false, 
+        error: "Amount mismatch", 
+        details: { stored: existingPlan.amount, webhook: webhookAmount }
+      };
+    }
+
+    const oldStatus = existingPlan.status;
+    existingPlan.status = mappedStatus;
+
+    // Handle plan activation for successful payments
+    if (mappedStatus === 'Success' && oldStatus === 'Pending') {
+      // Update current plan and expiry date
+      const now = new Date();
+      let expiryDate;
+      if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
+        expiryDate = new Date(driver.currentPlan.expiryDate);
+        expiryDate.setDate(expiryDate.getDate() + plan.days);
+      } else {
+        expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + plan.days);
+      }
+      
+      driver.currentPlan = { planId: plan._id, expiryDate };
+      driver.paymentAndSubscription.subscriptionPlan = plan._id;
+      
+      // Update status from PendingForPayment to Onreview if applicable
+      if (driver.status === 'PendingForPayment') {
+        driver.status = 'Onreview';
+      }
+      
+      console.log(`✅ Driver plan purchase verified and completed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
+    } else if (mappedStatus === 'Failed' && oldStatus === 'Pending') {
+      console.log(`❌ Driver plan purchase failed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
+    }
+
+    await driver.save();
+
     return {
       success: true,
-      message: "Driver plan purchase handler - Not implemented yet",
-      details: { paymentId, driverId, planId, amount: webhookAmount, status }
+      message: `Driver plan purchase ${mappedStatus.toLowerCase()}`,
+      details: {
+        paymentId,
+        driverId,
+        planId,
+        planName: plan.name,
+        amount: existingPlan.amount,
+        status: mappedStatus
+      }
     };
 
   } catch (error) {
@@ -272,14 +556,6 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
   }
 };
 
-/**
- * Main deposit processor - routes to appropriate handler based on payment type
- * @param {string} paymentId - Razorpay payment ID
- * @param {string} status - Payment status from webhook
- * @param {number} webhookAmount - Amount from webhook (in rupees)
- * @param {Object} notes - Payment notes containing type and other details
- * @returns {Object} - Processing result
- */
 const processDeposit = async (paymentId, status, webhookAmount, notes) => {
   try {
     const { type } = notes;
@@ -294,7 +570,7 @@ const processDeposit = async (paymentId, status, webhookAmount, notes) => {
       case 'driver_deposit':
         return await handleDriverDeposit(paymentId, status, webhookAmount, notes);
       
-      case 'user_wallet_deposit':
+      case 'user_deposit':
         return await handleUserWalletDeposit(paymentId, status, webhookAmount, notes);
       
       case 'driver_plan_purchase':
@@ -304,7 +580,7 @@ const processDeposit = async (paymentId, status, webhookAmount, notes) => {
         return { 
           success: false, 
           error: `Unsupported payment type: ${type}`,
-          supportedTypes: ['driver_deposit', 'user_wallet_deposit', 'driver_plan_purchase']
+          supportedTypes: ['driver_deposit', 'user_deposit', 'driver_plan_purchase']
         };
     }
 

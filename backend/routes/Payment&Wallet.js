@@ -91,10 +91,34 @@ router.post('/verify', authMiddleware, async (req, res) => {
     } = req.body;
     const riderId = req.rider.riderId;
 
+    if (!razorpay_payment_id) {
+      return res.status(400).json({ error: 'Payment ID is required' });
+    }
+
     // Find the wallet and transaction record
     const wallet = await Wallet.findOne({ riderId });
     if (!wallet) {
       return res.status(404).json({ error: 'Wallet not found' });
+    }
+
+    // Check if transaction already exists (webhook processed first)
+    const existingTransaction = wallet.transactions.find(
+      t => t.razorpayPaymentId === razorpay_payment_id
+    );
+    
+    if (existingTransaction) {
+      console.log(`🔄 User transaction already exists: ${razorpay_payment_id}, Status: ${existingTransaction.status}`);
+      return res.json({
+        success: true,
+        message: `Transaction already processed by webhook with status: ${existingTransaction.status}`,
+        walletBalance: wallet.balance,
+        paymentId: razorpay_payment_id,
+        transaction: {
+          amount: existingTransaction.amount,
+          status: existingTransaction.status,
+          paidAt: existingTransaction.paidAt
+        }
+      });
     }
 
     const transaction = wallet.transactions.find(t => t.razorpayOrderId === razorpay_order_id);
@@ -117,11 +141,10 @@ router.post('/verify', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
-    // Payment is valid, update transaction record
+    // Create pending transaction - webhook will update status later
     transaction.razorpayPaymentId = razorpay_payment_id;
     transaction.razorpaySignature = razorpay_signature;
-    transaction.status = 'paid';
-    transaction.paidAt = new Date();
+    transaction.status = 'created'; // Keep as created, webhook will update to 'paid'
     
     // Get payment details from Razorpay
     try {
@@ -130,19 +153,18 @@ router.post('/verify', authMiddleware, async (req, res) => {
     } catch (error) {
       console.error('Error fetching payment details:', error);
     }
-
-    // Update wallet balance (transaction.amount is in rupees)
-    wallet.balance += transaction.amount;
-    wallet.totalDeposited += transaction.amount;
-    wallet.lastTransactionAt = new Date();
     
     await wallet.save();
 
     res.json({ 
       success: true, 
-      message: 'Payment verified successfully',
+      message: 'Payment verification initiated, awaiting webhook confirmation',
       walletBalance: wallet.balance,
-      paymentId: razorpay_payment_id
+      paymentId: razorpay_payment_id,
+      transaction: {
+        amount: transaction.amount,
+        status: transaction.status
+      }
     });
 
   } catch (error) {
