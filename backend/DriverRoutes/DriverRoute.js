@@ -2101,7 +2101,7 @@ router.get("/admin/incentive-history", async (req, res) => {
   }
 });
 
-router.post("/create-order", async (req, res) => {
+router.post("/create-order",DriverAuthMiddleware, async (req, res) => {
   try {
     const { amount, currency, receipt, notes } = req.body;
 
