@@ -1896,6 +1896,143 @@ router.get("/transactions/all", async (req, res) => {
   }
 });
 
+router.get("/transactions/stats", async (req, res) => {
+  try {
+    const pipeline = [
+      {
+        $lookup: {
+          from: "drivers",
+          localField: "driverId",
+          foreignField: "_id",
+          as: "driverId"
+        }
+      },
+      { $unwind: "$driverId" },
+      { $unwind: "$transactions" },
+      {
+        $group: {
+          _id: null,
+          totalTransactions: { $sum: 1 },
+          completedCount: {
+            $sum: { $cond: [{ $eq: ["$transactions.status", "completed"] }, 1, 0] }
+          },
+          totalEarnings: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$transactions.type", "ride_payment"] },
+                    { $eq: ["$transactions.status", "completed"] }
+                  ]
+                },
+                "$transactions.amount",
+                0
+              ]
+            }
+          },
+          totalWithdrawals: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$transactions.type", "withdrawal"] },
+                    { $eq: ["$transactions.status", "completed"] }
+                  ]
+                },
+                "$transactions.amount",
+                0
+              ]
+            }
+          }
+        }
+      }
+    ];
+
+    const result = await driverWallet.aggregate(pipeline);
+    const stats = result[0] || {
+      totalTransactions: 0,
+      completedCount: 0,
+      totalEarnings: 0,
+      totalWithdrawals: 0
+    };
+
+    res.status(200).json({ success: true, stats });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/transactions/paginated", async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
+    const skip = (page - 1) * limit;
+
+    let matchQuery = {};
+    if (search) {
+      matchQuery = {
+        $or: [
+          { "driverId.personalInformation.fullName": { $regex: search, $options: "i" } },
+          { "driverId.mobile": { $regex: search, $options: "i" } },
+          { "transactions.type": { $regex: search, $options: "i" } },
+          { "transactions.description": { $regex: search, $options: "i" } }
+        ]
+      };
+    }
+
+    const pipeline = [
+      {
+        $lookup: {
+          from: "drivers",
+          localField: "driverId",
+          foreignField: "_id",
+          as: "driverId"
+        }
+      },
+      { $unwind: "$driverId" },
+      { $unwind: "$transactions" },
+      ...(search ? [{ $match: matchQuery }] : []),
+      {
+        $addFields: {
+          "transactions.driver": "$driverId"
+        }
+      },
+      {
+        $replaceRoot: {
+          newRoot: "$transactions"
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ];
+
+    const [transactions, totalCount] = await Promise.all([
+      driverWallet.aggregate([
+        ...pipeline,
+        { $skip: skip },
+        { $limit: limit }
+      ]),
+      driverWallet.aggregate([
+        ...pipeline,
+        { $count: "total" }
+      ])
+    ]);
+
+    const totalRecords = totalCount[0]?.total || 0;
+
+    res.status(200).json({
+      success: true,
+      data: transactions,
+      totalRecords,
+      currentPage: page,
+      totalPages: Math.ceil(totalRecords / limit),
+      recordsPerPage: limit
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Reference OTP endpoints
 router.post("/reference/send-otp", async (req, res) => {
   // console.log("SID =>", process.env.KALEYRA_SID);

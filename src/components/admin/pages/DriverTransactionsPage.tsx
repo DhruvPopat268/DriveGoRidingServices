@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader, Search, TrendingUp, TrendingDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader, Search, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Transaction {
   _id: string;
@@ -24,19 +26,60 @@ export const DriverTransactionsPage = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [globalStats, setGlobalStats] = useState({
+    totalTransactions: 0,
+    completedCount: 0,
+    totalEarnings: 0,
+    totalWithdrawals: 0
+  });
 
   useEffect(() => {
-    fetchTransactions();
+    fetchGlobalStats();
   }, []);
 
-  const fetchTransactions = async () => {
+  useEffect(() => {
+    fetchTransactions(currentPage, recordsPerPage, searchTerm);
+  }, [currentPage, recordsPerPage]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1);
+      fetchTransactions(1, recordsPerPage, searchTerm);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  const fetchGlobalStats = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/transactions/all`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/transactions/stats`);
+      const data = await response.json();
+      if (data.success) {
+        setGlobalStats(data.stats);
+      }
+    } catch (error) {
+      console.error('Error fetching global stats:', error);
+    }
+  };
+
+  const fetchTransactions = async (page = 1, limit = 10, search = "") => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...(search && { search })
+      });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/transactions/paginated?${params}`);
       const data = await response.json();
       setTransactions(Array.isArray(data.data) ? data.data : []);
+      setTotalRecords(data.totalRecords || 0);
     } catch (error) {
       console.error('Error fetching transactions:', error);
       setTransactions([]);
+      setTotalRecords(0);
     } finally {
       setLoading(false);
     }
@@ -65,25 +108,20 @@ export const DriverTransactionsPage = () => {
     return <TrendingDown className="w-3 h-3 mr-1" />;
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      transaction.driver?.personalInformation?.fullName?.toLowerCase().includes(searchLower) ||
-      transaction.driver?.mobile?.includes(searchTerm) ||
-      transaction.type.toLowerCase().includes(searchLower) ||
-      transaction.description.toLowerCase().includes(searchLower)
-    );
-  });
 
-  const totalEarnings = filteredTransactions
-    .filter(t => t.type === 'ride_payment' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const totalWithdrawals = filteredTransactions
-    .filter(t => t.type === 'withdrawal' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const completedCount = filteredTransactions.filter(t => t.status === 'completed').length;
+
+  const totalPages = Math.ceil(totalRecords / recordsPerPage);
+  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
+  const endRecord = Math.min(currentPage * recordsPerPage, totalRecords);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
 
   if (loading) {
     return (
@@ -102,14 +140,14 @@ export const DriverTransactionsPage = () => {
           <Card className="bg-gradient-to-br from-purple-50 to-purple-100 shadow-sm hover:shadow-md transition-shadow border-purple-200">
             <CardContent className="pt-6">
               <div className="text-sm text-purple-700 font-medium mb-1">Total Transactions</div>
-              <div className="text-3xl font-bold text-purple-700">{filteredTransactions.length}</div>
+              <div className="text-3xl font-bold text-purple-700">{globalStats.totalTransactions}</div>
               <div className="text-xs text-purple-600 mt-1">All transaction records</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 shadow-sm hover:shadow-md transition-shadow border-blue-200">
             <CardContent className="pt-6">
               <div className="text-sm text-blue-700 font-medium mb-1">Completed</div>
-              <div className="text-3xl font-bold text-blue-700">{completedCount}</div>
+              <div className="text-3xl font-bold text-blue-700">{globalStats.completedCount}</div>
               <div className="text-xs text-blue-600 mt-1">Successfully completed</div>
             </CardContent>
           </Card>
@@ -119,7 +157,7 @@ export const DriverTransactionsPage = () => {
                 <TrendingUp className="w-4 h-4 mr-1" />
                 Total Earnings
               </div>
-              <div className="text-3xl font-bold text-green-700">₹{totalEarnings.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-green-700">₹{globalStats.totalEarnings.toLocaleString()}</div>
               <div className="text-xs text-green-600 mt-1">From completed ride payments</div>
             </CardContent>
           </Card>
@@ -129,7 +167,7 @@ export const DriverTransactionsPage = () => {
                 <TrendingDown className="w-4 h-4 mr-1" />
                 Total Withdrawals
               </div>
-              <div className="text-3xl font-bold text-red-700">₹{totalWithdrawals.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-red-700">₹{globalStats.totalWithdrawals.toLocaleString()}</div>
               <div className="text-xs text-red-600 mt-1">From completed withdrawals</div>
             </CardContent>
           </Card>
@@ -153,6 +191,27 @@ export const DriverTransactionsPage = () => {
             </div>
           </CardHeader>
           <CardContent className="p-0">
+            {/* Records per page selector */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="text-sm text-gray-600">
+                Showing {startRecord} to {endRecord} of {totalRecords} entries
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Show</span>
+                <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-gray-600">records</span>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -169,7 +228,7 @@ export const DriverTransactionsPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredTransactions.length === 0 ? (
+                  {transactions.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="px-4 py-12 text-center">
                         <div className="text-gray-400">
@@ -180,9 +239,9 @@ export const DriverTransactionsPage = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredTransactions.map((transaction, index) => (
+                    transactions.map((transaction, index) => (
                       <tr key={transaction._id || index} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-600">{index + 1}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-600">{(currentPage - 1) * recordsPerPage + index + 1}</td>
                         <td className="px-4 py-3 text-sm font-semibold text-gray-900">
                           {transaction.driver?.personalInformation?.fullName || 'N/A'}
                         </td>
@@ -222,6 +281,63 @@ export const DriverTransactionsPage = () => {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination Controls */}
+            {totalRecords > 0 && (
+              <div className="flex items-center justify-between p-4 border-t">
+                <div className="text-sm text-gray-600">
+                  Showing {startRecord} to {endRecord} of {totalRecords} entries
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNumber = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNumber = totalPages - 4 + i;
+                      } else {
+                        pageNumber = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={currentPage === pageNumber ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNumber)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

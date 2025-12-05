@@ -113,7 +113,7 @@ const driverSchema = new mongoose.Schema(
 
     purchasedPlans: [{
       _id: false, // 👈 disables auto _id for each object
-      paymentId: { type: String, required: true },
+      paymentId: { type: String },
       status: { type: String, enum: ["Success", "Failed", "Pending"] },
       plan: { type: String, required: true },
       amount: { type: Number },
