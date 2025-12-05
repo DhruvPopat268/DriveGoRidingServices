@@ -118,19 +118,19 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     const parseUsage = (usageStr) => {
       const usage = { km: 0, minutes: 0 };
       if (!usageStr) return usage;
-      
+
       const parts = usageStr.split('&').map(part => part.trim());
-      
+
       parts.forEach(part => {
         const kmMatch = part.match(/(\d+)\s*km/i);
         const hrMatch = part.match(/(\d+)\s*hrs?/i);
         const minMatch = part.match(/(\d+)\s*min/i);
-        
+
         if (kmMatch) usage.km = parseInt(kmMatch[1]);
         if (hrMatch) usage.minutes += parseInt(hrMatch[1]) * 60;
         if (minMatch) usage.minutes += parseInt(minMatch[1]);
       });
-      
+
       return usage;
     };
 
@@ -389,6 +389,7 @@ router.post("/get-included-data", async (req, res) => {
           ...(subSubcategoryId && {
             subSubCategory: new mongoose.Types.ObjectId(subSubcategoryId),
           }),
+          status: true
         },
       },
       {

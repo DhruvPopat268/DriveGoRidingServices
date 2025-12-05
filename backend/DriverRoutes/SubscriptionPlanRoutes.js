@@ -383,7 +383,6 @@ router.get("/driver/subscription-info", DriverAuthMiddleware, async (req, res) =
       new Date(b.purchasedAt) - new Date(a.purchasedAt)
     );
 
-
     // Calculate statistics
     const stats = {
       totalPurchases: purchasedPlans.length,

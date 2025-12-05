@@ -332,7 +332,8 @@ router.post("/get-included-data", async (req, res) => {
       {
         $match: {
           category: new mongoose.Types.ObjectId(categoryId),
-          subcategory: new mongoose.Types.ObjectId(subcategoryId)
+          subcategory: new mongoose.Types.ObjectId(subcategoryId),
+          status: true
         },
       },
       {

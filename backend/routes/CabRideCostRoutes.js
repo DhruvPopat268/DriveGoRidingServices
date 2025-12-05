@@ -342,6 +342,7 @@ router.post("/get-included-data", async (req, res) => {
           ...(subSubcategoryId && {
             subSubCategory: new mongoose.Types.ObjectId(subSubcategoryId),
           }),
+          status:true
         },
       },
       {
