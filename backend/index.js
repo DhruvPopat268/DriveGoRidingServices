@@ -56,6 +56,7 @@ app.set('io', io);
 // Middleware
 app.use(cors({
   origin: [
+    "http://localhost:5173",
     "http://localhost:8081",
     "http://localhost:8080",
     "https://journey-cost-estimator.vercel.app",

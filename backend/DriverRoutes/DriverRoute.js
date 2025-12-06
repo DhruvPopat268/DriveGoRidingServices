@@ -246,6 +246,34 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
+router.post("/deleteAccount", async (req, res) => {
+  try {
+    const { mobileNo } = req.body;
+
+    if (!mobileNo) {
+      return res.status(400).json({ success: false, message: "Mobile number is required" });
+    }
+
+    const driver = await Driver.findOne({ mobile: mobileNo });
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    if (driver.status === "deleted") {
+      return res.status(400).json({ success: false, message: "Driver account is already deleted" });
+    }
+
+    driver.status = "deleted";
+    driver.deletedDate = new Date();
+    await driver.save();
+
+    res.json({ success: true, message: "Driver account deleted successfully" });
+  } catch (error) {
+    console.error("Delete account error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
 
 router.get("/", async (req, res) => {
   try {
