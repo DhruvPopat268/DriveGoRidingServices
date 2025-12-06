@@ -59,6 +59,7 @@ app.use(cors({
     "http://localhost:5173",
     "http://localhost:8081",
     "http://localhost:8080",
+    "https://hire4drivedriverdeleteaccount.onrender.com",
     "https://journey-cost-estimator.vercel.app",
     "https://drive-go-riding-services.vercel.app",
     "https://www.hire4drive.com",
