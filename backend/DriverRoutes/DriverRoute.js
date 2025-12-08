@@ -27,6 +27,7 @@ const path = require("path");
 const sharp = require("sharp");
 const DriverReferanceOtpSession = require("../DriverModel/DriverReferanceOtpSession");
 const DriverIncentive = require("../models/DriverIncentive");
+const DriverSuspend = require("../models/DriverSuspend");
 const NotificationService = require('../Services/notificationService');
 const DriverNotification = require('../DriverModel/DriverNotification');
 const { processDeposit } = require('../utils/depositHandler');
@@ -279,8 +280,6 @@ router.get("/", async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Approved" })
       .populate('driverCategory')
-      .populate('parcelCategory')
-      .populate('assignedCar')
       .sort({ createdAt: -1 });
 
     res.status(200).json(drivers);
@@ -466,6 +465,36 @@ router.get("/deleted", async (req, res) => {
       return res.status(200).json({ success: true, data: [] });
     }
     res.status(200).json({ success: true, data: drivers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/Suspended", async (req, res) => {
+  try {
+    const drivers = await Driver.find({ status: "Suspended" }).sort({ createdAt: -1 });
+
+    if (!drivers || drivers.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    // Get suspend details for each driver
+    const driversWithSuspendInfo = await Promise.all(
+      drivers.map(async (driver) => {
+        const suspendRecord = await DriverSuspend.findOne({
+          drivers: driver._id
+        }).sort({ createdAt: -1 });
+
+        return {
+          ...driver.toObject(),
+          suspendFrom: suspendRecord?.suspendFrom || null,
+          suspendTo: suspendRecord?.suspendTo || null,
+          suspendDescription: suspendRecord?.description || null
+        };
+      })
+    );
+
+    res.status(200).json({ success: true, data: driversWithSuspendInfo });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -796,7 +825,6 @@ router.post("/manage-credits", async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 });
-
 
 // Get driver personal information with category details
 router.get("/driverDetail", driverAuthMiddleware, async (req, res) => {
@@ -2279,6 +2307,109 @@ router.get("/admin/incentive-history", async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: incentives });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Suspend drivers
+router.post("/admin/suspend-drivers", async (req, res) => {
+  try {
+    const { driverIds, suspendFrom, suspendTo, description } = req.body;
+
+    if (!driverIds || !Array.isArray(driverIds) || driverIds.length === 0) {
+      return res.status(400).json({ message: "Driver IDs array is required" });
+    }
+
+    if (!suspendFrom || !suspendTo) {
+      return res.status(400).json({ message: "Suspend dates are required" });
+    }
+
+    if (!description || description.trim() === "") {
+      return res.status(400).json({ message: "Description is required" });
+    }
+
+    const fromDate = new Date(suspendFrom);
+    const toDate = new Date(suspendTo);
+
+    if (toDate <= fromDate) {
+      return res.status(400).json({ message: "Suspend To date must be after Suspend From date" });
+    }
+
+    // Create suspend record
+    const suspend = await DriverSuspend.create({
+      drivers: driverIds,
+      suspendFrom: fromDate,
+      suspendTo: toDate,
+      description: description.trim()
+    });
+
+    const results = [];
+
+    for (const driverId of driverIds) {
+      try {
+        const driver = await Driver.findById(driverId);
+        if (!driver) {
+          results.push({ driverId, success: false, error: "Driver not found" });
+          continue;
+        }
+
+        // Update driver status to Suspended
+        driver.status = "Suspended";
+        await driver.save();
+
+        // Send suspension notification
+        try {
+          await NotificationService.sendAndStoreDriverNotification(
+            driverId,
+            driver.oneSignalPlayerId,
+            'Account Suspended',
+            `Your account has been suspended from ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}. Reason: ${description.trim()}`,
+            'account_suspended',
+            { suspendFrom: fromDate, suspendTo: toDate, description: description.trim() }
+          );
+        } catch (notifError) {
+          console.error('Suspension notification error:', notifError);
+        }
+
+        results.push({ driverId, success: true });
+      } catch (error) {
+        console.error(`Error suspending driver ${driverId}:`, error);
+        results.push({ driverId, success: false, error: error.message });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    res.json({
+      success: true,
+      message: `Suspension processed: ${successCount} successful, ${failCount} failed`,
+      results,
+      suspendId: suspend._id,
+      summary: {
+        total: driverIds.length,
+        successful: successCount,
+        failed: failCount,
+        suspendFrom: fromDate,
+        suspendTo: toDate,
+        description
+      }
+    });
+  } catch (error) {
+    console.error("Suspend drivers error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+// Get suspend history
+router.get("/admin/suspend-history", async (req, res) => {
+  try {
+    const suspensions = await DriverSuspend.find()
+      .populate("drivers", "personalInformation.fullName mobile")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: suspensions });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

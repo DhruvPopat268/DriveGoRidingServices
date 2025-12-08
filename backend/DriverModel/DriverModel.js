@@ -81,7 +81,7 @@ const driverSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["Pending", "Onreview", "Approved", "Rejected", "PendingForPayment", "deleted"],
+      enum: ["Pending", "Onreview", "Approved", "Rejected", "PendingForPayment", "Suspended", "deleted"],
       default: "Pending"
     },
 

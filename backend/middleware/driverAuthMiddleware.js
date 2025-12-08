@@ -1,70 +1,95 @@
 const jwt = require("jsonwebtoken");
 const Session = require("../DriverModel/DriverSession");
 const Driver = require("../DriverModel/DriverModel");
+const DriverSuspend = require("../models/DriverSuspend");
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // console.log("🔹 Incoming request to authMiddleware");
-    // console.log("Headers:", req.headers);
+
 
     const authHeader = req.headers["authorization"];
-    // console.log("Auth Header:", authHeader);
+
 
     const token = authHeader && authHeader.startsWith("Bearer ")
       ? authHeader.split(" ")[1]
       : null;
 
-    // console.log("Extracted Token:", token);
+  
 
     if (!token) {
-      // console.log("❌ No token provided");
+    
       return res.status(401).json({ success: false, message: "No token provided" });
     }
 
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET_DRIVER);
-      // console.log("✅ Token verified:", decoded);
+    
     } catch (err) {
-      // console.log("❌ JWT verification failed:", err.message);
+     
       return res.status(401).json({ success: false, message: "Invalid or expired token" });
     }
 
     // ✅ Check session validity
     const sessions = await Session.find({ mobileNumber: decoded.mobile });
-    // console.log("Sessions found:", sessions.length);
+
 
     const isValidSession = sessions.some((s) => s.token === token);
-    // console.log("Session valid:", isValidSession);
+
 
     if (!isValidSession) {
-      // console.log("❌ Session expired or not found");
+    
       return res.status(401).json({ success: false, message: "Session expired or not found" });
     }
 
     // ✅ Fetch driver info
     const driverFromDB = await Driver.findOne({ mobile: decoded.mobile });
-    // console.log("Driver found:", !!driverFromDB);
+ 
 
     if (!driverFromDB) {
-      // console.log("❌ Driver not found in database");
+   
       return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+
+    // ✅ Check if driver is suspended
+    if (driverFromDB.status === "Suspended") {
+      const suspendRecord = await DriverSuspend.findOne({
+        drivers: driverFromDB._id
+      }).sort({ createdAt: -1 });
+
+      if (suspendRecord) {
+        const now = new Date();
+        const suspendFrom = new Date(suspendRecord.suspendFrom);
+        const suspendTo = new Date(suspendRecord.suspendTo);
+
+        if (now < suspendFrom) {
+          // Suspension hasn't started yet - revert to Approved
+          driverFromDB.status = "Approved";
+          await driverFromDB.save();
+        } else if (now >= suspendFrom && now <= suspendTo) {
+          // Currently suspended - block access
+          return res.status(403).json({
+            success: false,
+            message: "Your account is suspended",
+            suspendFrom: suspendFrom,
+            suspendTo: suspendTo,
+            reason: suspendRecord.description
+          });
+        } else if (now > suspendTo) {
+          // Suspension period ended - revert to Approved
+          driverFromDB.status = "Approved";
+          await driverFromDB.save();
+        }
+      } else {
+        // No suspend record found - revert to Approved
+        driverFromDB.status = "Approved";
+        await driverFromDB.save();
+      }
     }
 
     // ✅ Check current plan and expiry
     const currentPlan = driverFromDB.currentPlan || {};
-    // console.log("Current Plan:", currentPlan);
 
-    // if (!currentPlan.expiryDate) {
-    //   // console.log("❌ Driver has no expiryDate set in currentPlan");
-    //   return res.status(402).json({
-    //     success: false,
-    //     message: "No active subscription found. Please purchase or renew your plan."
-    //   });
-    // }
-
-    // console.log("Current Date:", now);
-    // console.log("Plan Expiry Date:", expiry);
 
     // ✅ Only check expiry if expiryDate exists
     if (currentPlan.expiryDate) {
@@ -72,7 +97,7 @@ const authMiddleware = async (req, res, next) => {
       const expiry = new Date(currentPlan.expiryDate);
 
       if (expiry < now) {
-        //console.log("❌ Driver plan expired");
+     
         return res.status(402).json({
           success: false,
           message: "Subscription plan expired. Please renew to continue."
@@ -82,7 +107,7 @@ const authMiddleware = async (req, res, next) => {
 
     // ✅ Attach driver info and continue
     req.driver = decoded;
-    // console.log("✅ Auth successful for driver:", decoded.mobile);
+ 
     next();
 
   } catch (error) {

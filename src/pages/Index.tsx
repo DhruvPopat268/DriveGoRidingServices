@@ -69,6 +69,8 @@ import { UniversalCategoryAssignmentPage } from "@/components/admin/pages/Univer
 import UserRatingsPage from "@/components/admin/pages/UserRatingsPage";
 import DriverRatingsPage from "@/components/admin/pages/DriverRatingsPage";
 import DriverIncentivePage from "@/components/admin/pages/DriverIncentivePage";
+import SuspendDriverPage from "@/components/admin/pages/SuspendDriverPage";
+import SuspendedDriversPage from "@/components/admin/pages/SuspendedDriversPage";
 import { UsersPage } from "@/components/admin/pages/UsersPage";
 import PendingVehiclesPage from "@/components/admin/pages/PendingVehiclesPage";
 import ApprovedVehiclesPage from "@/components/admin/pages/ApprovedVehiclesPage";
@@ -373,6 +375,17 @@ const Index = () => {
             onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
           />
         );
+      case "drivers-suspended":
+        return selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)} 
+          />
+        ) : (
+          <SuspendedDriversPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
       case "pending-withdrawals":
         return <PendingWithdrawalPage />;
       case "completed-withdrawals":
@@ -417,6 +430,8 @@ const Index = () => {
         return <FileUploadTest />;
       case "driver-incentives":
         return <DriverIncentivePage />;
+      case "suspend-driver":
+        return <SuspendDriverPage />;
       case "users":
         return <UsersPage />;
       case "pending-vehicles":

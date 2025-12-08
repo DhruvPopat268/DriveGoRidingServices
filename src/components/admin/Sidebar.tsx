@@ -111,7 +111,9 @@ const menuItems = [
       { icon: CheckCircle, label: "Approved Registration Requests", key: "drivers-approved" },
       { icon: Wallet, label: "Pending For Payment Requests", key: "drivers-pending-payment" },
       { icon: XCircle, label: "Rejected Registration Requests", key: "drivers-rejected" },
-      { icon: Ban, label: "Deleted Drivers", key: "drivers-deleted" }
+      { icon: Ban, label: "Deleted Drivers", key: "drivers-deleted" },
+      { icon: Ban, label: "Suspended Drivers", key: "drivers-suspended" },
+      { icon: Ban, label: "Suspend Driver", key: "suspend-driver" }
     ]
   },
   { icon: BookOpen, label: "T & C", key: "t&c" },
