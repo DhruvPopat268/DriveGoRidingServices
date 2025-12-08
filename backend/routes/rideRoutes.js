@@ -202,11 +202,9 @@ router.post("/book", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    const selectedCategoryData = totalAmount.find(
-      (item) => item.category === selectedCategory
-    );
+    const selectedCategoryData = totalAmount
 
-    // console.log('selected category data', selectedCategoryData)
+    console.log('selected category data', selectedCategoryData)
 
     if (!selectedCategoryData) {
       return res.status(400).json({ message: "Invalid selectedCategory" });
@@ -308,6 +306,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     let vehicleTypeName = null;
     
     const categoryNameLower = categoryName.toLowerCase();
+    console.log('category name lower', categoryNameLower)
     if (categoryNameLower === 'cab' && selectedCategoryId) {
       try {
         const car = await Car.findById(selectedCategoryId).populate('vehicleType');

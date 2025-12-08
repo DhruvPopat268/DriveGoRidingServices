@@ -37,6 +37,12 @@ interface RideDetails {
     subSubcategoryName?: string;
     carType: string;
     transmissionType: string;
+    SelectedDays?: string;
+    selectedDates?: string[];
+    remainingDates?: string[];
+    completedDates?: string[];
+    vehicleType?: string;
+    selectedParcelCategory?: string;
     fromLocation: {
       address: string;
       lat: number;
@@ -275,6 +281,16 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                       <p className="text-sm text-gray-500 capitalize">{rideDetails.rideInfo.transmissionType}</p>
                     </div>
                   )}
+                  {rideDetails.rideInfo.categoryName?.toLowerCase() === 'parcel' && (
+                    <div className="space-y-1 mt-2">
+                      {rideDetails.rideInfo.vehicleType && (
+                        <p className="text-sm text-gray-500">Vehicle: <span className="font-medium">{rideDetails.rideInfo.vehicleType}</span></p>
+                      )}
+                      {rideDetails.rideInfo.selectedParcelCategory && (
+                        <p className="text-sm text-gray-500">Parcel Category: <span className="font-medium">{rideDetails.rideInfo.selectedParcelCategory}</span></p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -337,6 +353,62 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                   </label>
                   <p className="text-sm bg-gray-50 p-3 rounded-lg">{rideDetails.rideInfo.notes}</p>
                 </div>
+              )}
+
+              {(rideDetails.rideInfo.subcategoryName?.toLowerCase() === 'weekly' || 
+                rideDetails.rideInfo.subcategoryName?.toLowerCase() === 'monthly') && (
+                <>
+                  <Separator />
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Weekly/Monthly Details</h3>
+                    
+                    {rideDetails.rideInfo.SelectedDays && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Selected Days</label>
+                        <p className="text-lg font-semibold">{rideDetails.rideInfo.SelectedDays} days</p>
+                      </div>
+                    )}
+
+                    {rideDetails.rideInfo.selectedDates && rideDetails.rideInfo.selectedDates.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Selected Dates</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {rideDetails.rideInfo.selectedDates.map((date, index) => (
+                            <Badge key={index} variant="outline" className="bg-blue-50">
+                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {rideDetails.rideInfo.completedDates && rideDetails.rideInfo.completedDates.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Completed Dates</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {rideDetails.rideInfo.completedDates.map((date, index) => (
+                            <Badge key={index} variant="outline" className="bg-green-50 text-green-700">
+                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {rideDetails.rideInfo.remainingDates && rideDetails.rideInfo.remainingDates.length > 0 && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Remaining Dates</label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {rideDetails.rideInfo.remainingDates.map((date, index) => (
+                            <Badge key={index} variant="outline" className="bg-yellow-50 text-yellow-700">
+                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
