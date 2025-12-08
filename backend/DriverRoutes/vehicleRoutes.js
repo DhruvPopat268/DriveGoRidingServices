@@ -123,6 +123,7 @@ router.post("/create", DriverAuthMiddleware, upload.any(), async (req, res) => {
       category: driver.selectedCategory.id,
       rcNumber,
       status: true,
+      adminStatus: false,
       [vehicleDetailsField]: vehicleData
     });
 
@@ -301,6 +302,9 @@ router.put("/update", DriverAuthMiddleware, upload.any(), async (req, res) => {
         }
       });
     }
+
+    // Set adminStatus to false when vehicle is updated
+    updateData.$set.adminStatus = false;
 
     const vehicle = await Vehicle.findOneAndUpdate(
       { _id: vehicleId, owner: ownerId },
@@ -628,6 +632,44 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
     .populate('cabVehicleDetails.modelType')
     .populate('parcelVehicleDetails.vehicleType')
     .populate('parcelVehicleDetails.modelType');
+
+    res.json({ success: true, data: vehicles });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Get all pending vehicles (adminStatus: false)
+router.get("/admin/pending", async (req, res) => {
+  try {
+    const vehicles = await Vehicle.find({ adminStatus: false })
+      .populate('owner', 'personalInformation.fullName mobile uniqueId')
+      .populate('category', 'name')
+      .populate('assignedTo', 'personalInformation.fullName mobile')
+      .populate('cabVehicleDetails.vehicleType')
+      .populate('cabVehicleDetails.modelType')
+      .populate('parcelVehicleDetails.vehicleType')
+      .populate('parcelVehicleDetails.modelType')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: vehicles });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Get all approved vehicles (adminStatus: true)
+router.get("/admin/approved", async (req, res) => {
+  try {
+    const vehicles = await Vehicle.find({ adminStatus: true })
+      .populate('owner', 'personalInformation.fullName mobile uniqueId')
+      .populate('category', 'name')
+      .populate('assignedTo', 'personalInformation.fullName mobile')
+      .populate('cabVehicleDetails.vehicleType')
+      .populate('cabVehicleDetails.modelType')
+      .populate('parcelVehicleDetails.vehicleType')
+      .populate('parcelVehicleDetails.modelType')
+      .sort({ createdAt: -1 });
 
     res.json({ success: true, data: vehicles });
   } catch (error) {

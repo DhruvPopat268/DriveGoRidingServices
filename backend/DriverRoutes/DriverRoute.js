@@ -548,6 +548,12 @@ router.post("/approve/:driverId", async (req, res) => {
       { new: true }
     );
 
+    // Update all vehicles owned by this driver to adminStatus: true
+    await Vehicle.updateMany(
+      { owner: driverId },
+      { adminStatus: true }
+    );
+
     // Send approval notification to driver
     try {
       await NotificationService.sendAndStoreDriverNotification(
@@ -1420,6 +1426,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
           category: categoryId,
           rcNumber: data.rcNumber,
           status: true,
+          adminStatus: false,
           assignedTo: ownership === "Owner_With_Vehicle" ? updatedDriver._id : null,
           [vehicleDetailsField]: vehicleDetails
         });

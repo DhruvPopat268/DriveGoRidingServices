@@ -87,8 +87,6 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       includeInsurance,
       selectedUsage,
       subcategoryId,
-      numberOfWeeks,
-      numberOfMonths,
       subSubcategoryId,
       durationType,
       durationValue

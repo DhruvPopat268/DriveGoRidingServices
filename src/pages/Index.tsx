@@ -70,6 +70,8 @@ import UserRatingsPage from "@/components/admin/pages/UserRatingsPage";
 import DriverRatingsPage from "@/components/admin/pages/DriverRatingsPage";
 import DriverIncentivePage from "@/components/admin/pages/DriverIncentivePage";
 import { UsersPage } from "@/components/admin/pages/UsersPage";
+import PendingVehiclesPage from "@/components/admin/pages/PendingVehiclesPage";
+import ApprovedVehiclesPage from "@/components/admin/pages/ApprovedVehiclesPage";
 import axios from "axios";
 
 const Index = () => {
@@ -416,6 +418,10 @@ const Index = () => {
         return <DriverIncentivePage />;
       case "users":
         return <UsersPage />;
+      case "pending-vehicles":
+        return <PendingVehiclesPage />;
+      case "approved-vehicles":
+        return <ApprovedVehiclesPage />;
 
       case "category-assignment":
         return categoryAssignment ? (

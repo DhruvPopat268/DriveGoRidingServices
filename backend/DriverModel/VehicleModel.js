@@ -85,6 +85,11 @@ const vehicleSchema = new mongoose.Schema({
     default: true
   },
 
+  adminStatus: {
+    type: Boolean,
+    default: true
+  },
+
   assignedTo: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Driver"

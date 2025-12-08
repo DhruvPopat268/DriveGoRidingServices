@@ -88,6 +88,16 @@ const menuItems = [
       { icon: Calculator, label: "Parcel Ride Cost Management", key: "parcelridecost" }
     ]
   },
+  {
+    icon: Truck,
+    label: "Vehicle Management",
+    key: "vehicle-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Clock, label: "Pending Vehicles", key: "pending-vehicles" },
+      { icon: CheckCircle, label: "Approved Vehicles", key: "approved-vehicles" }
+    ]
+  },
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
   {
     icon: UserCheck,
