@@ -69,6 +69,8 @@ router.get("/subcategories/:categoryId", async (req, res) => {
   }
 });
 
+
+
 // ✅ Create sub-subcategory with Cloudinary image upload
 router.post("/", upload.single("image"), async (req, res) => {
   try {
@@ -146,6 +148,24 @@ router.delete("/:id", async (req, res) => {
     res.json({ message: "Deleted successfully" });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// ✅ Get subsubcategories by subcategory ID
+router.post("/userApp/by-subcategory", async (req, res) => {
+  try {
+    const { subcategoryId } = req.body;
+    if (!subcategoryId) {
+      return res.status(400).json({ error: "subcategoryId is required" });
+    }
+    const subSubCategories = await SubSubCategory.find({ subCategoryId: subcategoryId })
+      .populate("categoryId", "name")
+      .populate("subCategoryId", "name");
+    res.json({ success: true, data: subSubCategories });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
