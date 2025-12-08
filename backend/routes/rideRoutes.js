@@ -397,7 +397,8 @@ router.post("/book", authMiddleware, async (req, res) => {
         
         const vehicles = await Vehicle.find({
           [vehicleField]: selectedCategoryId,
-          status: true
+          status: true,
+          adminStatus: 'approved'
         }).select('assignedTo');
 
         
@@ -1688,7 +1689,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           
           const vehicles = await Vehicle.find({
             [vehicleField]: currentRide.rideInfo.selectedCategoryId,
-            status: true
+            status: true,
+          adminStatus: 'approved'
           }).select('assignedTo');
           
           const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
@@ -1887,7 +1889,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         
         const vehicles = await Vehicle.find({
           [vehicleField]: currentRide.rideInfo.selectedCategoryId,
-          status: true
+          status: true,
+          adminStatus: 'approved'
         }).select('assignedTo');
         
         const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);

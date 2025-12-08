@@ -219,7 +219,8 @@ io.on('connection', (socket) => {
                 // Debug: Check vehicles with status true
                 const activeVehiclesWithModel = await Vehicle.find({
                   [vehicleField]: selectedCategoryId,
-                  status: true
+                  status: true,
+                  adminStatus: 'approved'
                 });
                 
                 // Final query with driver assignment - convert driverId to ObjectId
