@@ -551,7 +551,10 @@ router.post("/approve/:driverId", async (req, res) => {
     // Update all vehicles owned by this driver to adminStatus: 'approved'
     await Vehicle.updateMany(
       { owner: driverId },
-      { adminStatus: 'approved' }
+      { 
+        adminStatus: 'approved',
+        approvedDate: new Date()
+      }
     );
 
     // Send approval notification to driver

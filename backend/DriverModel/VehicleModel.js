@@ -91,6 +91,16 @@ const vehicleSchema = new mongoose.Schema({
     default: 'pending'
   },
 
+  approvedDate: {
+    type: Date,
+    default: null
+  },
+
+  rejectedDate: {
+    type: Date,
+    default: null
+  },
+
   assignedTo: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Driver"

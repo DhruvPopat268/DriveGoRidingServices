@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, X } from 'lucide-react';
+import { Eye, X, Check, XCircle } from 'lucide-react';
 
 interface Vehicle {
   _id: string;
@@ -19,6 +19,8 @@ interface Vehicle {
   cabVehicleDetails?: any;
   parcelVehicleDetails?: any;
   createdAt: string;
+  approvedDate?: string;
+  rejectedDate?: string;
 }
 
 export default function PendingVehiclesPage() {
@@ -26,6 +28,10 @@ export default function PendingVehiclesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [vehicleToAction, setVehicleToAction] = useState<Vehicle | null>(null);
 
   useEffect(() => {
     fetchPendingVehicles();
@@ -58,6 +64,74 @@ export default function PendingVehiclesPage() {
   const closeModal = () => {
     setShowModal(false);
     setSelectedVehicle(null);
+  };
+
+  const openApproveModal = (vehicle: Vehicle) => {
+    setVehicleToAction(vehicle);
+    setShowApproveModal(true);
+  };
+
+  const openRejectModal = (vehicle: Vehicle) => {
+    setVehicleToAction(vehicle);
+    setShowRejectModal(true);
+  };
+
+  const handleApprove = async () => {
+    if (!vehicleToAction) return;
+    
+    try {
+      setActionLoading(vehicleToAction._id);
+      const adminToken = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/approve/${vehicleToAction._id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
+        setShowApproveModal(false);
+        setVehicleToAction(null);
+      } else {
+        alert(data.message || 'Failed to approve vehicle');
+      }
+    } catch (error) {
+      console.error('Error approving vehicle:', error);
+      alert('Failed to approve vehicle');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!vehicleToAction) return;
+    
+    try {
+      setActionLoading(vehicleToAction._id);
+      const adminToken = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/reject/${vehicleToAction._id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
+        setShowRejectModal(false);
+        setVehicleToAction(null);
+      } else {
+        alert(data.message || 'Failed to reject vehicle');
+      }
+    } catch (error) {
+      console.error('Error rejecting vehicle:', error);
+      alert('Failed to reject vehicle');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   if (loading) {
@@ -120,13 +194,32 @@ export default function PendingVehiclesPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => handleView(vehicle)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="View details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleView(vehicle)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="View details"
+                          disabled={actionLoading === vehicle._id}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openApproveModal(vehicle)}
+                          className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                          title="Approve"
+                          disabled={actionLoading === vehicle._id}
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => openRejectModal(vehicle)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                          title="Reject"
+                          disabled={actionLoading === vehicle._id}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -261,6 +354,68 @@ export default function PendingVehiclesPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve Modal */}
+      {showApproveModal && vehicleToAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Approve Vehicle</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to approve vehicle <span className="font-semibold">{vehicleToAction.rcNumber}</span>?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowApproveModal(false);
+                  setVehicleToAction(null);
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                disabled={actionLoading === vehicleToAction._id}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                className="px-4 py-2 text-white bg-green-600 rounded hover:bg-green-700 transition-colors disabled:opacity-50"
+                disabled={actionLoading === vehicleToAction._id}
+              >
+                {actionLoading === vehicleToAction._id ? 'Approving...' : 'Approve'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {showRejectModal && vehicleToAction && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Reject Vehicle</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to reject vehicle <span className="font-semibold">{vehicleToAction.rcNumber}</span>?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setVehicleToAction(null);
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                disabled={actionLoading === vehicleToAction._id}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                className="px-4 py-2 text-white bg-red-600 rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                disabled={actionLoading === vehicleToAction._id}
+              >
+                {actionLoading === vehicleToAction._id ? 'Rejecting...' : 'Reject'}
+              </button>
             </div>
           </div>
         </div>

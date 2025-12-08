@@ -696,4 +696,56 @@ router.get("/admin/rejected", async (req, res) => {
   }
 });
 
+// Admin: Approve vehicle
+router.post("/admin/approve/:vehicleId", async (req, res) => {
+  try {
+    const { vehicleId } = req.params;
+
+    const vehicle = await Vehicle.findByIdAndUpdate(
+      vehicleId,
+      { 
+        adminStatus: 'approved',
+        approvedDate: new Date()
+      },
+      { new: true }
+    )
+      .populate('owner', 'personalInformation.fullName mobile uniqueId')
+      .populate('category', 'name');
+
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: "Vehicle not found" });
+    }
+
+    res.json({ success: true, data: vehicle, message: "Vehicle approved successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Reject vehicle
+router.post("/admin/reject/:vehicleId", async (req, res) => {
+  try {
+    const { vehicleId } = req.params;
+
+    const vehicle = await Vehicle.findByIdAndUpdate(
+      vehicleId,
+      { 
+        adminStatus: 'rejected',
+        rejectedDate: new Date()
+      },
+      { new: true }
+    )
+      .populate('owner', 'personalInformation.fullName mobile uniqueId')
+      .populate('category', 'name');
+
+    if (!vehicle) {
+      return res.status(404).json({ success: false, message: "Vehicle not found" });
+    }
+
+    res.json({ success: true, data: vehicle, message: "Vehicle rejected successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

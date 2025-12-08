@@ -19,6 +19,8 @@ interface Vehicle {
   cabVehicleDetails?: any;
   parcelVehicleDetails?: any;
   createdAt: string;
+  approvedDate?: string;
+  rejectedDate?: string;
 }
 
 export default function RejectedVehiclesPage() {
@@ -83,13 +85,14 @@ export default function RejectedVehiclesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unique ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rejected Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {vehicles.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
                     No rejected vehicles found
                   </td>
                 </tr>
@@ -118,6 +121,9 @@ export default function RejectedVehiclesPage() {
                       <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                         Rejected
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {vehicle.rejectedDate ? new Date(vehicle.rejectedDate).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button
