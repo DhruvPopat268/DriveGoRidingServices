@@ -86,8 +86,9 @@ const vehicleSchema = new mongoose.Schema({
   },
 
   adminStatus: {
-    type: Boolean,
-    default: true
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
   },
 
   assignedTo: [{

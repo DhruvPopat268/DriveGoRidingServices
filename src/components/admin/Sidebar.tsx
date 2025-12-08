@@ -95,7 +95,8 @@ const menuItems = [
     isDropdown: true,
     subItems: [
       { icon: Clock, label: "Pending Vehicles", key: "pending-vehicles" },
-      { icon: CheckCircle, label: "Approved Vehicles", key: "approved-vehicles" }
+      { icon: CheckCircle, label: "Approved Vehicles", key: "approved-vehicles" },
+      { icon: XCircle, label: "Rejected Vehicles", key: "rejected-vehicles" }
     ]
   },
   { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
