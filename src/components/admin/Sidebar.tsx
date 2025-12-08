@@ -58,6 +58,7 @@ const menuItems = [
     key: "driver-category-management",
     isDropdown: true,
     subItems: [
+      { icon: Bike, label: "Driver Vehicle Type", key: "drivervehicletype" },
       { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
       { icon: DollarSign, label: "Driver Category", key: "pricecategory" },
       { icon: Calculator, label: "Driver Ride Cost Management", key: "ridecost" }

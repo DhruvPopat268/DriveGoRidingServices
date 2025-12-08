@@ -447,7 +447,7 @@ export const SubSubCategoryPage = () => {
               <TableHead>Sub Category</TableHead>
               <TableHead>Sub-Sub Category Name</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>Actions</TableHead>
+          
             </TableRow>
           </TableHeader>
 
@@ -484,22 +484,7 @@ export const SubSubCategoryPage = () => {
                   <TableCell>{subSubCategory.subCategoryName}</TableCell>
                   <TableCell>{subSubCategory.name}</TableCell>
                   <TableCell>{subSubCategory.description || 'N/A'}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(subSubCategory)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <DeleteConfirmation
-                        onDelete={() => handleDelete(subSubCategory)}
-                        itemName={subSubCategory.name}
-                        buttonVariant="outline"
-                      />
-                    </div>
-                  </TableCell>
+                 
                 </TableRow>
               ))
             )}

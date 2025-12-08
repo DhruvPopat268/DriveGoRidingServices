@@ -29,68 +29,77 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import axios from 'axios';
 
 interface VehicleCategory {
   _id: string;
   vehicleName: string;
+  DriveVehicleType: {
+    _id: string;
+    name: string;
+  };
+  status: boolean;
+}
+
+interface DriverVehicleType {
+  _id: string;
+  name: string;
+  status: boolean;
 }
 
 export const VehicleCategoryPage = () => {
   const [vehicleCategories, setVehicleCategories] = useState<VehicleCategory[]>([]);
+  const [driverVehicleTypes, setDriverVehicleTypes] = useState<DriverVehicleType[]>([]);
   const [loading, setLoading] = useState(false);
  
 
   const [vehicleCategoryForm, setVehicleCategoryForm] = useState({
-    image: '',
-    vehicleName: ''
+    vehicleName: '',
+    DriveVehicleType: ''
   });
   const [vehicleCategoryDialogOpen, setVehicleCategoryDialogOpen] = useState(false);
   const [editingVehicleCategory, setEditingVehicleCategory] = useState<VehicleCategory | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // ✅ Fetch all vehicle categories on mount
   useEffect(() => {
-    const fetchVehicleCategories = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`);
-        setVehicleCategories(res.data?.data || []);
+        const [categoriesRes, typesRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`),
+          axios.get(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes`)
+        ]);
+        setVehicleCategories(categoriesRes.data?.data || []);
+        setDriverVehicleTypes(typesRes.data?.data || []);
       } catch (error) {
-        console.error('Error fetching vehicle categories:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchVehicleCategories();
-  }, [import.meta.env.VITE_API_URL]);
+    fetchData();
+  }, []);
 
   const handleVehicleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (vehicleCategoryForm.vehicleName.trim()) {
-      const payload = {
-        image: vehicleCategoryForm.image || '/placeholder.svg',
-        vehicleName: vehicleCategoryForm.vehicleName.trim()
-      };
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`, payload);
+    if (vehicleCategoryForm.vehicleName.trim() && vehicleCategoryForm.DriveVehicleType) {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`, vehicleCategoryForm);
       setVehicleCategories([...vehicleCategories, res.data.data]);
-      setVehicleCategoryForm({ image: '', vehicleName: '' });
+      setVehicleCategoryForm({ vehicleName: '', DriveVehicleType: '' });
       setVehicleCategoryDialogOpen(false);
     }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingVehicleCategory && vehicleCategoryForm.vehicleName.trim()) {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${editingVehicleCategory._id}`, {
-        image: vehicleCategoryForm.image,
-        vehicleName: vehicleCategoryForm.vehicleName
-      });
+    if (editingVehicleCategory && vehicleCategoryForm.vehicleName.trim() && vehicleCategoryForm.DriveVehicleType) {
+      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${editingVehicleCategory._id}`, vehicleCategoryForm);
       setVehicleCategories(
         vehicleCategories.map(vc => (vc._id === editingVehicleCategory._id ? res.data.data : vc))
       );
-      setVehicleCategoryForm({ image: '', vehicleName: '' });
+      setVehicleCategoryForm({ vehicleName: '', DriveVehicleType: '' });
       setEditDialogOpen(false);
       setEditingVehicleCategory(null);
     }
@@ -99,8 +108,8 @@ export const VehicleCategoryPage = () => {
   const handleEdit = (vehicleCategory: VehicleCategory) => {
     setEditingVehicleCategory(vehicleCategory);
     setVehicleCategoryForm({
-      image: vehicleCategory.image,
-      vehicleName: vehicleCategory.vehicleName
+      vehicleName: vehicleCategory.vehicleName,
+      DriveVehicleType: typeof vehicleCategory.DriveVehicleType === 'object' ? vehicleCategory.DriveVehicleType._id : vehicleCategory.DriveVehicleType
     });
     setEditDialogOpen(true);
   };
@@ -108,6 +117,15 @@ export const VehicleCategoryPage = () => {
   const handleDelete = async (id: string) => {
     await axios.delete(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${id}`);
     setVehicleCategories(vehicleCategories.filter(vc => vc._id !== id));
+  };
+
+  const handleStatusToggle = async (id: string, currentStatus: boolean) => {
+    try {
+      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${id}`, { status: !currentStatus });
+      setVehicleCategories(vehicleCategories.map(vc => vc._id === id ? res.data.data : vc));
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
   return (
@@ -131,7 +149,6 @@ export const VehicleCategoryPage = () => {
                 <DialogTitle>Create New Vehicle Category</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleVehicleCategorySubmit} className="space-y-4">
-
                 <Input
                   placeholder="Vehicle name"
                   value={vehicleCategoryForm.vehicleName}
@@ -140,7 +157,23 @@ export const VehicleCategoryPage = () => {
                   }
                   required
                 />
-
+                <Select
+                  value={vehicleCategoryForm.DriveVehicleType}
+                  onValueChange={(value) =>
+                    setVehicleCategoryForm({ ...vehicleCategoryForm, DriveVehicleType: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Driver Vehicle Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {driverVehicleTypes.filter(t => t.status === true).map((type) => (
+                      <SelectItem key={type._id} value={type._id}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button type="submit" className="w-full">
                   Submit
                 </Button>
@@ -156,7 +189,6 @@ export const VehicleCategoryPage = () => {
               <DialogTitle>Edit Vehicle Category</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEditSubmit} className="space-y-4">
-
               <Input
                 placeholder="Vehicle name"
                 value={vehicleCategoryForm.vehicleName}
@@ -165,7 +197,23 @@ export const VehicleCategoryPage = () => {
                 }
                 required
               />
-
+              <Select
+                value={vehicleCategoryForm.DriveVehicleType}
+                onValueChange={(value) =>
+                  setVehicleCategoryForm({ ...vehicleCategoryForm, DriveVehicleType: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Driver Vehicle Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {driverVehicleTypes.filter(t => t.status === true).map((type) => (
+                    <SelectItem key={type._id} value={type._id}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button type="submit" className="w-full">
                 Update
               </Button>
@@ -179,13 +227,15 @@ export const VehicleCategoryPage = () => {
             <TableRow>
               <TableHead>#</TableHead>
               <TableHead>Vehicle Name</TableHead>
+              <TableHead>Driver Vehicle Type</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center py-8">
+                <TableCell colSpan={5} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <Loader className="w-6 h-6 animate-spin mr-2" />
                     <span>Loading vehicle categories...</span>
@@ -194,7 +244,7 @@ export const VehicleCategoryPage = () => {
               </TableRow>
             ) : vehicleCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No vehicle category found. Create your first vehicle category!
                 </TableCell>
               </TableRow>
@@ -203,6 +253,15 @@ export const VehicleCategoryPage = () => {
                 <TableRow key={vehicle._id}>
                   <TableCell>{index+1}</TableCell>
                   <TableCell>{vehicle.vehicleName}</TableCell>
+                  <TableCell>
+                    {typeof vehicle.DriveVehicleType === 'object' ? vehicle.DriveVehicleType.name : driverVehicleTypes.find(t => t._id === vehicle.DriveVehicleType)?.name || 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={vehicle.status}
+                      onCheckedChange={() => handleStatusToggle(vehicle._id, vehicle.status)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm" onClick={() => handleEdit(vehicle)}>

@@ -574,62 +574,7 @@ export const CategoryPage = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(category)}
-                            disabled={actionLoading[`edit-${categoryId}`] || actionLoading[`delete-${categoryId}`]}
-                            title="Edit category"
-                          >
-                            {actionLoading[`edit-${categoryId}`] ? (
-                              <Loader className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Edit className="w-4 h-4" />
-                            )}
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={actionLoading[`edit-${categoryId}`] || actionLoading[`delete-${categoryId}`]}
-                                title="Delete category"
-                              >
-                                {actionLoading[`delete-${categoryId}`] ? (
-                                  <Loader className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete the category "{category.name}" and its associated image.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel disabled={actionLoading[`delete-${categoryId}`]}>
-                                  Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(categoryId)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                  disabled={actionLoading[`delete-${categoryId}`]}
-                                >
-                                  {actionLoading[`delete-${categoryId}`] ? (
-                                    <>
-                                      <Loader className="w-4 h-4 mr-2 animate-spin" />
-                                      Deleting...
-                                    </>
-                                  ) : (
-                                    'Delete'
-                                  )}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          
                         </div>
                       </TableCell>
                     </TableRow>

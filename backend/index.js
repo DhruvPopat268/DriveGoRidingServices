@@ -9,6 +9,7 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const subCategoryRoutes = require('./routes/subCategoryRoutes');
 const subSubCategoryRoutes = require('./routes/subSubCategoryRoutes');
 const vehicleCategories = require('./routes/vehicleCategory')
+const driverVehicleTypeRoutes = require('./routes/driverVehicleTypeRoutes');
 const priceCategoryRoutes = require('./routes/priceCategoryRoutes');
 const parcelCategoryRoutes = require('./routes/parcelCategoryRoutes');
 const parcelVehicleRoutes = require('./routes/parcelVehicleRoutes');
@@ -83,6 +84,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/subcategories', subCategoryRoutes);
 app.use('/api/subsubcategories', subSubCategoryRoutes);
 app.use('/api/vehiclecategories', vehicleCategories)
+app.use('/api/drivervehicletypes', driverVehicleTypeRoutes);
 app.use('/api/price-categories', priceCategoryRoutes);
 app.use('/api/parcel-categories', parcelCategoryRoutes);
 app.use('/api/parcelVehicles', parcelVehicleRoutes);
