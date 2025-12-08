@@ -20,12 +20,12 @@ const MAX_SESSIONS = 2;
 // Update rider profile data (multiple fields at once)
 router.put("/userApp/update", authMiddleware, async (req, res) => {
   try {
-    const updates = req.body; // expect full object { name, email, mobile, gender, ... }
+    const updates = req.body; // expect full object { name, email, mobile, gender, referralCode }
 
     // console.log("Update request body:", updates);
 
     // Allowed fields to protect against unwanted updates (e.g., password, _id)
-    const allowedFields = ["name", "mobile", "gender", "email"];
+    const allowedFields = ["name", "mobile", "gender", "email", "referralCode"];
     const invalidFields = Object.keys(updates).filter(f => !allowedFields.includes(f));
 
     if (invalidFields.length > 0) {
@@ -84,6 +84,12 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
     if (updates.gender) {
       if (!["male", "female", "other"].includes(updates.gender)) {
         return res.status(400).json({ success: false, message: "Invalid gender value" });
+      }
+    }
+
+    if (updates.referralCode) {
+      if (updates.referralCode.length < 3 || updates.referralCode.length > 20) {
+        return res.status(400).json({ success: false, message: "Referral code must be between 3 and 20 characters" });
       }
     }
 
