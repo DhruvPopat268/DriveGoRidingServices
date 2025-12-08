@@ -612,7 +612,7 @@ router.post("/reject/:driverId", async (req, res) => {
       }
     });
 
-    const updateQuery = { status: "Rejected" };
+    const updateQuery = { status: "Rejected", rejectedDate: new Date() };
     if (Object.keys(unsetFields).length > 0) {
       updateQuery.$unset = unsetFields;
     }

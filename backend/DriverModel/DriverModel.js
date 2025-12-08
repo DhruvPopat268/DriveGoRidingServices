@@ -90,6 +90,11 @@ const driverSchema = new mongoose.Schema(
       default: null
     },
 
+    rejectedDate: {
+      type: Date,
+      default: null
+    },
+
     deletedDate: {
       type: Date,
       default: null
