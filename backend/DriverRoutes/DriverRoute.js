@@ -95,6 +95,38 @@ router.post("/send-otp", async (req, res) => {
       });
     }
 
+    // Check if driver is suspended
+    if (driver.status === "Suspended") {
+      const suspendRecord = await DriverSuspend.findOne({
+        drivers: driver._id
+      }).sort({ createdAt: -1 });
+
+      if (suspendRecord) {
+        const now = new Date();
+        const suspendFrom = new Date(suspendRecord.suspendFrom);
+        const suspendTo = new Date(suspendRecord.suspendTo);
+
+        if (now >= suspendFrom && now <= suspendTo) {
+          return res.status(403).json({
+            success: false,
+            message: "Your account is suspended",
+            suspendFrom: suspendFrom,
+            suspendTo: suspendTo,
+            reason: suspendRecord.description
+          });
+        } else if (now > suspendTo) {
+          driver.status = "Approved";
+          await driver.save();
+        } else if (now < suspendFrom) {
+          driver.status = "Approved";
+          await driver.save();
+        }
+      } else {
+        driver.status = "Approved";
+        await driver.save();
+      }
+    }
+
     // Save OTP session
     const otpSession = new DriverOtpSession({
       driver: driver._id,
@@ -919,6 +951,38 @@ router.post("/send-otp", async (req, res) => {
         success: false, 
         message: "Your account has been deleted. Please contact support for assistance." 
       });
+    }
+
+    // Check if driver is suspended
+    if (driver.status === "Suspended") {
+      const suspendRecord = await DriverSuspend.findOne({
+        drivers: driver._id
+      }).sort({ createdAt: -1 });
+
+      if (suspendRecord) {
+        const now = new Date();
+        const suspendFrom = new Date(suspendRecord.suspendFrom);
+        const suspendTo = new Date(suspendRecord.suspendTo);
+
+        if (now >= suspendFrom && now <= suspendTo) {
+          return res.status(403).json({
+            success: false,
+            message: "Your account is suspended",
+            suspendFrom: suspendFrom,
+            suspendTo: suspendTo,
+            reason: suspendRecord.description
+          });
+        } else if (now > suspendTo) {
+          driver.status = "Approved";
+          await driver.save();
+        } else if (now < suspendFrom) {
+          driver.status = "Approved";
+          await driver.save();
+        }
+      } else {
+        driver.status = "Approved";
+        await driver.save();
+      }
     }
 
     // ✅ Save OTP session
