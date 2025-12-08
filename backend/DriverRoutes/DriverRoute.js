@@ -109,7 +109,7 @@ router.post("/send-otp", async (req, res) => {
         if (now >= suspendFrom && now <= suspendTo) {
           return res.status(403).json({
             success: false,
-            message: "Your account is suspended",
+            message: `Your account is suspended from ${suspendFrom.toLocaleDateString('en-IN')} to ${suspendTo.toLocaleDateString('en-IN')}. Reason: ${suspendRecord.description}`,
             suspendFrom: suspendFrom,
             suspendTo: suspendTo,
             reason: suspendRecord.description
@@ -967,7 +967,7 @@ router.post("/send-otp", async (req, res) => {
         if (now >= suspendFrom && now <= suspendTo) {
           return res.status(403).json({
             success: false,
-            message: "Your account is suspended",
+            message: `Your account is suspended from ${suspendFrom.toLocaleDateString('en-IN')} to ${suspendTo.toLocaleDateString('en-IN')}. Reason: ${suspendRecord.description}`,
             suspendFrom: suspendFrom,
             suspendTo: suspendTo,
             reason: suspendRecord.description

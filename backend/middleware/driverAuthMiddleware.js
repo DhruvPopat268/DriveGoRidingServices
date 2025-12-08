@@ -78,7 +78,7 @@ const authMiddleware = async (req, res, next) => {
           // Currently suspended - block access
           return res.status(403).json({
             success: false,
-            message: "Your account is suspended",
+            message: `Your account is suspended from ${suspendFrom.toLocaleDateString('en-IN')} to ${suspendTo.toLocaleDateString('en-IN')}. Reason: ${suspendRecord.description}`,
             suspendFrom: suspendFrom,
             suspendTo: suspendTo,
             reason: suspendRecord.description
