@@ -273,8 +273,8 @@ router.post("/book", authMiddleware, async (req, res) => {
       calculatedCharges.insuranceCharges + 
       calculatedCharges.adminCharges + 
       calculatedCharges.gstCharges + 
-      calculatedCharges.cancellationCharges - 
-      calculatedCharges.discount;
+      calculatedCharges.cancellationCharges 
+    //  - calculatedCharges.discount;
 
     // ✅ VALIDATE AGAINST FRONTEND TOTAL (allow 2 rupee tolerance for rounding)
     const tolerance = 2;
@@ -359,15 +359,16 @@ router.post("/book", authMiddleware, async (req, res) => {
       paymentType,
       status: "BOOKED",
     });
-
+    const selectedCarCategoryName = null
     if(selectedCarCategoryId){
-      const selectedCarCategoryName = await carCategory.findById(selectedCarCategoryId).select('name');
+      selectedCarCategoryName = await carCategory.findById(selectedCarCategoryId).select('name');
       newRide.rideInfo.selectedCarCategory = selectedCarCategoryName;
       newRide.rideInfo.selectedCarCategoryId = selectedCarCategoryId;
     }
 
+    const selectedParcelCategoryName = null
     if(selectedParcelCategoryId){
-      const selectedParcelCategoryName = await parcelCategory.findById(selectedParcelCategoryId).select('categoryName');
+      selectedParcelCategoryName = await parcelCategory.findById(selectedParcelCategoryId).select('categoryName');
       newRide.rideInfo.selectedParcelCategory = selectedParcelCategoryName;
       newRide.rideInfo.selectedParcelCategoryId = selectedParcelCategoryId;
     }
@@ -375,7 +376,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     // Get vehicle type information before saving
     let vehicleTypeId = null;
     let vehicleTypeName = null;
-    console.log('category name lower', categoryNameLower)
+    
     if (categoryNameLower === 'cab' && selectedCategoryId) {
       try {
         const car = await Car.findById(selectedCategoryId).populate('vehicleType');
@@ -436,12 +437,12 @@ router.post("/book", authMiddleware, async (req, res) => {
         rideData.vehicleType = vehicleTypeName;
       }
 
-      if(selectedCarCategory){
-      rideData.selectedCarCategory = selectedCarCategory.name;
+      if(selectedCarCategoryName != null){
+      rideData.selectedCarCategory = selectedCarCategoryName;
     }
 
-    if(selectedParcelCategory){
-      rideData.selectedParcelCategory = selectedParcelCategory.categoryName;
+    if(selectedParcelCategoryName != null ){
+      rideData.selectedParcelCategory = selectedParcelCategoryName;
       rideData.senderDetails = senderDetails;
       rideData.receiverDetails = receiverDetails;
     }
