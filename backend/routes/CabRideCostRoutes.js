@@ -158,8 +158,8 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     const rider = await Rider.findById(riderId);
     if (!rider) return res.status(404).json({ error: 'Rider not found' });
 
-        const cuurentBalanceDoc = await Wallet.findOne({ riderId: riderId }).select('balance')
-    const currentBalance = cuurentBalanceDoc.balance
+    const cuurentBalanceDoc = await Wallet.findOne({ riderId: riderId }).select('balance')
+    const currentBalance = cuurentBalanceDoc ? cuurentBalanceDoc.balance : null
 
     // --- validations ---
     if (!carCategoryId) {

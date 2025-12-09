@@ -1728,6 +1728,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           waitingDrivers = await Driver.find({
             rideStatus: 'WAITING',
             isOnline: true,
+            status: 'Approved',
             'personalInformation.category': currentRide.rideInfo.categoryId,
             'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
             driverCategory: currentRide.rideInfo.selectedCategoryId
@@ -1748,6 +1749,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
               _id: { $in: assignedDriverIds },
               rideStatus: 'WAITING',
               isOnline: true,
+              status: 'Approved',
               'personalInformation.category': currentRide.rideInfo.categoryId,
               'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
               ownership: { $ne: 'Owner' }
@@ -1928,6 +1930,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       if (categoryNameLower === 'driver') {
         waitingDrivers = await Driver.find({
           rideStatus: 'WAITING',
+          isOnline: true,
+          status: 'Approved',
           'personalInformation.category': currentRide.rideInfo.categoryId,
           'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
           driverCategory: currentRide.rideInfo.selectedCategoryId
@@ -1947,6 +1951,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           waitingDrivers = await Driver.find({
             _id: { $in: assignedDriverIds },
             rideStatus: 'WAITING',
+            isOnline: true,
+            status: 'Approved',
             'personalInformation.category': currentRide.rideInfo.categoryId,
             'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
             ownership: { $ne: 'Owner' }
@@ -2735,3 +2741,67 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
 });
 
 module.exports = router;
+
+// Get eligible drivers for a ride
+router.post("/eligible-drivers", async (req, res) => {
+  try {
+    const { rideId } = req.body;
+
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    const { categoryId, subcategoryId, selectedCategoryId, categoryName } = ride.rideInfo;
+    const categoryNameLower = categoryName.toLowerCase();
+
+    let eligibleDrivers = [];
+
+    if (categoryNameLower === 'driver') {
+      eligibleDrivers = await Driver.find({
+        status: 'Approved',
+        'personalInformation.category': categoryId,
+        'personalInformation.subCategory': { $in: [subcategoryId] },
+        driverCategory: selectedCategoryId
+      }).select('personalInformation.fullName mobile');
+    } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
+      const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
+      
+      const vehicles = await Vehicle.find({
+        [vehicleField]: selectedCategoryId,
+        status: true,
+        adminStatus: 'approved'
+      }).select('assignedTo');
+
+      const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
+
+      if (assignedDriverIds.length > 0) {
+        eligibleDrivers = await Driver.find({
+          _id: { $in: assignedDriverIds },
+          status: 'Approved',
+          'personalInformation.category': categoryId,
+          'personalInformation.subCategory': { $in: [subcategoryId] },
+          ownership: { $ne: 'Owner' }
+        }).select('personalInformation.fullName mobile');
+      }
+    }
+
+    const drivers = eligibleDrivers.map(driver => ({
+      name: driver.personalInformation?.fullName || 'N/A',
+      mobile: driver.mobile || 'N/A'
+    }));
+
+    res.json({
+      success: true,
+      count: drivers.length,
+      drivers
+    });
+  } catch (error) {
+    console.error("Error fetching eligible drivers:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});

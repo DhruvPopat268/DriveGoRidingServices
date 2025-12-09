@@ -195,13 +195,15 @@ io.on('connection', (socket) => {
               let driverMatches = false;
               const categoryMatches = driver.personalInformation?.category?.toString() === categoryId?.toString();
               const subcategoryMatches = driver.personalInformation?.subCategory?.includes(subcategoryId);
+              const isApproved = driver.status === 'Approved';
 
               /*console.log(`📋 Driver info:`, {
                 driverCategory: driver.driverCategory?.toString(),
                 personalCategory: driver.personalInformation?.category?.toString(),
                 personalSubCategory: driver.personalInformation?.subCategory,
                 categoryMatches,
-                subcategoryMatches
+                subcategoryMatches,
+                isApproved
               });*/
 
               // Check driver eligibility based on category
@@ -274,7 +276,7 @@ io.on('connection', (socket) => {
                 
                 driverMatches = vehicles.length > 0;
               }
-              if (driverMatches && categoryMatches && subcategoryMatches) {
+              if (driverMatches && categoryMatches && subcategoryMatches && isApproved) {
                 // Get vehicle type information
                 let vehicleTypeId = null;
                 let vehicleTypeName = null;
