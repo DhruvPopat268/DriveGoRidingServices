@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 
 interface BookedRidesPageProps {
@@ -19,6 +20,11 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
   const [dateFilter, setDateFilter] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const limit = recordsPerPage;
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [selectedRide, setSelectedRide] = useState(null);
+  const [eligibleDrivers, setEligibleDrivers] = useState([]);
+  const [selectedDriver, setSelectedDriver] = useState('');
+  const [assigningDriver, setAssigningDriver] = useState(false);
 
   useEffect(() => {
     fetchRides();
@@ -76,6 +82,45 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
 
   const formatCurrency = (amount) => {
     return `₹${amount?.toFixed(2) || '0.00'}`;
+  };
+
+  const handleAssignDriver = async (ride) => {
+    setSelectedRide(ride);
+    setShowAssignDialog(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/eligible-drivers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rideId: ride._id })
+      });
+      if (!response.ok) throw new Error('Failed to fetch eligible drivers');
+      const data = await response.json();
+      setEligibleDrivers(data.drivers || []);
+    } catch (err) {
+      console.error('Error fetching drivers:', err);
+      setEligibleDrivers([]);
+    }
+  };
+
+  const confirmDriverAssignment = async () => {
+    if (!selectedDriver || !selectedRide) return;
+    setAssigningDriver(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/admin/driver/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rideId: selectedRide._id, driverId: selectedDriver })
+      });
+      if (!response.ok) throw new Error('Failed to assign driver');
+      setShowAssignDialog(false);
+      setSelectedDriver('');
+      fetchRides();
+    } catch (err) {
+      console.error('Error assigning driver:', err);
+      alert('Failed to assign driver');
+    } finally {
+      setAssigningDriver(false);
+    }
   };
 
   if (loading) {
@@ -150,14 +195,14 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
             <table className="w-full table-fixed border-collapse">
               <colgroup>
                 <col style={{ width: '4%' }} />
-                <col style={{ width: '12%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '9%' }} />
                 <col style={{ width: '18%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '10%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
@@ -268,14 +313,24 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                     </td>
 
                     <td className="p-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={() => onNavigateToDetail?.(ride._id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => onNavigateToDetail?.(ride._id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => handleAssignDriver(ride)}
+                        >
+                          <UserPlus className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -319,6 +374,40 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Driver to Ride</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Select Driver</label>
+              <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleDrivers.map((driver) => (
+                    <SelectItem key={driver._id} value={driver._id}>
+                      {driver.name} - {driver.mobile}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {eligibleDrivers.length === 0 && (
+              <p className="text-sm text-gray-500">No eligible drivers available</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignDialog(false)}>Cancel</Button>
+            <Button onClick={confirmDriverAssignment} disabled={!selectedDriver || assigningDriver}>
+              {assigningDriver ? 'Assigning...' : 'Assign Driver'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -375,6 +375,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       calculatedCharges.cancellationCharges 
     //  - calculatedCharges.discount;
 
+    console.log("server charges",serverTotalPayable , "client charges" , totalPayable)
     // ✅ VALIDATE AGAINST FRONTEND TOTAL (allow 2 rupee tolerance for rounding)
     const tolerance = 2;
     if (Math.abs(serverTotalPayable - totalPayable) > tolerance) {
