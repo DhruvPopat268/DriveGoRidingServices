@@ -14,7 +14,11 @@ const riderSchema = new mongoose.Schema(
 
     // 🔹 Referral tracking
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "Rider", default: null },
-    referrals: [{ type: mongoose.Schema.Types.ObjectId, ref: "Rider" }],
+    referrals: [{
+      riderId: { type: mongoose.Schema.Types.ObjectId, ref: "Rider" },
+      totalEarned: { type: Number, default: 0 },
+      _id: false
+    }],
 
     // 🔹 Earnings object
     referralEarning: {

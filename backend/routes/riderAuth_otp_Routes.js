@@ -226,15 +226,15 @@ router.get("/auth/check", (req, res) => {
 // ✅ Find rider by ID from token
 router.post("/find-rider", authMiddleware, async (req, res) => {
   try {
-    // riderId is in the decoded token (middleware attaches it)
     const riderId = req.rider.riderId;
 
     if (!riderId) {
       return res.status(400).json({ success: false, message: "RiderId missing in token" });
     }
 
-    // Find rider by Mongo _id
-    const rider = await Rider.findById(riderId).select('name mobile gender email referralCode ratings.avgRating');
+    const rider = await Rider.findById(riderId)
+      .select('name mobile gender email referralCode ratings.avgRating referralEarning referrals')
+      .populate('referrals.riderId', 'name');
 
     if (!rider) {
       return res.status(200).json({ success: false, message: "Rider not found" });
@@ -244,7 +244,10 @@ router.post("/find-rider", authMiddleware, async (req, res) => {
       success: true,
       rider: {
         ...rider.toObject(),
-        avgRating: rider.ratings?.avgRating || 0
+        avgRating: rider.ratings?.avgRating || 0,
+        totalReferrals: rider.referrals?.length || 0,
+        totalEarnings: rider.referralEarning?.totalEarnings || 0,
+        currentBalance: rider.referralEarning?.currentBalance || 0
       },
     });
   } catch (error) {
@@ -674,7 +677,7 @@ router.post("/save-profile", async (req, res) => {
       await rider.save();
 
       // update referrer’s list
-      referrer.referrals.push(rider._id);
+      referrer.referrals.push({ riderId: rider._id, totalEarned: 0 });
       await referrer.save();
     } else {
       await rider.save();

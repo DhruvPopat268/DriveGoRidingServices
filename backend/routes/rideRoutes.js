@@ -560,46 +560,13 @@ router.post("/book", authMiddleware, async (req, res) => {
       console.log('❌ Socket.io or onlineDrivers not available');
     }
 
-    // ✅ Referral earnings logic unchanged
+    // ✅ Deduct referral balance if used
     const rider = await Rider.findById(riderId);
-
-    if (rider) {
-      if (referralEarning && referralBalance > 0) {
-        rider.referralEarning.currentBalance -= referralBalance;
-        if (rider.referralEarning.currentBalance < 0)
-          rider.referralEarning.currentBalance = 0;
-        await rider.save();
-      }
-
-      if (rider.referredBy) {
-        const rule = await referralRules.findOne({});
-        if (rule) {
-          const { commission, MaxReferrals } = rule;
-          const referrer = await Rider.findById(rider.referredBy);
-          if (referrer) {
-            let eligible = false;
-            if (MaxReferrals === -1) eligible = true;
-            else {
-              const referralIndex = referrer.referrals.findIndex(
-                (refId) => refId.toString() === riderId.toString()
-              );
-              eligible = referralIndex >= 0 && referralIndex < MaxReferrals;
-            }
-
-            if (eligible) {
-              const adminCharges = calculatedCharges.adminCharges || 0;
-              const referralBonus = (adminCharges * commission) / 100;
-
-              referrer.referralEarning.totalEarnings =
-                (referrer.referralEarning.totalEarnings || 0) + referralBonus;
-              referrer.referralEarning.currentBalance =
-                (referrer.referralEarning.currentBalance || 0) + referralBonus;
-
-              await referrer.save();
-            }
-          }
-        }
-      }
+    if (rider && referralEarning && referralBalance > 0) {
+      rider.referralEarning.currentBalance -= referralBalance;
+      if (rider.referralEarning.currentBalance < 0)
+        rider.referralEarning.currentBalance = 0;
+      await rider.save();
     }
 
     res.status(201).json({
@@ -2189,6 +2156,44 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     if (rider) {
       rider.unclearedCancellationCharges = 0;
       await rider.save();
+
+      // 💰 REFERRAL EARNING LOGIC - Award referrer on ride completion
+      if (rider.referredBy) {
+        const rule = await referralRules.findOne({});
+        if (rule) {
+          const { commission, MaxReferrals } = rule;
+          const referrer = await Rider.findById(rider.referredBy);
+          if (referrer) {
+            let eligible = false;
+            if (MaxReferrals === -1) eligible = true;
+            else {
+              const referralIndex = referrer.referrals.findIndex(
+                (ref) => ref.riderId.toString() === updatedRide.riderId.toString()
+              );
+              eligible = referralIndex >= 0 && referralIndex < MaxReferrals;
+            }
+
+            if (eligible) {
+              const adminCharges = updatedRide.rideInfo.adminCharges || 0;
+              const referralBonus = (adminCharges * commission) / 100;
+
+              referrer.referralEarning.totalEarnings =
+                (referrer.referralEarning.totalEarnings || 0) + referralBonus;
+              referrer.referralEarning.currentBalance =
+                (referrer.referralEarning.currentBalance || 0) + referralBonus;
+
+              const refIndex = referrer.referrals.findIndex(
+                (ref) => ref.riderId.toString() === updatedRide.riderId.toString()
+              );
+              if (refIndex >= 0) {
+                referrer.referrals[refIndex].totalEarned += referralBonus;
+              }
+
+              await referrer.save();
+            }
+          }
+        }
+      }
     }
 
     // ---------------------------------------------------
