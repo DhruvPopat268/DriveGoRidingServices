@@ -10,6 +10,7 @@ const SubSubCategory = require('../models/SubSubCategory');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const Rider = require('../models/Rider');
 const mongoose = require('mongoose');
+const {Wallet} = require('../models/Payment&Wallet')
 
 
 router.post('/', async (req, res) => {
@@ -97,6 +98,9 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     // Get rider document
     const rider = await Rider.findById(riderId);
     if (!rider) return res.status(404).json({ error: 'Rider not found' });
+
+        const cuurentBalanceDoc = await Wallet.findOne({ riderId: riderId }).select('balance')
+    const currentBalance = cuurentBalanceDoc.balance
 
     // 1. Get category
     const category = await Category.findById(categoryId);
@@ -242,7 +246,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 
     }
 
-    res.json({ success: true, result });
+    res.json({ success: true, result , UserCurrentBalance:currentBalance});
   } catch (err) {
     console.error('Error in /calculation route:', err);
     res.status(500).json({ error: 'Internal Server Error' });

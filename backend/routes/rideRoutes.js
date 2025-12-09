@@ -466,6 +466,7 @@ router.post("/book", authMiddleware, async (req, res) => {
         waitingDrivers = await Driver.find({
           rideStatus: 'WAITING',
           isOnline: true,
+          status: 'Approved',
           'personalInformation.category': categoryId,
           'personalInformation.subCategory': { $in: [subcategoryId] },
           driverCategory: selectedCategoryId
@@ -488,6 +489,7 @@ router.post("/book", authMiddleware, async (req, res) => {
             _id: { $in: assignedDriverIds },
             rideStatus: 'WAITING',
             isOnline: true,
+            status: 'Approved',
             'personalInformation.category': categoryId,
             'personalInformation.subCategory': { $in: [subcategoryId] },
             ownership: { $ne: 'Owner' }

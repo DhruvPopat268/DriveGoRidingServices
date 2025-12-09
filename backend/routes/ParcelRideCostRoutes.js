@@ -8,6 +8,7 @@ const SubCategory = require('../models/SubCategory');
 const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const Rider = require('../models/Rider');
+const {Wallet} = require('../models/Payment&Wallet')
 
 
 
@@ -152,6 +153,9 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     // Get rider document
     const rider = await Rider.findById(riderId);
     if (!rider) return res.status(404).json({ error: 'Rider not found' });
+
+        const cuurentBalanceDoc = await Wallet.findOne({ riderId: riderId }).select('balance')
+    const currentBalance = cuurentBalanceDoc.balance
 
     // --- validations ---
     if (!parcelCategoryId) {
@@ -300,7 +304,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       });
     }
 
-    res.json({ success: true, result });
+    res.json({ success: true, result , UserCurrentBalance:currentBalance });
 
   } catch (err) {
     console.error('Error in /calculation route:', err);
