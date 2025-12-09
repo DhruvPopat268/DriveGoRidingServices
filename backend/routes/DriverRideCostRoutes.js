@@ -223,6 +223,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       );
 
       result.push({
+        packageId: model._id,
         categoryId: priceCategory?._id || null,
         category: priceCategory?.priceCategoryName || "Unknown",
         driverCharges: Math.round(driverCharges),

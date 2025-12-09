@@ -288,6 +288,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges);
 
       result.push({
+        packageId: model._id,
         categoryId: model.car?._id || null,
         category: model.car?.name, // keep price category also if needed
         driverCharges: Math.round(driverCharges),

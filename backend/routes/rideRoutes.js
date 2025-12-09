@@ -21,10 +21,17 @@ const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const { checkDriverWalletBalance } = require('../utils/walletBalanceChecker');
 const NotificationService = require('../Services/notificationService');
+const { calculateDriverRideCost, calculateCabRideCost, calculateParcelRideCost } = require('../utils/rideCalculation');
+const priceCategory = require("../models/PriceCategory");
 const Car = require('../models/Car');
 const ParcelVehicle = require('../models/ParcelVehicle');
-const VehicleType = require('../models/cabVehicleType');
-const ParcelVehicleType = require('../models/parcelVehicleType');
+const carCategory = require("../models/CarCategory");
+const parcelCategory = require("../models/ParcelCategory");
+const driverTransmissionType = require("../models/DriverVehicleType");
+const driveCarType = require('../models/VehicleCategory')
+const Category = require("../models/Category");
+const subcategory = require("../models/SubCategory");
+const subSubcategory = require("../models/SubSubCategory");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -169,55 +176,117 @@ router.post("/book", authMiddleware, async (req, res) => {
       categoryId,
       subcategoryId,
       subSubcategoryId,
-      categoryName,
-      subcategoryName,
-      subSubcategoryName,
-      carType,
+      carTypeId,
+      transmissionTypeId,
       fromLocationData,
       toLocationData,
       includeInsurance,
       notes,
-      selectedCategory,
       selectedCategoryId,
-      selectedParcelCategory,
-      selectedCarCategory,
       selectedDate,
       selectedTime,
       selectedUsage,
       durationValue,
+      durationType,
       selectedDates,
-      transmissionType,
-      totalAmount,
       paymentType,
       totalPayable,
       referralEarning,
       referralBalance,
-      senderDetails,     // ✅ new
-      receiverDetails,   // ✅ new
+      senderDetails,
+      receiverDetails,
+      selectedCarCategoryId,
+      selectedParcelCategoryId
     } = req.body;
 
-    // console.log('selected category id', selectedCategoryId)
-
-    if (!categoryId || !totalAmount || !paymentType || !selectedDate || !selectedTime) {
+    if (!categoryId || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
-    const selectedCategoryData = totalAmount
+    const categoryDoc = await Category.findById(categoryId).select('name');
+    const subcategoryDoc = await subcategory.findById(subcategoryId).select('name');
+    const subSubcategoryDoc = subSubcategoryId ? await subSubcategory.findById(subSubcategoryId).select('name') : null;
 
-    console.log('selected category data', selectedCategoryData)
+    const carType = carTypeId ? await driveCarType.findById(carTypeId).select('name') : null;
+    const transmissionType = transmissionTypeId ? await driverTransmissionType.findById(transmissionTypeId).select('name') : null;
 
-    if (!selectedCategoryData) {
-      return res.status(400).json({ message: "Invalid selectedCategory" });
+    const categoryName = categoryDoc?.name;
+    const subcategoryName = subcategoryDoc?.name;
+    const subSubcategoryName = subSubcategoryDoc?.name;
+
+    let selectedCategory = null;
+    const categoryNameLower = categoryName?.toLowerCase();
+
+    if(categoryNameLower === 'driver'){
+      selectedCategory = await priceCategory.findById(selectedCategoryId).select('name');
+    } else if(categoryNameLower === 'cab'){ 
+      selectedCategory = await Car.findById(selectedCategoryId).select('name');
+    } else if(categoryNameLower === 'parcel'){
+      selectedCategory = await ParcelVehicle.findById(selectedCategoryId).select('name');
+    }
+
+    // ✅ SERVER-SIDE CALCULATION & VALIDATION
+    let calculatedCharges;
+    try {
+      const calcParams = {
+        categoryId,
+        subcategoryId,
+        subSubcategoryId,
+        selectedDate,
+        selectedTime,
+        includeInsurance,
+        selectedUsage,
+        durationType,
+        durationValue,
+        selectedCategoryId
+      };
+
+      if (categoryNameLower === 'driver') {
+        calculatedCharges = await calculateDriverRideCost(calcParams);
+      } else if (categoryNameLower === 'cab') {
+        calculatedCharges = await calculateCabRideCost({ ...calcParams, carCategoryId: selectedCarCategoryId });
+      } else if (categoryNameLower === 'parcel') {
+        calculatedCharges = await calculateParcelRideCost({ ...calcParams, parcelCategoryId: selectedParcelCategoryId });
+      } else {
+        return res.status(400).json({ message: "Invalid category" });
+      }
+    } catch (calcError) {
+      console.error('Calculation error:', calcError);
+      return res.status(400).json({ message: calcError.message || "Failed to calculate ride cost" });
     }
 
     const { riderId, mobile } = req.rider;
 
-    const riderData = await Rider.findOne({ mobile })
-    const riderName = riderData.name
+    const riderData = await Rider.findOne({ mobile });
+    const riderName = riderData.name;
 
-    // Calculate unpaid cancellation charges to add to totalPayable
+    // Calculate unpaid cancellation charges
     const unpaidCancellationCharges = riderData.cancellationCharges - riderData.unclearedCancellationCharges;
-    const adjustedTotalPayable = totalPayable + unpaidCancellationCharges;
+    calculatedCharges.cancellationCharges = unpaidCancellationCharges;
+
+    // ✅ CALCULATE SERVER-SIDE TOTAL
+    const serverTotalPayable = 
+      calculatedCharges.driverCharges + 
+      calculatedCharges.pickCharges + 
+      calculatedCharges.peakCharges + 
+      calculatedCharges.nightCharges + 
+      calculatedCharges.insuranceCharges + 
+      calculatedCharges.adminCharges + 
+      calculatedCharges.gstCharges + 
+      calculatedCharges.cancellationCharges - 
+      calculatedCharges.discount;
+
+    // ✅ VALIDATE AGAINST FRONTEND TOTAL (allow 2 rupee tolerance for rounding)
+    const tolerance = 2;
+    if (Math.abs(serverTotalPayable - totalPayable) > tolerance) {
+      return res.status(400).json({ 
+        message: "Price mismatch detected. Please refresh and try again.",
+        serverTotal: serverTotalPayable,
+        clientTotal: totalPayable
+      });
+    }
+
+    const adjustedTotalPayable = serverTotalPayable;
 
     // Update unclearedCancellationCharges to reflect the applied amount
     if (unpaidCancellationCharges > 0) {
@@ -273,16 +342,16 @@ router.post("/book", authMiddleware, async (req, res) => {
         SelectedDays: durationValue,
         selectedDates: selectedDates || [],
         remainingDates: selectedDates || [],
-        driverCharges: selectedCategoryData.driverCharges || 0,
-        pickCharges: selectedCategoryData.pickCharges || 0,
-        peakCharges: selectedCategoryData.peakCharges || 0,
-        nightCharges: selectedCategoryData.nightCharges || 0,
-        insuranceCharges: selectedCategoryData.insuranceCharges || 0,
-        cancellationCharges: selectedCategoryData.cancellationCharges || 0,
-        discount: selectedCategoryData.discountApplied || 0,
-        gstCharges: selectedCategoryData.gstCharges || 0,
-        subtotal: selectedCategoryData.subtotal || 0,
-        adminCharges: selectedCategoryData.adminCommissionAdjusted || 0,
+        driverCharges: calculatedCharges.driverCharges,
+        pickCharges: calculatedCharges.pickCharges,
+        peakCharges: calculatedCharges.peakCharges,
+        nightCharges: calculatedCharges.nightCharges,
+        insuranceCharges: calculatedCharges.insuranceCharges,
+        cancellationCharges: calculatedCharges.cancellationCharges,
+        discount: calculatedCharges.discount,
+        gstCharges: calculatedCharges.gstCharges,
+        subtotal: calculatedCharges.subtotal,
+        adminCharges: calculatedCharges.adminCharges,
       },
       referralEarning: referralEarning || false,
       referralBalance: referralEarning ? referralBalance : 0,
@@ -291,21 +360,21 @@ router.post("/book", authMiddleware, async (req, res) => {
       status: "BOOKED",
     });
 
-    if(selectedCarCategory){
-      newRide.rideInfo.selectedCarCategory = selectedCarCategory.name;
-      newRide.rideInfo.selectedCarCategoryId = selectedCarCategory._id;
+    if(selectedCarCategoryId){
+      const selectedCarCategoryName = await carCategory.findById(selectedCarCategoryId).select('name');
+      newRide.rideInfo.selectedCarCategory = selectedCarCategoryName;
+      newRide.rideInfo.selectedCarCategoryId = selectedCarCategoryId;
     }
 
-    if(selectedParcelCategory){
-      newRide.rideInfo.selectedParcelCategory = selectedParcelCategory.categoryName;
-      newRide.rideInfo.selectedParcelCategoryId = selectedParcelCategory._id;
+    if(selectedParcelCategoryId){
+      const selectedParcelCategoryName = await parcelCategory.findById(selectedParcelCategoryId).select('categoryName');
+      newRide.rideInfo.selectedParcelCategory = selectedParcelCategoryName;
+      newRide.rideInfo.selectedParcelCategoryId = selectedParcelCategoryId;
     }
 
     // Get vehicle type information before saving
     let vehicleTypeId = null;
     let vehicleTypeName = null;
-    
-    const categoryNameLower = categoryName.toLowerCase();
     console.log('category name lower', categoryNameLower)
     if (categoryNameLower === 'cab' && selectedCategoryId) {
       try {
@@ -346,17 +415,17 @@ router.post("/book", authMiddleware, async (req, res) => {
     if (io && onlineDrivers) {
       const rideData = {
         rideId: newRide._id,
-        categoryName: categoryName,
-        subcategoryName: subcategoryName,
-        subSubcategoryName: subSubcategoryName,
-        carType: carType,
-        selectedCategory: selectedCategory,
-        transmissionType: transmissionType,
-        selectedUsage: selectedUsage,
-        fromLocation: fromLocationData,
-        toLocation: toLocationData,
-        selectedDate: selectedDate,
-        selectedTime: selectedTime,
+        categoryName: newRide.rideInfo? newRide.rideInfo.categoryName : null,
+        subcategoryName: newRide.rideInfo? newRide.rideInfo.subcategoryName : null,
+        subSubcategoryName: newRide.rideInfo? newRide.rideInfo.subSubcategoryName : null,
+        carType: newRide.rideInfo? newRide.rideInfo.carType : null,
+        selectedCategory: newRide.rideInfo? newRide.rideInfo.selectedCategory : null,
+        transmissionType: newRide.rideInfo? newRide.rideInfo.transmissionType : null,
+        selectedUsage: newRide.rideInfo?.selectedUsage,
+        fromLocation: newRide.rideInfo?.fromLocation,
+        toLocation: newRide.rideInfo?.toLocation,
+        selectedDate: newRide.rideInfo?.selectedDate,
+        selectedTime: newRide.rideInfo?.selectedTime,
         totalPayable: adjustedTotalPayable,
         status: 'BOOKED'
       };
@@ -507,7 +576,7 @@ router.post("/book", authMiddleware, async (req, res) => {
             }
 
             if (eligible) {
-              const adminCharges = selectedCategoryData.adminCommissionAdjusted || 0;
+              const adminCharges = calculatedCharges.adminCharges || 0;
               const referralBonus = (adminCharges * commission) / 100;
 
               referrer.referralEarning.totalEarnings =
