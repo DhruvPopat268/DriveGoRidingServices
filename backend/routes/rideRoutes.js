@@ -168,6 +168,97 @@ router.get("/booking/:id", async (req, res) => {
   }
 });
 
+// update status to confirm and assign driver ride by driver
+router.post("/admin/driver/confirm", async (req, res) => {
+  try {
+    const { rideId , driverId  } = req.body;
+    
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    // Get ride details for wallet balance check
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    // Check wallet balance before confirming ride
+    try {
+      const balanceCheck = await checkDriverWalletBalance(
+        driverId,
+        ride.rideInfo.categoryId,
+        ride.rideInfo.subcategoryId,
+        ride.rideInfo.subSubcategoryId
+      );
+
+      if (!balanceCheck.success) {
+        return res.status(402).json({
+          success: false,
+          message: balanceCheck.message,
+          requiredBalance: balanceCheck.requiredBalance,
+          currentBalance: balanceCheck.currentBalance,
+          errorCode: 'INSUFFICIENT_WALLET_BALANCE'
+        });
+      }
+    } catch (walletError) {
+      console.error('Wallet balance check error:', walletError);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Failed to validate wallet balance' 
+      });
+    }
+
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const driverName = driverInfo.personalInformation?.fullName
+    const driverMobile = driverInfo.mobile
+   
+    // Find and update the ride only if status is BOOKED
+    const updatedRide = await Ride.findOneAndUpdate(
+      { _id: rideId, status: "BOOKED" }, // only if ride is BOOKED
+      {
+        status: "CONFIRMED",
+        driverId: driverId,
+        driverInfo: {
+          driverName,
+          driverMobile
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedRide) {
+      return res.status(400).json({ message: "Ride is already confirmed or not found" });
+    }
+
+    // Update driver rideStatus to CONFIRMED
+    await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
+
+   
+    // Emit socket event to remove ride from all drivers
+    const io = req.app.get('io');
+    if (io) {
+      io.to('drivers').emit('ride-assigned', {
+        rideId: rideId,
+        driverId: driverId
+      });
+      //console.log('🚗 Ride assigned event emitted:', rideId);
+    }
+
+    res.json({
+      message: "Ride confirmed successfully",
+      ride: updatedRide,
+    });
+  } catch (error) {
+    console.error("Error confirming ride:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User / Rider                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 router.post("/book", authMiddleware, async (req, res) => {
@@ -531,7 +622,7 @@ router.post("/book", authMiddleware, async (req, res) => {
           const playerIds = eligibleDrivers.map(driver => driver.oneSignalPlayerId);
           
           console.log(`📤 Sending push notifications to player IDs:`, playerIds);
-          console.log('new ride data for notification:', newRide);
+        
           
           // Convert time to 12-hour format
           const formatTo12Hour = (time24) => {
@@ -2740,8 +2831,6 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // Get eligible drivers for a ride
 router.post("/eligible-drivers", async (req, res) => {
   try {
@@ -2754,6 +2843,10 @@ router.post("/eligible-drivers", async (req, res) => {
     const ride = await Ride.findById(rideId);
     if (!ride) {
       return res.status(404).json({ message: "Ride not found" });
+    }
+
+    if (ride.status === "CONFIRMED") {
+      return res.status(400).json({ message: "Ride is already confirmed" });
     }
 
     const { categoryId, subcategoryId, selectedCategoryId, categoryName } = ride.rideInfo;
@@ -2791,6 +2884,7 @@ router.post("/eligible-drivers", async (req, res) => {
     }
 
     const drivers = eligibleDrivers.map(driver => ({
+      _id: driver._id,
       name: driver.personalInformation?.fullName || 'N/A',
       mobile: driver.mobile || 'N/A'
     }));
@@ -2805,3 +2899,5 @@ router.post("/eligible-drivers", async (req, res) => {
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
+
+module.exports = router;

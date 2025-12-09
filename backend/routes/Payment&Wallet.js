@@ -107,7 +107,7 @@ router.post('/verify', authMiddleware, async (req, res) => {
     );
     
     if (existingTransaction) {
-      console.log(`🔄 User transaction already exists: ${razorpay_payment_id}, Status: ${existingTransaction.status}`);
+     
       return res.json({
         success: true,
         message: `Transaction already processed by webhook with status: ${existingTransaction.status}`,

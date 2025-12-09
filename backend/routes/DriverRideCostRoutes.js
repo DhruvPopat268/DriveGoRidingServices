@@ -133,22 +133,24 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         if (minMatch) usage.minutes += parseInt(minMatch[1]);
       });
 
+      if (usage.km === 0 && usage.minutes === 0) {
+        throw new Error('Invalid selectedUsage format. Expected format: "8km & 80min" or "10km" or "2hrs"');
+      }
+
       return usage;
     };
 
     const parsedUsage = parseUsage(selectedUsage);
 
     // 3. Fetch all ride cost models
-    let rideCostQuery = { category: categoryId, subcategory: subcategoryId };
+    let rideCostQuery = { 
+      category: categoryId, 
+      subcategory: subcategoryId,
+      includedKm: parsedUsage.km.toString(),
+      includedMinutes: parsedUsage.minutes.toString()
+    };
     if (subSubcategoryId) {
       rideCostQuery.subSubCategory = subSubcategoryId;
-    }
-    // Add both km and minutes to query if they exist
-    if (parsedUsage.km > 0) {
-      rideCostQuery.includedKm = parsedUsage.km.toString();
-    }
-    if (parsedUsage.minutes > 0) {
-      rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
     }
     //console.log('Ride Cost Query:', rideCostQuery);
     const rideCostModels = await DriverRideCost.find(rideCostQuery);

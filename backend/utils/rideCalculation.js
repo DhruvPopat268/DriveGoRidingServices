@@ -21,6 +21,10 @@ const parseUsage = (usageStr) => {
     if (minMatch) usage.minutes += parseInt(minMatch[1]);
   });
   
+  if (usage.km === 0 && usage.minutes === 0) {
+    throw new Error('Invalid selectedUsage format. Expected format: "8km & 80min" or "10km" or "2hrs"');
+  }
+  
   return usage;
 };
 
@@ -64,12 +68,16 @@ const calculateDriverRideCost = async (params) => {
 
   const parsedUsage = parseUsage(selectedUsage);
 
-  let rideCostQuery = { category: categoryId, subcategory: subcategoryId };
+  let rideCostQuery = { 
+    category: categoryId, 
+    subcategory: subcategoryId,
+    includedKm: parsedUsage.km.toString(),
+    includedMinutes: parsedUsage.minutes.toString()
+  };
   if (subSubcategoryId) rideCostQuery.subSubCategory = subSubcategoryId;
-  if (parsedUsage.km > 0) rideCostQuery.includedKm = parsedUsage.km.toString();
-  if (parsedUsage.minutes > 0) rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
 
   const rideCostModels = await DriverRideCost.find(rideCostQuery);
+  console.log('ride cost models', rideCostModels);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
 
   const model = rideCostModels.find(m => m.priceCategory.toString() === selectedCategoryId);
@@ -130,11 +138,11 @@ const calculateCabRideCost = async (params) => {
   let rideCostQuery = {
     priceCategory: carCategoryId,
     category: categoryId,
-    subcategory: subcategoryId
+    subcategory: subcategoryId,
+    includedKm: parsedUsage.km.toString(),
+    includedMinutes: parsedUsage.minutes.toString()
   };
   if (subSubcategoryId) rideCostQuery.subSubCategory = subSubcategoryId;
-  if (parsedUsage.km > 0) rideCostQuery.includedKm = parsedUsage.km.toString();
-  if (parsedUsage.minutes > 0) rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
 
   const rideCostModels = await CabRideCost.find(rideCostQuery);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
@@ -196,10 +204,10 @@ const calculateParcelRideCost = async (params) => {
   let rideCostQuery = {
     parcelCategory: parcelCategoryId,
     category: categoryId,
-    subcategory: subcategoryId
+    subcategory: subcategoryId,
+    includedKm: parsedUsage.km.toString(),
+    includedMinutes: parsedUsage.minutes.toString()
   };
-  if (parsedUsage.km > 0) rideCostQuery.includedKm = parsedUsage.km.toString();
-  if (parsedUsage.minutes > 0) rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
 
   const rideCostModels = await ParcelRideCost.find(rideCostQuery);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
