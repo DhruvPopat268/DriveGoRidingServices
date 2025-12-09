@@ -207,23 +207,31 @@ router.post("/book", authMiddleware, async (req, res) => {
     const subcategoryDoc = await subcategory.findById(subcategoryId).select('name');
     const subSubcategoryDoc = subSubcategoryId ? await subSubcategory.findById(subSubcategoryId).select('name') : null;
 
-    const carType = carTypeId ? await driveCarType.findById(carTypeId).select('name') : null;
-    const transmissionType = transmissionTypeId ? await driverTransmissionType.findById(transmissionTypeId).select('name') : null;
+    const carTypeDoc = carTypeId ? await driveCarType.findById(carTypeId).select('vehicleName') : null;
+    const transmissionTypeDoc = transmissionTypeId ? await driverTransmissionType.findById(transmissionTypeId).select('name') : null;
 
     const categoryName = categoryDoc?.name;
     const subcategoryName = subcategoryDoc?.name;
     const subSubcategoryName = subSubcategoryDoc?.name;
+    const carType = carTypeDoc?.vehicleName;
+    const transmissionType = transmissionTypeDoc?.name;
+    console.log('car type', carTypeDoc , 'transmission' , transmissionType)
 
-    let selectedCategory = null;
+
     const categoryNameLower = categoryName?.toLowerCase();
 
+    let selectedCategoryDoc = null;
     if(categoryNameLower === 'driver'){
-      selectedCategory = await priceCategory.findById(selectedCategoryId).select('name');
+      selectedCategoryDoc = await priceCategory.findById(selectedCategoryId).select('priceCategoryName');
     } else if(categoryNameLower === 'cab'){ 
-      selectedCategory = await Car.findById(selectedCategoryId).select('name');
+      selectedCategoryDoc = await Car.findById(selectedCategoryId).select('name');
     } else if(categoryNameLower === 'parcel'){
-      selectedCategory = await ParcelVehicle.findById(selectedCategoryId).select('name');
+      selectedCategoryDoc = await ParcelVehicle.findById(selectedCategoryId).select('name');
     }
+    
+    const selectedCategory = categoryNameLower === 'driver' 
+      ? selectedCategoryDoc?.priceCategoryName 
+      : selectedCategoryDoc?.name;
 
     // ✅ SERVER-SIDE CALCULATION & VALIDATION
     let calculatedCharges;
@@ -325,7 +333,10 @@ router.post("/book", authMiddleware, async (req, res) => {
         categoryName,
         subcategoryName,
         subSubcategoryName,
+        carTypeId,
         carType,
+        transmissionTypeId,
+        transmissionType,
         fromLocation: fromLocationData,
         toLocation: toLocationData && toLocationData !== "" ? toLocationData : undefined,
         senderDetails,
@@ -335,10 +346,9 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedCategoryId,
         selectedCategory,
 
-        selectedDate: rideDate, // ✅ store as Date
+        selectedDate: rideDate,
         selectedTime,
         selectedUsage,
-        transmissionType,
         SelectedDays: durationValue,
         selectedDates: selectedDates || [],
         remainingDates: selectedDates || [],

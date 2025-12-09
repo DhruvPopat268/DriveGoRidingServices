@@ -39,7 +39,10 @@ const rideSchema = new mongoose.Schema(
       subcategoryName: { type: String },
       subSubcategoryName: { type: String },
       subSubcategoryId: { type: String },
+      carTypeId: { type: String },
       carType: { type: String },
+      transmissionTypeId: { type: String },
+      transmissionType: { type: String },
       fromLocation: locationSchema,
       toLocation: locationSchema,
 
@@ -66,8 +69,6 @@ const rideSchema = new mongoose.Schema(
 
       completedDays: [{ type: String }],
       completedDates: [{ type: String }],
-
-      transmissionType: { type: String },
 
       //for extended 
       extended: { type: Boolean, default: false },
