@@ -105,8 +105,8 @@ const rideSchema = new mongoose.Schema(
       adminCharges: { type: Number, default: 0 },
     },
 
-    referralEarning: { type: Boolean, default: false },
-    referralBalance: { type: Number, default: 0 },
+    isReferralEarningUsed: { type: Boolean, default: false },
+    referralEarningUsedAmount: { type: Number, default: 0 },
 
     totalPayable: { type: Number, required: true },
     paymentType: { type: String, enum: ["cash", "wallet"], required: true },

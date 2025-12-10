@@ -23,7 +23,18 @@ const riderSchema = new mongoose.Schema(
     // 🔹 Earnings object
     referralEarning: {
       totalEarnings: { type: Number, default: 0 },   // lifetime earnings
-      currentBalance: { type: Number, default: 0 }   // available balance
+      currentBalance: { type: Number, default: 0 },   // available balance
+      history: [{
+        rideId: { type: mongoose.Schema.Types.ObjectId, ref: "Ride" },
+        amount: { type: Number, required: true },
+        type: { 
+          type: String, 
+          enum: ["rider_completes_ride", "refund", "earning_used_for_book_ride"], 
+          required: true 
+        },
+        createdAt: { type: Date, default: Date.now },
+        _id: false
+      }]
     },
     
     // 🔹 Cancellation charges

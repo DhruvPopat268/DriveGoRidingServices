@@ -149,12 +149,12 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       subcategoryId,
       subSubcategoryId,
       durationType,
-      durationValue
+      durationValue,
+      isReferralEarningUsed,
+      referralEarningUsedAmount
     } = req.body;
 
     const riderId = req.rider?.riderId
-
-
 
     // Get rider document
     const rider = await Rider.findById(riderId);
@@ -287,7 +287,18 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       const baseTotal = driverCharges + modelPickCharges + peakCharges + modelNightCharges;
 
       const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
-      const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
+      let adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
+      let referralCommissionUsed = 0;
+      
+      // Apply referral earning deduction if used and rider has sufficient balance
+      if (isReferralEarningUsed && referralEarningUsedAmount > 0) {
+        const riderReferralBalance = rider.referralEarning?.currentBalance || 0;
+        if (riderReferralBalance >= referralEarningUsedAmount) {
+          const deductionAmount = Math.min(adjustedAdminCommission, referralEarningUsedAmount);
+          adjustedAdminCommission = Math.max(0, adjustedAdminCommission - referralEarningUsedAmount);
+          referralCommissionUsed = deductionAmount;
+        }
+      }
       const cancellationCharges = rider.cancellationCharges || 0;
 
       const referralRule = await ReferralRule.findOne({ status: true }).sort({ createdAt: -1 });
@@ -313,7 +324,8 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         subtotal: Math.round(subtotal),
         totalPayable,
         cancellationCharges,
-        referralCommissionAllowToUsed
+        referralCommissionAllowToUsed,
+        ...(isReferralEarningUsed && { referralCommissionUsed })
       });
     }
 

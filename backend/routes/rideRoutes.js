@@ -282,8 +282,8 @@ router.post("/book", authMiddleware, async (req, res) => {
       selectedDates,
       paymentType,
       totalPayable,
-      referralEarning,
-      referralBalance,
+      isReferralEarningUsed,
+      referralEarningUsedAmount,
       senderDetails,
       receiverDetails,
       selectedCarCategoryId,
@@ -456,8 +456,8 @@ router.post("/book", authMiddleware, async (req, res) => {
         subtotal: calculatedCharges.subtotal,
         adminCharges: calculatedCharges.adminCharges,
       },
-      referralEarning: referralEarning || false,
-      referralBalance: referralEarning ? referralBalance : 0,
+      isReferralEarningUsed: isReferralEarningUsed || false,
+      referralEarningUsedAmount: isReferralEarningUsed ? referralEarningUsedAmount : 0,
       totalPayable: adjustedTotalPayable,
       paymentType,
       status: "BOOKED",
@@ -657,10 +657,18 @@ router.post("/book", authMiddleware, async (req, res) => {
 
     // ✅ Deduct referral balance if used
     const rider = await Rider.findById(riderId);
-    if (rider && referralEarning && referralBalance > 0) {
-      rider.referralEarning.currentBalance -= referralBalance;
+    if (rider && isReferralEarningUsed && referralEarningUsedAmount > 0) {
+      rider.referralEarning.currentBalance -= referralEarningUsedAmount;
       if (rider.referralEarning.currentBalance < 0)
         rider.referralEarning.currentBalance = 0;
+      
+      // Add to history
+      rider.referralEarning.history.push({
+        rideId: newRide._id,
+        amount: -referralEarningUsedAmount,
+        type: "earning_used_for_book_ride"
+      });
+      
       await rider.save();
     }
 
@@ -974,6 +982,23 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
     } catch (modelError) {
       console.error('Error processing cancellation:', modelError);
+    }
+
+    // ✅ Refund referral earning if used
+    if (updatedBooking.isReferralEarningUsed && updatedBooking.referralEarningUsedAmount > 0) {
+      const rider = await Rider.findById(riderId);
+      if (rider) {
+        rider.referralEarning.currentBalance += updatedBooking.referralEarningUsedAmount;
+        
+        // Add to history
+        rider.referralEarning.history.push({
+          rideId: updatedBooking._id,
+          amount: updatedBooking.referralEarningUsedAmount,
+          type: "refund"
+        });
+        
+        await rider.save();
+      }
     }
 
     // Update driver rideStatus to WAITING if driver is assigned
@@ -1741,8 +1766,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           subtotal: currentRide.rideInfo.subtotal,
           adminCharges: currentRide.rideInfo.adminCharges,
         },
-        referralEarning: currentRide.referralEarning || false,
-        referralBalance: currentRide.referralBalance || 0,
+        isReferralEarningUsed: currentRide.isReferralEarningUsed || false,
+        referralEarningUsedAmount: currentRide.referralEarningUsedAmount || 0,
         totalPayable: currentRide.totalPayable,
         paymentType: currentRide.paymentType,
         status: "BOOKED",
@@ -1946,8 +1971,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         subtotal: cancelledChargesForNewRide.subtotal,
         adminCharges: cancelledChargesForNewRide.adminCommissionAdjusted,
       },
-      referralEarning: currentRide.referralEarning || false,
-      referralBalance: currentRide.referralBalance || 0,
+      isReferralEarningUsed: currentRide.isReferralEarningUsed || false,
+      referralEarningUsedAmount: currentRide.referralEarningUsedAmount || 0,
       totalPayable: cancelledChargesForNewRide.totalPayable,
       paymentType: currentRide.paymentType,
       status: "BOOKED",
@@ -2282,6 +2307,13 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
                 (referrer.referralEarning.totalEarnings || 0) + referralBonus;
               referrer.referralEarning.currentBalance =
                 (referrer.referralEarning.currentBalance || 0) + referralBonus;
+
+              // Add to history
+              referrer.referralEarning.history.push({
+                rideId: updatedRide._id,
+                amount: referralBonus,
+                type: "rider_completes_ride"
+              });
 
               const refIndex = referrer.referrals.findIndex(
                 (ref) => ref.riderId.toString() === updatedRide.riderId.toString()

@@ -234,7 +234,8 @@ router.post("/find-rider", authMiddleware, async (req, res) => {
 
     const rider = await Rider.findById(riderId)
       .select('name mobile gender email referralCode ratings.avgRating referralEarning referrals')
-      .populate('referrals.riderId', 'name');
+      .populate('referrals.riderId', 'name')
+      .populate('referralEarning.history.rideId', '_id');
 
     if (!rider) {
       return res.status(200).json({ success: false, message: "Rider not found" });
@@ -247,7 +248,8 @@ router.post("/find-rider", authMiddleware, async (req, res) => {
         avgRating: rider.ratings?.avgRating || 0,
         totalReferrals: rider.referrals?.length || 0,
         totalEarnings: rider.referralEarning?.totalEarnings || 0,
-        currentBalance: rider.referralEarning?.currentBalance || 0
+        currentBalance: rider.referralEarning?.currentBalance || 0,
+        referralHistory: rider.referralEarning?.history || []
       },
     });
   } catch (error) {

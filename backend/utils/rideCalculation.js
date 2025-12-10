@@ -64,8 +64,13 @@ const calculateDriverRideCost = async (params) => {
     durationType,
     durationValue,
     riderId,
-    selectedCategoryId
+    selectedCategoryId,
+    isReferralEarningUsed,
+    referralEarningUsedAmount,
+    rider
   } = params;
+
+  console.log(params)
 
   const parsedUsage = parseUsage(selectedUsage);
 
@@ -81,7 +86,7 @@ const calculateDriverRideCost = async (params) => {
 
 
   const rideCostModels = await DriverRideCost.find(rideCostQuery);
-  console.log('ride cost models', rideCostModels);
+  //console.log('ride cost models', rideCostModels);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
 
   const model = rideCostModels.find(m => m.priceCategory.toString() === selectedCategoryId);
@@ -104,9 +109,25 @@ const calculateDriverRideCost = async (params) => {
   const insuranceCharges = includeInsurance ? model.insurance || 0 : 0;
   const baseTotal = driverCharges + pickCharges + peakCharges + nightCharges;
   const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
-  const adminCharges = Math.max(0, adminCommission - (model.discount || 0));
+  let adminCharges = Math.max(0, adminCommission - (model.discount || 0));
+  let referralCommissionUsed = 0;
+
+  //console.log('is reff used' , isReferralEarningUsed , 'reff earning used amount' ,referralCommissionUsed, 'rider' , rider )
+  
+  if (isReferralEarningUsed && referralEarningUsedAmount > 0 && rider) {
+    const riderReferralBalance = rider.referralEarning?.currentBalance || 0;
+    console.log('riderReferralBalance', riderReferralBalance, 'referralEarningUsedAmount', referralEarningUsedAmount)
+    if (riderReferralBalance >= referralEarningUsedAmount) {
+      const deductionAmount = Math.min(adminCharges, referralEarningUsedAmount);
+      adminCharges = Math.max(0, adminCharges - referralEarningUsedAmount);
+      referralCommissionUsed = deductionAmount;
+    }
+  }
+  
   const subtotal = baseTotal + adminCommission;
   const gstCharges = Math.round((subtotal * (model.gst || 0)) / 100);
+
+  //console.log('admin charges', adminCharges , 'reff used' , referralCommissionUsed)
 
   return {
     driverCharges: Math.round(driverCharges),
@@ -118,8 +139,11 @@ const calculateDriverRideCost = async (params) => {
     discount: model.discount || 0,
     gstCharges,
     subtotal: Math.round(subtotal),
-    adminCharges
+    adminCharges,
+    ...(isReferralEarningUsed && { referralCommissionUsed })
   };
+
+  
 };
 
 const calculateCabRideCost = async (params) => {
@@ -135,7 +159,10 @@ const calculateCabRideCost = async (params) => {
     durationType,
     durationValue,
     carCategoryId,
-    selectedCategoryId
+    selectedCategoryId,
+    isReferralEarningUsed,
+    referralEarningUsedAmount,
+    rider
   } = params;
 
   const parsedUsage = parseUsage(selectedUsage);
@@ -173,7 +200,18 @@ const calculateCabRideCost = async (params) => {
   const insuranceCharges = includeInsurance ? model.insurance || 0 : 0;
   const baseTotal = driverCharges + pickCharges + peakCharges + nightCharges;
   const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
-  const adminCharges = Math.max(0, adminCommission - (model.discount || 0));
+  let adminCharges = Math.max(0, adminCommission - (model.discount || 0));
+  let referralCommissionUsed = 0;
+  
+  if (isReferralEarningUsed && referralEarningUsedAmount > 0 && rider) {
+    const riderReferralBalance = rider.referralEarning?.currentBalance || 0;
+    if (riderReferralBalance >= referralEarningUsedAmount) {
+      const deductionAmount = Math.min(adminCharges, referralEarningUsedAmount);
+      adminCharges = Math.max(0, adminCharges - referralEarningUsedAmount);
+      referralCommissionUsed = deductionAmount;
+    }
+  }
+  
   const subtotal = baseTotal + adminCommission;
   const gstCharges = Math.round((subtotal * (model.gst || 0)) / 100);
 
@@ -187,7 +225,8 @@ const calculateCabRideCost = async (params) => {
     discount: model.discount || 0,
     gstCharges,
     subtotal: Math.round(subtotal),
-    adminCharges
+    adminCharges,
+    ...(isReferralEarningUsed && { referralCommissionUsed })
   };
 };
 
@@ -203,7 +242,10 @@ const calculateParcelRideCost = async (params) => {
     durationType,
     durationValue,
     parcelCategoryId,
-    selectedCategoryId
+    selectedCategoryId,
+    isReferralEarningUsed,
+    referralEarningUsedAmount,
+    rider
   } = params;
 
   const parsedUsage = parseUsage(selectedUsage);
@@ -240,7 +282,18 @@ const calculateParcelRideCost = async (params) => {
   const insuranceCharges = includeInsurance ? model.insurance || 0 : 0;
   const baseTotal = driverCharges + pickCharges + peakCharges + nightCharges;
   const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
-  const adminCharges = Math.max(0, adminCommission - (model.discount || 0));
+  let adminCharges = Math.max(0, adminCommission - (model.discount || 0));
+  let referralCommissionUsed = 0;
+  
+  if (isReferralEarningUsed && referralEarningUsedAmount > 0 && rider) {
+    const riderReferralBalance = rider.referralEarning?.currentBalance || 0;
+    if (riderReferralBalance >= referralEarningUsedAmount) {
+      const deductionAmount = Math.min(adminCharges, referralEarningUsedAmount);
+      adminCharges = Math.max(0, adminCharges - referralEarningUsedAmount);
+      referralCommissionUsed = deductionAmount;
+    }
+  }
+  
   const subtotal = baseTotal + adminCommission;
   const gstCharges = Math.round((subtotal * (model.gst || 0)) / 100);
 
@@ -254,7 +307,8 @@ const calculateParcelRideCost = async (params) => {
     discount: model.discount || 0,
     gstCharges,
     subtotal: Math.round(subtotal),
-    adminCharges
+    adminCharges,
+    ...(isReferralEarningUsed && { referralCommissionUsed })
   };
 };
 
