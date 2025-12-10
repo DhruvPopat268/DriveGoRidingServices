@@ -11,7 +11,7 @@ const authMiddleware = require('../middleware/authMiddleware'); // Ensure this p
 const Rider = require('../models/Rider');
 const mongoose = require('mongoose');
 const {Wallet} = require('../models/Payment&Wallet')
-const ReferralRule = require('../models/ReferralRule')
+
 
 router.post('/', async (req, res) => {
   try {
@@ -90,9 +90,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       subcategoryId,
       subSubcategoryId,
       durationType,
-      durationValue,
-      isReferralEarningUsed,
-      referralEarningUsedAmount
+      durationValue
     } = req.body;
 
     const riderId = req.rider?.riderId
@@ -222,20 +220,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 
       const adminCommission = Math.round((baseTotal * (model.extraChargesFromAdmin || 0)) / 100);
       let adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
-      let referralCommissionUsed = 0;
       
-      // Apply referral earning deduction if used and rider has sufficient balance
-      if (isReferralEarningUsed && referralEarningUsedAmount > 0) {
-        const riderReferralBalance = rider.referralEarning?.currentBalance || 0;
-        if (riderReferralBalance >= referralEarningUsedAmount) {
-          const deductionAmount = Math.min(adjustedAdminCommission, referralEarningUsedAmount);
-          adjustedAdminCommission = Math.max(0, adjustedAdminCommission - referralEarningUsedAmount);
-          referralCommissionUsed = deductionAmount;
-        }
-      }
-
-      const referralRule = await ReferralRule.findOne({ status: true }).sort({ createdAt: -1 });
-      const referralCommissionAllowToUsed = Math.round((adjustedAdminCommission * (referralRule?.allowCommissionToUsed || 0)) / 100);
 
       const subtotal = baseTotal + adminCommission;
       const gstCharges = Math.round((subtotal * (model.gst || 0)) / 100);
@@ -259,9 +244,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         gstCharges,
         subtotal: Math.round(subtotal),
         totalPayable,
-        cancellationCharges,
-        referralCommissionAllowToUsed,
-        ...(isReferralEarningUsed && { referralCommissionUsed })
+        cancellationCharges
       });
 
     }

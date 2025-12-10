@@ -290,6 +290,8 @@ router.post("/book", authMiddleware, async (req, res) => {
       selectedParcelCategoryId
     } = req.body;
 
+    console.log('/book body',req.body)
+
     if (!categoryId || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
     }
@@ -306,7 +308,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     const subSubcategoryName = subSubcategoryDoc?.name;
     const carType = carTypeDoc?.vehicleName;
     const transmissionType = transmissionTypeDoc?.name;
-    console.log('car type', carTypeDoc , 'transmission' , transmissionType)
+    
 
 
     const categoryNameLower = categoryName?.toLowerCase();
