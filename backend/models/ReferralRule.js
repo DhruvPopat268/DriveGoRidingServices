@@ -7,9 +7,18 @@ const referralRuleSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
-  MaxReferrals : {
+  MaxReferrals: {
     type: Number,
-    required: true,
+    required: true
+  },
+  allowCommissionToUsed: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  status: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true

@@ -8,6 +8,8 @@ interface ReferralRule {
   _id: string;
   commission: number;
   MaxReferrals: number;
+  allowCommissionToUsed: number;
+  status: boolean;
   createdAt: string;
 }
 
@@ -17,7 +19,9 @@ const ReferEarnPage: React.FC = () => {
   const [editingRule, setEditingRule] = useState<ReferralRule | null>(null);
   const [formData, setFormData] = useState({
     commission: '',
-    MaxReferrals: ''
+    MaxReferrals: '',
+    allowCommissionToUsed: '',
+    status: true
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,10 +47,10 @@ const ReferEarnPage: React.FC = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     });
   };
 
@@ -60,7 +64,7 @@ const ReferEarnPage: React.FC = () => {
       }
       setShowForm(false);
       setEditingRule(null);
-      setFormData({ commission: '', MaxReferrals: '' });
+      setFormData({ commission: '', MaxReferrals: '', allowCommissionToUsed: '', status: true });
       fetchRules();
     } catch (error) {
       console.error('Error saving rule:', error);
@@ -72,7 +76,9 @@ const ReferEarnPage: React.FC = () => {
     setEditingRule(rule);
     setFormData({
       commission: rule.commission.toString(),
-      MaxReferrals: rule.MaxReferrals.toString()
+      MaxReferrals: rule.MaxReferrals.toString(),
+      allowCommissionToUsed: rule.allowCommissionToUsed.toString(),
+      status: rule.status
     });
     setShowForm(true);
   };
@@ -90,7 +96,7 @@ const ReferEarnPage: React.FC = () => {
   const handleCloseForm = () => {
     setShowForm(false);
     setEditingRule(null);
-    setFormData({ commission: '', MaxReferrals: '' });
+    setFormData({ commission: '', MaxReferrals: '', allowCommissionToUsed: '', status: true });
   };
 
   if (loading) {
@@ -105,7 +111,7 @@ const ReferEarnPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 bg-white text-black">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-2">
         <h1 className="text-2xl font-bold">Refer & Earn</h1>
         <button
           onClick={() => setShowForm(true)}
@@ -114,6 +120,7 @@ const ReferEarnPage: React.FC = () => {
           Create Rules
         </button>
       </div>
+      <h4 className="text-red-600 mb-4">***commission is context to admin charges</h4>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -136,6 +143,12 @@ const ReferEarnPage: React.FC = () => {
                 Max Referrals
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                Allowed Commission Usage (%)
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
                 Created At
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
@@ -150,6 +163,26 @@ const ReferEarnPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{index + 1}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{rule.commission}%</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{rule.MaxReferrals}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">{rule.allowCommissionToUsed}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await axios.put(`${import.meta.env.VITE_API_URL}/api/referral-rules/${rule._id}`, {
+                            ...rule,
+                            status: !rule.status
+                          });
+                          fetchRules();
+                        } catch (error) {
+                          console.error('Error updating status:', error);
+                        }
+                      }}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${rule.status ? 'bg-black' : 'bg-gray-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${rule.status ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {new Date(rule.createdAt).toLocaleDateString()}
                   </td>
@@ -174,7 +207,7 @@ const ReferEarnPage: React.FC = () => {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
                   No referral rules found. Click "Create Rules" to add one.
                 </td>
               </tr>
@@ -213,12 +246,12 @@ const ReferEarnPage: React.FC = () => {
                   step="0.01"
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <label
                   className="block text-gray-700 text-sm font-medium mb-2"
                   htmlFor="MaxReferrals"
                 >
-                  Number of max Referrals
+                  Max Referrals
                 </label>
                 <input
                   type="number"
@@ -229,6 +262,38 @@ const ReferEarnPage: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+              </div>
+              <div className="mb-4">
+                <label
+                  className="block text-gray-700 text-sm font-medium mb-2"
+                  htmlFor="allowCommissionToUsed"
+                >
+                  Allowed Commission Usage (%)
+                </label>
+                <input
+                  type="number"
+                  id="allowCommissionToUsed"
+                  name="allowCommissionToUsed"
+                  value={formData.allowCommissionToUsed}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div className="mb-6">
+                <label className="block text-gray-700 text-sm font-medium mb-2">Status</label>
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, status: !formData.status})}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.status ? 'bg-black' : 'bg-gray-300'}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.status ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
+                  <span className="text-sm text-gray-700">{formData.status ? 'Active' : 'Inactive'}</span>
+                </div>
               </div>
               <div className="flex justify-end space-x-3">
                 <button

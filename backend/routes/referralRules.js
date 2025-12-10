@@ -28,11 +28,13 @@ router.get('/:id', async (req, res) => {
 // CREATE a new referral rule
 router.post('/', async (req, res) => {
   try {
-    const { commission, MaxReferrals  } = req.body;
+    const { commission, MaxReferrals, allowCommissionToUsed, status } = req.body;
     
     const newRule = new ReferralRule({
       commission: parseFloat(commission),
-      MaxReferrals : parseInt(MaxReferrals )
+      MaxReferrals: parseInt(MaxReferrals),
+      allowCommissionToUsed: parseFloat(allowCommissionToUsed) || 0,
+      status: status !== undefined ? status : true
     });
     
     const savedRule = await newRule.save();
@@ -45,13 +47,15 @@ router.post('/', async (req, res) => {
 // UPDATE a referral rule
 router.put('/:id', async (req, res) => {
   try {
-    const { commission, MaxReferrals  } = req.body;
+    const { commission, MaxReferrals, allowCommissionToUsed, status } = req.body;
     
     const updatedRule = await ReferralRule.findByIdAndUpdate(
       req.params.id,
       { 
         commission: parseFloat(commission),
-        MaxReferrals : parseInt(MaxReferrals )
+        MaxReferrals: parseInt(MaxReferrals),
+        allowCommissionToUsed: parseFloat(allowCommissionToUsed) || 0,
+        status: status !== undefined ? status : true
       },
       { new: true, runValidators: true }
     );

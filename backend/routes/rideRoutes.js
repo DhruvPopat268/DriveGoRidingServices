@@ -328,6 +328,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     let calculatedCharges;
     try {
       const calcParams = {
+        categoryName,
         categoryId,
         subcategoryId,
         subSubcategoryId,

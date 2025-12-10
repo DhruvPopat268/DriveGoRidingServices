@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const Rider = require('../models/Rider');
 const {Wallet} = require('../models/Payment&Wallet')
+const ReferralRule = require('../models/ReferralRule')
 
 
 
@@ -281,6 +282,9 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 
       const cancellationCharges = rider.cancellationCharges || 0;
 
+            const referralRule = await ReferralRule.findOne({ status: true }).sort({ createdAt: -1 });
+      const referralCommissionAllowToUsed = Math.round((adjustedAdminCommission * (referralRule?.allowCommissionToUsed || 0)) / 100);
+
       const subtotal = baseTotal + adminCommission;
       const gstCharges = Math.round((subtotal * (model.gst || 0)) / 100);
       const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges);
@@ -300,7 +304,9 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         gstCharges,
         subtotal: Math.round(subtotal),
         totalPayable,
-        cancellationCharges
+        cancellationCharges,
+                referralCommissionAllowToUsed
+
       });
     }
 

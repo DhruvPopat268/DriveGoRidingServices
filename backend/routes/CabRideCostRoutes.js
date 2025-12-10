@@ -12,7 +12,9 @@ const CarCategory = require('../models/CarCategory')
 const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const Rider = require('../models/Rider');
-const {Wallet} = require('../models/Payment&Wallet')
+const { Wallet } = require('../models/Payment&Wallet')
+const ReferralRule = require('../models/ReferralRule')
+
 
 // Get all cab ride costs
 router.get('/', async (req, res) => {
@@ -185,19 +187,19 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     const parseUsage = (usageStr) => {
       const usage = { km: 0, minutes: 0 };
       if (!usageStr) return usage;
-      
+
       const parts = usageStr.split('&').map(part => part.trim());
-      
+
       parts.forEach(part => {
         const kmMatch = part.match(/(\d+)\s*km/i);
         const hrMatch = part.match(/(\d+)\s*hrs?/i);
         const minMatch = part.match(/(\d+)\s*min/i);
-        
+
         if (kmMatch) usage.km = parseInt(kmMatch[1]);
         if (hrMatch) usage.minutes += parseInt(hrMatch[1]) * 60;
         if (minMatch) usage.minutes += parseInt(minMatch[1]);
       });
-      
+
       return usage;
     };
 
@@ -288,6 +290,9 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       const adjustedAdminCommission = Math.max(0, adminCommission - (model.discount || 0));
       const cancellationCharges = rider.cancellationCharges || 0;
 
+      const referralRule = await ReferralRule.findOne({ status: true }).sort({ createdAt: -1 });
+      const referralCommissionAllowToUsed = Math.round((adjustedAdminCommission * (referralRule?.allowCommissionToUsed || 0)) / 100);
+
       const subtotal = baseTotal + adminCommission;
       const gstCharges = Math.round((subtotal * (model.gst || 0)) / 100);
       const totalPayable = Math.round(baseTotal + adjustedAdminCommission + gstCharges + modelInsurance + cancellationCharges);
@@ -307,11 +312,12 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         gstCharges,
         subtotal: Math.round(subtotal),
         totalPayable,
-        cancellationCharges
+        cancellationCharges,
+        referralCommissionAllowToUsed
       });
     }
 
-    res.json({ success: true, result , UserCurrentBalance:currentBalance });
+    res.json({ success: true, result, UserCurrentBalance: currentBalance });
 
   } catch (err) {
     console.error('Error in /calculation route:', err);
@@ -348,7 +354,7 @@ router.post("/get-included-data", async (req, res) => {
           ...(subSubcategoryId && {
             subSubCategory: new mongoose.Types.ObjectId(subSubcategoryId),
           }),
-          status:true
+          status: true
         },
       },
       {

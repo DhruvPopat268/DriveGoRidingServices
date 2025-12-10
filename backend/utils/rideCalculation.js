@@ -53,6 +53,7 @@ const calculatePeakCharges = async (selectedDate, selectedTime) => {
 
 const calculateDriverRideCost = async (params) => {
   const {
+    categoryName,
     categoryId,
     subcategoryId,
     subSubcategoryId,
@@ -72,9 +73,12 @@ const calculateDriverRideCost = async (params) => {
     category: categoryId, 
     subcategory: subcategoryId,
     includedKm: parsedUsage.km.toString(),
-    includedMinutes: parsedUsage.minutes.toString()
+    includedMinutes: parsedUsage.minutes.toString(),
+    priceCategory: selectedCategoryId
   };
   if (subSubcategoryId) rideCostQuery.subSubCategory = subSubcategoryId;
+
+
 
   const rideCostModels = await DriverRideCost.find(rideCostQuery);
   console.log('ride cost models', rideCostModels);
@@ -120,6 +124,7 @@ const calculateDriverRideCost = async (params) => {
 
 const calculateCabRideCost = async (params) => {
   const {
+    categoryName,
     categoryId,
     subcategoryId,
     subSubcategoryId,
@@ -140,7 +145,8 @@ const calculateCabRideCost = async (params) => {
     category: categoryId,
     subcategory: subcategoryId,
     includedKm: parsedUsage.km.toString(),
-    includedMinutes: parsedUsage.minutes.toString()
+    includedMinutes: parsedUsage.minutes.toString(),
+    car: selectedCategoryId
   };
   if (subSubcategoryId) rideCostQuery.subSubCategory = subSubcategoryId;
 
@@ -187,6 +193,7 @@ const calculateCabRideCost = async (params) => {
 
 const calculateParcelRideCost = async (params) => {
   const {
+    categoryName,
     categoryId,
     subcategoryId,
     selectedDate,
@@ -206,7 +213,8 @@ const calculateParcelRideCost = async (params) => {
     category: categoryId,
     subcategory: subcategoryId,
     includedKm: parsedUsage.km.toString(),
-    includedMinutes: parsedUsage.minutes.toString()
+    includedMinutes: parsedUsage.minutes.toString(),
+    parcelVehicle: selectedCategoryId
   };
 
   const rideCostModels = await ParcelRideCost.find(rideCostQuery);
