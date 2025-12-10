@@ -128,7 +128,7 @@ export const ParcelRideCostPage = () => {
     extraChargePerMinute: '',
     pickCharges: '',
     nightCharges: '',
-    cancellationBufferTime: '',    cancellationFee: '',
+    cancellationBufferTime: '', cancellationFee: '',
     insurance: '',
     extraChargesFromAdmin: '',
     gst: '',
@@ -402,7 +402,7 @@ export const ParcelRideCostPage = () => {
 
   const handleEdit = async (rideCost: RideCost) => {
     if (!rideCost._id) return;
-    
+
     setIsEditing(true);
     setLoading(true);
 
@@ -425,7 +425,7 @@ export const ParcelRideCostPage = () => {
       const filteredSubs = subcategories.filter(sub => sub.categoryId === categoryId);
       setFilteredSubcategories(filteredSubs);
 
-      
+
 
       // Set filtered price categories - show all when subcategory is selected
       setFilteredPriceCategories(priceCategories);
@@ -465,7 +465,7 @@ export const ParcelRideCostPage = () => {
         driverCancellationCharges: fetchedRideCost.driverCancellationCharges?.toString() || '0',
         driverCancellationCredits: fetchedRideCost.driverCancellationCredits?.toString() || '0'
       });
-      
+
       setDialogOpen(true);
     } catch (error) {
       console.error('Error fetching ride cost:', error);
@@ -515,7 +515,7 @@ export const ParcelRideCostPage = () => {
       extraChargePerKm: '',
       extraChargePerMinute: '',
       pickCharges: '',
-    cancellationBufferTime: '',      nightCharges: '',
+      cancellationBufferTime: '', nightCharges: '',
       cancellationFee: '',
       insurance: '',
       extraChargesFromAdmin: '',
@@ -745,7 +745,7 @@ export const ParcelRideCostPage = () => {
                     value={rideCostForm.nightCharges}
                     onChange={(e) => setRideCostForm(prev => ({ ...prev, nightCharges: e.target.value }))}
                   />
-                   <Input
+                  <Input
                     type="number"
                     step="0.01"
                     placeholder="Cancellation Fee"
@@ -793,7 +793,7 @@ export const ParcelRideCostPage = () => {
                     value={rideCostForm.driverCancellationCharges}
                     onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCharges: e.target.value }))}
                   />
-                 
+
 
                 </div>
                 <Button type="submit" className="w-full" disabled={loading || (rideCostForm.category && !isFormParcelCategory())}>
@@ -1024,7 +1024,7 @@ export const ParcelRideCostPage = () => {
                 <ChevronLeft className="w-4 h-4" />
                 Previous
               </Button>
-              
+
               <div className="flex items-center space-x-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNumber;
@@ -1037,7 +1037,7 @@ export const ParcelRideCostPage = () => {
                   } else {
                     pageNumber = currentPage - 2 + i;
                   }
-                  
+
                   return (
                     <Button
                       key={pageNumber}
@@ -1051,7 +1051,7 @@ export const ParcelRideCostPage = () => {
                   );
                 })}
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -1120,10 +1120,10 @@ export const ParcelRideCostPage = () => {
                   <p className="text-sm text-gray-600">₹{viewingRideCost.nightCharges}</p>
                 </div>
                 <div>
-                <div>
-                  <label className="text-sm font-medium">Cancellation Buffer Time</label>
-                  <p className="text-sm text-gray-600">{viewingRideCost.cancellationBufferTime} minutes</p>
-                </div>                  <label className="text-sm font-medium">Cancellation Fee</label>
+                  <div>
+                    <label className="text-sm font-medium">Cancellation Buffer Time</label>
+                    <p className="text-sm text-gray-600">{viewingRideCost.cancellationBufferTime} minutes</p>
+                  </div>                  <label className="text-sm font-medium">Cancellation Fee</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.cancellationFee}</p>
                 </div>
                 <div>
@@ -1146,7 +1146,7 @@ export const ParcelRideCostPage = () => {
                   <label className="text-sm font-medium">Driver Cancellation Charges</label>
                   <p className="text-sm text-gray-600">₹{viewingRideCost.driverCancellationCharges || 0}</p>
                 </div>
-               
+
               </div>
             )}
           </DialogContent>

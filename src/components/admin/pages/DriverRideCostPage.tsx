@@ -513,6 +513,10 @@ export const DriverRideCostPage = () => {
         <h1 className="text-3xl font-bold">Driver Ride Cost Management</h1>
       </div>
 
+      <div className="flex items-center justify-between">
+        <h4 className="text-red-600">***for monthly or weekly packages add basefare as per 1 day</h4>
+      </div>
+
       <Card className="p-6">
         <div className="flex items-center justify-end mb-1">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

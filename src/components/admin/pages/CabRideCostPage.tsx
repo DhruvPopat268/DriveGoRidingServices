@@ -562,6 +562,10 @@ export const CabRideCostPage = () => {
                 <h1 className="text-3xl font-bold">Cab Ride Cost Management</h1>
             </div>
 
+            <div className="flex items-center justify-between">
+                <h4 className="text-red-600">***for monthly or weekly packages add basefare as per 1 day</h4>
+            </div>
+
             <Card className="p-6">
                 <div className="flex items-center justify-end mb-1">
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -880,7 +884,7 @@ export const CabRideCostPage = () => {
                                         value={rideCostForm.driverCancellationCharges}
                                         onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCharges: e.target.value }))}
                                     />
-                                    
+
                                 </div>
                                 <Button type="submit" className="w-full" disabled={loading || (rideCostForm.category && !isFormCabCategory())}>
                                     {loading ? 'Saving...' : editingRideCost ? 'Update' : 'Create'}
@@ -1254,7 +1258,7 @@ export const CabRideCostPage = () => {
                                     <label className="text-sm font-medium">Driver Cancellation Charges</label>
                                     <p className="text-sm text-gray-600">₹{viewingRideCost.driverCancellationCharges || 0}</p>
                                 </div>
-                         
+
                             </div>
                         )}
                     </DialogContent>
