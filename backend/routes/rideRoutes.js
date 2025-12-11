@@ -864,16 +864,16 @@ router.post("/booking/id", authMiddleware, async (req, res) => {
 //for cancel ride using ride id
 router.post("/booking/cancel", authMiddleware, async (req, res) => {
   try {
-    const { bookingId } = req.body;
+    const { rideId } = req.body;
     const riderId = req.rider?.riderId;
 
-    if (!bookingId) {
+    if (!rideId) {
       return res.status(400).json({ message: "Booking ID is required" });
     }
 
     const updatedBooking = await Ride.findOneAndUpdate(
       {
-        _id: bookingId,
+        _id: rideId,
         status: { $in: ["BOOKED", "CONFIRMED", "REACHED"] } // only update if status is one of these
       },
       { status: "CANCELLED" },
