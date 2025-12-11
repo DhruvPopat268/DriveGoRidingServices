@@ -71,7 +71,7 @@ const calculateDriverRideCost = async (params) => {
     rider
   } = params;
 
-  console.log(params)
+  //console.log(params)
 
   const parsedUsage = parseUsage(selectedUsage);
 
@@ -117,7 +117,7 @@ const calculateDriverRideCost = async (params) => {
 
   if (isReferralEarningUsed && referralEarningUsedAmount > 0 && rider) {
     const riderReferralBalance = rider.referralEarning?.currentBalance || 0;
-    console.log('riderReferralBalance', riderReferralBalance, 'referralEarningUsedAmount', referralEarningUsedAmount)
+    //console.log('riderReferralBalance', riderReferralBalance, 'referralEarningUsedAmount', referralEarningUsedAmount)
     if (riderReferralBalance >= referralEarningUsedAmount) {
       const deductionAmount = Math.min(adminCharges, referralEarningUsedAmount);
       adminCharges = Math.max(0, adminCharges - referralEarningUsedAmount);
@@ -369,9 +369,9 @@ const calculateDriverRideCostWithReferral = async (params) => {
 
   const referralRule = await ReferralRule.findOne({ status: true });
   if (referralRule && rider?.referralEarning?.currentBalance > 0) {
-    const allowedCommission = Math.round((adminCharges * referralRule.allowCommissionToUsed) / 100); //17
+    const allowedCommission = Math.round((adminCharges * referralRule.allowCommissionToUsed) / 100); //
     const availableBalance = rider.referralEarning.currentBalance; // 5
-    referralCommissionUsed = Math.min(allowedCommission, availableBalance); // 17
+    referralCommissionUsed = Math.min(allowedCommission, availableBalance); // 
     adminCharges = Math.max(0, adminCharges - referralCommissionUsed); // 200 17 
   }
 
@@ -413,7 +413,6 @@ const calculateCabRideCostWithReferral = async (params) => {
   const parsedUsage = parseUsage(selectedUsage);
 
   let rideCostQuery = {
-    priceCategory: carCategoryId,
     category: categoryId,
     subcategory: subcategoryId,
     includedKm: parsedUsage.km.toString(),
@@ -450,10 +449,10 @@ const calculateCabRideCostWithReferral = async (params) => {
 
   const referralRule = await ReferralRule.findOne({ status: true });
   if (referralRule && rider?.referralEarning?.currentBalance > 0) {
-    const allowedCommission = Math.round((adminCharges * referralRule.allowCommissionToUsed) / 100);
-    const availableBalance = rider.referralEarning.currentBalance;
-    referralCommissionUsed = Math.min(allowedCommission, availableBalance);
-    adminCharges = Math.max(0, adminCharges - referralCommissionUsed);
+    const allowedCommission = Math.round((adminCharges * referralRule.allowCommissionToUsed) / 100); //
+    const availableBalance = rider.referralEarning.currentBalance; // 5
+    referralCommissionUsed = Math.min(allowedCommission, availableBalance); // 
+    adminCharges = Math.max(0, adminCharges - referralCommissionUsed); // 200 17 
   }
 
   const subtotal = baseTotal + adminCommission;
@@ -493,7 +492,6 @@ const calculateParcelRideCostWithReferral = async (params) => {
   const parsedUsage = parseUsage(selectedUsage);
 
   let rideCostQuery = {
-    parcelCategory: parcelCategoryId,
     category: categoryId,
     subcategory: subcategoryId,
     includedKm: parsedUsage.km.toString(),
