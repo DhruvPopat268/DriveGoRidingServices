@@ -821,7 +821,7 @@ router.get("/ongoing/my-rides", authMiddleware, async (req, res) => {
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
     const rides = await Ride.find({
-      riderId, status: { $in: ["ONGOING", "EXTENDED"] }
+      riderId, status: { $in: ["ONGOING", "EXTENDED" , "REACHED"] }
     }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
@@ -871,31 +871,22 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Booking ID is required" });
     }
 
-    const updatedBooking = await Ride.findOneAndUpdate(
-      {
-        _id: rideId,
-        status: { $in: ["BOOKED", "CONFIRMED", "REACHED"] } // only update if status is one of these
-      },
-      { status: "CANCELLED" },
-      { new: true } // return the updated document
-    );
+    // First check if ride exists and can be cancelled
+    const rideToCancel = await Ride.findOne({
+      _id: rideId,
+      status: { $in: ["BOOKED", "CONFIRMED", "REACHED"] }
+    });
 
-    if (!updatedBooking) {
+    if (!rideToCancel) {
       return res.status(400).json({
         success: false,
         message: "Booking cannot be cancelled. Current status does not allow cancellation."
       });
     }
 
-    // console.log(updatedBooking)
-
-    if (!updatedBooking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-
-    // Extract required data from updatedBooking
-    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime, selectedCategoryId } = updatedBooking.rideInfo;
-    const bookingDriverId = updatedBooking.driverId;
+    // Extract required data from rideToCancel
+    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime, selectedCategoryId } = rideToCancel.rideInfo;
+    const bookingDriverId = rideToCancel.driverId;
 
     // Check category and fetch cancellation details from appropriate model
     const categoryNameLower = categoryName.toLowerCase();
@@ -938,7 +929,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               status: 'paid',
               type: 'cancellation_charges',
               description: description,
-              rideId: bookingId,
+              rideId: rideId,
               paidAt: new Date()
             });
 
@@ -965,7 +956,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
                 status: 'paid',
                 type: 'cancellation_charges',
                 description: `${description} (Partial payment)`,
-                rideId: bookingId,
+                rideId: rideId,
                 paidAt: new Date()
               });
             }
@@ -1045,16 +1036,23 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       console.error('Error processing cancellation:', modelError);
     }
 
+    // ✅ Now update the ride status to CANCELLED after successful processing
+    const updatedBooking = await Ride.findByIdAndUpdate(
+      rideId,
+      { status: "CANCELLED" },
+      { new: true }
+    );
+
     // ✅ Refund referral earning if used
-    if (updatedBooking.isReferralEarningUsed && updatedBooking.referralEarningUsedAmount > 0) {
+    if (rideToCancel.isReferralEarningUsed && rideToCancel.referralEarningUsedAmount > 0) {
       const rider = await Rider.findById(riderId);
       if (rider) {
-        rider.referralEarning.currentBalance += updatedBooking.referralEarningUsedAmount;
+        rider.referralEarning.currentBalance += rideToCancel.referralEarningUsedAmount;
 
         // Add to history
         rider.referralEarning.history.push({
-          rideId: updatedBooking._id,
-          amount: updatedBooking.referralEarningUsedAmount,
+          rideId: rideToCancel._id,
+          amount: rideToCancel.referralEarningUsedAmount,
           type: "refund"
         });
 
@@ -1074,7 +1072,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             bookingDriverId,
             driver.oneSignalPlayerId,
             'Trip Cancelled',
-            `${updatedBooking.riderInfo.riderName} has cancelled the ${updatedBooking.rideInfo.subcategoryName} trip`,
+            `${rideToCancel.riderInfo.riderName} has cancelled the ${rideToCancel.rideInfo.subcategoryName} trip`,
             'ride_cancelled',
           );
         }

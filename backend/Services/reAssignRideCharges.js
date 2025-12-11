@@ -119,8 +119,16 @@ const calculateDriverRideCharges = async ({
     let isNight = false;
     if (nightCharge) {
         const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
-        const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
-        if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+        let endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+        
+        // Handle night time range that spans across midnight
+        if (endTime.isBefore(startTime)) {
+            endTime.add(1, 'day');
+        }
+        
+        // Check if booking time falls within night hours
+        if (bookingDateTime.isBetween(startTime, endTime, null, '[]') || 
+            (endTime.date() !== startTime.date() && bookingDateTime.clone().add(1, 'day').isBetween(startTime, endTime, null, '[]'))) {
             isNight = true;
         }
     }
@@ -293,8 +301,16 @@ const calculateCabRideCharges = async ({
     let isNight = false;
     if (nightCharge) {
         const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
-        const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
-        if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+        let endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+        
+        // Handle night time range that spans across midnight
+        if (endTime.isBefore(startTime)) {
+            endTime.add(1, 'day');
+        }
+        
+        // Check if booking time falls within night hours
+        if (bookingDateTime.isBetween(startTime, endTime, null, '[]') || 
+            (endTime.date() !== startTime.date() && bookingDateTime.clone().add(1, 'day').isBetween(startTime, endTime, null, '[]'))) {
             isNight = true;
         }
     }

@@ -186,10 +186,19 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     let isNight = false;
     if (nightCharge) {
       const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
-      const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+      let endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+      
+      // Handle night time range that spans across midnight
+      if (endTime.isBefore(startTime)) {
+        endTime.add(1, 'day');
+      }
+      
       console.log(startTime, endTime)
       console.log(bookingDateTime)
-      if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+      
+      // Check if booking time falls within night hours
+      if (bookingDateTime.isBetween(startTime, endTime, null, '[]') || 
+          (endTime.date() !== startTime.date() && bookingDateTime.clone().add(1, 'day').isBetween(startTime, endTime, null, '[]'))) {
         isNight = true;
         console.log('Night charges applied');
       }
