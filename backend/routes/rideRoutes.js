@@ -464,14 +464,14 @@ router.post("/book", authMiddleware, async (req, res) => {
       paymentType,
       status: "BOOKED",
     });
-    const selectedCarCategoryName = null
+    let selectedCarCategoryName = null
     if(selectedCarCategoryId){
       selectedCarCategoryName = await carCategory.findById(selectedCarCategoryId).select('name');
       newRide.rideInfo.selectedCarCategory = selectedCarCategoryName;
       newRide.rideInfo.selectedCarCategoryId = selectedCarCategoryId;
     }
 
-    const selectedParcelCategoryName = null
+    let selectedParcelCategoryName = null
     if(selectedParcelCategoryId){
       selectedParcelCategoryName = await parcelCategory.findById(selectedParcelCategoryId).select('categoryName');
       newRide.rideInfo.selectedParcelCategory = selectedParcelCategoryName;
