@@ -171,8 +171,8 @@ router.get("/booking/:id", async (req, res) => {
 // update status to confirm and assign driver ride by driver
 router.post("/admin/driver/confirm", async (req, res) => {
   try {
-    const { rideId , driverId  } = req.body;
-    
+    const { rideId, driverId } = req.body;
+
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
     }
@@ -203,9 +203,9 @@ router.post("/admin/driver/confirm", async (req, res) => {
       }
     } catch (walletError) {
       console.error('Wallet balance check error:', walletError);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to validate wallet balance' 
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to validate wallet balance'
       });
     }
 
@@ -216,7 +216,7 @@ router.post("/admin/driver/confirm", async (req, res) => {
 
     const driverName = driverInfo.personalInformation?.fullName
     const driverMobile = driverInfo.mobile
-   
+
     // Find and update the ride only if status is BOOKED
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: "BOOKED" }, // only if ride is BOOKED
@@ -238,7 +238,7 @@ router.post("/admin/driver/confirm", async (req, res) => {
     // Update driver rideStatus to CONFIRMED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
 
-   
+
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
     if (io) {
@@ -290,7 +290,12 @@ router.post("/book", authMiddleware, async (req, res) => {
       selectedParcelCategoryId
     } = req.body;
 
-    console.log('/book body',req.body)
+    console.log('/book body', req.body)
+
+    const { riderId, mobile } = req.rider;
+
+    const riderData = await Rider.findOne({ mobile });
+    const riderName = riderData.name;
 
     if (!categoryId || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
@@ -308,22 +313,22 @@ router.post("/book", authMiddleware, async (req, res) => {
     const subSubcategoryName = subSubcategoryDoc?.name;
     const carType = carTypeDoc?.vehicleName;
     const transmissionType = transmissionTypeDoc?.name;
-    
+
 
 
     const categoryNameLower = categoryName?.toLowerCase();
 
     let selectedCategoryDoc = null;
-    if(categoryNameLower === 'driver'){
+    if (categoryNameLower === 'driver') {
       selectedCategoryDoc = await priceCategory.findById(selectedCategoryId).select('priceCategoryName');
-    } else if(categoryNameLower === 'cab'){ 
+    } else if (categoryNameLower === 'cab') {
       selectedCategoryDoc = await Car.findById(selectedCategoryId).select('name');
-    } else if(categoryNameLower === 'parcel'){
+    } else if (categoryNameLower === 'parcel') {
       selectedCategoryDoc = await ParcelVehicle.findById(selectedCategoryId).select('name');
     }
-    
-    const selectedCategory = categoryNameLower === 'driver' 
-      ? selectedCategoryDoc?.priceCategoryName 
+
+    const selectedCategory = categoryNameLower === 'driver'
+      ? selectedCategoryDoc?.priceCategoryName
       : selectedCategoryDoc?.name;
 
     // ✅ SERVER-SIDE CALCULATION & VALIDATION
@@ -340,7 +345,10 @@ router.post("/book", authMiddleware, async (req, res) => {
         selectedUsage,
         durationType,
         durationValue,
-        selectedCategoryId
+        selectedCategoryId,
+        isReferralEarningUsed,
+        referralEarningUsedAmount,
+        rider:riderData
       };
 
       if (categoryNameLower === 'driver') {
@@ -357,32 +365,29 @@ router.post("/book", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: calcError.message || "Failed to calculate ride cost" });
     }
 
-    const { riderId, mobile } = req.rider;
 
-    const riderData = await Rider.findOne({ mobile });
-    const riderName = riderData.name;
 
     // Calculate unpaid cancellation charges
     const unpaidCancellationCharges = riderData.cancellationCharges - riderData.unclearedCancellationCharges;
     calculatedCharges.cancellationCharges = unpaidCancellationCharges;
 
     // ✅ CALCULATE SERVER-SIDE TOTAL
-    const serverTotalPayable = 
-      calculatedCharges.driverCharges + 
-      calculatedCharges.pickCharges + 
-      calculatedCharges.peakCharges + 
-      calculatedCharges.nightCharges + 
-      calculatedCharges.insuranceCharges + 
-      calculatedCharges.adminCharges + 
-      calculatedCharges.gstCharges + 
-      calculatedCharges.cancellationCharges 
+    const serverTotalPayable =
+      calculatedCharges.driverCharges +
+      calculatedCharges.pickCharges +
+      calculatedCharges.peakCharges +
+      calculatedCharges.nightCharges +
+      calculatedCharges.insuranceCharges +
+      calculatedCharges.adminCharges +
+      calculatedCharges.gstCharges +
+      calculatedCharges.cancellationCharges
     //  - calculatedCharges.discount;
 
-    console.log("server charges",serverTotalPayable , "client charges" , totalPayable)
+    console.log("server charges", serverTotalPayable, "client charges", totalPayable)
     // ✅ VALIDATE AGAINST FRONTEND TOTAL (allow 2 rupee tolerance for rounding)
     const tolerance = 2;
     if (Math.abs(serverTotalPayable - totalPayable) > tolerance) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: "Price mismatch detected. Please refresh and try again.",
         serverTotal: serverTotalPayable,
         clientTotal: totalPayable
@@ -412,7 +417,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     let rideDate = selectedDate ? new Date(selectedDate) : null;
     // console.log('📅 Ride date:', rideDate);
 
-    
+
 
     // In rideInfo
     const newRide = new Ride({
@@ -465,14 +470,14 @@ router.post("/book", authMiddleware, async (req, res) => {
       status: "BOOKED",
     });
     let selectedCarCategoryName = null
-    if(selectedCarCategoryId){
+    if (selectedCarCategoryId) {
       selectedCarCategoryName = await carCategory.findById(selectedCarCategoryId).select('name');
       newRide.rideInfo.selectedCarCategory = selectedCarCategoryName;
       newRide.rideInfo.selectedCarCategoryId = selectedCarCategoryId;
     }
 
     let selectedParcelCategoryName = null
-    if(selectedParcelCategoryId){
+    if (selectedParcelCategoryId) {
       selectedParcelCategoryName = await parcelCategory.findById(selectedParcelCategoryId).select('categoryName');
       newRide.rideInfo.selectedParcelCategory = selectedParcelCategoryName;
       newRide.rideInfo.selectedParcelCategoryId = selectedParcelCategoryId;
@@ -481,7 +486,7 @@ router.post("/book", authMiddleware, async (req, res) => {
     // Get vehicle type information before saving
     let vehicleTypeId = null;
     let vehicleTypeName = null;
-    
+
     if (categoryNameLower === 'cab' && selectedCategoryId) {
       try {
         const car = await Car.findById(selectedCategoryId).populate('vehicleType');
@@ -521,12 +526,12 @@ router.post("/book", authMiddleware, async (req, res) => {
     if (io && onlineDrivers) {
       const rideData = {
         rideId: newRide._id,
-        categoryName: newRide.rideInfo? newRide.rideInfo.categoryName : null,
-        subcategoryName: newRide.rideInfo? newRide.rideInfo.subcategoryName : null,
-        subSubcategoryName: newRide.rideInfo? newRide.rideInfo.subSubcategoryName : null,
-        carType: newRide.rideInfo? newRide.rideInfo.carType : null,
-        selectedCategory: newRide.rideInfo? newRide.rideInfo.selectedCategory : null,
-        transmissionType: newRide.rideInfo? newRide.rideInfo.transmissionType : null,
+        categoryName: newRide.rideInfo ? newRide.rideInfo.categoryName : null,
+        subcategoryName: newRide.rideInfo ? newRide.rideInfo.subcategoryName : null,
+        subSubcategoryName: newRide.rideInfo ? newRide.rideInfo.subSubcategoryName : null,
+        carType: newRide.rideInfo ? newRide.rideInfo.carType : null,
+        selectedCategory: newRide.rideInfo ? newRide.rideInfo.selectedCategory : null,
+        transmissionType: newRide.rideInfo ? newRide.rideInfo.transmissionType : null,
         selectedUsage: newRide.rideInfo?.selectedUsage,
         fromLocation: newRide.rideInfo?.fromLocation,
         toLocation: newRide.rideInfo?.toLocation,
@@ -535,27 +540,27 @@ router.post("/book", authMiddleware, async (req, res) => {
         totalPayable: adjustedTotalPayable,
         status: 'BOOKED'
       };
-      
+
       // Add vehicle type information to rideData
       if (vehicleTypeId && vehicleTypeName) {
         rideData.vehicleTypeId = vehicleTypeId;
         rideData.vehicleType = vehicleTypeName;
       }
 
-      if(selectedCarCategoryName != null){
-      rideData.selectedCarCategory = selectedCarCategoryName;
-    }
+      if (selectedCarCategoryName != null) {
+        rideData.selectedCarCategory = selectedCarCategoryName;
+      }
 
-    if(selectedParcelCategoryName != null ){
-      rideData.selectedParcelCategory = selectedParcelCategoryName;
-      rideData.senderDetails = senderDetails;
-      rideData.receiverDetails = receiverDetails;
-    }
+      if (selectedParcelCategoryName != null) {
+        rideData.selectedParcelCategory = selectedParcelCategoryName;
+        rideData.senderDetails = senderDetails;
+        rideData.receiverDetails = receiverDetails;
+      }
 
       // Get eligible drivers based on category
       let waitingDrivers = [];
       const categoryNameLower = categoryName.toLowerCase();
-      
+
       if (categoryNameLower === 'driver') {
         // For driver category, use driverCategory field
         waitingDrivers = await Driver.find({
@@ -569,16 +574,16 @@ router.post("/book", authMiddleware, async (req, res) => {
       } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
         // For cab and parcel, find vehicles with matching modelType and get assignedTo drivers
         const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
-        
+
         const vehicles = await Vehicle.find({
           [vehicleField]: selectedCategoryId,
           status: true,
           adminStatus: 'approved'
         }).select('assignedTo');
 
-        
+
         const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
-        
+
         if (assignedDriverIds.length > 0) {
           waitingDrivers = await Driver.find({
             _id: { $in: assignedDriverIds },
@@ -610,11 +615,11 @@ router.post("/book", authMiddleware, async (req, res) => {
       });
 
       console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
-      
+
       // Send push notifications to eligible drivers only
       try {
         console.log(`🔍 Looking for eligible drivers from ${waitingDriverIds.length} waiting drivers`);
-        
+
         const eligibleDrivers = await Driver.find({
           _id: { $in: waitingDriverIds },
           oneSignalPlayerId: { $ne: null, $exists: true }
@@ -624,10 +629,10 @@ router.post("/book", authMiddleware, async (req, res) => {
 
         if (eligibleDrivers.length > 0) {
           const playerIds = eligibleDrivers.map(driver => driver.oneSignalPlayerId);
-          
+
           console.log(`📤 Sending push notifications to player IDs:`, playerIds);
-        
-          
+
+
           // Convert time to 12-hour format
           const formatTo12Hour = (time24) => {
             const [hours, minutes] = time24.split(':');
@@ -638,14 +643,14 @@ router.post("/book", authMiddleware, async (req, res) => {
           };
 
           const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
-          const message = `${newRide.riderInfo.riderName} books a ${newRide.rideInfo.subcategoryName} ride  pick up on ${formattedSelectedDate.replace(/ /g, '/')} at ${formattedTime}.`; 
+          const message = `${newRide.riderInfo.riderName} books a ${newRide.rideInfo.subcategoryName} ride  pick up on ${formattedSelectedDate.replace(/ /g, '/')} at ${formattedTime}.`;
 
           await NotificationService.sendToMultipleUsers(
             playerIds,
             'New Ride Available',
             message,
           );
-          
+
           console.log(`✅ Push notification sent successfully to ${playerIds.length} eligible drivers`);
         } else {
           console.log(`❌ No eligible drivers found with OneSignal player IDs`);
@@ -663,14 +668,14 @@ router.post("/book", authMiddleware, async (req, res) => {
       rider.referralEarning.currentBalance -= referralEarningUsedAmount;
       if (rider.referralEarning.currentBalance < 0)
         rider.referralEarning.currentBalance = 0;
-      
+
       // Add to history
       rider.referralEarning.history.push({
         rideId: newRide._id,
         amount: -referralEarningUsedAmount,
         type: "earning_used_for_book_ride"
       });
-      
+
       await rider.save();
     }
 
@@ -977,7 +982,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
         // Apply charges if conditions are met
         if (shouldApplyCharges) {
           await applyCancellationCharges(chargeReason);
-          
+
         }
       }
 
@@ -991,14 +996,14 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       const rider = await Rider.findById(riderId);
       if (rider) {
         rider.referralEarning.currentBalance += updatedBooking.referralEarningUsedAmount;
-        
+
         // Add to history
         rider.referralEarning.history.push({
           rideId: updatedBooking._id,
           amount: updatedBooking.referralEarningUsedAmount,
           type: "refund"
         });
-        
+
         await rider.save();
       }
     }
@@ -1006,7 +1011,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     // Update driver rideStatus to WAITING if driver is assigned
     if (bookingDriverId) {
       await Driver.findByIdAndUpdate(bookingDriverId, { rideStatus: 'WAITING' });
-      
+
       // Send cancellation notification to the assigned driver
       try {
         const driver = await Driver.findById(bookingDriverId);
@@ -1100,7 +1105,7 @@ router.get("/driver/rides/confirmed", driverAuthMiddleware, async (req, res) => 
     res.json({
       success: true,
       count,
-     
+
       data: confirmedRides
     });
   } catch (error) {
@@ -1138,7 +1143,7 @@ router.get("/driver/rides/ongoing", driverAuthMiddleware, async (req, res) => {
     res.json({
       success: true,
       count,
-    
+
       data: confirmedRides
     });
   } catch (error) {
@@ -1176,7 +1181,7 @@ router.get("/driver/rides/completed", driverAuthMiddleware, async (req, res) => 
     res.json({
       success: true,
       count,
-     
+
       data: confirmedRides
     });
   } catch (error) {
@@ -1203,7 +1208,7 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
       driverId,
       status: "EXTENDED"
     }).sort({ createdAt: -1 }); // latest first (optional)
-   
+
     const count = confirmedRides.length;
 
     if (count === 0) {
@@ -1213,7 +1218,7 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
     res.json({
       success: true,
       count,
-    
+
       data: confirmedRides
     });
   } catch (error) {
@@ -1270,7 +1275,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
- 
+
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -1302,9 +1307,9 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
       }
     } catch (walletError) {
       console.error('Wallet balance check error:', walletError);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to validate wallet balance' 
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to validate wallet balance'
       });
     }
 
@@ -1315,7 +1320,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     const driverName = driverInfo.personalInformation?.fullName
 
-   
+
 
     // Find and update the ride only if status is BOOKED
     const updatedRide = await Ride.findOneAndUpdate(
@@ -1338,7 +1343,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to CONFIRMED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
 
-   
+
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
     if (io) {
@@ -1373,7 +1378,7 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
     // ✅ Get current date and validate ride day
     const currentDate = new Date().toISOString().split('T')[0];
     const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
-    
+
     // ✅ Date validation
     if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
       const remainingDates = ride.rideInfo.remainingDates || [];
@@ -1467,7 +1472,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-   
+
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -1481,7 +1486,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     // ✅ Get current date and validate ride day
     const currentDate = new Date().toISOString().split('T')[0];
     const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
-    
+
     // ✅ Date validation
     if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
       const remainingDates = ride.rideInfo.remainingDates || [];
@@ -1542,7 +1547,7 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to ONGOING
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "ONGOING" });
 
-  
+
 
 
 
@@ -1654,7 +1659,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             // Use one credit
             driver.cancellationRideCredits -= 1;
             await driver.save();
-          
+
           } else {
             // No credits left, check wallet and deduct
             let wallet = await driverWallet.findOne({ driverId });
@@ -1682,7 +1687,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
                 status: "completed",
               });
               await wallet.save();
-            
+
             } else {
               const remainingCharges = cancellationCharges - currentBalance;
 
@@ -1700,7 +1705,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
               driver.unclearedCancellationCharges += remainingCharges;
               await driver.save();
-            
+
             }
           }
         }
@@ -1725,10 +1730,10 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
       // ✅ Create new cancelled ride document for full cancellation
       const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
-      const newSelectedDate = isWeeklyMonthly 
-        ? (currentRide.rideInfo.selectedDates && currentRide.rideInfo.selectedDates.length > 0 
-           ? currentRide.rideInfo.selectedDates[0] 
-           : currentRide.rideInfo.selectedDate)
+      const newSelectedDate = isWeeklyMonthly
+        ? (currentRide.rideInfo.selectedDates && currentRide.rideInfo.selectedDates.length > 0
+          ? currentRide.rideInfo.selectedDates[0]
+          : currentRide.rideInfo.selectedDate)
         : currentRide.rideInfo.selectedDate;
 
       const newCancelledRide = new Ride({
@@ -1785,16 +1790,16 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       if (io && onlineDrivers) {
         // Determine selectedDate based on ride type for full cancellation
         const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
-        const socketSelectedDate = isWeeklyMonthly 
-          ? (currentRide.rideInfo.selectedDates && currentRide.rideInfo.selectedDates.length > 0 
-             ? currentRide.rideInfo.selectedDates[0] 
-             : currentRide.rideInfo.selectedDate)
+        const socketSelectedDate = isWeeklyMonthly
+          ? (currentRide.rideInfo.selectedDates && currentRide.rideInfo.selectedDates.length > 0
+            ? currentRide.rideInfo.selectedDates[0]
+            : currentRide.rideInfo.selectedDate)
           : currentRide.rideInfo.selectedDate;
 
         // Get vehicle type information for cancelled ride
         let vehicleTypeId = null;
         let vehicleTypeName = null;
-        
+
         const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
         if (categoryNameLower === 'cab' && currentRide.rideInfo.selectedCategoryId) {
           try {
@@ -1833,7 +1838,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           totalPayable: currentRide.totalPayable,
           status: 'BOOKED'
         };
-        
+
         // Add vehicle type information to rideData
         if (vehicleTypeId && vehicleTypeName) {
           rideData.vehicleTypeId = vehicleTypeId;
@@ -1842,8 +1847,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
         // Get eligible drivers based on category
         let waitingDrivers = [];
-        
-        
+
+
         if (categoryNameLower === 'driver') {
           waitingDrivers = await Driver.find({
             rideStatus: 'WAITING',
@@ -1855,15 +1860,15 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           }).select('_id');
         } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
           const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
-          
+
           const vehicles = await Vehicle.find({
             [vehicleField]: currentRide.rideInfo.selectedCategoryId,
             status: true,
-          adminStatus: 'approved'
+            adminStatus: 'approved'
           }).select('assignedTo');
-          
+
           const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
-          
+
           if (assignedDriverIds.length > 0) {
             waitingDrivers = await Driver.find({
               _id: { $in: assignedDriverIds },
@@ -1887,13 +1892,13 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           }
         });
 
-        
+
       }
 
 
 
-      return res.status(200).json({ 
-        success: true, 
+      return res.status(200).json({
+        success: true,
         message: "Full ride cancelled successfully",
         cancelledRideId: newCancelledRide._id
       });
@@ -1932,7 +1937,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     // ✅ Create new ride document for cancelled dates
     const partialIsWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
-    const partialNewSelectedDate = partialIsWeeklyMonthly 
+    const partialNewSelectedDate = partialIsWeeklyMonthly
       ? (selectedDates && selectedDates.length > 0 ? selectedDates[0] : currentRide.rideInfo.selectedDate)
       : currentRide.rideInfo.selectedDate;
 
@@ -1990,15 +1995,15 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     if (io && onlineDrivers) {
       // Determine selectedDate based on ride type
       const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
-      const socketSelectedDate = isWeeklyMonthly 
+      const socketSelectedDate = isWeeklyMonthly
         ? (selectedDates && selectedDates.length > 0 ? selectedDates[0] : currentRide.rideInfo.selectedDate)
         : currentRide.rideInfo.selectedDate;
 
       // Get vehicle type information for partial cancelled ride
       let vehicleTypeId = null;
       let vehicleTypeName = null;
-      
-      
+
+
       if (categoryNameLower === 'cab' && currentRide.rideInfo.selectedCategoryId) {
         try {
           const car = await Car.findById(currentRide.rideInfo.selectedCategoryId).populate('vehicleType');
@@ -2036,7 +2041,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         totalPayable: cancelledChargesForNewRide.totalPayable,
         status: 'BOOKED'
       };
-      
+
       // Add vehicle type information to rideData
       if (vehicleTypeId && vehicleTypeName) {
         rideData.vehicleTypeId = vehicleTypeId;
@@ -2046,7 +2051,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       // Get eligible drivers based on category
       let waitingDrivers = [];
       const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
-      
+
       if (categoryNameLower === 'driver') {
         waitingDrivers = await Driver.find({
           rideStatus: 'WAITING',
@@ -2058,15 +2063,15 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         }).select('_id');
       } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
         const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
-        
+
         const vehicles = await Vehicle.find({
           [vehicleField]: currentRide.rideInfo.selectedCategoryId,
           status: true,
           adminStatus: 'approved'
         }).select('assignedTo');
-        
+
         const assignedDriverIds = vehicles.flatMap(vehicle => vehicle.assignedTo);
-        
+
         if (assignedDriverIds.length > 0) {
           waitingDrivers = await Driver.find({
             _id: { $in: assignedDriverIds },
@@ -2090,7 +2095,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         }
       });
 
-      
+
     }
 
     // ✅ Update current ride with remaining dates and recalculated charges
@@ -2130,7 +2135,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-  
+
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -2144,7 +2149,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
     // ✅ Get current date and validate ride day
     const currentDate = new Date().toISOString().split('T')[0];
     const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
-    
+
     // ✅ Date validation
     if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
       const remainingDates = ride.rideInfo.remainingDates || [];
@@ -2192,7 +2197,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to EXTENDED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "EXTENDED" });
 
-    
+
 
 
     res.json({
@@ -2211,7 +2216,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
- 
+
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
@@ -2502,7 +2507,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = driverData.extraChargePerMinute;
       adminChargesInPercentage = driverData.extraChargesFromAdmin;
       gstChargesInPercentage = driverData.gst;
-    
+
     } else if (catNameLower === "cab") {
       const cabData = await getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId);
       includedKm = cabData.includedKm;
@@ -2511,7 +2516,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = cabData.extraChargePerMinute;
       adminChargesInPercentage = cabData.extraChargesFromAdmin;
       gstChargesInPercentage = cabData.gst;
-    
+
     } else if (catNameLower === "parcel") {
       const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId, selectedUsage, selectedCategoryId);
       includedKm = parcelData.includedKm;
@@ -2519,7 +2524,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraChargePerMinute = parcelData.extraChargePerMinute;
       adminChargesInPercentage = parcelData.extraChargesFromAdmin;
       gstChargesInPercentage = parcelData.gst;
-   
+
     }
 
     // Validate inputs and calculate extraKm
@@ -2735,7 +2740,7 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
 
     // Get cancellation charges for the ride
     const { categoryName, categoryId, subcategoryId, selectedCategoryId } = ride.rideInfo;
-    
+
     const categoryNameLower = categoryName.toLowerCase();
     let cancellationDetails = null;
 
@@ -2762,7 +2767,7 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
 
       const currentRideCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
 
-      
+
 
       res.json({
         success: true,
@@ -2899,7 +2904,7 @@ router.post("/eligible-drivers", async (req, res) => {
       }).select('personalInformation.fullName mobile');
     } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
       const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
-      
+
       const vehicles = await Vehicle.find({
         [vehicleField]: selectedCategoryId,
         status: true,

@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const ReferralRule = require('../models/ReferralRule');
+const Category = require('../models/Category');
+const { 
+  calculateDriverRideCostWithReferral,
+  calculateCabRideCostWithReferral,
+  calculateParcelRideCostWithReferral
+} = require('../utils/rideCalculation');
+const authMiddleware = require('../middleware/authMiddleware');
+const Rider = require('../models/Rider');
 
 // GET all referral rules
 router.get('/', async (req, res) => {
@@ -84,5 +92,51 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// POST calculate ride cost with referral
+router.post('/calculate-ride', authMiddleware, async (req, res) => {
+  try {
+    const { categoryId } = req.body;
+
+    const riderId = req.rider?.riderId;
+    const rider = await Rider.findById(riderId);
+
+    // ⬅️ ADD rider inside req.body (so calculation functions get it)
+    req.body.rider = rider;
+
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const categoryName = category.name.toLowerCase();
+    let result;
+
+    if (categoryName === 'driver') {
+      result = await calculateDriverRideCostWithReferral(req.body);
+    } else if (categoryName === 'cab') {
+      result = await calculateCabRideCostWithReferral(req.body);
+    } else if (categoryName === 'parcel') {
+      result = await calculateParcelRideCostWithReferral(req.body);
+    } else {
+      return res.status(400).json({ message: 'Invalid category type' });
+    }
+
+    const totalPayable =
+      result.driverCharges +
+      result.pickCharges +
+      result.peakCharges +
+      result.nightCharges +
+      result.insuranceCharges +
+      result.adminCharges +
+      result.gstCharges +
+      result.cancellationCharges;
+
+    res.json({ ...result, totalPayable });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 
 module.exports = router;
