@@ -7,6 +7,7 @@ import { Badge } from '../../ui/badge';
 import { Checkbox } from '../../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
+import { Alert, AlertDescription } from '../../ui/alert';
 import { Search, Users, DollarSign, Gift, CheckCircle, XCircle, Plus, History } from 'lucide-react';
 
 interface Driver {
@@ -54,6 +55,8 @@ const DriverIncentivePage = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showDriversDialog, setShowDriversDialog] = useState(false);
   const [selectedIncentiveDrivers, setSelectedIncentiveDrivers] = useState<IncentiveHistory['drivers']>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Fetch all approved drivers and incentive history
   useEffect(() => {
@@ -135,21 +138,22 @@ const DriverIncentivePage = () => {
 
   const handleCreateIncentive = async () => {
     if (selectedDrivers.length === 0) {
-      alert('Please select at least one driver');
+      setError('Please select at least one driver');
       return;
     }
 
     if (!amount || parseFloat(amount) <= 0) {
-      alert('Please enter a valid incentive amount');
+      setError('Please enter a valid incentive amount');
       return;
     }
 
     if (!description.trim()) {
-      alert('Please enter a description');
+      setError('Please enter a description');
       return;
     }
 
     setSubmitting(true);
+    setError(null);
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/create-incentive`, {
@@ -177,12 +181,14 @@ const DriverIncentivePage = () => {
         setDescription('');
         // Refresh history
         fetchIncentiveHistory();
+        setSuccess('Incentive created successfully!');
+        setTimeout(() => setSuccess(null), 3000);
       } else {
-        alert(data.message || 'Failed to create incentive');
+        setError(data.message || 'Failed to create incentive');
       }
     } catch (error) {
       console.error('Error creating incentive:', error);
-      alert('Failed to create incentive');
+      setError('Failed to create incentive');
     } finally {
       setSubmitting(false);
     }
@@ -203,6 +209,19 @@ const DriverIncentivePage = () => {
 
   return (
     <div className="space-y-6">
+      {/* Success/Error Messages */}
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Gift className="w-6 h-6 text-green-600" />

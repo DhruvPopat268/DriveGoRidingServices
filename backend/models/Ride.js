@@ -103,6 +103,12 @@ const rideSchema = new mongoose.Schema(
       gstCharges: { type: Number, default: 0 },
       subtotal: { type: Number, default: 0 },
       adminCharges: { type: Number, default: 0 },
+      adminAddedRideExtraCharges: {
+        Charges: { type: Number, default: 0 },
+        description: { type: String },
+        timestamp: { type: Date, default: Date.now },
+        _id: false
+      },
     },
 
     isReferralEarningUsed: { type: Boolean, default: false },

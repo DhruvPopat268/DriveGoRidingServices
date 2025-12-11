@@ -481,11 +481,18 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                 <span>{formatCurrency(rideDetails.rideInfo.gstCharges)}</span>
               </div>
               {rideDetails.rideInfo.discount > 0 && (
-                <div className="flex justify-between text-green-600">
+                <div className="flex justify-between ">
                   <span>Discount</span>
                   <span>-{formatCurrency(rideDetails.rideInfo.discount)}</span>
                 </div>
               )}
+              {rideDetails.rideInfo?.adminAddedRideExtraCharges?.Charges > 0 && (
+                <div className="flex justify-between ">
+                  <span>Admin Added Ride Extra Charges</span>
+                  <span>{formatCurrency(rideDetails.rideInfo.adminAddedRideExtraCharges?.Charges)}</span>
+                </div>
+              )}
+
               <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total Payable</span>

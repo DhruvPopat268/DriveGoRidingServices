@@ -122,20 +122,21 @@ export const CancelledRidesPage = ({ onNavigateToDetail }: CancelledRidesPagePro
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <colgroup>
-                <col style={{ width: '4%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '12%' }} />
+                <col style={{ width: '3%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '10%' }} />
                 <col style={{ width: '12%' }} />
                 <col style={{ width: '10%' }} />
+                <col style={{ width: '8%' }} />
                 <col style={{ width: '10%' }} />
-                <col style={{ width: '10%' }} />
-              </colgroup>
-              <thead>
+              </colgroup>              <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left p-3 font-semibold text-gray-700">#</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
+                                    <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
+
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Driver Category</th>
@@ -166,6 +167,21 @@ export const CancelledRidesPage = ({ onNavigateToDetail }: CancelledRidesPagePro
                         </div>
                       </div>
                     </td>
+
+                    
+                    <td className="p-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-1 text-sm">
+                          <User className="w-3 h-3 text-gray-500" />
+                          <span>{ride.driverInfo?.driverName}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-sm text-gray-600">
+                          <Phone className="w-3 h-3 text-gray-500" />
+                          <span>{ride.driverInfo?.driverMobile}</span>
+                        </div>
+                      </div>
+                    </td>
+
 
                     <td className="p-3">
                       <div className="space-y-1">

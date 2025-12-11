@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Eye, X, Check, XCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '../../ui/alert';
 
 interface Vehicle {
   _id: string;
@@ -32,6 +33,8 @@ export default function PendingVehiclesPage() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [vehicleToAction, setVehicleToAction] = useState<Vehicle | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPendingVehicles();
@@ -81,6 +84,7 @@ export default function PendingVehiclesPage() {
     
     try {
       setActionLoading(vehicleToAction._id);
+      setError(null);
       const adminToken = localStorage.getItem('adminToken');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/approve/${vehicleToAction._id}`, {
         method: 'POST',
@@ -94,12 +98,14 @@ export default function PendingVehiclesPage() {
         setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
         setShowApproveModal(false);
         setVehicleToAction(null);
+        setSuccess('Vehicle approved successfully!');
+        setTimeout(() => setSuccess(null), 3000);
       } else {
-        alert(data.message || 'Failed to approve vehicle');
+        setError(data.message || 'Failed to approve vehicle');
       }
     } catch (error) {
       console.error('Error approving vehicle:', error);
-      alert('Failed to approve vehicle');
+      setError('Failed to approve vehicle');
     } finally {
       setActionLoading(null);
     }
@@ -110,6 +116,7 @@ export default function PendingVehiclesPage() {
     
     try {
       setActionLoading(vehicleToAction._id);
+      setError(null);
       const adminToken = localStorage.getItem('adminToken');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/reject/${vehicleToAction._id}`, {
         method: 'POST',
@@ -123,12 +130,14 @@ export default function PendingVehiclesPage() {
         setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
         setShowRejectModal(false);
         setVehicleToAction(null);
+        setSuccess('Vehicle rejected successfully!');
+        setTimeout(() => setSuccess(null), 3000);
       } else {
-        alert(data.message || 'Failed to reject vehicle');
+        setError(data.message || 'Failed to reject vehicle');
       }
     } catch (error) {
       console.error('Error rejecting vehicle:', error);
-      alert('Failed to reject vehicle');
+      setError('Failed to reject vehicle');
     } finally {
       setActionLoading(null);
     }
@@ -140,6 +149,19 @@ export default function PendingVehiclesPage() {
 
   return (
     <div className="p-6">
+      {/* Success/Error Messages */}
+      {success && (
+        <Alert className="border-green-200 bg-green-50 mb-6">
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert className="border-red-200 bg-red-50 mb-6">
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Pending Vehicles</h1>
         <p className="text-gray-600">Vehicles awaiting admin approval</p>

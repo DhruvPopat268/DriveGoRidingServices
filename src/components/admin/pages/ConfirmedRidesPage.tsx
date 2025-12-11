@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Phone, Calendar, Eye, Loader } from "lucide-react";
+import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, DollarSign } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
 import { useState, useEffect } from "react";
 
 interface ConfirmedRidesPageProps {
@@ -18,6 +19,8 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
   const [dateFilter, setDateFilter] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const limit = recordsPerPage;
+  const [showExtraChargesDialog, setShowExtraChargesDialog] = useState(false);
+  const [selectedRideForCharges, setSelectedRideForCharges] = useState(null);
 
   useEffect(() => {
     fetchRides();
@@ -148,20 +151,21 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <colgroup>
-                <col style={{ width: '4%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '12%' }} />
+                <col style={{ width: '3%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '10%' }} />
                 <col style={{ width: '12%' }} />
                 <col style={{ width: '10%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '8%' }} />
                 <col style={{ width: '10%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left p-3 font-semibold text-gray-700">#</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Driver Category</th>
@@ -189,6 +193,19 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
                         <div className="flex items-center space-x-1 text-sm text-gray-600">
                           <Phone className="w-3 h-3 text-gray-500" />
                           <span>{ride.riderInfo?.riderMobile}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="p-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-1 text-sm">
+                          <User className="w-3 h-3 text-gray-500" />
+                          <span>{ride.driverInfo?.driverName}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-sm text-gray-600">
+                          <Phone className="w-3 h-3 text-gray-500" />
+                          <span>{ride.driverInfo?.driverMobile}</span>
                         </div>
                       </div>
                     </td>
@@ -266,14 +283,27 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
                     </td>
 
                     <td className="p-3">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="h-8 px-3 text-xs"
-                        onClick={() => onNavigateToDetail?.(ride._id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="h-8 px-3 text-xs"
+                          onClick={() => onNavigateToDetail?.(ride._id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => {
+                            setSelectedRideForCharges(ride);
+                            setShowExtraChargesDialog(true);
+                          }}
+                        >
+                          <DollarSign className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -317,6 +347,16 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
           )}
         </CardContent>
       </Card>
+
+      <AdminExtraChargesDialog
+        isOpen={showExtraChargesDialog}
+        onClose={() => {
+          setShowExtraChargesDialog(false);
+          setSelectedRideForCharges(null);
+        }}
+        rideId={selectedRideForCharges?._id || ''}
+        onSuccess={fetchRides}
+      />
     </div>
   );
 };

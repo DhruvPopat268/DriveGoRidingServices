@@ -7,6 +7,7 @@ import { Badge } from '../../ui/badge';
 import { Checkbox } from '../../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
+import { Alert, AlertDescription } from '../../ui/alert';
 import { Search, Users, Ban, CheckCircle, XCircle, Plus, History, Calendar } from 'lucide-react';
 
 interface Driver {
@@ -56,6 +57,8 @@ const SuspendDriverPage = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [showDriversDialog, setShowDriversDialog] = useState(false);
   const [selectedSuspendDrivers, setSelectedSuspendDrivers] = useState<SuspendHistory['drivers']>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDrivers();
@@ -135,26 +138,27 @@ const SuspendDriverPage = () => {
 
   const handleSuspendDrivers = async () => {
     if (selectedDrivers.length === 0) {
-      alert('Please select at least one driver');
+      setError('Please select at least one driver');
       return;
     }
 
     if (!suspendFrom || !suspendTo) {
-      alert('Please select suspend duration');
+      setError('Please select suspend duration');
       return;
     }
 
     if (new Date(suspendTo) <= new Date(suspendFrom)) {
-      alert('Suspend To date must be after Suspend From date');
+      setError('Suspend To date must be after Suspend From date');
       return;
     }
 
     if (!description.trim()) {
-      alert('Please enter a description');
+      setError('Please enter a description');
       return;
     }
 
     setSubmitting(true);
+    setError(null);
     try {
       const token = localStorage.getItem('adminToken');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/suspend-drivers`, {
@@ -183,12 +187,14 @@ const SuspendDriverPage = () => {
         setDescription('');
         fetchSuspendHistory();
         fetchDrivers();
+        setSuccess('Drivers suspended successfully!');
+        setTimeout(() => setSuccess(null), 3000);
       } else {
-        alert(data.message || 'Failed to suspend drivers');
+        setError(data.message || 'Failed to suspend drivers');
       }
     } catch (error) {
       console.error('Error suspending drivers:', error);
-      alert('Failed to suspend drivers');
+      setError('Failed to suspend drivers');
     } finally {
       setSubmitting(false);
     }
@@ -209,6 +215,19 @@ const SuspendDriverPage = () => {
 
   return (
     <div className="space-y-6">
+      {/* Success/Error Messages */}
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Ban className="w-6 h-6 text-red-600" />

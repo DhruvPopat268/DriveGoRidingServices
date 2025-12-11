@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
+import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight, UserPlus, DollarSign } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
 import { useState, useEffect } from "react";
 
 interface BookedRidesPageProps {
@@ -25,6 +27,9 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
   const [eligibleDrivers, setEligibleDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState('');
   const [assigningDriver, setAssigningDriver] = useState(false);
+  const [showExtraChargesDialog, setShowExtraChargesDialog] = useState(false);
+  const [selectedRideForCharges, setSelectedRideForCharges] = useState(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRides();
@@ -114,10 +119,13 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
       if (!response.ok) throw new Error('Failed to assign driver');
       setShowAssignDialog(false);
       setSelectedDriver('');
+      setSuccess('Driver assigned successfully!');
+      setTimeout(() => setSuccess(null), 3000);
       fetchRides();
     } catch (err) {
       console.error('Error assigning driver:', err);
-      alert('Failed to assign driver');
+      setError('Failed to assign driver');
+      setTimeout(() => setError(null), 3000);
     } finally {
       setAssigningDriver(false);
     }
@@ -144,6 +152,19 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
 
   return (
     <div className="space-y-6 bg-white text-black p-6">
+      {/* Success/Error Messages */}
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
+      
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
+      
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-black">Booked Rides</h1>
         <div className="flex space-x-2">
@@ -330,6 +351,17 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                         >
                           <UserPlus className="w-4 h-4" />
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => {
+                            setSelectedRideForCharges(ride);
+                            setShowExtraChargesDialog(true);
+                          }}
+                        >
+                          <DollarSign className="w-4 h-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -408,6 +440,16 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AdminExtraChargesDialog
+        isOpen={showExtraChargesDialog}
+        onClose={() => {
+          setShowExtraChargesDialog(false);
+          setSelectedRideForCharges(null);
+        }}
+        rideId={selectedRideForCharges?._id || ''}
+        onSuccess={fetchRides}
+      />
     </div>
   );
 };

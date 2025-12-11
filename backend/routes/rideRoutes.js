@@ -168,6 +168,60 @@ router.get("/booking/:id", async (req, res) => {
   }
 });
 
+// Add admin extra charges to ride
+router.post("/admin/extra-charges", async (req, res) => {
+  try {
+    const { rideId, charges, description } = req.body;
+
+    if (!rideId || charges === undefined) {
+      return res.status(400).json({ message: "Ride ID and charges are required" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    const updatedRide = await Ride.findByIdAndUpdate(
+      rideId,
+      {
+        $set: {
+          "rideInfo.adminAddedRideExtraCharges.Charges": charges,
+          "rideInfo.adminAddedRideExtraCharges.description": description
+        },
+        $inc: { totalPayable: charges }
+      },
+      { new: true }
+    );
+
+    // Send notification to driver if ride has driverId
+    if (updatedRide.driverId) {
+      try {
+        const driver = await Driver.findById(updatedRide.driverId);
+        if (driver && driver.oneSignalPlayerId) {
+          await NotificationService.sendToUser(
+            driver.oneSignalPlayerId,
+            'Ride Extra Charges Added',
+            'Hey Driver! Admin just added ride extra charges. Tap to check.',
+            { type: 'admin_extra_charges', rideId: rideId }
+          );
+        }
+      } catch (notifError) {
+        console.error('Error sending notification to driver:', notifError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: "Admin extra charges added successfully",
+      data: updatedRide
+    });
+  } catch (error) {
+    console.error("Error adding admin extra charges:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 // update status to confirm and assign driver ride by driver
 router.post("/admin/driver/confirm", async (req, res) => {
   try {
