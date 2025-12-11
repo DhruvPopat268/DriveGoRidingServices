@@ -182,7 +182,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 
     // --- Night charges & insurance ---
     const nightCharge = await NightCharge.findOne({ status: true }).sort({ createdAt: -1 });
-    console.log(nightCharge)
+   
     let isNight = false;
     if (nightCharge) {
       const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
@@ -193,14 +193,13 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         endTime.add(1, 'day');
       }
       
-      console.log(startTime, endTime)
-      console.log(bookingDateTime)
+    
       
       // Check if booking time falls within night hours
       if (bookingDateTime.isBetween(startTime, endTime, null, '[]') || 
           (endTime.date() !== startTime.date() && bookingDateTime.clone().add(1, 'day').isBetween(startTime, endTime, null, '[]'))) {
         isNight = true;
-        console.log('Night charges applied');
+      
       }
     }
 
