@@ -7,6 +7,7 @@ const SubSubCategory = require("../models/SubSubCategory");
 const DriverRideCost = require("../models/DriverRideCost");
 const CabRideCost = require("../models/CabRideCost");
 const peakHours = require("../models/Peak");
+const NightCharge = require("../models/NightCharge");
 const pricecategories = require("../models/PriceCategory");
 
 // 🧮 1️⃣ Function for Rider-based Calculation (specific category only)
@@ -113,9 +114,17 @@ const calculateDriverRideCharges = async ({
         }
     }
 
-    const hour = bookingDateTime.hour();
-    const isNight = hour >= 22 || hour < 6;
-    //console.log('🌙 Night time check:', { hour, isNight });
+    // Dynamic night timing check
+    const nightCharge = await NightCharge.findOne({ status: true }).sort({ createdAt: -1 });
+    let isNight = false;
+    if (nightCharge) {
+        const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
+        const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+        if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+            isNight = true;
+        }
+    }
+    //console.log('🌙 Night time check:', { isNight });
     //console.log('📈 Peak charges calculated:', peakCharges);
 
     const priceCategory = await pricecategories.findById(model.priceCategory);
@@ -279,8 +288,16 @@ const calculateCabRideCharges = async ({
         }
     }
 
-    const hour = bookingDateTime.hour();
-    const isNight = hour >= 22 || hour < 6;
+    // Dynamic night timing check
+    const nightCharge = await NightCharge.findOne({ status: true }).sort({ createdAt: -1 });
+    let isNight = false;
+    if (nightCharge) {
+        const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
+        const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+        if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+            isNight = true;
+        }
+    }
 
     const priceCategory = await pricecategories.findById(model.priceCategory);
     let driverCharges = model.baseFare || 0;

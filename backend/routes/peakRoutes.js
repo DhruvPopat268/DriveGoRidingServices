@@ -34,6 +34,20 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Toggle Status
+router.patch('/:id/toggle-status', async (req, res) => {
+  try {
+    const peak = await Peak.findById(req.params.id);
+    if (!peak) return res.status(404).json({ success: false, message: 'Not found' });
+    
+    peak.status = !peak.status;
+    await peak.save();
+    res.json({ success: true, data: peak });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Delete
 router.delete('/:id', async (req, res) => {
   try {

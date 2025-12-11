@@ -16,6 +16,7 @@ const parcelVehicleRoutes = require('./routes/parcelVehicleRoutes');
 const ParcelRideCostRoutes = require('./routes/ParcelRideCostRoutes');
 const DriverRideCostRoutes = require('./routes/DriverRideCostRoutes');
 const peakRoutes = require('./routes/peakRoutes');
+const nightCharges = require('./routes/nightChargeRoutes');
 const instructionRoutes = require('./routes/instructionRoutes');
 const stateRoutes = require('./routes/stateRoutes');
 const cityRoutes = require('./routes/cityRoutes');
@@ -91,6 +92,7 @@ app.use('/api/parcelVehicles', parcelVehicleRoutes);
 app.use('/api/ParcelRideCosts', ParcelRideCostRoutes);
 app.use('/api/DriverRideCosts', DriverRideCostRoutes);
 app.use('/api/peaks', peakRoutes);
+app.use('/api/night-charges',nightCharges)
 app.use('/api/instructions', instructionRoutes);
 app.use('/api/states', stateRoutes);
 app.use('/api/cities', cityRoutes);

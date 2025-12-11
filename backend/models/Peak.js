@@ -28,6 +28,10 @@ const peakSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  status: {
+    type: Boolean,
+    default: true,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Peak', peakSchema);

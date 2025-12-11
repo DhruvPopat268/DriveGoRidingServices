@@ -744,7 +744,7 @@ router.post("/book", authMiddleware, async (req, res) => {
 });
 
 // all rides
-router.post("/my-rides", authMiddleware, async (req, res) => {
+router.get("/my-rides", authMiddleware, async (req, res) => {
   try {
     // riderId comes from token (authMiddleware)
     const { riderId } = req.rider;

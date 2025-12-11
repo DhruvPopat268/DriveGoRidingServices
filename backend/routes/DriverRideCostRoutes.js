@@ -3,6 +3,7 @@ const router = express.Router();
 const DriverRideCost = require('../models/DriverRideCost');
 const Category = require('../models/Category');
 const peakHours = require('../models/Peak')
+const NightCharge = require('../models/NightCharge')
 const pricecategories = require('../models/PriceCategory')
 const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
@@ -159,7 +160,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     }
 
     // 4. Peak hours data
-    const peakChargesList = await peakHours.find({});
+    const peakChargesList = await peakHours.find({ status: true });
     const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
 
     let peakCharges = 0;
@@ -180,8 +181,19 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     }
 
     // --- Night charges & insurance ---
-    const hour = bookingDateTime.hour();
-    const isNight = hour >= 22 || hour < 6;
+    const nightCharge = await NightCharge.findOne({ status: true }).sort({ createdAt: -1 });
+    console.log(nightCharge)
+    let isNight = false;
+    if (nightCharge) {
+      const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
+      const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+      console.log(startTime, endTime)
+      console.log(bookingDateTime)
+      if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+        isNight = true;
+        console.log('Night charges applied');
+      }
+    }
 
     // Final results for each price category
     const result = [];

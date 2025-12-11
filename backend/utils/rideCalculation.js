@@ -2,6 +2,7 @@ const DriverRideCost = require('../models/DriverRideCost');
 const CabRideCost = require('../models/CabRideCost');
 const ParcelRideCost = require('../models/ParcelRideCost');
 const peakHours = require('../models/Peak');
+const NightCharge = require('../models/NightCharge');
 const pricecategories = require('../models/PriceCategory');
 const ReferralRule = require('../models/ReferralRule');
 const moment = require('moment');
@@ -29,8 +30,22 @@ const parseUsage = (usageStr) => {
   return usage;
 };
 
+const checkNightTime = async (selectedDate, selectedTime) => {
+  const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
+  const nightCharge = await NightCharge.findOne({ status: true }).sort({ createdAt: -1 });
+  
+  if (nightCharge) {
+    const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
+    const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+    if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const calculatePeakCharges = async (selectedDate, selectedTime) => {
-  const peakChargesList = await peakHours.find({});
+  const peakChargesList = await peakHours.find({ status: true });
   const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
 
   let peakCharges = 0;
@@ -94,8 +109,7 @@ const calculateDriverRideCost = async (params) => {
   if (!model) throw new Error('Selected price category not found');
 
   const peakCharges = await calculatePeakCharges(selectedDate, selectedTime);
-  const hour = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm').hour();
-  const isNight = hour >= 22 || hour < 6;
+  const isNight = await checkNightTime(selectedDate, selectedTime);
 
   let driverCharges = model.baseFare || 0;
   if (durationType && durationValue) {
@@ -185,8 +199,7 @@ const calculateCabRideCost = async (params) => {
   if (!model) throw new Error('Selected car not found');
 
   const peakCharges = await calculatePeakCharges(selectedDate, selectedTime);
-  const hour = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm').hour();
-  const isNight = hour >= 22 || hour < 6;
+  const isNight = await checkNightTime(selectedDate, selectedTime);
 
   let driverCharges = model.baseFare || 0;
   if (durationType && durationValue) {
@@ -267,8 +280,7 @@ const calculateParcelRideCost = async (params) => {
   if (!model) throw new Error('Selected parcel vehicle not found');
 
   const peakCharges = await calculatePeakCharges(selectedDate, selectedTime);
-  const hour = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm').hour();
-  const isNight = hour >= 22 || hour < 6;
+  const isNight = await checkNightTime(selectedDate, selectedTime);
 
   let driverCharges = model.baseFare || 0;
   if (durationType && durationValue) {
@@ -348,8 +360,7 @@ const calculateDriverRideCostWithReferral = async (params) => {
   if (!model) throw new Error('Selected price category not found');
 
   const peakCharges = await calculatePeakCharges(selectedDate, selectedTime);
-  const hour = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm').hour();
-  const isNight = hour >= 22 || hour < 6;
+  const isNight = await checkNightTime(selectedDate, selectedTime);
 
   let driverCharges = model.baseFare || 0;
   if (durationType && durationValue) {
@@ -428,8 +439,7 @@ const calculateCabRideCostWithReferral = async (params) => {
   if (!model) throw new Error('Selected car not found');
 
   const peakCharges = await calculatePeakCharges(selectedDate, selectedTime);
-  const hour = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm').hour();
-  const isNight = hour >= 22 || hour < 6;
+  const isNight = await checkNightTime(selectedDate, selectedTime);
 
   let driverCharges = model.baseFare || 0;
   if (durationType && durationValue) {
@@ -506,8 +516,7 @@ const calculateParcelRideCostWithReferral = async (params) => {
   if (!model) throw new Error('Selected parcel vehicle not found');
 
   const peakCharges = await calculatePeakCharges(selectedDate, selectedTime);
-  const hour = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm').hour();
-  const isNight = hour >= 22 || hour < 6;
+  const isNight = await checkNightTime(selectedDate, selectedTime);
 
   let driverCharges = model.baseFare || 0;
   if (durationType && durationValue) {

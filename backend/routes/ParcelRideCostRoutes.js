@@ -3,6 +3,7 @@ const router = express.Router();
 const ParcelRideCost = require('../models/ParcelRideCost');
 const Category = require('../models/Category');
 const peakHours = require('../models/Peak')
+const NightCharge = require('../models/NightCharge')
 const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
 const mongoose = require('mongoose');
@@ -222,7 +223,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     }
 
     // --- peak hour charges ---
-    const peakChargesList = await peakHours.find({});
+    const peakChargesList = await peakHours.find({ status: true });
     const bookingDateTime = moment(`${selectedDate} ${selectedTime}`, 'YYYY-MM-DD HH:mm');
 
     let peakCharges = 0;
@@ -243,8 +244,15 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     }
 
     // --- night charges ---
-    const hour = bookingDateTime.hour();
-    const isNight = hour >= 22 || hour < 6;
+    const nightCharge = await NightCharge.findOne({ status: true }).sort({ createdAt: -1 });
+    let isNight = false;
+    if (nightCharge) {
+      const startTime = moment(`${selectedDate} ${nightCharge.startTime}`, 'YYYY-MM-DD HH:mm');
+      const endTime = moment(`${selectedDate} ${nightCharge.endTime}`, 'YYYY-MM-DD HH:mm');
+      if (bookingDateTime.isBetween(startTime, endTime, null, '[]')) {
+        isNight = true;
+      }
+    }
 
     // --- final calculation ---
     const result = [];

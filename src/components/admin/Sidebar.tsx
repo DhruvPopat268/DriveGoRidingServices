@@ -99,7 +99,7 @@ const menuItems = [
       { icon: XCircle, label: "Rejected Vehicles", key: "rejected-vehicles" }
     ]
   },
-  { icon: Clock, label: "Peak Hours / Peak Dates", key: "peakhours" },
+  { icon: Clock, label: "Peak and Night Charges Management", key: "peakhours" },
   {
     icon: UserCheck,
     label: "Drivers Registration Management",
