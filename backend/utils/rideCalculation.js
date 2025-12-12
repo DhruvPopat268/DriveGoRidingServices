@@ -110,7 +110,7 @@ const calculateDriverRideCost = async (params) => {
 
 
   const rideCostModels = await DriverRideCost.find(rideCostQuery);
-  //console.log('ride cost models', rideCostModels);
+  console.log('ride cost models', rideCostModels);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
 
   const model = rideCostModels.find(m => m.priceCategory.toString() === selectedCategoryId);
@@ -201,6 +201,7 @@ const calculateCabRideCost = async (params) => {
   if (subSubcategoryId) rideCostQuery.subSubCategory = subSubcategoryId;
 
   const rideCostModels = await CabRideCost.find(rideCostQuery);
+  console.log('ride cost models', rideCostModels);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
 
   const model = rideCostModels.find(m => m.car.toString() === selectedCategoryId);
@@ -282,6 +283,7 @@ const calculateParcelRideCost = async (params) => {
   };
 
   const rideCostModels = await ParcelRideCost.find(rideCostQuery);
+  console.log('ride cost models', rideCostModels);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
 
   const model = rideCostModels.find(m => m.parcelVehicle.toString() === selectedCategoryId);
