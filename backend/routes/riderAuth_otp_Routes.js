@@ -160,7 +160,6 @@ router.get("/completeProfile", async (req, res) => {
   }
 });
 
-
 router.get("/inCompleteProfile", async (req, res) => {
   try {
     const riders = await Rider.find({ name: "" , gender: "" }).sort({ createdAt: -1 });
@@ -224,7 +223,7 @@ router.get("/auth/check", (req, res) => {
 });
 
 // ✅ Find rider by ID from token
-router.post("/find-rider", authMiddleware, async (req, res) => {
+router.get("/find-rider", authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
 
