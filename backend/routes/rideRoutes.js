@@ -425,7 +425,7 @@ router.post("/book", authMiddleware, async (req, res) => {
 
 
     // Calculate unpaid cancellation charges
-    const unpaidCancellationCharges = riderData.cancellationCharges - riderData.unclearedCancellationCharges;
+    const unpaidCancellationCharges = riderData.unclearedCancellationCharges;
     calculatedCharges.cancellationCharges = unpaidCancellationCharges;
 
     // ✅ CALCULATE SERVER-SIDE TOTAL
