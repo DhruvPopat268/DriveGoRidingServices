@@ -817,24 +817,24 @@ router.get("/past/my-rides", authMiddleware, async (req, res) => {
 });
 
 //give ride doc as per ride id for detail view
-router.post("/booking/id", authMiddleware, async (req, res) => {
+router.post("/bookingDetail", authMiddleware, async (req, res) => {
   try {
-    const { bookingId } = req.body;
+    const { rideId } = req.body;
 
-    if (!bookingId) {
-      return res.status(400).json({ message: "Booking ID is required" });
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
     }
 
-    const booking = await Ride.findById(bookingId);
+    const ride = await Ride.findById(rideId);
 
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+    if (!ride) {
+      return res.status(404).json({ message: "Ride not found" });
     }
 
-    res.json({ booking });
+    res.json({ success:true , data:ride });
   } catch (error) {
     console.error("Error fetching booking:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({ success:false , message: "Server error", error: error.message });
   }
 });
 
