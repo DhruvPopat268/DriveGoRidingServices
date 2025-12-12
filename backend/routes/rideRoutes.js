@@ -841,10 +841,106 @@ router.post("/bookingDetail", authMiddleware, async (req, res) => {
   }
 });
 
+// Check cancellation charges for a ride
+router.post("/booking/cancellation-charges", authMiddleware, async (req, res) => {
+  try {
+    const { rideId } = req.body;
+
+    if (!rideId) {
+      return res.status(400).json({ message: "Ride ID is required" });
+    }
+
+    const ride = await Ride.findOne({
+      _id: rideId,
+      status: { $in: ["BOOKED", "CONFIRMED", "REACHED"] }
+    });
+
+    if (!ride) {
+      return res.status(400).json({
+        success: false,
+        message: "Ride not found or cannot be cancelled",
+        cancellationCharges: 0
+      });
+    }
+
+    const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime, selectedCategoryId } = ride.rideInfo;
+    const bookingDriverId = ride.driverId;
+    const categoryNameLower = categoryName.toLowerCase();
+    
+    let cancellationDetails = null;
+
+    if (categoryNameLower === 'driver') {
+      cancellationDetails = await driverRideCost.findOne({
+        category: categoryId,
+        subcategory: subcategoryId,
+        priceCategory: selectedCategoryId
+      }).select('cancellationFee cancellationBufferTime');
+    } else if (categoryNameLower === 'cab') {
+      cancellationDetails = await cabRideCost.findOne({
+        category: categoryId,
+        subcategory: subcategoryId,
+        car: selectedCategoryId
+      }).select('cancellationFee cancellationBufferTime');
+    } else if (categoryNameLower === 'parcel') {
+      cancellationDetails = await parcelRideCost.findOne({
+        category: categoryId,
+        subcategory: subcategoryId
+      }).select('cancellationFee cancellationBufferTime');
+    }
+
+    const cancellationFee = cancellationDetails?.cancellationFee || 0;
+    const cancellationBufferTime = cancellationDetails?.cancellationBufferTime || 0;
+
+    let shouldApplyCharges = false;
+    let reason = '';
+
+    if (cancellationFee > 0) {
+      // Check if driver has reached location
+      if (bookingDriverId) {
+        const driver = await Driver.findById(bookingDriverId);
+        if (driver && driver.rideStatus === 'REACHED') {
+          shouldApplyCharges = true;
+          reason = 'Driver already reached pickup location';
+        }
+      }
+
+      // Check if cancellation is outside buffer time window
+      if (!shouldApplyCharges && cancellationBufferTime > 0) {
+        const rideDateTime = new Date(selectedDate);
+        const [hours, minutes] = selectedTime.split(':');
+        rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        const bufferEndTime = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
+        const currentTime = new Date();
+
+        if (currentTime > bufferEndTime) {
+          shouldApplyCharges = true;
+          reason = `Late cancellation (${cancellationBufferTime} min window exceeded)`;
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      cancellationCharges: shouldApplyCharges ? cancellationFee : 0,
+      reason: shouldApplyCharges ? reason : 'Free cancellation',
+    });
+
+  } catch (error) {
+    console.error("Error checking cancellation charges:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error", 
+      cancellationCharges: 0,
+      error: error.message 
+    });
+  }
+});
+
 //for cancel ride using ride id
 router.post("/booking/cancel", authMiddleware, async (req, res) => {
   try {
-    const { rideId } = req.body;
+    const { rideId , Reason } = req.body;
     const riderId = req.rider?.riderId;
 
     if (!rideId) {
@@ -1019,7 +1115,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     // ✅ Now update the ride status to CANCELLED after successful processing
     const updatedBooking = await Ride.findByIdAndUpdate(
       rideId,
-      { status: "CANCELLED", whoCancel: "Rider" },
+      { status: "CANCELLED", whoCancel: "Rider" , cancellationReason : Reason},
       { new: true }
     );
 
@@ -1754,6 +1850,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         "rideInfo.remainingDates": [],
         "rideInfo.selectedDates": [],
         "rideInfo.SelectedDays": 0,
+        cancellationReason:reason
       });
 
       // Also update driver status to WAITING again
@@ -2799,8 +2896,6 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
       }
 
       const currentRideCancellationCharges = cancellationDetails?.driverCancellationCharges || 0;
-
-
 
       res.json({
         success: true,

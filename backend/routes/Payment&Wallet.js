@@ -12,7 +12,7 @@ const razorpay = new Razorpay({
 });
 
 // Create Razorpay order
-router.post('/create-order', authMiddleware, async (req, res) => {
+router.post('/create-order/create-order', authMiddleware, async (req, res) => {
   try {
     const { amount, currency = 'INR' } = req.body;
     const riderId = req.rider.riderId;

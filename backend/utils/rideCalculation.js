@@ -163,10 +163,8 @@ const calculateDriverRideCost = async (params) => {
     gstCharges,
     subtotal: Math.round(subtotal),
     adminCharges,
-    ...(isReferralEarningUsed && { referralCommissionUsed })
+    ...(isReferralEarningUsed && { referralCommissionUsed }),
   };
-
-
 };
 
 const calculateCabRideCost = async (params) => {
