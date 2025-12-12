@@ -20,8 +20,8 @@ const transactionSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['created', 'attempted', 'paid', 'failed', 'cancelled'],
-    default: 'created'
+    enum: ['pending', 'completed', 'failed', 'refunded', 'partial_refund'],
+    default: 'pending'
   },
   paymentMethod: {
     type: String,
@@ -29,7 +29,7 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['deposit', 'spend', 'refund', 'cancellation_charges'],
+    enum: ['deposit', 'spend', 'refund', 'cancellation_charges', 'withdraw'],
     default: 'deposit'
   },
   description: {

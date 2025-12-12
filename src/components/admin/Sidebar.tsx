@@ -177,6 +177,17 @@ const menuItems = [
       { icon: Users, label: "Users", key: "users" }
     ]
   },
+  {
+    icon: Wallet,
+    label: "Rider Wallet & Payments Management",
+    key: "rider-payments-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Clock, label: "Pending Withdrawal Requests", key: "rider-pending-withdrawals" },
+      { icon: CheckCircle, label: "Approved Withdrawal Requests", key: "rider-approved-withdrawals" },
+      { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rider-rejected-withdrawals" }
+    ]
+  },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },
   { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" },
   { icon: FileText, label: "Driver Purchased Plans History", key: "driver-purchased-plans" },

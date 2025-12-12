@@ -138,5 +138,4 @@ router.post('/calculate-ride', authMiddleware, async (req, res) => {
   }
 });
 
-
 module.exports = router;

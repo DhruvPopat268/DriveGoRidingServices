@@ -75,6 +75,9 @@ import { UsersPage } from "@/components/admin/pages/UsersPage";
 import PendingVehiclesPage from "@/components/admin/pages/PendingVehiclesPage";
 import ApprovedVehiclesPage from "@/components/admin/pages/ApprovedVehiclesPage";
 import RejectedVehiclesPage from "@/components/admin/pages/RejectedVehiclesPage";
+import RiderPendingWithdrawalPage from "@/components/admin/pages/RiderPendingWithdrawalPage";
+import RiderApprovedWithdrawalPage from "@/components/admin/pages/RiderApprovedWithdrawalPage";
+import RiderRejectedWithdrawalPage from "@/components/admin/pages/RiderRejectedWithdrawalPage";
 import axios from "axios";
 
 const Index = () => {
@@ -440,6 +443,12 @@ const Index = () => {
         return <ApprovedVehiclesPage />;
       case "rejected-vehicles":
         return <RejectedVehiclesPage />;
+      case "rider-pending-withdrawals":
+        return <RiderPendingWithdrawalPage />;
+      case "rider-approved-withdrawals":
+        return <RiderApprovedWithdrawalPage />;
+      case "rider-rejected-withdrawals":
+        return <RiderRejectedWithdrawalPage />;
 
       case "category-assignment":
         return categoryAssignment ? (

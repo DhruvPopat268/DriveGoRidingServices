@@ -228,7 +228,7 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
         t => t.razorpayPaymentId === paymentId
       );
       
-      if (transaction && transaction.status !== 'created') {
+      if (transaction && transaction.status !== 'pending') {
         // Transaction already processed
         console.log(`⚠️ User transaction already processed: ${paymentId}, Status: ${transaction.status}`);
         return {
@@ -259,9 +259,9 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
 
     // Status mapping
     const statusMap = {
-      'captured': 'paid',
-      'paid': 'paid',
-      'authorized': 'created',
+      'captured': 'completed',
+      'paid': 'completed',
+      'authorized': 'pending',
       'failed': 'failed',
       'voided': 'failed',
       'cancelled': 'failed',
@@ -283,13 +283,13 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
         type: 'deposit',
         razorpayPaymentId: paymentId,
         description: `Wallet recharge via Razorpay - ${status} (webhook first)`,
-        paidAt: mappedStatus === 'paid' ? new Date() : null
+        paidAt: mappedStatus === 'completed' ? new Date() : null
       };
 
       wallet.transactions.push(transaction);
       
       // Handle balance updates
-      if (mappedStatus === 'paid') {
+      if (mappedStatus === 'completed') {
         wallet.balance += webhookAmount;
         wallet.totalDeposited += webhookAmount;
         wallet.lastTransactionAt = new Date();
@@ -330,15 +330,15 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
 
     const oldStatus = transaction.status;
     transaction.status = mappedStatus;
-    transaction.paidAt = mappedStatus === 'paid' ? new Date() : transaction.paidAt;
+    transaction.paidAt = mappedStatus === 'completed' ? new Date() : transaction.paidAt;
 
     // Handle balance updates
-    if (mappedStatus === 'paid' && oldStatus === 'created') {
+    if (mappedStatus === 'completed' && oldStatus === 'pending') {
       wallet.balance += transaction.amount;
       wallet.totalDeposited += transaction.amount;
       wallet.lastTransactionAt = new Date();
       console.log(`✅ User deposit verified and completed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
-    } else if (mappedStatus === 'failed' && oldStatus === 'created') {
+    } else if (mappedStatus === 'failed' && oldStatus === 'pending') {
       console.log(`❌ User deposit failed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
     }
 

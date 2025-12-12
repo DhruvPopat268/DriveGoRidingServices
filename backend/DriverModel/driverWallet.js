@@ -15,7 +15,6 @@ const transactionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Ride", // applicable for ride or cancellation transactions
     },
-
     paymentMethod: {
       type: String,
       enum: ["cash", "wallet", "bank_transfer", "upi", "other", "razorpay"],
