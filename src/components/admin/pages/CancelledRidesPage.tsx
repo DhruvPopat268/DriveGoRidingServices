@@ -123,14 +123,16 @@ export const CancelledRidesPage = ({ onNavigateToDetail }: CancelledRidesPagePro
             <table className="w-full table-fixed border-collapse">
               <colgroup>
                 <col style={{ width: '3%' }} />
-                <col style={{ width: '11%' }} />
-                <col style={{ width: '11%' }} />
-                <col style={{ width: '15%' }} />
                 <col style={{ width: '10%' }} />
-                <col style={{ width: '12%' }} />
                 <col style={{ width: '10%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '7%' }} />
                 <col style={{ width: '8%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '9%' }} />
               </colgroup>              <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left p-3 font-semibold text-gray-700">#</th>
@@ -143,6 +145,7 @@ export const CancelledRidesPage = ({ onNavigateToDetail }: CancelledRidesPagePro
                   <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Payment Method</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Cancelled By</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -253,6 +256,16 @@ export const CancelledRidesPage = ({ onNavigateToDetail }: CancelledRidesPagePro
 
                     <td className="p-3">
                       <span className="text-sm capitalize">{ride.paymentType}</span>
+                    </td>
+
+                    <td className="p-3">
+                      <span className={`text-sm px-2 py-1 rounded-full text-xs font-medium ${
+                        ride.whoCancel === 'Rider' ? 'bg-blue-100 text-blue-800' : 
+                        ride.whoCancel === 'Driver' ? 'bg-orange-100 text-orange-800' : 
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {ride.whoCancel || 'N/A'}
+                      </span>
                     </td>
 
                     <td className="p-3">

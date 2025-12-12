@@ -1016,7 +1016,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     // ✅ Now update the ride status to CANCELLED after successful processing
     const updatedBooking = await Ride.findByIdAndUpdate(
       rideId,
-      { status: "CANCELLED" },
+      { status: "CANCELLED", whoCancel: "Rider" },
       { new: true }
     );
 
@@ -1747,6 +1747,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     if (remainingNoOfDays === 0) {
       await Ride.findByIdAndUpdate(rideId, {
         status: "CANCELLED",
+        whoCancel: "Driver",
         "rideInfo.remainingDates": [],
         "rideInfo.selectedDates": [],
         "rideInfo.SelectedDays": 0,

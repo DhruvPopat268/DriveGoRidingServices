@@ -117,6 +117,7 @@ const rideSchema = new mongoose.Schema(
     totalPayable: { type: Number, required: true },
     paymentType: { type: String, enum: ["cash", "wallet"], required: true },
     driverReason: { type: String },
+    whoCancel: { type: String, enum: ["Rider", "Driver"] },
 
     status: {
       type: String,

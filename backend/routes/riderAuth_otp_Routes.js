@@ -248,8 +248,7 @@ router.post("/find-rider", authMiddleware, async (req, res) => {
         avgRating: rider.ratings?.avgRating || 0,
         totalReferrals: rider.referrals?.length || 0,
         totalEarnings: rider.referralEarning?.totalEarnings || 0,
-        currentBalance: rider.referralEarning?.currentBalance || 0,
-        referralHistory: rider.referralEarning?.history || []
+        currentBalance: rider.referralEarning?.currentBalance || 0
       },
     });
   } catch (error) {
