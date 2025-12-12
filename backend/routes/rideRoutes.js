@@ -743,61 +743,14 @@ router.post("/book", authMiddleware, async (req, res) => {
   }
 });
 
-// all rides
-router.get("/my-rides", authMiddleware, async (req, res) => {
-  try {
-    // riderId comes from token (authMiddleware)
-    const { riderId } = req.rider;
-
-    // Find all rides for this rider sorted by createdAt desc
-    const rides = await Ride.find({ riderId }).sort({ createdAt: -1 });
-
-    if (!rides || rides.length === 0) {
-      return res.status(200).json({ success: false, message: "No rides found" });
-    }
-
-    res.status(200).json({
-      success: true,
-      count: rides.length,
-      rides,
-    });
-  } catch (error) {
-    console.error("Error fetching rides:", error.message);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
 // booked rides
-router.get("/booked/my-rides", authMiddleware, async (req, res) => {
+router.get("/current/my-rides", authMiddleware, async (req, res) => {
   try {
     // riderId comes from token (authMiddleware)
     const { riderId } = req.rider;
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
-    const rides = await Ride.find({ riderId, status: "BOOKED" }).sort({ createdAt: -1 });
-
-    if (!rides || rides.length === 0) {
-      return res.status(200).json({ success: false, message: "No booked rides found" });
-    }
-
-    res.status(200).json({
-      success: true,
-      count: rides.length,
-      rides,
-    });
-  } catch (error) {
-    console.error("Error fetching booked rides:", error.message);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-router.get("/confirmed/my-rides", authMiddleware, async (req, res) => {
-  try {
-    // riderId comes from token (authMiddleware)
-    const { riderId } = req.rider;
-
-    // Find only rides with status = "BOOKED" sorted by createdAt desc
-    const rides = await Ride.find({ riderId, status: "CONFIRMED" }).sort({ createdAt: -1 });
+    const rides = await Ride.find({ riderId, status: { $in: ["BOOKED", "CONFIRMED"]} }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
       return res.status(200).json({ success: false, message: "No booked rides found" });
@@ -835,6 +788,30 @@ router.get("/ongoing/my-rides", authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching booked rides:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// past rides
+router.get("/past/my-rides", authMiddleware, async (req, res) => {
+  try {
+    // riderId comes from token (authMiddleware)
+    const { riderId } = req.rider;
+
+    // Find all rides for this rider sorted by createdAt desc
+    const rides = await Ride.find({ riderId , status: { $in: ["COMPLETED", "CANCELLED"] } }).sort({ createdAt: -1 });
+
+    if (!rides || rides.length === 0) {
+      return res.status(200).json({ success: false, message: "No rides found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: rides.length,
+      rides,
+    });
+  } catch (error) {
+    console.error("Error fetching rides:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
