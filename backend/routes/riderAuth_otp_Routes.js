@@ -9,6 +9,13 @@ const Session = require("../models/Session");
 const authMiddleware = require("../middleware/authMiddleware");
 const { createSession } = require("../Services/sessionService");
 const axios = require("axios");
+const Razorpay = require('razorpay');
+
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 // Twilio credentials from env
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -25,7 +32,7 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
     // console.log("Update request body:", updates);
 
     // Allowed fields to protect against unwanted updates (e.g., password, _id)
-    const allowedFields = ["name", "mobile", "gender", "email", "referralCode"];
+    const allowedFields = ["name", "mobile", "gender", "email"];
     const invalidFields = Object.keys(updates).filter(f => !allowedFields.includes(f));
 
     if (invalidFields.length > 0) {
@@ -87,11 +94,7 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
       }
     }
 
-    if (updates.referralCode) {
-      if (updates.referralCode.length < 3 || updates.referralCode.length > 20) {
-        return res.status(400).json({ success: false, message: "Referral code must be between 3 and 20 characters" });
-      }
-    }
+
 
     // === Perform update ===
     const updatedRider = await Rider.findByIdAndUpdate(
@@ -129,6 +132,50 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
     }
 
     res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+router.post("/create-order",authMiddleware, async (req, res) => {
+  try {
+    const { amount, currency, receipt, notes } = req.body;
+
+    if (!amount) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount is required",
+      });
+    }
+
+    const options = {
+      amount: amount * 100,          // ₹ to paise
+      currency: currency || "INR",
+      receipt: receipt || `rcpt_${Date.now()}`,
+
+      // 🔥 THIS ENABLES AUTO CAPTURE
+      payment_capture: 1,
+
+      notes: notes || {},            // { type, driverId, ... }
+    };
+
+
+
+    const order = await razorpay.orders.create(options);
+
+    // order has: id, amount, currency, status, notes, etc.
+    return res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,          // in paise
+      currency: order.currency,
+      raw: order,                    // optional: for debugging
+    });
+  } catch (err) {
+    console.error("Create order error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create order",
+      error: err.message || err.toString(),
+    });
   }
 });
 
