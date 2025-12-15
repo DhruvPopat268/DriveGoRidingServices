@@ -6,6 +6,8 @@ const SubscriptionPlan = require("../DriverModel/SubscriptionPlan");
 const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
   try {
     const { driverId } = notes;
+
+    console.log(`🔔 Handling driver deposit: Payment ID: ${paymentId}, Status: ${status}, Amount: ₹${webhookAmount}, Driver ID: ${driverId}`);
     
     if (!driverId) {
       return { success: false, error: "Driver ID not found in payment notes" };
@@ -16,6 +18,8 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
       driverId: driverId,
       'transactions.razorpayPaymentId': paymentId
     });
+
+    console.log("🔍 Existing wallet check result:", wallet ? "Found" : "Not Found");
 
     let transaction;
     
@@ -86,6 +90,8 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
         webhookVerified: true,
         webhookTimestamp: new Date()
       };
+
+      console.log("🆕 Creating transaction:", transaction);
 
       wallet.transactions.push(transaction);
       
@@ -617,12 +623,15 @@ const processDeposit = async (paymentId, status, webhookAmount, notes) => {
 
     switch (type) {
       case 'driver_deposit':
+        console.log("🚗 Detected driver deposit");
         return await handleDriverDeposit(paymentId, status, webhookAmount, notes);
       
       case 'user_deposit':
+        console.log("🧑 Detected user wallet deposit");
         return await handleUserWalletDeposit(paymentId, status, webhookAmount, notes);
       
       case 'driver_plan_purchase':
+        console.log("📦 Detected driver plan purchase");
         return await handleDriverPlanPurchase(paymentId, status, webhookAmount, notes);
       
       default:
