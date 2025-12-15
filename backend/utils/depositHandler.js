@@ -213,10 +213,14 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
 const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) => {
   try {
     const { riderId } = notes;
+
+    console.log(`🔔 Handling user wallet deposit: Payment ID: ${paymentId}, Status: ${status}, Amount: ₹${webhookAmount}, Rider ID: ${riderId}`);
     
     if (!riderId) {
       return { success: false, error: "Rider ID not found in payment notes" };
     }
+
+    console.log('riderId:',  riderId);
 
     const { Wallet } = require('../models/Payment&Wallet');
 
