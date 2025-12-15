@@ -228,12 +228,12 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
         t => t.razorpayPaymentId === paymentId
       );
       
-      if (transaction && transaction.status === 'completed') {
-        // Transaction already completed
-        console.log(`⚠️ User transaction already completed: ${paymentId}`);
+      if (transaction && transaction.status !== 'pending') {
+        // Transaction already processed
+        console.log(`⚠️ User transaction already processed: ${paymentId}, Status: ${transaction.status}`);
         return {
           success: true,
-          message: `Transaction already completed`,
+          message: `Transaction already processed with status: ${transaction.status}`,
           details: {
             paymentId,
             riderId,
@@ -257,45 +257,57 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
       }
     }
 
-    // Status mapping
-    const statusMap = {
-      'captured': 'completed',
-      'paid': 'completed',
-      'authorized': 'pending',
-      'failed': 'failed',
-      'voided': 'failed',
-      'cancelled': 'failed',
-      'refunded': 'refunded'
-    };
 
-    const mappedStatus = statusMap[status];
-    if (!mappedStatus) {
-      return { success: false, error: `Unsupported status: ${status}` };
-    }
 
     if (!transaction) {
-      // Webhook came first - create new transaction
+      // Webhook came first - create new transaction with webhook status
       console.log(`🔔 Webhook first: Creating new user transaction for ${paymentId}`);
       
+      const statusMap = {
+        'captured': 'completed',
+        'paid': 'completed',
+        'authorized': 'pending',
+        'failed': 'failed',
+        'voided': 'failed',
+        'cancelled': 'failed',
+        'refunded': 'refunded'
+      };
+
+      const mappedStatus = statusMap[status];
+      if (!mappedStatus) {
+        return { success: false, error: `Unsupported status: ${status}` };
+      }
+
       transaction = {
+        type: "deposit",
         amount: webhookAmount,
         status: mappedStatus,
-        type: 'deposit',
         razorpayPaymentId: paymentId,
-        description: `Wallet recharge via Razorpay - ${status} (webhook first)`,
+        description: `User wallet deposit via Razorpay - ${status} (webhook first)`,
+        paymentMethod: "razorpay",
+        webhookVerified: true,
+        webhookTimestamp: new Date(),
         paidAt: mappedStatus === 'completed' ? new Date() : null
       };
 
       wallet.transactions.push(transaction);
       
-      // Handle balance updates
+      // Handle balance updates based on status
       if (mappedStatus === 'completed') {
         wallet.balance += webhookAmount;
         wallet.totalDeposited += webhookAmount;
         wallet.lastTransactionAt = new Date();
         console.log(`✅ Webhook first - user deposit completed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
+      } else if (mappedStatus === 'refunded') {
+        // For refund webhook first, deduct from wallet balance
+        wallet.balance = Math.max(0, wallet.balance - webhookAmount);
+        console.log(`🔄 Webhook first - user refund processed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
       } else if (mappedStatus === 'failed') {
+        // For failed webhook first, just log - no balance change
         console.log(`❌ Webhook first - user deposit failed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
+      } else if (mappedStatus === 'pending') {
+        // For authorized webhook first, just log - no balance change yet
+        console.log(`🕑 Webhook first - user payment authorized: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
       }
 
       await wallet.save();
@@ -316,10 +328,11 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
     // Transaction exists and is pending - update it
     console.log(`🔍 Found pending user transaction for payment_id: ${paymentId}, Rider: ${riderId}`);
 
-    // SECURITY: Verify amount matches
+    // SECURITY: Verify amount matches what was stored
     if (webhookAmount && transaction.amount !== webhookAmount) {
       console.error(`⚠️ Amount mismatch for ${paymentId}: stored=${transaction.amount}, webhook=${webhookAmount}`);
       transaction.status = 'failed';
+      transaction.description = `Amount verification failed - stored: ₹${transaction.amount}, webhook: ₹${webhookAmount}`;
       await wallet.save();
       return { 
         success: false, 
@@ -328,17 +341,53 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
       };
     }
 
+    // Status mapping
+    const statusMap = {
+      'captured': 'completed',
+      'paid': 'completed',
+      'authorized': 'pending',
+      'failed': 'failed',
+      'voided': 'failed',
+      'cancelled': 'failed',
+      'refunded': 'refunded'
+    };
+
+    const mappedStatus = statusMap[status];
+    if (!mappedStatus) {
+      return { success: false, error: `Unsupported status: ${status}` };
+    }
+
     const oldStatus = transaction.status;
     transaction.status = mappedStatus;
+    transaction.description = `User wallet deposit via Razorpay - ${status} (verified by webhook)`;
+    transaction.webhookVerified = true;
+    transaction.webhookTimestamp = new Date();
     transaction.paidAt = mappedStatus === 'completed' ? new Date() : transaction.paidAt;
 
-    // Handle balance updates
+    // Handle balance updates based on status
     if (mappedStatus === 'completed' && oldStatus === 'pending') {
       wallet.balance += transaction.amount;
       wallet.totalDeposited += transaction.amount;
       wallet.lastTransactionAt = new Date();
       console.log(`✅ User deposit verified and completed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
+    } else if (mappedStatus === 'refunded') {
+      // Create new refund transaction and deduct amount from wallet
+      const refundTransaction = {
+        type: "refund",
+        amount: transaction.amount,
+        status: "completed",
+        razorpayPaymentId: paymentId,
+        description: `Refund for payment ${paymentId} - ${status}`,
+        paymentMethod: "razorpay",
+        webhookVerified: true,
+        webhookTimestamp: new Date()
+      };
+      
+      wallet.transactions.push(refundTransaction);
+      wallet.balance = Math.max(0, wallet.balance - transaction.amount);
+      console.log(`🔄 User deposit refunded: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
     } else if (mappedStatus === 'failed' && oldStatus === 'pending') {
+      // For failed transactions, just log - no balance change needed
       console.log(`❌ User deposit failed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
     }
 
