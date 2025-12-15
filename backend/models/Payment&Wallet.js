@@ -49,6 +49,11 @@ const transactionSchema = new mongoose.Schema({
     ref: 'Ride',
     required: false
   },
+  withdrawalRequestId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RiderWithdrawReq',
+    required: false
+  },
   paidAt: {
     type: Date,
     default: null

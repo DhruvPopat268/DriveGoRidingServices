@@ -730,10 +730,10 @@ router.post("/save-profile", async (req, res) => {
     }
 
     // Initialize empty wallet for the rider
-    const existingWallet = await Wallet.findOne({ riderId: rider._id.toString() });
+    const existingWallet = await Wallet.findOne({ riderId: rider._id });
     if (!existingWallet) {
       await Wallet.create({
-        riderId: rider._id.toString(),
+        riderId: rider._id,
         balance: 0,
         totalDeposited: 0,
         totalSpent: 0,

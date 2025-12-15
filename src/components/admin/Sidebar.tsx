@@ -178,13 +178,7 @@ const menuItems = [
       { icon: Clock, label: "Pending Withdrawal Requests", key: "rider-pending-withdrawals" },
       { icon: CheckCircle, label: "Approved Withdrawal Requests", key: "rider-approved-withdrawals" },
       { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rider-rejected-withdrawals" },
-      { icon: Clock, label: "Driver Pending Withdrawals", key: "pending-withdrawals" },
-      { icon: CheckCircle, label: "Driver Completed Withdrawals", key: "completed-withdrawals" },
-      { icon: XCircle, label: "Driver Rejected Withdrawals", key: "rejected-withdrawals" },
-      { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" },
-      { icon: Wallet, label: "Min Withdrawal Balance", key: "min-withdraw-balance" },
-      { icon: Calculator, label: "Service Wise Min Wallet Balance", key: "service-wallet-balance" },
-      { icon: Gift, label: "Driver Incentives", key: "driver-incentives" }
+
     ]
   },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },

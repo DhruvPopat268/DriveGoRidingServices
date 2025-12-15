@@ -48,22 +48,24 @@ router.get('/rejected', async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
-    const { amount, paymentMethod, bankDetails, upiDetails } = req.body;
+    const { amount, paymentMethod, paymentDetailId } = req.body;
 
-    if (!amount || !paymentMethod) {
-      return res.status(400).json({ message: 'Amount and payment method are required' });
+    if (!amount || !paymentMethod || !paymentDetailId) {
+      return res.status(400).json({ message: 'Amount, payment method, and payment detail ID are required' });
     }
 
-    // Validate user has saved payment details
+    let selectedPaymentDetails;
+
+    // Validate and fetch selected payment details
     if (paymentMethod === 'bank_transfer') {
-      const savedBankDetails = await RiderBankDetails.findOne({ riderId });
-      if (!savedBankDetails) {
-        return res.status(400).json({ message: 'Please add bank details first before requesting withdrawal' });
+      selectedPaymentDetails = await RiderBankDetails.findOne({ _id: paymentDetailId, riderId });
+      if (!selectedPaymentDetails) {
+        return res.status(400).json({ message: 'Selected bank details not found or not owned by rider' });
       }
     } else if (paymentMethod === 'upi') {
-      const savedUpiDetails = await RiderUpiDetails.findOne({ riderId });
-      if (!savedUpiDetails) {
-        return res.status(400).json({ message: 'Please add UPI details first before requesting withdrawal' });
+      selectedPaymentDetails = await RiderUpiDetails.findOne({ _id: paymentDetailId, riderId });
+      if (!selectedPaymentDetails) {
+        return res.status(400).json({ message: 'Selected UPI details not found or not owned by rider' });
       }
     } else {
       return res.status(400).json({ message: 'Invalid payment method. Use bank_transfer or upi' });
@@ -79,8 +81,9 @@ router.post('/', authMiddleware, async (req, res) => {
       riderId,
       amount,
       paymentMethod,
-      bankDetails: paymentMethod === 'bank_transfer' ? bankDetails : undefined,
-      upiDetails: paymentMethod === 'upi' ? upiDetails : undefined
+      paymentDetailId,
+      bankDetails: paymentMethod === 'bank_transfer' ? selectedPaymentDetails : undefined,
+      upiDetails: paymentMethod === 'upi' ? selectedPaymentDetails : undefined
     });
 
     // Deduct money immediately and add transaction using atomic operations
