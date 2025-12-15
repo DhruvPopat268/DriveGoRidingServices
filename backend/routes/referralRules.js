@@ -9,7 +9,7 @@ const {
 } = require('../utils/rideCalculation');
 const authMiddleware = require('../middleware/authMiddleware');
 const Rider = require('../models/Rider');
-const { wallet } = require('../models/Payment&Wallet');
+const { Wallet } = require('../models/Payment&Wallet');
 
 // GET all referral rules
 router.get('/', async (req, res) => {
@@ -110,7 +110,7 @@ router.post('/calculate-ride', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Category not found' });
     }
 
-    const walletDoc = await wallet.findOne({ riderId });
+    const walletDoc = await Wallet.findOne({ riderId });
     const walletBalance = walletDoc ? walletDoc.balance : 0;
 
     const categoryName = category.name.toLowerCase();
