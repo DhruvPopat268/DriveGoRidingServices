@@ -58,6 +58,16 @@ router.post('/', authMiddleware, upload.single('upiQrCode'), async (req, res) =>
         return res.status(400).json({ message: 'All bank details are required' });
       }
 
+      // Check if bank details already exist
+      const existingBankDetails = await RiderBankDetails.findOne({
+        accountNumber,
+        ifscCode
+      });
+      
+      if (existingBankDetails) {
+        return res.status(400).json({ message: 'These bank details already exist in our system' });
+      }
+
       const bankDetails = await RiderBankDetails.create({
         riderId,
         paymentMethod: 'bank_transfer',
@@ -79,6 +89,13 @@ router.post('/', authMiddleware, upload.single('upiQrCode'), async (req, res) =>
       
       if (!upiId) {
         return res.status(400).json({ message: 'UPI ID is required' });
+      }
+
+      // Check if UPI ID already exists
+      const existingUpiDetails = await RiderUpiDetails.findOne({ upiId });
+      
+      if (existingUpiDetails) {
+        return res.status(400).json({ message: 'This UPI ID already exists in our system' });
       }
 
       let upiQrCodeUrl = null;

@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 // Bank Details Schema
 const riderBankDetailsSchema = new mongoose.Schema({
   riderId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rider',
     required: true,
     index: true
   },
@@ -39,7 +40,8 @@ const riderBankDetailsSchema = new mongoose.Schema({
 // UPI Details Schema
 const riderUpiDetailsSchema = new mongoose.Schema({
   riderId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rider',
     required: true,
     index: true
   },

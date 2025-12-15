@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Badge } from '../../ui/badge';
-import { toast } from '../../ui/use-toast';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Loader } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 interface WithdrawRequest {
   _id: string;
@@ -29,9 +31,11 @@ interface WithdrawRequest {
   updatedAt: string;
 }
 
-const RiderRejectedWithdrawalPage: React.FC = () => {
+export const RiderRejectedWithdrawalPage = () => {
   const [requests, setRequests] = useState<WithdrawRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchRejectedRequests();
@@ -39,76 +43,125 @@ const RiderRejectedWithdrawalPage: React.FC = () => {
 
   const fetchRejectedRequests = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/rejected`);
-      const data = await response.json();
-      if (data.success) {
-        setRequests(data.data);
+      setLoading(true);
+      const adminToken = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/rejected`, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch rejected withdrawals');
       }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to fetch requests', variant: 'destructive' });
+
+      const data = await response.json();
+      setRequests(Array.isArray(data.data) ? data.data : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader className="w-6 h-6 animate-spin mr-2" />
+        <span>Loading rejected withdrawals...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-600 p-4">
+        Error: {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Rejected Rider Withdrawal Requests</h1>
-      
-      <div className="grid gap-4">
-        {requests.map((request) => (
-          <Card key={request._id}>
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                <span>₹{request.amount}</span>
-                <Badge variant="destructive">{request.status}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p><strong>Rider:</strong> {request.riderId.name}</p>
-                  <p><strong>Mobile:</strong> {request.riderId.mobile}</p>
-                  <p><strong>Payment Method:</strong> {request.paymentMethod}</p>
-                  <p><strong>Requested:</strong> {new Date(request.createdAt).toLocaleDateString()}</p>
-                  <p><strong>Rejected:</strong> {new Date(request.updatedAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  {request.paymentMethod === 'bank_transfer' && request.bankDetails && (
-                    <div>
-                      <p><strong>Account Holder:</strong> {request.bankDetails.bankAccountHolderName}</p>
-                      <p><strong>Account Number:</strong> {request.bankDetails.accountNumber}</p>
-                      <p><strong>IFSC:</strong> {request.bankDetails.ifscCode}</p>
-                      <p><strong>Bank:</strong> {request.bankDetails.bankName}</p>
-                    </div>
-                  )}
-                  {request.paymentMethod === 'upi' && request.upiDetails && (
-                    <div>
-                      <p><strong>UPI ID:</strong> {request.upiDetails.upiId}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {request.adminNotes && (
-                <div className="mt-4 p-3 bg-red-50 rounded border border-red-200">
-                  <p><strong>Rejection Reason:</strong> {request.adminNotes}</p>
-                </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Rejected Rider Withdrawal Requests</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Rider</TableHead>
+                <TableHead>Mobile Number</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Payment Method</TableHead>
+                <TableHead>Payment Details</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Requested Date</TableHead>
+                <TableHead>Rejected Date</TableHead>
+                <TableHead>Rejection Reason</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requests.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8">
+                    No rejected withdrawal requests found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                requests.map((request) => (
+                  <TableRow key={request._id}>
+                    <TableCell className="font-medium">
+                      <div>
+                        {request.riderId?.name || 'N/A'}
+                        <div className="text-gray-500 text-sm">
+                          {request.riderId?.email || 'No email available'}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{request.riderId?.mobile || 'N/A'}</TableCell>
+                    <TableCell>₹{request.amount}</TableCell>
+                    <TableCell className="capitalize">{request.paymentMethod}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {request.paymentMethod === 'bank_transfer' && request.bankDetails && (
+                          <>
+                            <div><strong>Bank:</strong> {request.bankDetails.bankName || 'N/A'}</div>
+                            <div><strong>A/C:</strong> {request.bankDetails.accountNumber || 'N/A'}</div>
+                            <div><strong>IFSC:</strong> {request.bankDetails.ifscCode || 'N/A'}</div>
+                            <div><strong>Holder:</strong> {request.bankDetails.bankAccountHolderName || 'N/A'}</div>
+                          </>
+                        )}
+                        {request.paymentMethod === 'upi' && request.upiDetails && (
+                          <div><strong>UPI ID:</strong> {request.upiDetails.upiId || 'N/A'}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="destructive" className="bg-red-100 text-red-800">
+                        {request.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(request.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(request.updatedAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm max-w-xs">
+                        {request.adminNotes || 'No reason provided'}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      
-      {requests.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p>No rejected withdrawal requests found.</p>
-          </CardContent>
-        </Card>
-      )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 };

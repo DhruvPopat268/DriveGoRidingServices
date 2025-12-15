@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { RiderWithdrawReq } = require('../models/RiderWithdrawReq');
 const { Wallet } = require('../models/Payment&Wallet');
+const { RiderBankDetails, RiderUpiDetails } = require('../models/RiderBankCard');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // GET - Fetch pending withdrawal requests
@@ -53,6 +54,22 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Amount and payment method are required' });
     }
 
+    // Validate user has saved payment details
+    if (paymentMethod === 'bank_transfer') {
+      const savedBankDetails = await RiderBankDetails.findOne({ riderId });
+      if (!savedBankDetails) {
+        return res.status(400).json({ message: 'Please add bank details first before requesting withdrawal' });
+      }
+    } else if (paymentMethod === 'upi') {
+      const savedUpiDetails = await RiderUpiDetails.findOne({ riderId });
+      console.log("Saved UPI Details:", savedUpiDetails);
+      if (!savedUpiDetails) {
+        return res.status(400).json({ message: 'Please add UPI details first before requesting withdrawal' });
+      }
+    } else {
+      return res.status(400).json({ message: 'Invalid payment method. Use bank_transfer or upi' });
+    }
+
     // Check wallet balance
     const wallet = await Wallet.findOne({ riderId });
     if (!wallet || wallet.balance < amount) {
@@ -66,6 +83,24 @@ router.post('/', authMiddleware, async (req, res) => {
       bankDetails: paymentMethod === 'bank_transfer' ? bankDetails : undefined,
       upiDetails: paymentMethod === 'upi' ? upiDetails : undefined
     });
+
+    // Deduct money immediately and add transaction using atomic operations
+    await Wallet.findOneAndUpdate(
+      { riderId },
+      {
+        $inc: { balance: -amount },
+        $push: {
+          transactions: {
+            amount,
+            type: 'withdraw',
+            status: 'pending',
+            description: 'Withdrawal requested by rider',
+            withdrawalRequestId: withdrawReq._id
+          }
+        },
+        $set: { lastTransactionAt: new Date() }
+      }
+    );
 
     res.json({
       success: true,
@@ -93,16 +128,17 @@ router.put('/approve', async (req, res) => {
       return res.status(404).json({ message: 'Withdrawal request not found' });
     }
 
-    // Deduct amount from wallet
+    // Update transaction status to completed
     const wallet = await Wallet.findOne({ riderId: withdrawReq.riderId.toString() });
     if (wallet) {
-      wallet.balance -= withdrawReq.amount;
-      wallet.transactions.push({
-        amount: withdrawReq.amount,
-        type: 'withdraw',
-        status: 'completed',
-        description: 'Withdrawal approved'
-      });
+      const txnIndex = wallet.transactions.findIndex(
+        (t) => t.withdrawalRequestId?.toString() === id
+      );
+      if (txnIndex !== -1) {
+        wallet.transactions[txnIndex].status = 'completed';
+      }
+      wallet.totalSpent += withdrawReq.amount;
+      wallet.lastTransactionAt = new Date();
       await wallet.save();
     }
 
@@ -131,6 +167,22 @@ router.put('/reject', async (req, res) => {
     if (!withdrawReq) {
       return res.status(404).json({ message: 'Withdrawal request not found' });
     }
+
+    // Refund money back to wallet using atomic operations
+    await Wallet.findOneAndUpdate(
+      { 
+        riderId: withdrawReq.riderId.toString(),
+        'transactions.withdrawalRequestId': id
+      },
+      {
+        $inc: { balance: withdrawReq.amount },
+        $set: {
+          'transactions.$.status': 'failed',
+          'transactions.$.description': `Withdrawal rejected: ${adminNotes || 'No reason provided'}`,
+          lastTransactionAt: new Date()
+        }
+      }
+    );
 
     res.json({
       success: true,
