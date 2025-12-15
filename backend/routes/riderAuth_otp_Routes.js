@@ -749,4 +749,62 @@ router.post("/save-profile", async (req, res) => {
   }
 });
 
+router.post("/userApp/save-profile",authMiddleware ,  async (req, res) => {
+
+  const riderId = req.rider.riderId;
+
+  try {
+    const { name, gender, email, referralCodeUsed } = req.body;
+
+    // console.log("Save profile request body:", req.body);
+
+
+    if (!name || !gender) {
+      return res.status(400).json({ success: false, message: "Name and gender are required" });
+    }
+
+    let rider = await Rider.findById(riderId);
+    if (!rider) return res.status(404).json({ message: "Rider not found" });
+
+    rider.name = name;
+    rider.gender = gender;
+    rider.email = email;
+
+    // 🔹 If referralCodeUsed is provided and rider has no referredBy yet
+    if (referralCodeUsed && !rider.referredBy) {
+      const referrer = await Rider.findOne({ referralCode: referralCodeUsed });
+
+      if (!referrer) {
+        return res.status(400).json({ success: false, message: "Invalid referral code" });
+      }
+
+      rider.referredBy = referrer._id; // link who referred
+      await rider.save();
+
+      // update referrer’s list
+      referrer.referrals.push({ riderId: rider._id, totalEarned: 0 });
+      await referrer.save();
+    } else {
+      await rider.save();
+    }
+
+    // Initialize empty wallet for the rider
+    const existingWallet = await Wallet.findOne({ riderId: rider._id.toString() });
+    if (!existingWallet) {
+      await Wallet.create({
+        riderId: rider._id.toString(),
+        balance: 0,
+        totalDeposited: 0,
+        totalSpent: 0,
+        transactions: []
+      });
+    }
+
+    res.json({ success: true, message: "Profile saved", rider });
+  } catch (error) {
+    console.error("Save profile error:", error);
+    res.status(500).json({ success: false, message: "Failed to save profile" });
+  }
+});
+
 module.exports = router;
