@@ -5,7 +5,12 @@ import { toast } from '../../ui/use-toast';
 
 interface WithdrawRequest {
   _id: string;
-  riderId: string;
+  riderId: {
+    _id: string;
+    name: string;
+    mobile: string;
+    email?: string;
+  };
   amount: number;
   paymentMethod: string;
   bankDetails?: {
@@ -34,7 +39,7 @@ const RiderRejectedWithdrawalPage: React.FC = () => {
 
   const fetchRejectedRequests = async () => {
     try {
-      const response = await fetch('/api/rider/withdraw?status=rejected');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/rejected`);
       const data = await response.json();
       if (data.success) {
         setRequests(data.data);
@@ -64,7 +69,8 @@ const RiderRejectedWithdrawalPage: React.FC = () => {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p><strong>Rider ID:</strong> {request.riderId}</p>
+                  <p><strong>Rider:</strong> {request.riderId.name}</p>
+                  <p><strong>Mobile:</strong> {request.riderId.mobile}</p>
                   <p><strong>Payment Method:</strong> {request.paymentMethod}</p>
                   <p><strong>Requested:</strong> {new Date(request.createdAt).toLocaleDateString()}</p>
                   <p><strong>Rejected:</strong> {new Date(request.updatedAt).toLocaleDateString()}</p>

@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Button } from '../../ui/button';
-import { Badge } from '../../ui/badge';
-import { Textarea } from '../../ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
-import { toast } from '../../ui/use-toast';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 interface WithdrawRequest {
   _id: string;
-  riderId: string;
+  riderId: {
+    _id: string;
+    name: string;
+    mobile: string;
+    email?: string;
+  };
   amount: number;
   paymentMethod: string;
   bankDetails?: {
@@ -25,12 +32,16 @@ interface WithdrawRequest {
   createdAt: string;
 }
 
-const RiderPendingWithdrawalPage: React.FC = () => {
+export const RiderPendingWithdrawalPage = () => {
   const [requests, setRequests] = useState<WithdrawRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [adminNotes, setAdminNotes] = useState('');
-  const [selectedRequest, setSelectedRequest] = useState<WithdrawRequest | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<string | null>(null);
+  const [rejectRemarks, setRejectRemarks] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchPendingRequests();
@@ -38,158 +49,257 @@ const RiderPendingWithdrawalPage: React.FC = () => {
 
   const fetchPendingRequests = async () => {
     try {
-      const response = await fetch('/api/rider/withdraw?status=pending');
-      const data = await response.json();
-      if (data.success) {
-        setRequests(data.data);
+      setLoading(true);
+      const adminToken = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/pending`, {
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch pending withdrawals');
       }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to fetch requests', variant: 'destructive' });
+
+      const data = await response.json();
+      setRequests(Array.isArray(data.data) ? data.data : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAction = async (id: string, action: 'approve' | 'reject') => {
-    setActionLoading(id);
+  const handleApprove = async () => {
+    if (!selectedRequest) return;
+    
     try {
-      const response = await fetch(`/api/rider/withdraw/${action}`, {
+      setActionLoading(true);
+      const adminToken = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/approve`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, adminNotes })
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: selectedRequest }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        toast({ title: 'Success', description: data.message });
-        fetchPendingRequests();
-        setAdminNotes('');
-        setSelectedRequest(null);
-      } else {
-        toast({ title: 'Error', description: data.message, variant: 'destructive' });
+      if (!response.ok) {
+        throw new Error('Failed to approve withdrawal');
       }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Action failed', variant: 'destructive' });
+
+      toast({ title: 'Success', description: 'Withdrawal request approved successfully' });
+      setShowApproveDialog(false);
+      setSelectedRequest(null);
+      fetchPendingRequests();
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to approve withdrawal', variant: 'destructive' });
     } finally {
-      setActionLoading(null);
+      setActionLoading(false);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  const handleReject = async () => {
+    if (!selectedRequest) return;
+    
+    try {
+      setActionLoading(true);
+      const adminToken = localStorage.getItem('adminToken');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/reject`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${adminToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: selectedRequest, adminNotes: rejectRemarks }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject withdrawal');
+      }
+
+      toast({ title: 'Success', description: 'Withdrawal request rejected successfully' });
+      setShowRejectDialog(false);
+      setSelectedRequest(null);
+      setRejectRemarks('');
+      fetchPendingRequests();
+    } catch (err) {
+      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to reject withdrawal', variant: 'destructive' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader className="w-6 h-6 animate-spin mr-2" />
+        <span>Loading pending withdrawals...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-600 p-4">
+        Error: {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Pending Rider Withdrawal Requests</h1>
-      
-      <div className="grid gap-4">
-        {requests.map((request) => (
-          <Card key={request._id}>
-            <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                <span>₹{request.amount}</span>
-                <Badge variant="secondary">{request.status}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p><strong>Rider ID:</strong> {request.riderId}</p>
-                  <p><strong>Payment Method:</strong> {request.paymentMethod}</p>
-                  <p><strong>Date:</strong> {new Date(request.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  {request.paymentMethod === 'bank_transfer' && request.bankDetails && (
-                    <div>
-                      <p><strong>Account Holder:</strong> {request.bankDetails.bankAccountHolderName}</p>
-                      <p><strong>Account Number:</strong> {request.bankDetails.accountNumber}</p>
-                      <p><strong>IFSC:</strong> {request.bankDetails.ifscCode}</p>
-                      <p><strong>Bank:</strong> {request.bankDetails.bankName}</p>
-                    </div>
-                  )}
-                  {request.paymentMethod === 'upi' && request.upiDetails && (
-                    <div>
-                      <p><strong>UPI ID:</strong> {request.upiDetails.upiId}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="default" 
-                      onClick={() => setSelectedRequest(request)}
-                    >
-                      Approve
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Approve Withdrawal Request</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <p>Amount: ₹{request.amount}</p>
-                      <Textarea
-                        placeholder="Admin notes (optional)"
-                        value={adminNotes}
-                        onChange={(e) => setAdminNotes(e.target.value)}
-                      />
-                      <Button 
-                        onClick={() => handleAction(request._id, 'approve')}
-                        disabled={actionLoading === request._id}
-                        className="w-full"
-                      >
-                        {actionLoading === request._id ? 'Processing...' : 'Confirm Approval'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Pending Rider Withdrawal Requests</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Rider</TableHead>
+                <TableHead>Mobile Number</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Payment Method</TableHead>
+                <TableHead>Payment Details</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Request Date</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requests.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8">
+                    No pending withdrawal requests found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                requests.map((request) => (
+                  <TableRow key={request._id}>
+                    <TableCell className="font-medium">
+                      <div>
+                        {request.riderId?.name || 'N/A'}
+                        <div className="text-gray-500 text-sm">
+                          {request.riderId?.email || 'No email available'}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{request.riderId?.mobile || 'N/A'}</TableCell>
+                    <TableCell>₹{request.amount}</TableCell>
+                    <TableCell className="capitalize">{request.paymentMethod}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {request.paymentMethod === 'bank_transfer' && request.bankDetails && (
+                          <>
+                            <div><strong>Bank:</strong> {request.bankDetails.bankName || 'N/A'}</div>
+                            <div><strong>A/C:</strong> {request.bankDetails.accountNumber || 'N/A'}</div>
+                            <div><strong>IFSC:</strong> {request.bankDetails.ifscCode || 'N/A'}</div>
+                            <div><strong>Holder:</strong> {request.bankDetails.bankAccountHolderName || 'N/A'}</div>
+                          </>
+                        )}
+                        {request.paymentMethod === 'upi' && request.upiDetails && (
+                          <div><strong>UPI ID:</strong> {request.upiDetails.upiId || 'N/A'}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                        {request.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(request.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-green-600 hover:text-green-700"
+                          onClick={() => {
+                            setSelectedRequest(request._id);
+                            setShowApproveDialog(true);
+                          }}
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => {
+                            setSelectedRequest(request._id);
+                            setShowRejectDialog(true);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="destructive" 
-                      onClick={() => setSelectedRequest(request)}
-                    >
-                      Reject
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Reject Withdrawal Request</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <p>Amount: ₹{request.amount}</p>
-                      <Textarea
-                        placeholder="Reason for rejection"
-                        value={adminNotes}
-                        onChange={(e) => setAdminNotes(e.target.value)}
-                      />
-                      <Button 
-                        onClick={() => handleAction(request._id, 'reject')}
-                        disabled={actionLoading === request._id}
-                        variant="destructive"
-                        className="w-full"
-                      >
-                        {actionLoading === request._id ? 'Processing...' : 'Confirm Rejection'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      
-      {requests.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p>No pending withdrawal requests found.</p>
-          </CardContent>
-        </Card>
-      )}
+      <Dialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Approve Withdrawal</DialogTitle>
+          </DialogHeader>
+          <p>Are you sure you want to approve this withdrawal request?</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleApprove} disabled={actionLoading}>
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Withdrawal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Are you sure you want to reject this withdrawal request?</p>
+            <div>
+              <label className="text-sm font-medium">Remarks (Required)</label>
+              <Textarea
+                value={rejectRemarks}
+                onChange={(e) => setRejectRemarks(e.target.value)}
+                placeholder="Enter reason for rejection..."
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowRejectDialog(false);
+              setRejectRemarks('');
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleReject} 
+              disabled={actionLoading || !rejectRemarks.trim()}
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

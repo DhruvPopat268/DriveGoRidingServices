@@ -693,7 +693,6 @@ router.post("/verify-otp", async (req, res) => {
 });
 */
 
-
 router.post("/save-profile", async (req, res) => {
   try {
     const { mobile, name, gender, email, referralCodeUsed } = req.body;

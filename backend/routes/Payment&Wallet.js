@@ -43,10 +43,10 @@ router.post('/deposit', authMiddleware, async (req, res) => {
     const existingTransaction = wallet.transactions.find(
       t => t.razorpayPaymentId === paymentId
     );
-    
+
     if (existingTransaction) {
-      return res.status(400).json({ 
-        message: 'This payment has already been processed' 
+      return res.status(400).json({
+        message: 'This payment has already been processed'
       });
     }
 
@@ -80,7 +80,7 @@ router.get('/pending', authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
     const wallet = await Wallet.findOne({ riderId });
-    
+
     if (!wallet) {
       return res.json({ transactions: [], totalItems: 0 });
     }
@@ -114,7 +114,7 @@ router.get('/completed', authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
     const wallet = await Wallet.findOne({ riderId });
-    
+
     if (!wallet) {
       return res.json({ transactions: [], totalItems: 0 });
     }
@@ -149,7 +149,7 @@ router.get('/failed', authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
     const wallet = await Wallet.findOne({ riderId });
-    
+
     if (!wallet) {
       return res.json({ transactions: [], totalItems: 0 });
     }
@@ -189,8 +189,16 @@ router.get('/history', authMiddleware, async (req, res) => {
 
     // Get wallet with transactions
     const wallet = await Wallet.findOne({ riderId });
-    
+
     if (!wallet) {
+      // Create new wallet if doesn't exist
+      wallet = new Wallet({
+        riderId: riderId,
+        balance: 0,
+        totalDeposited: 0,
+        totalSpent: 0
+      });
+      await wallet.save();
       return res.json({
         payments: [],
         totalItems: 0
@@ -214,7 +222,12 @@ router.get('/history', authMiddleware, async (req, res) => {
 
     res.json({
       payments: formattedPayments,
-      totalItems: formattedPayments.length
+      totalItems: formattedPayments.length,
+      balance: wallet.balance, // Amount in rupees
+      totalDeposited: wallet.totalDeposited, // Amount in rupees
+      totalSpent: wallet.totalSpent, // Amount in rupees
+      lastTransactionAt: wallet.lastTransactionAt,
+      isActive: wallet.isActive
     });
 
   } catch (error) {
@@ -231,7 +244,7 @@ router.get('/wallet', authMiddleware, async (req, res) => {
 
 
     let wallet = await Wallet.findOne({ riderId });
-    
+
     if (!wallet) {
       // Create new wallet if doesn't exist
       wallet = new Wallet({
@@ -268,7 +281,7 @@ router.post('/deduct', authMiddleware, async (req, res) => {
     }
 
     const wallet = await Wallet.findOne({ riderId });
-    
+
     if (!wallet) {
       return res.status(404).json({ error: 'Wallet not found' });
     }
@@ -285,22 +298,22 @@ router.post('/deduct', authMiddleware, async (req, res) => {
       description: description,
       paidAt: new Date()
     };
-    
+
     if (rideId) {
       transaction.rideId = rideId;
     }
-    
+
     wallet.transactions.push(transaction);
 
     // Update wallet
     wallet.balance -= amount;
     wallet.totalSpent += amount;
     wallet.lastTransactionAt = new Date();
-    
+
     await wallet.save();
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Amount deducted successfully',
       walletBalance: wallet.balance,
       transactionId: wallet.transactions[wallet.transactions.length - 1]._id
@@ -317,14 +330,14 @@ router.post('/webhook', async (req, res) => {
   try {
     const webhookPayload = req.body;
     const receivedSignature = req.headers['x-razorpay-signature'];
-    
+
     // Verify webhook signature
     if (!receivedSignature) {
       return res.status(400).json({ error: 'Missing webhook signature' });
     }
 
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    
+
     if (!webhookSecret) {
       console.error('⚠️ RAZORPAY_WEBHOOK_SECRET not configured');
       return res.status(500).json({ error: 'Webhook secret not configured' });
@@ -339,12 +352,12 @@ router.post('/webhook', async (req, res) => {
       console.error('⚠️ Invalid webhook signature');
       return res.status(400).json({ error: 'Invalid webhook signature' });
     }
-    
+
     // Extract payment info from Razorpay webhook payload
     const event = webhookPayload.event;
     const paymentEntity = webhookPayload.payload?.payment?.entity;
     const orderEntity = webhookPayload.payload?.order?.entity;
-    
+
     if (!paymentEntity || !paymentEntity.id) {
       return res.status(400).json({ error: 'Invalid webhook payload' });
     }
@@ -352,7 +365,7 @@ router.post('/webhook', async (req, res) => {
     const payment_id = paymentEntity.id;
     const status = paymentEntity.status;
     const webhookAmount = paymentEntity.amount ? paymentEntity.amount / 100 : null; // Convert paise to rupees
-    
+
     // Get payment notes from order or payment entity
     const notes = orderEntity?.notes || paymentEntity.notes || {};
 
@@ -368,7 +381,7 @@ router.post('/webhook', async (req, res) => {
     }
 
     const result = await processDeposit(payment_id, status, webhookAmount, notes);
-    
+
     if (result.success) {
       return res.json({ status: 'ok', event, verified: true, result: result.details });
     } else {

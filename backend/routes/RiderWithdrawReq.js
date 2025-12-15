@@ -4,21 +4,42 @@ const { RiderWithdrawReq } = require('../models/RiderWithdrawReq');
 const { Wallet } = require('../models/Payment&Wallet');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// GET - Fetch withdrawal requests by status
-router.get('/', async (req, res) => {
+// GET - Fetch pending withdrawal requests
+router.get('/pending', async (req, res) => {
   try {
-    const { status } = req.query;
-    const filter = status ? { status } : {};
-    
-    const withdrawReqs = await RiderWithdrawReq.find(filter).sort({ createdAt: -1 });
-    
-    res.json({
-      success: true,
-      data: withdrawReqs
-    });
+    const withdrawReqs = await RiderWithdrawReq.find({ status: 'pending' })
+      .populate('riderId', 'name mobile email')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: withdrawReqs });
   } catch (error) {
-    console.error('Fetch withdrawal requests error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch withdrawal requests' });
+    console.error('Fetch pending withdrawal requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch pending withdrawal requests' });
+  }
+});
+
+// GET - Fetch approved withdrawal requests
+router.get('/approved', async (req, res) => {
+  try {
+    const withdrawReqs = await RiderWithdrawReq.find({ status: 'approved' })
+      .populate('riderId', 'name mobile email')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: withdrawReqs });
+  } catch (error) {
+    console.error('Fetch approved withdrawal requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch approved withdrawal requests' });
+  }
+});
+
+// GET - Fetch rejected withdrawal requests
+router.get('/rejected', async (req, res) => {
+  try {
+    const withdrawReqs = await RiderWithdrawReq.find({ status: 'rejected' })
+      .populate('riderId', 'name mobile email')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: withdrawReqs });
+  } catch (error) {
+    console.error('Fetch rejected withdrawal requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch rejected withdrawal requests' });
   }
 });
 
@@ -73,7 +94,7 @@ router.put('/approve', async (req, res) => {
     }
 
     // Deduct amount from wallet
-    const wallet = await Wallet.findOne({ riderId: withdrawReq.riderId });
+    const wallet = await Wallet.findOne({ riderId: withdrawReq.riderId.toString() });
     if (wallet) {
       wallet.balance -= withdrawReq.amount;
       wallet.transactions.push({

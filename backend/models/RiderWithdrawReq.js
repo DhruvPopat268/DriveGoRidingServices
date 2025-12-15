@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const riderWithdrawReqSchema = new mongoose.Schema({
   riderId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rider',
     required: true
   },
   amount: {
