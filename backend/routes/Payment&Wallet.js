@@ -356,10 +356,15 @@ router.post('/webhook', async (req, res) => {
     // Get payment notes from order or payment entity
     const notes = orderEntity?.notes || paymentEntity.notes || {};
 
-    // Only process supported payment events
-    const supportedEvents = ['payment.captured', 'payment.failed', 'payment.authorized', 'payment.refunded'];
+    // Only process final payment events
+    const supportedEvents = ['payment.captured', 'payment.failed', 'payment.refunded'];
     if (!supportedEvents.includes(event)) {
       return res.json({ status: 'ignored', event, reason: 'Unsupported event type' });
+    }
+
+    // For captured payments, treat as completed regardless of existing status
+    if (event === 'payment.captured') {
+      status = 'captured';
     }
 
     const result = await processDeposit(payment_id, status, webhookAmount, notes);

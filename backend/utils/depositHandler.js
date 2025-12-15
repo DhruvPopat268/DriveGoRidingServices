@@ -228,12 +228,12 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
         t => t.razorpayPaymentId === paymentId
       );
       
-      if (transaction && transaction.status !== 'pending') {
-        // Transaction already processed
-        console.log(`⚠️ User transaction already processed: ${paymentId}, Status: ${transaction.status}`);
+      if (transaction && transaction.status === 'completed') {
+        // Transaction already completed
+        console.log(`⚠️ User transaction already completed: ${paymentId}`);
         return {
           success: true,
-          message: `Transaction already processed with status: ${transaction.status}`,
+          message: `Transaction already completed`,
           details: {
             paymentId,
             riderId,
