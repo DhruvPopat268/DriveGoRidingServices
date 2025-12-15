@@ -16,6 +16,7 @@ const razorpay = new Razorpay({
 router.post('/deposit', authMiddleware, async (req, res) => {
   try {
     const { amount, paymentId } = req.body;
+    console.log("Deposit request received:", { amount, paymentId });
     const riderId = req.rider.riderId;
 
     if (!amount) {

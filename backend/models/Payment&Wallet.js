@@ -9,6 +9,10 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  razorpayPaymentId: {
+    type: String,
+    required: false
+  },
   amount: {
     type: Number,
     required: true,
