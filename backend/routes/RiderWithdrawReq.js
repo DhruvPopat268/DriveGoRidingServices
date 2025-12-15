@@ -62,7 +62,6 @@ router.post('/', authMiddleware, async (req, res) => {
       }
     } else if (paymentMethod === 'upi') {
       const savedUpiDetails = await RiderUpiDetails.findOne({ riderId });
-      console.log("Saved UPI Details:", savedUpiDetails);
       if (!savedUpiDetails) {
         return res.status(400).json({ message: 'Please add UPI details first before requesting withdrawal' });
       }
@@ -129,7 +128,7 @@ router.put('/approve', async (req, res) => {
     }
 
     // Update transaction status to completed
-    const wallet = await Wallet.findOne({ riderId: withdrawReq.riderId.toString() });
+    const wallet = await Wallet.findOne({ riderId: withdrawReq.riderId });
     if (wallet) {
       const txnIndex = wallet.transactions.findIndex(
         (t) => t.withdrawalRequestId?.toString() === id
@@ -171,7 +170,7 @@ router.put('/reject', async (req, res) => {
     // Refund money back to wallet using atomic operations
     await Wallet.findOneAndUpdate(
       { 
-        riderId: withdrawReq.riderId.toString(),
+        riderId: withdrawReq.riderId,
         'transactions.withdrawalRequestId': id
       },
       {

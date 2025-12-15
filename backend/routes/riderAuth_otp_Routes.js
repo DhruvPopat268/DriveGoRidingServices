@@ -190,7 +190,7 @@ router.get("/completeProfile", async (req, res) => {
     }).sort({ createdAt: -1 });
 
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
-      const wallet = await Wallet.findOne({ riderId: rider._id.toString() });
+      const wallet = await Wallet.findOne({ riderId: rider._id });
       return {
         ...rider.toObject(),
         wallet: {
@@ -212,7 +212,7 @@ router.get("/inCompleteProfile", async (req, res) => {
     const riders = await Rider.find({ name: "" , gender: "" }).sort({ createdAt: -1 });
     
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
-      const wallet = await Wallet.findOne({ riderId: rider._id.toString() });
+      const wallet = await Wallet.findOne({ riderId: rider._id });
       return {
         ...rider.toObject(),
         wallet: {
@@ -234,7 +234,7 @@ router.get("/all", async (req, res) => {
     const riders = await Rider.find({}).sort({ createdAt: -1 });
     
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
-      const wallet = await Wallet.findOne({ riderId: rider._id.toString() });
+      const wallet = await Wallet.findOne({ riderId: rider._id });
       return {
         ...rider.toObject(),
         wallet: {

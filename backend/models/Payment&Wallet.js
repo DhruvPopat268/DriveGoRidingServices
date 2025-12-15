@@ -59,7 +59,8 @@ const transactionSchema = new mongoose.Schema({
 
 const walletSchema = new mongoose.Schema({
   riderId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Rider',
     required: true,
     unique: true
   },
