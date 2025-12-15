@@ -2658,11 +2658,6 @@ router.post("/webhook", async (req, res) => {
       return res.json({ status: 'ignored', event, reason: 'Unsupported event type' });
     }
 
-    // For captured payments, treat as completed regardless of existing status
-    if (event === 'payment.captured') {
-      status = 'captured';
-    }
-
     const result = await processDeposit(payment_id, status, webhookAmount, notes);
     
     if (result.success) {
