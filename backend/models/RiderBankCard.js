@@ -56,8 +56,7 @@ const riderUpiDetailsSchema = new mongoose.Schema({
     lowercase: true
   },
   upiQrCode: {
-    type: String,
-    required: false
+    type: String
   }
 }, {
   timestamps: true

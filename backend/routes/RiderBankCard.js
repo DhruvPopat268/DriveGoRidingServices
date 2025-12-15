@@ -53,7 +53,7 @@ router.post('/', authMiddleware, upload.single('upiQrCode'), async (req, res) =>
 
     if (paymentMethod === 'bank_transfer') {
       const { bankAccountHolderName, accountNumber, ifscCode, bankName } = req.body;
-      
+
       if (!bankAccountHolderName || !accountNumber || !ifscCode || !bankName) {
         return res.status(400).json({ message: 'All bank details are required' });
       }
@@ -63,7 +63,7 @@ router.post('/', authMiddleware, upload.single('upiQrCode'), async (req, res) =>
         accountNumber,
         ifscCode
       });
-      
+
       if (existingBankDetails) {
         return res.status(400).json({ message: 'These bank details already exist in our system' });
       }
@@ -86,14 +86,14 @@ router.post('/', authMiddleware, upload.single('upiQrCode'), async (req, res) =>
 
     if (paymentMethod === 'upi') {
       const { upiId } = req.body;
-      
+
       if (!upiId) {
         return res.status(400).json({ message: 'UPI ID is required' });
       }
 
       // Check if UPI ID already exists
       const existingUpiDetails = await RiderUpiDetails.findOne({ upiId });
-      
+
       if (existingUpiDetails) {
         return res.status(400).json({ message: 'This UPI ID already exists in our system' });
       }
@@ -164,7 +164,7 @@ router.put('/', authMiddleware, upload.single('upiQrCode'), async (req, res) => 
 
     if (paymentMethod === 'bank_transfer') {
       const { bankAccountHolderName, accountNumber, ifscCode, bankName } = req.body;
-      
+
       const bankDetails = await RiderBankDetails.findOneAndUpdate(
         { _id: paymentDetailId, riderId },
         { bankAccountHolderName, accountNumber, ifscCode, bankName },
@@ -193,9 +193,10 @@ router.put('/', authMiddleware, upload.single('upiQrCode'), async (req, res) => 
 
       const upiDetails = await RiderUpiDetails.findOneAndUpdate(
         { _id: paymentDetailId, riderId },
-        updateData,
-        { new: true }
+        { $set: updateData },
+        { new: true, runValidators: true }
       );
+
 
       if (!upiDetails) {
         return res.status(404).json({ message: 'UPI details not found' });
@@ -225,7 +226,7 @@ router.delete('/', authMiddleware, async (req, res) => {
 
     if (paymentMethod === 'bank_transfer') {
       const bankDetails = await RiderBankDetails.findOneAndDelete({ _id: paymentDetailId, riderId });
-      
+
       if (!bankDetails) {
         return res.status(404).json({ message: 'Bank details not found' });
       }
@@ -238,7 +239,7 @@ router.delete('/', authMiddleware, async (req, res) => {
 
     if (paymentMethod === 'upi') {
       const upiDetails = await RiderUpiDetails.findOneAndDelete({ _id: paymentDetailId, riderId });
-      
+
       if (!upiDetails) {
         return res.status(404).json({ message: 'UPI details not found' });
       }
