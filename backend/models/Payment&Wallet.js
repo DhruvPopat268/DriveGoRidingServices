@@ -45,7 +45,8 @@ const transactionSchema = new mongoose.Schema({
     default: {}
   },
   rideId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Ride',
     required: false
   },
   paidAt: {
