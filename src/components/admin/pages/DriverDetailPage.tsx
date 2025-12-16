@@ -310,7 +310,7 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
               <div className="flex flex-wrap gap-2">
                 {driver.drivingDetails?.vehicleType?.length ? (
                   driver.drivingDetails.vehicleType.map((type, index) => (
-                    <Badge key={index} variant="outline">{type}</Badge>
+                    <Badge key={index} variant="outline">{type.name}</Badge>
                   ))
                 ) : (
                   <p className="text-gray-500">Not provided</p>
@@ -322,7 +322,7 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
               <div className="flex flex-wrap gap-2">
                 {driver.drivingDetails?.canDrive?.length ? (
                   driver.drivingDetails.canDrive.map((vehicle, index) => (
-                    <Badge key={index} variant="outline">{vehicle}</Badge>
+                    <Badge key={index} variant="outline">{vehicle.vehicleName}</Badge>
                   ))
                 ) : (
                   <p className="text-gray-500">Not provided</p>

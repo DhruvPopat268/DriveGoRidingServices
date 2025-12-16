@@ -433,7 +433,7 @@ router.get("/Pending", async (req, res) => {
 
 router.get("/Onreview", async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Onreview" }).sort({ createdAt: -1 });
+    const drivers = await Driver.find({ status: "Onreview" }).populate('drivingDetails.canDrive drivingDetails.vehicleType').sort({ createdAt: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -905,7 +905,7 @@ router.get("/driverDetail", driverAuthMiddleware, async (req, res) => {
 router.get("/:driverId", async (req, res) => {
   try {
     const { driverId } = req.params;
-    const driver = await Driver.findById(driverId);
+    const driver = await Driver.findById(driverId).populate('drivingDetails.canDrive drivingDetails.vehicleType');
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
