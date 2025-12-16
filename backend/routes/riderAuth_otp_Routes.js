@@ -14,9 +14,14 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Configure multer for memory storage
+// Configure multer for memory storage with file size limit
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
