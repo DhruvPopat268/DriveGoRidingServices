@@ -11,6 +11,7 @@ const riderSchema = new mongoose.Schema(
     },
     email: { type: String, default: "" },
     profilePhoto: { type: String, default: "" },
+    oneSignalPlayerId: { type: String, default: "" },
     referralCode: { type: String, unique: true },
 
     // 🔹 Referral tracking

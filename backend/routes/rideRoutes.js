@@ -457,6 +457,35 @@ router.post("/book", authMiddleware, async (req, res) => {
       await riderData.save();
     }
 
+    // Handle wallet deduction for wallet payments BEFORE saving ride
+    if (paymentType === 'wallet') {
+      const wallet = await Wallet.findOne({ riderId });
+      
+      if (!wallet) {
+        return res.status(404).json({ message: 'Wallet not found' });
+      }
+      
+      if (wallet.balance < adjustedTotalPayable) {
+        return res.status(400).json({ message: 'Insufficient wallet balance' });
+      }
+      
+      // Add spend transaction to wallet
+      const transaction = {
+        amount: adjustedTotalPayable,
+        status: 'completed',
+        type: 'spend',
+        description: 'Ride booking payment',
+        paidAt: new Date()
+      };
+      
+      wallet.transactions.push(transaction);
+      wallet.balance -= adjustedTotalPayable;
+      wallet.totalSpent += adjustedTotalPayable;
+      wallet.lastTransactionAt = new Date();
+      
+      await wallet.save();
+    }
+
     // Format selectedDate to "dd mm yy"
     let formattedSelectedDate = selectedDate;
     if (selectedDate) {
@@ -570,6 +599,16 @@ router.post("/book", authMiddleware, async (req, res) => {
     }
 
     await newRide.save();
+
+    // Update wallet transaction with rideId for wallet payments
+    if (paymentType === 'wallet') {
+      const wallet = await Wallet.findOne({ riderId });
+      if (wallet && wallet.transactions.length > 0) {
+        const lastTransaction = wallet.transactions[wallet.transactions.length - 1];
+        lastTransaction.rideId = newRide._id;
+        await wallet.save();
+      }
+    }
 
     // console.log('📱 New ride booked:', newRide._id);
 

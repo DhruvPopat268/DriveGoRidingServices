@@ -29,11 +29,6 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Twilio credentials from env
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-
-const MAX_SESSIONS = 2;
-
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Update rider profile data (multiple fields at once)
@@ -557,7 +552,7 @@ router.post("/send-otp", async (req, res) => {
 
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { mobile, otp } = req.body;
+    const { mobile, otp, playerId } = req.body;
     if (!mobile || !otp) {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
@@ -578,6 +573,12 @@ router.post("/verify-otp", async (req, res) => {
     let rider = await Rider.findOne({ mobile });
     if (!rider) {
       rider = new Rider({ mobile });
+      await rider.save();
+    }
+
+    // Store OneSignal playerId if provided
+    if (playerId) {
+      rider.oneSignalPlayerId = playerId;
       await rider.save();
     }
 
@@ -688,7 +689,7 @@ router.post("/send-otp", async (req, res) => {
 //kaleyra integration
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { mobile, otp } = req.body;
+    const { mobile, otp, playerId } = req.body;
 
     // ✅ Validate input
     if (!mobile || !otp) {
@@ -738,6 +739,12 @@ router.post("/verify-otp", async (req, res) => {
     let rider = await Rider.findOne({ mobile: mobileStr });
     if (!rider) {
       rider = new Rider({ mobile: mobileStr });
+      await rider.save();
+    }
+
+    // Store OneSignal playerId if provided
+    if (playerId) {
+      rider.oneSignalPlayerId = playerId;
       await rider.save();
     }
 

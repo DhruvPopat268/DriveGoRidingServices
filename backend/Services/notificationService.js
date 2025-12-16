@@ -1,5 +1,6 @@
 const { client } = require('../config/oneSignalConfig');
 const DriverNotification = require('../DriverModel/DriverNotification');
+const RiderNotification = require('../models/RiderNotification');
 
 class NotificationService {
   // Send notification to specific user by player ID
@@ -159,6 +160,39 @@ class NotificationService {
       return { success: true };
     } catch (error) {
       console.error('Error sending and storing driver notification:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Store notification in database for rider
+  static async storeRiderNotification(riderId, title, message, type, data = {}) {
+    try {
+      await RiderNotification.create({
+        riderId,
+        title,
+        message,
+        type,
+        data
+      });
+    } catch (error) {
+      console.error('Error storing rider notification:', error);
+    }
+  }
+
+  // Send notification to rider and store in database
+  static async sendAndStoreRiderNotification(riderId, playerId, title, message, type, data = {}) {
+    try {
+      // Send push notification if playerId exists
+      if (playerId) {
+        await this.sendToUser(playerId, title, message, { type, ...data });
+      }
+      
+      // Store in database
+      await this.storeRiderNotification(riderId, title, message, type, data);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending and storing rider notification:', error);
       return { success: false, error: error.message };
     }
   }

@@ -270,60 +270,7 @@ router.get('/wallet', authMiddleware, async (req, res) => {
   }
 });
 
-// Deduct money from wallet (for ride payments, etc.)
-router.post('/deduct', authMiddleware, async (req, res) => {
-  try {
-    const { amount, description = 'Wallet payment', rideId } = req.body;
-    const riderId = req.rider.riderId;
 
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
-    }
-
-    const wallet = await Wallet.findOne({ riderId });
-
-    if (!wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
-    }
-
-    if (wallet.balance < amount) {
-      return res.status(400).json({ error: 'Insufficient balance' });
-    }
-
-    // Add spend transaction to wallet
-    const transaction = {
-      amount: amount,
-      status: 'completed',
-      type: 'spend',
-      description: description,
-      paidAt: new Date()
-    };
-
-    if (rideId) {
-      transaction.rideId = rideId;
-    }
-
-    wallet.transactions.push(transaction);
-
-    // Update wallet
-    wallet.balance -= amount;
-    wallet.totalSpent += amount;
-    wallet.lastTransactionAt = new Date();
-
-    await wallet.save();
-
-    res.json({
-      success: true,
-      message: 'Amount deducted successfully',
-      walletBalance: wallet.balance,
-      transactionId: wallet.transactions[wallet.transactions.length - 1]._id
-    });
-
-  } catch (error) {
-    console.error('Deduct money error:', error);
-    res.status(500).json({ error: 'Failed to deduct money' });
-  }
-});
 
 // Webhook for Razorpay payment updates
 router.post('/webhook', async (req, res) => {
