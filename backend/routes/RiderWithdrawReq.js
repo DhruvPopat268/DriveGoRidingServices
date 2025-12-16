@@ -4,6 +4,9 @@ const { RiderWithdrawReq } = require('../models/RiderWithdrawReq');
 const { Wallet } = require('../models/Payment&Wallet');
 const { RiderBankDetails, RiderUpiDetails } = require('../models/RiderBankCard');
 const authMiddleware = require('../middleware/authMiddleware');
+const NotificationService = require('../Services/notificationService');
+const RiderNotification = require('../models/RiderNotification');
+const Rider = require('../models/Rider');
 
 // GET - Fetch pending withdrawal requests
 router.get('/pending', async (req, res) => {
@@ -155,6 +158,29 @@ router.put('/approve', async (req, res) => {
       await wallet.save();
     }
 
+    // Send notification to rider
+    try {
+      const rider = await Rider.findById(withdrawReq.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const message = `Your withdrawal request of ₹${withdrawReq.amount} has been approved and processed successfully.`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Withdrawal Approved',
+          message
+        );
+        
+        await RiderNotification.create({
+          riderId: withdrawReq.riderId,
+          title: 'Withdrawal Approved',
+          message: message,
+          type: 'withdrawal_approved'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
+
     res.json({
       success: true,
       message: 'Withdrawal request approved successfully',
@@ -196,6 +222,29 @@ router.put('/reject', async (req, res) => {
         }
       }
     );
+
+    // Send notification to rider
+    try {
+      const rider = await Rider.findById(withdrawReq.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const message = `Your withdrawal request of ₹${withdrawReq.amount} has been rejected. ${adminNotes ? `Reason: ${adminNotes}` : 'Amount has been refunded to your wallet.'}`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Withdrawal Rejected',
+          message
+        );
+        
+        await RiderNotification.create({
+          riderId: withdrawReq.riderId,
+          title: 'Withdrawal Rejected',
+          message: message,
+          type: 'withdrawal_rejected'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
 
     res.json({
       success: true,

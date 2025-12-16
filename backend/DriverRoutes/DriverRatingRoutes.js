@@ -4,6 +4,9 @@ const Ride = require("../models/Ride");
 const Rider = require("../models/Rider");
 const router = express.Router();
 const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
+const NotificationService = require("../Services/notificationService");
+const RiderNotification = require("../models/RiderNotification");
+const Driver = require("../DriverModel/DriverModel");
 
 router.post("/", DriverAuthMiddleware, async (req, res) => {
   try {
@@ -42,6 +45,32 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
       const sumRatings = rider.ratings.ratingHistory.reduce((sum, r) => sum + r, 0);
       rider.ratings.avgRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
       await rider.save();
+    }
+
+    // Send notification to rider
+    try {
+      const driver = await Driver.findById(ride.driverId);
+      if (rider && rider.oneSignalPlayerId && driver) {
+        const driverName = driver.personalInformation?.fullName || 'Your driver';
+        const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+        const message = `${driverName} rated you ${rating}/5 stars (${stars}). ${comment ? `Comment: "${comment}"` : 'Keep up the great work!'}`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Driver Rating Received',
+          message
+        );
+        
+        await RiderNotification.create({
+          riderId: ride.riderId,
+          rideId: ride._id,
+          title: 'Driver Rating Received',
+          message: message,
+          type: 'driver_rating_received'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
     }
 
     res.json({

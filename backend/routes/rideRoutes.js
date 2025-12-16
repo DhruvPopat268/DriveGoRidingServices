@@ -32,6 +32,7 @@ const driveCarType = require('../models/VehicleCategory')
 const Category = require("../models/Category");
 const subcategory = require("../models/SubCategory");
 const subSubcategory = require("../models/SubSubCategory");
+const RiderNotification = require("../models/RiderNotification");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -1517,6 +1518,40 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to CONFIRMED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
 
+    // Send notification to rider
+    try {
+      const rider = await Rider.findById(updatedRide.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const rideDate = new Date(updatedRide.rideInfo.selectedDate);
+        const formattedDate = rideDate.toLocaleDateString('en-GB');
+        
+        // Convert 24-hour time to 12-hour format with AM/PM
+        const [hours, minutes] = updatedRide.rideInfo.selectedTime.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        const formattedTime = `${hour12}:${minutes} ${ampm}`;
+        
+        const message = `Your ride has been confirmed by ${driverName}. Ready at ${formattedDate} on ${formattedTime}`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Ride Confirmed',
+          message
+        );
+        
+        // Store notification in database
+        await RiderNotification.create({
+          riderId: updatedRide.riderId,
+          rideId: updatedRide._id,
+          title: 'Ride Confirmed',
+          message: message,
+          type: 'ride_confirmed'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
 
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');
@@ -1621,6 +1656,32 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
         success: false,
         message: "Driver not found or ride status is not CONFIRMED",
       });
+    }
+
+    // Send notification to rider
+    try {
+      const rider = await Rider.findById(updatedRide.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const driverName = driver.personalInformation?.fullName || 'Your driver';
+        const message = `${driverName} has reached your pickup location. Please come out!`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Driver Reached',
+          message
+        );
+        
+        // Store notification in database
+        await RiderNotification.create({
+          riderId: updatedRide.riderId,
+          rideId: updatedRide._id,
+          title: 'Driver Reached',
+          message: message,
+          type: 'driver_reached'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
     }
 
     res.json({
@@ -2081,7 +2142,43 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
       }
 
-
+      // Send notification to rider for full cancellation
+      try {
+        const rider = await Rider.findById(currentRide.riderId);
+        if (rider && rider.oneSignalPlayerId) {
+          const driverName = driver.personalInformation?.fullName || 'Your driver';
+          const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
+          
+          let message;
+          if (isWeeklyMonthly) {
+            const formattedDates = currentRide.rideInfo.selectedDates.map(date => {
+              const dateObj = new Date(date);
+              return dateObj.toLocaleDateString('en-GB');
+            }).join(', ');
+            message = `${driverName} cancelled your full ride for dates: ${formattedDates}. Don't worry, a new driver will be assigned shortly.`;
+          } else {
+            const rideDate = new Date(currentRide.rideInfo.selectedDate);
+            const formattedDate = rideDate.toLocaleDateString('en-GB');
+            message = `${driverName} cancelled your ride scheduled for ${formattedDate}. Don't worry, a new driver will be assigned shortly.`;
+          }
+          
+          await NotificationService.sendToUser(
+            rider.oneSignalPlayerId,
+            'Ride Cancelled',
+            message
+          );
+          
+          await RiderNotification.create({
+            riderId: currentRide.riderId,
+            rideId: currentRide._id,
+            title: 'Ride Cancelled',
+            message: message,
+            type: 'ride_cancelled'
+          });
+        }
+      } catch (notifError) {
+        console.error('Error sending rider notification:', notifError);
+      }
 
       return res.status(200).json({
         success: true,
@@ -2311,6 +2408,36 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       },
     });
 
+    // Send notification to rider for partial cancellation
+    try {
+      const rider = await Rider.findById(currentRide.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const driverName = driver.personalInformation?.fullName || 'Your driver';
+        const formattedDates = selectedDates.map(date => {
+          const dateObj = new Date(date);
+          return dateObj.toLocaleDateString('en-GB');
+        }).join(', ');
+        
+        const message = `${driverName} cancelled your ride for these dates: ${formattedDates}. Don't worry, a new driver will be assigned for those dates shortly.`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Partial Ride Cancelled',
+          message
+        );
+        
+        await RiderNotification.create({
+          riderId: currentRide.riderId,
+          rideId: currentRide._id,
+          title: 'Partial Ride Cancelled',
+          message: message,
+          type: 'partial_ride_cancelled'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
+
     return res.status(200).json({
       success: true,
       message: "Partial cancellation successful",
@@ -2393,8 +2520,29 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to EXTENDED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "EXTENDED" });
 
-
-
+    // Send notification to rider
+    try {
+      const rider = await Rider.findById(updatedRide.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const message = `${driverName} has extended your ride. You may experience additional charges based on extra time or distance.`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Ride Extended',
+          message
+        );
+        
+        await RiderNotification.create({
+          riderId: updatedRide.riderId,
+          rideId: updatedRide._id,
+          title: 'Ride Extended',
+          message: message,
+          type: 'ride_extended'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
 
     res.json({
       message: "Ride extended successfully",
@@ -2640,6 +2788,29 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           await driver.save();
         }
       }
+    }
+
+    // Send notification to rider
+    try {
+      if (rider && rider.oneSignalPlayerId) {
+        const message = `Your ride with ${driverName} has been completed successfully. Thank you for choosing our service!`;
+        
+        await NotificationService.sendToUser(
+          rider.oneSignalPlayerId,
+          'Ride Completed',
+          message
+        );
+        
+        await RiderNotification.create({
+          riderId: updatedRide.riderId,
+          rideId: updatedRide._id,
+          title: 'Ride Completed',
+          message: message,
+          type: 'ride_completed'
+        });
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
     }
 
     res.json({
