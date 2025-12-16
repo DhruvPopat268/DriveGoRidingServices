@@ -110,7 +110,6 @@ const calculateDriverRideCost = async (params) => {
 
 
   const rideCostModels = await DriverRideCost.find(rideCostQuery);
-  console.log('ride cost models', rideCostModels);
   if (rideCostModels.length === 0) throw new Error('No ride cost models found');
 
   const model = rideCostModels.find(m => m.priceCategory.toString() === selectedCategoryId);

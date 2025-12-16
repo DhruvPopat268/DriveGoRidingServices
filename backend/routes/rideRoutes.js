@@ -344,7 +344,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       selectedParcelCategoryId
     } = req.body;
 
-    console.log('/book body', req.body)
+   
 
     const { riderId, mobile } = req.rider;
 
@@ -407,13 +407,10 @@ router.post("/book", authMiddleware, async (req, res) => {
 
       if (categoryNameLower === 'driver') {
         calculatedCharges = await calculateDriverRideCost(calcParams);
-        console.log('calculatedCharges', calculatedCharges)
       } else if (categoryNameLower === 'cab') {
         calculatedCharges = await calculateCabRideCost({ ...calcParams, carCategoryId: selectedCarCategoryId });
-        console.log('calculatedCharges', calculatedCharges)
       } else if (categoryNameLower === 'parcel') {
         calculatedCharges = await calculateParcelRideCost({ ...calcParams, parcelCategoryId: selectedParcelCategoryId });
-                console.log('calculatedCharges', calculatedCharges)
       } else {
         return res.status(400).json({ message: "Invalid category" });
       }

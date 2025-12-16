@@ -10,6 +10,7 @@ const riderSchema = new mongoose.Schema(
       default: ""
     },
     email: { type: String, default: "" },
+    profilePhoto: { type: String, default: "" },
     referralCode: { type: String, unique: true },
 
     // 🔹 Referral tracking

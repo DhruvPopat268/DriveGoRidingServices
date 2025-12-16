@@ -10,6 +10,13 @@ const authMiddleware = require("../middleware/authMiddleware");
 const { createSession } = require("../Services/sessionService");
 const axios = require("axios");
 const Razorpay = require('razorpay');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -25,14 +32,28 @@ const MAX_SESSIONS = 2;
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Update rider profile data (multiple fields at once)
-router.put("/userApp/update", authMiddleware, async (req, res) => {
+router.put("/userApp/update", upload.single('profilePhoto'), authMiddleware, async (req, res) => {
   try {
     const updates = req.body; // expect full object { name, email, mobile, gender, referralCode }
 
     // console.log("Update request body:", updates);
 
+    // Handle profile photo upload
+    if (req.file) {
+      const uploadPath = path.join(__dirname, '../cloud/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      
+      const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
+      const filePath = path.join(uploadPath, uniqueName);
+      fs.writeFileSync(filePath, req.file.buffer);
+      
+      updates.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+    }
+
     // Allowed fields to protect against unwanted updates (e.g., password, _id)
-    const allowedFields = ["name", "mobile", "gender", "email"];
+    const allowedFields = ["name", "mobile", "gender", "email", "profilePhoto"];
     const invalidFields = Object.keys(updates).filter(f => !allowedFields.includes(f));
 
     if (invalidFields.length > 0) {
@@ -135,7 +156,7 @@ router.put("/userApp/update", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/create-order",authMiddleware, async (req, res) => {
+router.post("/create-order", authMiddleware, async (req, res) => {
   try {
     const { amount, currency, receipt, notes } = req.body;
 
@@ -209,8 +230,8 @@ router.get("/completeProfile", async (req, res) => {
 
 router.get("/inCompleteProfile", async (req, res) => {
   try {
-    const riders = await Rider.find({ name: "" , gender: "" }).sort({ createdAt: -1 });
-    
+    const riders = await Rider.find({ name: "", gender: "" }).sort({ createdAt: -1 });
+
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
       const wallet = await Wallet.findOne({ riderId: rider._id });
       return {
@@ -232,7 +253,7 @@ router.get("/inCompleteProfile", async (req, res) => {
 router.get("/all", async (req, res) => {
   try {
     const riders = await Rider.find({}).sort({ createdAt: -1 });
-    
+
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
       const wallet = await Wallet.findOne({ riderId: rider._id });
       return {
@@ -304,9 +325,43 @@ router.get("/find-rider", authMiddleware, async (req, res) => {
 });
 
 //update rider profile data
-router.put("/update", authMiddleware, async (req, res) => {
+router.put("/update", upload.single('profilePhoto'), authMiddleware, async (req, res) => {
   try {
     const { field, value } = req.body;
+    let updateData = {};
+
+    // Handle profile photo upload
+    if (req.file) {
+      const uploadPath = path.join(__dirname, '../cloud/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      
+      const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
+      const filePath = path.join(uploadPath, uniqueName);
+      fs.writeFileSync(filePath, req.file.buffer);
+      
+      updateData.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+    }
+
+    // If only uploading photo, skip field validation
+    if (req.file && !field) {
+      const updatedRider = await Rider.findByIdAndUpdate(
+        req.rider.riderId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      ).select("-password");
+
+      if (!updatedRider) {
+        return res.status(404).json({ success: false, message: "Rider not found" });
+      }
+
+      return res.json({
+        success: true,
+        rider: updatedRider,
+        message: "Profile photo updated successfully"
+      });
+    }
 
     // Validate field
     const allowedFields = ["name", "mobile", "gender", "email"];
@@ -320,6 +375,7 @@ router.put("/update", authMiddleware, async (req, res) => {
     }
 
     const trimmedValue = value.toString().trim();
+    updateData[field] = trimmedValue;
 
     // Field-specific validation
     if (field === 'email') {
@@ -366,10 +422,10 @@ router.put("/update", authMiddleware, async (req, res) => {
       }
     }
 
-    // Find and update
+    // Find and update using $set
     const updatedRider = await Rider.findByIdAndUpdate(
       req.rider.riderId,
-      { [field]: trimmedValue },
+      { $set: updateData },
       { new: true, runValidators: true }
     ).select("-password"); // exclude password if exists
 
@@ -693,23 +749,36 @@ router.post("/verify-otp", async (req, res) => {
 });
 */
 
-router.post("/save-profile", async (req, res) => {
+router.post("/save-profile", upload.single('profilePhoto'), authMiddleware, async (req, res) => {
   try {
-    const { mobile, name, gender, email, referralCodeUsed } = req.body;
+    const riderId = req.rider.riderId;
 
-    // console.log("Save profile request body:", req.body);
-
+    const { name, gender, email, referralCodeUsed } = req.body;
 
     if (!name || !gender) {
       return res.status(400).json({ success: false, message: "Name and gender are required" });
     }
 
-    let rider = await Rider.findOne({ mobile });
+    let rider = await Rider.findById(riderId);
     if (!rider) return res.status(404).json({ message: "Rider not found" });
 
     rider.name = name;
     rider.gender = gender;
     rider.email = email;
+
+    // Handle profile photo upload
+    if (req.file) {
+      const uploadPath = path.join(__dirname, '../cloud/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      
+      const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
+      const filePath = path.join(uploadPath, uniqueName);
+      fs.writeFileSync(filePath, req.file.buffer);
+      
+      rider.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+    }
 
     // 🔹 If referralCodeUsed is provided and rider has no referredBy yet
     if (referralCodeUsed && !rider.referredBy) {
@@ -748,15 +817,12 @@ router.post("/save-profile", async (req, res) => {
   }
 });
 
-router.post("/userApp/save-profile",authMiddleware ,  async (req, res) => {
+router.post("/userApp/save-profile", upload.single('profilePhoto'), authMiddleware, async (req, res) => {
 
   const riderId = req.rider.riderId;
 
   try {
     const { name, gender, email, referralCodeUsed } = req.body;
-
-    // console.log("Save profile request body:", req.body);
-
 
     if (!name || !gender) {
       return res.status(400).json({ success: false, message: "Name and gender are required" });
@@ -768,6 +834,20 @@ router.post("/userApp/save-profile",authMiddleware ,  async (req, res) => {
     rider.name = name;
     rider.gender = gender;
     rider.email = email;
+
+    // Handle profile photo upload
+    if (req.file) {
+      const uploadPath = path.join(__dirname, '../cloud/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      
+      const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
+      const filePath = path.join(uploadPath, uniqueName);
+      fs.writeFileSync(filePath, req.file.buffer);
+      
+      rider.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+    }
 
     // 🔹 If referralCodeUsed is provided and rider has no referredBy yet
     if (referralCodeUsed && !rider.referredBy) {
