@@ -221,7 +221,7 @@ router.get('/history', authMiddleware, async (req, res) => {
       }));
 
     res.json({
-      payments: formattedPayments,
+      transactions: formattedPayments,
       totalItems: formattedPayments.length,
       balance: wallet.balance, // Amount in rupees
       totalDeposited: wallet.totalDeposited, // Amount in rupees
