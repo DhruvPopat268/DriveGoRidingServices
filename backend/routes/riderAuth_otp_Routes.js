@@ -932,6 +932,11 @@ router.get("/rider-info", authMiddleware, async (req, res) => {
     const minDepositAmount = config?.minDepositAmount || 0;
     const minWithdrawAmount = config?.minWithdrawAmount || 0;
     
+    // Get notification counts
+    const RiderNotification = require('../models/RiderNotification');
+    const totalNotifications = await RiderNotification.countDocuments({ riderId });
+    const unreadCount = await RiderNotification.countDocuments({ riderId, isRead: false });
+    
     const isNew = !rider.name || !rider.gender;
     
     res.json({
@@ -939,6 +944,8 @@ router.get("/rider-info", authMiddleware, async (req, res) => {
       isNew,
       minDepositAmount,
       minWithdrawAmount,
+      totalNotifications,
+      unreadCount,
       rider: {
         _id: rider._id,
         mobile: rider.mobile,
