@@ -43,7 +43,7 @@ router.put("/userApp/update", upload.single('profilePhoto'), authMiddleware, asy
 
     // console.log("Update request body:", updates);
 
-    // Handle profile photo upload
+    // Handle profile photo upload (file)
     if (req.file) {
       const uploadPath = path.join(__dirname, '../cloud/images');
       if (!fs.existsSync(uploadPath)) {
@@ -55,6 +55,27 @@ router.put("/userApp/update", upload.single('profilePhoto'), authMiddleware, asy
       fs.writeFileSync(filePath, req.file.buffer);
       
       updates.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+    }
+
+    // Handle base64 profile photo
+    if (updates.profilePhoto && updates.profilePhoto.startsWith('data:image/')) {
+      try {
+        const base64Data = updates.profilePhoto.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        const uploadPath = path.join(__dirname, '../cloud/images');
+        if (!fs.existsSync(uploadPath)) {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        
+        const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + '.webp';
+        const filePath = path.join(uploadPath, uniqueName);
+        fs.writeFileSync(filePath, buffer);
+        
+        updates.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+      } catch (error) {
+        return res.status(400).json({ success: false, message: "Invalid base64 image data" });
+      }
     }
 
     // Allowed fields to protect against unwanted updates (e.g., password, _id)
@@ -888,6 +909,42 @@ router.post("/userApp/save-profile", upload.single('profilePhoto'), authMiddlewa
   } catch (error) {
     console.error("Save profile error:", error);
     res.status(500).json({ success: false, message: "Failed to save profile" });
+  }
+});
+
+router.get("/rider-info", authMiddleware, async (req, res) => {
+  try {
+    const riderId = req.rider.riderId;
+    
+    const rider = await Rider.findById(riderId);
+    if (!rider) return res.status(404).json({ message: "Rider not found" });
+    
+    // Get wallet configuration amounts
+    const RiderWalletConfig = require('../models/RiderWalletConfig');
+    const config = await RiderWalletConfig.findOne().sort({ createdAt: -1 });
+    const minDepositAmount = config?.minDepositAmount || 0;
+    const minWithdrawAmount = config?.minWithdrawAmount || 0;
+    
+    const isNew = !rider.name || !rider.gender;
+    
+    res.json({
+      success: true,
+      isNew,
+      minDepositAmount,
+      minWithdrawAmount,
+      rider: {
+        _id: rider._id,
+        mobile: rider.mobile,
+        name: rider.name,
+        gender: rider.gender,
+        email: rider.email,
+        profilePhoto: rider.profilePhoto,
+        referralCode: rider.referralCode
+      }
+    });
+  } catch (error) {
+    console.error("Get rider info error:", error);
+    res.status(500).json({ success: false, message: "Failed to get rider info" });
   }
 });
 

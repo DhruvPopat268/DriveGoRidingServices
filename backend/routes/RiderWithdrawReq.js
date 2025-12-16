@@ -54,6 +54,17 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Amount, payment method, and payment detail ID are required' });
     }
 
+    // Check minimum withdrawal amount
+    const RiderWalletConfig = require('../models/RiderWalletConfig');
+    const config = await RiderWalletConfig.findOne().sort({ createdAt: -1 });
+    const minWithdrawAmount = config?.minWithdrawAmount || 0;
+    
+    if (amount < minWithdrawAmount) {
+      return res.status(400).json({ 
+        message: `Minimum withdrawal amount is ₹${minWithdrawAmount}` 
+      });
+    }
+
     let selectedPaymentDetails;
 
     // Validate and fetch selected payment details

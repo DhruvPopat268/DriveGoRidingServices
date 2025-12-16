@@ -178,7 +178,7 @@ const menuItems = [
       { icon: Clock, label: "Pending Withdrawal Requests", key: "rider-pending-withdrawals" },
       { icon: CheckCircle, label: "Approved Withdrawal Requests", key: "rider-approved-withdrawals" },
       { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rider-rejected-withdrawals" },
-
+      { icon: Wallet, label: "Rider Wallet Config", key: "rider-wallet-config" }
     ]
   },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },

@@ -78,6 +78,7 @@ import RejectedVehiclesPage from "@/components/admin/pages/RejectedVehiclesPage"
 import RiderPendingWithdrawalPage from "@/components/admin/pages/RiderPendingWithdrawalPage";
 import RiderApprovedWithdrawalPage from "@/components/admin/pages/RiderApprovedWithdrawalPage";
 import RiderRejectedWithdrawalPage from "@/components/admin/pages/RiderRejectedWithdrawalPage";
+import RiderWalletConfigPage from "@/components/admin/pages/RiderWalletConfigPage";
 import axios from "axios";
 
 const Index = () => {
@@ -449,6 +450,8 @@ const Index = () => {
         return <RiderApprovedWithdrawalPage />;
       case "rider-rejected-withdrawals":
         return <RiderRejectedWithdrawalPage />;
+      case "rider-wallet-config":
+        return <RiderWalletConfigPage />;
 
       case "category-assignment":
         return categoryAssignment ? (

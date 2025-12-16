@@ -142,6 +142,7 @@ app.use('/api/driver', require('./DriverRoutes/DriverRoute'));
 app.use('/api/driver/vehicles', require('./DriverRoutes/vehicleRoutes'));
 app.use('/api/rider/bank-card', require('./routes/RiderBankCard'));
 app.use('/api/rider/withdraw', require('./routes/RiderWithdrawReq'));
+app.use('/api/rider/wallet-config', require('./routes/riderWalletConfigRoute'));
 
 // Global object to store online drivers
 const onlineDrivers = {};
