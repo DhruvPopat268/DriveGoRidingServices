@@ -212,8 +212,27 @@ io.on('connection', (socket) => {
 
               // Check driver eligibility based on category
               if (categoryNameLower === 'driver') {
-                driverMatches = driver.driverCategory?.toString() === selectedCategoryId?.toString();
-                //console.log(`🚗 Driver category match:`, driverMatches);
+                // Basic category match
+                let categoryMatch = driver.driverCategory?.toString() === selectedCategoryId?.toString();
+                
+                // Additional vehicle type validations
+                let vehicleTypeMatch = true;
+                let canDriveMatch = true;
+                
+                if (ride.rideInfo.carTypeId && driver.drivingDetails?.canDrive) {
+                  canDriveMatch = driver.drivingDetails.canDrive.some(carType => 
+                    carType.toString() === ride.rideInfo.carTypeId.toString()
+                  );
+                }
+                
+                if (ride.rideInfo.transmissionTypeId && driver.drivingDetails?.vehicleType) {
+                  vehicleTypeMatch = driver.drivingDetails.vehicleType.some(vType => 
+                    vType.toString() === ride.rideInfo.transmissionTypeId.toString()
+                  );
+                }
+                
+                driverMatches = categoryMatch && vehicleTypeMatch && canDriveMatch;
+                //console.log(`🚗 Driver category match:`, { categoryMatch, vehicleTypeMatch, canDriveMatch, driverMatches });
               } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
                 const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
                 

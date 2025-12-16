@@ -619,15 +619,25 @@ router.post("/book", authMiddleware, async (req, res) => {
       const categoryNameLower = categoryName.toLowerCase();
 
       if (categoryNameLower === 'driver') {
-        // For driver category, use driverCategory field
-        waitingDrivers = await Driver.find({
+        // For driver category, use driverCategory field with vehicle type validation
+        const driverQuery = {
           rideStatus: 'WAITING',
           isOnline: true,
           status: 'Approved',
           'personalInformation.category': categoryId,
           'personalInformation.subCategory': { $in: [subcategoryId] },
           driverCategory: selectedCategoryId
-        }).select('_id');
+        };
+        
+        // Add vehicle type validations if carTypeId and transmissionTypeId exist
+        if (carTypeId) {
+          driverQuery['drivingDetails.canDrive'] = { $in: [carTypeId] };
+        }
+        if (transmissionTypeId) {
+          driverQuery['drivingDetails.vehicleType'] = { $in: [transmissionTypeId] };
+        }
+        
+        waitingDrivers = await Driver.find(driverQuery).select('_id');
       } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
         // For cab and parcel, find vehicles with matching modelType and get assignedTo drivers
         const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
@@ -1980,14 +1990,24 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
 
         if (categoryNameLower === 'driver') {
-          waitingDrivers = await Driver.find({
+          const driverQuery = {
             rideStatus: 'WAITING',
             isOnline: true,
             status: 'Approved',
             'personalInformation.category': currentRide.rideInfo.categoryId,
             'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
             driverCategory: currentRide.rideInfo.selectedCategoryId
-          }).select('_id');
+          };
+          
+          // Add vehicle type validations if carTypeId and transmissionTypeId exist
+          if (currentRide.rideInfo.carTypeId) {
+            driverQuery['drivingDetails.canDrive'] = { $in: [currentRide.rideInfo.carTypeId] };
+          }
+          if (currentRide.rideInfo.transmissionTypeId) {
+            driverQuery['drivingDetails.vehicleType'] = { $in: [currentRide.rideInfo.transmissionTypeId] };
+          }
+          
+          waitingDrivers = await Driver.find(driverQuery).select('_id');
         } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
           const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
 
@@ -2183,14 +2203,24 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
 
       if (categoryNameLower === 'driver') {
-        waitingDrivers = await Driver.find({
+        const driverQuery = {
           rideStatus: 'WAITING',
           isOnline: true,
           status: 'Approved',
           'personalInformation.category': currentRide.rideInfo.categoryId,
           'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
           driverCategory: currentRide.rideInfo.selectedCategoryId
-        }).select('_id');
+        };
+        
+        // Add vehicle type validations if carTypeId and transmissionTypeId exist
+        if (currentRide.rideInfo.carTypeId) {
+          driverQuery['drivingDetails.canDrive'] = { $in: [currentRide.rideInfo.carTypeId] };
+        }
+        if (currentRide.rideInfo.transmissionTypeId) {
+          driverQuery['drivingDetails.vehicleType'] = { $in: [currentRide.rideInfo.transmissionTypeId] };
+        }
+        
+        waitingDrivers = await Driver.find(driverQuery).select('_id');
       } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
         const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
 

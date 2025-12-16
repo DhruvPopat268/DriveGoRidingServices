@@ -42,8 +42,8 @@ const driverSchema = new mongoose.Schema(
     drivingDetails: {
       drivingExperienceYears: { type: Number },
       licenseType: { type: String, enum: ["LMV", "HMV", "Commercial", "Others"] },
-      vehicleType: [{ type: String, enum: ["Manual", "Automatic", "Electric"] }],
-      canDrive: [{ type: String }], // Hatchback, Sedan, SUV, Luxury Cars
+      vehicleType: [{ type: mongoose.Schema.Types.ObjectId, ref: 'DriverVehicleType' }],
+      canDrive: [{ type: mongoose.Schema.Types.ObjectId, ref: 'VehicleCategory' }], 
       preferredWork: { type: String, enum: ["Full-Time", "Part-Time", "Guest/On-Call"] }
     },
 
