@@ -5,6 +5,7 @@ const RiderNotification = require('../models/RiderNotification');
 class NotificationService {
   // Send notification to specific user by player ID
   static async sendToUser(playerId, title, message, data = {}) {
+    console.log('🔔 sendToUser called:', { playerId, title, message, data });
     try {
       const notification = {
         contents: { en: message },
@@ -15,19 +16,22 @@ class NotificationService {
         mutable_content: true
       };
 
+      console.log('📤 Sending OneSignal notification:', notification);
       const response = await client.createNotification(notification);
+      console.log('✅ OneSignal response:', response);
       return { success: true, response };
     } catch (error) {
-      console.error('OneSignal notification error:', error);
+      console.error('❌ OneSignal notification error:', error);
       return { success: false, error: error.message };
     }
   }
 
   // Send notification to multiple users
   static async sendToMultipleUsers(playerIds, title, message, data = {}) {
+    console.log('🔔 sendToMultipleUsers called:', { playerIds, title, message, data });
     try {
       // Encode data in message for free OneSignal accounts
-      const encodedMessage = data && Object.keys(data).length > 0 
+      const encodedMessage = data && Object.keys(data).length > 0
         ? `${message}|DATA:${JSON.stringify(data)}`
         : message;
 
@@ -37,12 +41,12 @@ class NotificationService {
         include_player_ids: playerIds
       };
 
-     
-
+      console.log('📤 Sending OneSignal notification to multiple users:', notification);
       const response = await client.createNotification(notification);
+      console.log('✅ OneSignal response:', response);
       return { success: true, response };
     } catch (error) {
-      console.error('OneSignal notification error:', error);
+      console.error('❌ OneSignal notification error:', error);
       return { success: false, error: error.message };
     }
   }
@@ -133,66 +137,84 @@ class NotificationService {
 
   // Store notification in database for driver
   static async storeDriverNotification(driverId, title, message, type, data = {}) {
+    console.log('💾 Storing driver notification:', { driverId, title, message, type, data });
     try {
-      await DriverNotification.create({
+      const notification = await DriverNotification.create({
         driverId,
         title,
         message,
         type,
         data
       });
+      console.log('✅ Driver notification stored with ID:', notification._id);
     } catch (error) {
-      console.error('Error storing driver notification:', error);
+      console.error('❌ Error storing driver notification:', error);
     }
   }
 
   // Send notification to driver and store in database
   static async sendAndStoreDriverNotification(driverId, playerId, title, message, type, data = {}) {
+    console.log('🚗 sendAndStoreDriverNotification called:', { driverId, playerId, title, message, type, data });
     try {
       // Send push notification if playerId exists
       if (playerId) {
-        await this.sendToUser(playerId, title, message, { type, ...data });
+        console.log('📱 Sending push notification to driver...');
+        const result = await this.sendToUser(playerId, title, message, { type, ...data });
+        console.log('📱 Driver push notification result:', result);
+      } else {
+        console.log('⚠️ No playerId provided for driver notification');
       }
-      
+
       // Store in database
+      console.log('💾 Storing driver notification in database...');
       await this.storeDriverNotification(driverId, title, message, type, data);
-      
+      console.log('✅ Driver notification stored successfully');
+
       return { success: true };
     } catch (error) {
-      console.error('Error sending and storing driver notification:', error);
+      console.error('❌ Error sending and storing driver notification:', error);
       return { success: false, error: error.message };
     }
   }
 
   // Store notification in database for rider
   static async storeRiderNotification(riderId, title, message, type, data = {}) {
+    console.log('💾 Storing rider notification:', { riderId, title, message, type, data });
     try {
-      await RiderNotification.create({
+      const notification = await RiderNotification.create({
         riderId,
         title,
         message,
         type,
         data
       });
+      console.log('✅ Rider notification stored with ID:', notification._id);
     } catch (error) {
-      console.error('Error storing rider notification:', error);
+      console.error('❌ Error storing rider notification:', error);
     }
   }
 
   // Send notification to rider and store in database
   static async sendAndStoreRiderNotification(riderId, playerId, title, message, type, data = {}) {
+    console.log('🏍️ sendAndStoreRiderNotification called:', { riderId, playerId, title, message, type, data });
     try {
       // Send push notification if playerId exists
       if (playerId) {
-        await this.sendToUser(playerId, title, message, { type, ...data });
+        console.log('📱 Sending push notification to rider...');
+        const result = await this.sendToUser(playerId, title, message, { type, ...data });
+        console.log('📱 Rider push notification result:', result);
+      } else {
+        console.log('⚠️ No playerId provided for rider notification');
       }
-      
+
       // Store in database
+      console.log('💾 Storing rider notification in database...');
       await this.storeRiderNotification(riderId, title, message, type, data);
-      
+      console.log('✅ Rider notification stored successfully');
+
       return { success: true };
     } catch (error) {
-      console.error('Error sending and storing rider notification:', error);
+      console.error('❌ Error sending and storing rider notification:', error);
       return { success: false, error: error.message };
     }
   }

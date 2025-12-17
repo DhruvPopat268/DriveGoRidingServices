@@ -61,6 +61,7 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
           message
         );
         
+        
         await RiderNotification.create({
           riderId: ride.riderId,
           rideId: ride._id,
