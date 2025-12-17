@@ -17,7 +17,7 @@ const AuthMiddleware = require("../middleware/authMiddleware");
 
 // Configure multer for memory storage with file size limit
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
   storage,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
@@ -45,11 +45,11 @@ router.put("/userApp/update", upload.single('profilePhoto'), authMiddleware, asy
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true });
       }
-      
+
       const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
       const filePath = path.join(uploadPath, uniqueName);
       fs.writeFileSync(filePath, req.file.buffer);
-      
+
       updates.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
     }
 
@@ -58,16 +58,16 @@ router.put("/userApp/update", upload.single('profilePhoto'), authMiddleware, asy
       try {
         const base64Data = updates.profilePhoto.replace(/^data:image\/\w+;base64,/, '');
         const buffer = Buffer.from(base64Data, 'base64');
-        
+
         const uploadPath = path.join(__dirname, '../cloud/images');
         if (!fs.existsSync(uploadPath)) {
           fs.mkdirSync(uploadPath, { recursive: true });
         }
-        
+
         const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + '.webp';
         const filePath = path.join(uploadPath, uniqueName);
         fs.writeFileSync(filePath, buffer);
-        
+
         updates.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
       } catch (error) {
         return res.status(400).json({ success: false, message: "Invalid base64 image data" });
@@ -358,11 +358,11 @@ router.put("/update", upload.single('profilePhoto'), authMiddleware, async (req,
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true });
       }
-      
+
       const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
       const filePath = path.join(uploadPath, uniqueName);
       fs.writeFileSync(filePath, req.file.buffer);
-      
+
       updateData.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
     }
 
@@ -562,12 +562,14 @@ router.post("/send-otp", async (req, res) => {
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
+    let rider = await Rider.findOne({ mobile });
+    if (rider && rider.status === "deleted") {
+      return res.status(400).json({ message: "Rider is already deleted" });
+    }
     if (!rider) {
       rider = new Rider({ mobile });
       await rider.save();
     }
-
     // Save OTP session
     const otpSession = new OtpSession({
       rider: rider._id,
@@ -669,6 +671,9 @@ router.post("/send-otp", async (req, res) => {
 
     // ✅ Ensure rider exists
     let rider = await Rider.findOne({ mobile: mobileStr });
+        if(rider && rider.status === "deleted") {
+      return res.status(400).json({ message: "Rider is already deleted" });
+    }
     if (!rider) {
       rider = new Rider({ mobile: mobileStr });
       await rider.save();
@@ -843,11 +848,11 @@ router.post("/save-profile", upload.single('profilePhoto'), authMiddleware, asyn
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true });
       }
-      
+
       const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
       const filePath = path.join(uploadPath, uniqueName);
       fs.writeFileSync(filePath, req.file.buffer);
-      
+
       rider.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
     }
 
@@ -912,11 +917,11 @@ router.post("/userApp/save-profile", upload.single('profilePhoto'), authMiddlewa
       if (!fs.existsSync(uploadPath)) {
         fs.mkdirSync(uploadPath, { recursive: true });
       }
-      
+
       const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname || '.jpg');
       const filePath = path.join(uploadPath, uniqueName);
       fs.writeFileSync(filePath, req.file.buffer);
-      
+
       rider.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
     }
 
@@ -960,23 +965,23 @@ router.post("/userApp/save-profile", upload.single('profilePhoto'), authMiddlewa
 router.get("/rider-info", authMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
-    
+
     const rider = await Rider.findById(riderId);
     if (!rider) return res.status(404).json({ message: "Rider not found" });
-    
+
     // Get wallet configuration amounts
     const RiderWalletConfig = require('../models/RiderWalletConfig');
     const config = await RiderWalletConfig.findOne().sort({ createdAt: -1 });
     const minDepositAmount = config?.minDepositAmount || 0;
     const minWithdrawAmount = config?.minWithdrawAmount || 0;
-    
+
     // Get notification counts
     const RiderNotification = require('../models/RiderNotification');
     const totalNotifications = await RiderNotification.countDocuments({ riderId });
     const unreadCount = await RiderNotification.countDocuments({ riderId, isRead: false });
-    
+
     const isNew = !rider.name || !rider.gender;
-    
+
     res.json({
       success: true,
       isNew,
