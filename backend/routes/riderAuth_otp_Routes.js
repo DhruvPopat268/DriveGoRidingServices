@@ -13,6 +13,7 @@ const Razorpay = require('razorpay');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
 
 // Configure multer for memory storage with file size limit
 const storage = multer.memoryStorage();
@@ -498,6 +499,37 @@ router.post("/delete-rider", async (req, res) => {
     // Soft delete by updating status to 'deleted'
     const deletedRider = await Rider.findOneAndUpdate(
       { mobile, status: { $ne: "deleted" } },
+      { status: "deleted" },
+      { new: true }
+    );
+
+    if (!deletedRider) {
+      return res.status(404).json({ success: false, message: "Rider not found or already deleted" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Rider deleted successfully",
+      deletedRider,
+    });
+  } catch (error) {
+    console.error("Error deleting rider:", error.message);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+//delete rider 
+router.post("/delete-rider", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const riderId = req.rider.riderId;
+
+    if (!riderId) {
+      return res.status(400).json({ success: false, message: "Mobile is required" });
+    }
+
+    // Soft delete by updating status to 'deleted'
+    const deletedRider = await Rider.findOneAndUpdate(
+      { _id: riderId, status: { $ne: "deleted" } },
       { status: "deleted" },
       { new: true }
     );
