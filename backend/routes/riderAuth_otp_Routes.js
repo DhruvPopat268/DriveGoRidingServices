@@ -519,7 +519,7 @@ router.post("/delete-rider", async (req, res) => {
 });
 
 //delete rider 
-router.post("/userApp/delete-rider", DriverAuthMiddleware, async (req, res) => {
+router.delete("/userApp/delete-rider", DriverAuthMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
 
