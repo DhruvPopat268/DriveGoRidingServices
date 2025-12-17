@@ -19,15 +19,15 @@ const riderNotificationSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-      'ride_request',
-      'ride_accepted',
-      'driver_arrived',
-      'trip_started',
-      'trip_completed',
+      'ride_confirmed',
+      'driver_reached',
       'ride_cancelled',
+      'partial_ride_cancelled',
+      'ride_extended',
+      'ride_completed',
       'rating_received',
-      'wallet_credited',
-      'referral_bonus'
+      'withdrawal_approved',
+      'withdrawal_rejected'
     ]
   },
   data: {
