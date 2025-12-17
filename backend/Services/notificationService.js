@@ -19,6 +19,13 @@ class NotificationService {
       console.log('📤 Sending OneSignal notification:', notification);
       const response = await client.createNotification(notification);
       console.log('✅ OneSignal response:', response);
+      
+      // Check for subscription errors
+      if (response.body && response.body.errors && response.body.errors.includes('All included players are not subscribed')) {
+        console.log('⚠️ Player not subscribed:', playerId);
+        return { success: false, error: 'Player not subscribed', playerId };
+      }
+      
       return { success: true, response };
     } catch (error) {
       console.error('❌ OneSignal notification error:', error);
