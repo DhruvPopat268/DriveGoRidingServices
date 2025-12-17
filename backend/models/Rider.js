@@ -13,6 +13,11 @@ const riderSchema = new mongoose.Schema(
     profilePhoto: { type: String, default: "" },
     oneSignalPlayerId: { type: String, default: "" },
     referralCode: { type: String, unique: true },
+    status: { 
+      type: String, 
+      enum: ["active", "inactive", "deleted"], 
+      default: "active" 
+    },
 
     // 🔹 Referral tracking
     referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "Rider", default: null },

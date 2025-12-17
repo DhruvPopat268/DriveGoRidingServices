@@ -408,7 +408,8 @@ router.put("/update", upload.single('profilePhoto'), authMiddleware, async (req,
       // Check if email already exists
       const existingEmail = await Rider.findOne({
         email: trimmedValue,
-        _id: { $ne: req.rider.riderId }
+        _id: { $ne: req.rider.riderId },
+        status: { $ne: "deleted" }
       });
       if (existingEmail) {
         return res.status(400).json({ success: false, message: "Email already in use" });
@@ -424,7 +425,8 @@ router.put("/update", upload.single('profilePhoto'), authMiddleware, async (req,
       // Check if mobile already exists
       const existingMobile = await Rider.findOne({
         mobile: trimmedValue,
-        _id: { $ne: req.rider.riderId }
+        _id: { $ne: req.rider.riderId },
+        status: { $ne: "deleted" }
       });
       if (existingMobile) {
         return res.status(400).json({ success: false, message: "Mobile number already in use" });
@@ -493,11 +495,15 @@ router.post("/delete-rider", async (req, res) => {
       return res.status(400).json({ success: false, message: "Mobile is required" });
     }
 
-    // Find and delete
-    const deletedRider = await Rider.findOneAndDelete({ mobile });
+    // Soft delete by updating status to 'deleted'
+    const deletedRider = await Rider.findOneAndUpdate(
+      { mobile, status: { $ne: "deleted" } },
+      { status: "deleted" },
+      { new: true }
+    );
 
     if (!deletedRider) {
-      return res.status(404).json({ success: false, message: "Rider not found" });
+      return res.status(404).json({ success: false, message: "Rider not found or already deleted" });
     }
 
     res.status(200).json({
@@ -524,7 +530,7 @@ router.post("/send-otp", async (req, res) => {
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
     // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile });
+    let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
     if (!rider) {
       rider = new Rider({ mobile });
       await rider.save();
@@ -570,7 +576,7 @@ router.post("/verify-otp", async (req, res) => {
     );
 
     // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile });
+    let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
     if (!rider) {
       rider = new Rider({ mobile });
       await rider.save();
