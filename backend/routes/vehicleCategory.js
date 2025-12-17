@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const VehicleCategory = require('../models/VehicleCategory');
+const DriverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 
 // GET all
 router.get('/', async (req, res) => {
@@ -17,6 +18,16 @@ router.get('/active', async (req, res) => {
 
 // POST get by DriverVehicleType ID
 router.post('/by-type', async (req, res) => {
+  try {
+    const { driverVehicleTypeId } = req.body;
+    const categories = await VehicleCategory.find({ DriveVehicleType: driverVehicleTypeId , status: true }).populate('DriveVehicleType');
+    res.json({ success: true, data: categories });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/userApp/by-type',DriverAuthMiddleware, async (req, res) => {
   try {
     const { driverVehicleTypeId } = req.body;
     const categories = await VehicleCategory.find({ DriveVehicleType: driverVehicleTypeId , status: true }).populate('DriveVehicleType');

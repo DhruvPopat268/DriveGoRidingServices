@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const DriverVehicleType = require('../models/DriverVehicleType');
 const VehicleCategory = require('../models/VehicleCategory');
+const DriverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 
 router.get('/', async (req, res) => {
   const types = await DriverVehicleType.find();
@@ -9,6 +10,11 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/active', async (req, res) => {
+  const types = await DriverVehicleType.find({ status: true });
+  res.json({ success: true, data: types });
+});
+
+router.get('/userApp/active', DriverAuthMiddleware, async (req, res) => {
   const types = await DriverVehicleType.find({ status: true });
   res.json({ success: true, data: types });
 });
