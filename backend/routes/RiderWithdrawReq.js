@@ -174,6 +174,7 @@ router.put('/approve', async (req, res) => {
           riderId: withdrawReq.riderId,
           title: 'Withdrawal Approved',
           message: message,
+          categoryId: null,
           type: 'withdrawal_approved'
         });
       }
@@ -239,6 +240,7 @@ router.put('/reject', async (req, res) => {
           riderId: withdrawReq.riderId,
           title: 'Withdrawal Rejected',
           message: message,
+          categoryId: null,
           type: 'withdrawal_rejected'
         });
       }

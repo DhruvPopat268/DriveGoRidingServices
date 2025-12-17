@@ -14,6 +14,7 @@ router.get('/', DriverAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const notifications = await DriverNotification.find({ driverId })
+      .populate('categoryId', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -82,6 +83,7 @@ router.get('/rider', authMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const notifications = await RiderNotification.find({ riderId })
+      .populate('categoryId', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

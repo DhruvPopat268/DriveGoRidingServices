@@ -67,6 +67,7 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
           rideId: ride._id,
           title: 'Driver Rating Received',
           message: message,
+          categoryId: ride.rideInfo?.categoryId || null,
           type: 'driver_rating_received'
         });
       }

@@ -51,7 +51,8 @@ router.post("/", async (req, res) => {
           'New Rating Received',
           'The customer rated your ride. Tap to view details',
           'rating_received',
-          { rideId, rating }
+          { rideId, rating },
+          ride.rideInfo?.categoryId || null
         );
       } catch (notifError) {
         console.error('Rating notification error:', notifError);

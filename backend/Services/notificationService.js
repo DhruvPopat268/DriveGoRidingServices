@@ -143,11 +143,12 @@ class NotificationService {
   }
 
   // Store notification in database for driver
-  static async storeDriverNotification(driverId, title, message, type, data = {}) {
-    console.log('💾 Storing driver notification:', { driverId, title, message, type, data });
+  static async storeDriverNotification(driverId, title, message, type, data = {}, categoryId = null) {
+    console.log('💾 Storing driver notification:', { driverId, title, message, type, data, categoryId });
     try {
       const notification = await DriverNotification.create({
         driverId,
+        categoryId,
         title,
         message,
         type,
@@ -160,8 +161,8 @@ class NotificationService {
   }
 
   // Send notification to driver and store in database
-  static async sendAndStoreDriverNotification(driverId, playerId, title, message, type, data = {}) {
-    console.log('🚗 sendAndStoreDriverNotification called:', { driverId, playerId, title, message, type, data });
+  static async sendAndStoreDriverNotification(driverId, playerId, title, message, type, data = {}, categoryId = null) {
+    console.log('🚗 sendAndStoreDriverNotification called:', { driverId, playerId, title, message, type, data, categoryId });
     try {
       // Send push notification if playerId exists
       if (playerId) {
@@ -174,7 +175,7 @@ class NotificationService {
 
       // Store in database
       console.log('💾 Storing driver notification in database...');
-      await this.storeDriverNotification(driverId, title, message, type, data);
+      await this.storeDriverNotification(driverId, title, message, type, data, categoryId);
       console.log('✅ Driver notification stored successfully');
 
       return { success: true };
@@ -185,13 +186,14 @@ class NotificationService {
   }
 
   // Store notification in database for rider
-  static async storeRiderNotification(riderId, title, message, type, data = {}) {
-    console.log('💾 Storing rider notification:', { riderId, title, message, type, data });
+  static async storeRiderNotification(riderId, title, message, type, data = {}, categoryId = null) {
+    console.log('💾 Storing rider notification:', { riderId, title, message, type, data, categoryId });
     try {
       const notification = await RiderNotification.create({
         riderId,
         title,
         message,
+        categoryId,
         type,
         data
       });
@@ -202,8 +204,8 @@ class NotificationService {
   }
 
   // Send notification to rider and store in database
-  static async sendAndStoreRiderNotification(riderId, playerId, title, message, type, data = {}) {
-    console.log('🏍️ sendAndStoreRiderNotification called:', { riderId, playerId, title, message, type, data });
+  static async sendAndStoreRiderNotification(riderId, playerId, title, message, type, data = {}, categoryId = null) {
+    console.log('🏍️ sendAndStoreRiderNotification called:', { riderId, playerId, title, message, type, data, categoryId });
     try {
       // Send push notification if playerId exists
       if (playerId) {
@@ -216,7 +218,7 @@ class NotificationService {
 
       // Store in database
       console.log('💾 Storing rider notification in database...');
-      await this.storeRiderNotification(riderId, title, message, type, data);
+      await this.storeRiderNotification(riderId, title, message, type, data, categoryId);
       console.log('✅ Rider notification stored successfully');
 
       return { success: true };
