@@ -1539,6 +1539,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
           'Ride Confirmed',
           message
         );
+        console.log('Rider notification sent for ride confirmation',rider.oneSignalPlayerId);
         
         // Store notification in database
         await RiderNotification.create({
