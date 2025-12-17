@@ -564,7 +564,7 @@ router.post("/send-otp", async (req, res) => {
     // Ensure Rider exists
     let rider = await Rider.findOne({ mobile });
     if (rider && rider.status === "deleted") {
-      return res.status(400).json({ message: "Rider is already deleted" });
+      return res.status(400).json({ success:false , message: "Rider is already deleted" });
     }
     if (!rider) {
       rider = new Rider({ mobile });
@@ -672,7 +672,7 @@ router.post("/send-otp", async (req, res) => {
     // ✅ Ensure rider exists
     let rider = await Rider.findOne({ mobile: mobileStr });
         if(rider && rider.status === "deleted") {
-      return res.status(400).json({ message: "Rider is already deleted" });
+      return res.status(400).json({ success:false , message: "Rider is already deleted" });
     }
     if (!rider) {
       rider = new Rider({ mobile: mobileStr });
