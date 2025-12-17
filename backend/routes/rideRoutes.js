@@ -1547,6 +1547,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
           rideId: updatedRide._id,
           title: 'Ride Confirmed',
           message: message,
+          categoryId: updatedRide.rideInfo?.categoryId || null,
           type: 'ride_confirmed'
         });
       }
@@ -1678,6 +1679,7 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
           rideId: updatedRide._id,
           title: 'Driver Reached',
           message: message,
+          categoryId: updatedRide.rideInfo?.categoryId || null,
           type: 'driver_reached'
         });
       }
@@ -2174,6 +2176,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             rideId: currentRide._id,
             title: 'Ride Cancelled',
             message: message,
+            categoryId: currentRide.rideInfo?.categoryId || null,
             type: 'ride_cancelled'
           });
         }
