@@ -13,7 +13,7 @@ const Razorpay = require('razorpay');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
+const AuthMiddleware = require("../middleware/authMiddleware");
 
 // Configure multer for memory storage with file size limit
 const storage = multer.memoryStorage();
@@ -519,7 +519,7 @@ router.post("/delete-rider", async (req, res) => {
 });
 
 //delete rider 
-router.delete("/userApp/delete-rider", DriverAuthMiddleware, async (req, res) => {
+router.delete("/userApp/delete-rider", AuthMiddleware, async (req, res) => {
   try {
     const riderId = req.rider.riderId;
 
