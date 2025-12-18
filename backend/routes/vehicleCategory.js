@@ -27,6 +27,11 @@ router.post('/by-type', async (req, res) => {
   }
 });
 
+router.get('/active',DriverAuthMiddleware, async (req, res) => {
+  const categories = await VehicleCategory.find({ status: true }).populate('DriveVehicleType');
+  res.json({ success: true, data: categories });
+});
+
 router.post('/userApp/by-type',DriverAuthMiddleware, async (req, res) => {
   try {
     const { driverVehicleTypeId } = req.body;
