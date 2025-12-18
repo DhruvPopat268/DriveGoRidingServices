@@ -1,9 +1,9 @@
 function getRequiredFields(sectionName, category) {
   const schemas = {
-    PersonalInformation: ['fullName', 'dateOfBirth', 'gender', 'alternateNumber', 'email', 'currentAddress', 'permanentAddress', 'category', 'subCategory', 'aadhar', 'panCard', 'drivingLicense', 'passportPhoto'],
+    PersonalInformation: ['fullName', 'dateOfBirth', 'gender', 'email', 'currentAddress', 'permanentAddress', 'category', 'subCategory', 'aadhar', 'panCard', 'drivingLicense', 'passportPhoto'],
     Ownership: ['ownership'],
     DrivingDetails: category === 'Driver' ? ['drivingExperienceYears', 'licenseType', 'vehicleType', 'canDrive', 'preferredWork'] : ['drivingExperienceYears', 'licenseType', 'preferredWork'],
-    PaymentAndSubscription: ['preferredPaymentCycle', 'bankAccountHolderName', 'bankName', 'accountNumber', 'ifscCode', 'upiId', 'oneTimeRegistrationFee', 'subscriptionPlan'],
+    PaymentAndSubscription: ['preferredPaymentCycle','oneTimeRegistrationFee', 'subscriptionPlan'],
     LanguageSkillsAndReferences: category === 'Driver' ? ['knownLanguages', 'references'] : ['knownLanguages'],
     Declaration: ['signature']
   };
