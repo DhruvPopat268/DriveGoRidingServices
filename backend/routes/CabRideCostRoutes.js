@@ -26,7 +26,6 @@ router.get('/', async (req, res) => {
       .populate('subSubCategory', 'name')
       .populate('priceCategory', 'name')
       .populate('car', 'name')
-      .sort({ createdAt: -1 });
 
     res.json({ data: cabRideCosts });
   } catch (error) {
@@ -224,7 +223,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 
     const rideCostModels = await CabRideCost.find(rideCostQuery)
       .populate('category', 'name')
-      .populate('car', 'name');
+      .populate('car', 'name description seater');
 
     if (rideCostModels.length === 0) {
       return res.status(404).json({ error: 'No ride cost models found for this car category' });
@@ -312,6 +311,8 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         packageId: model._id,
         categoryId: model.car?._id || null,
         category: model.car?.name, // keep price category also if needed
+        seatCapacity: model.car?.seater || null,
+        description: model.car?.description,
         driverCharges: Math.round(driverCharges),
         pickCharges: Math.round(modelPickCharges),
         peakCharges: Math.round(peakCharges),

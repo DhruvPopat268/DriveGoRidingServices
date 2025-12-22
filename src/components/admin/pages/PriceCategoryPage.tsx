@@ -19,13 +19,15 @@ import axios from 'axios';
 interface PriceCategory {
   _id: string;
   priceCategoryName: string;
+  description: string;
 }
 
 export const PriceCategoryPage = () => {
   const navigate = useNavigate();
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([]);
   const [priceCategoryForm, setPriceCategoryForm] = useState({
-    priceCategoryName: ''
+    priceCategoryName: '',
+    description: ''
   });
   const [editingCategory, setEditingCategory] = useState<PriceCategory | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -50,7 +52,8 @@ export const PriceCategoryPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      priceCategoryName: priceCategoryForm.priceCategoryName.trim()
+      priceCategoryName: priceCategoryForm.priceCategoryName.trim(),
+      description: priceCategoryForm.description.trim()
     };
 
     try {
@@ -62,7 +65,7 @@ export const PriceCategoryPage = () => {
       await fetchPriceCategories();
       setDialogOpen(false);
       setEditingCategory(null);
-      setPriceCategoryForm({ priceCategoryName: '' });
+      setPriceCategoryForm({ priceCategoryName: '', description: '' });
     } catch (err) {
       console.error('Failed to save price category', err);
     }
@@ -71,7 +74,8 @@ export const PriceCategoryPage = () => {
   const handleEdit = (priceCategory: PriceCategory) => {
     setEditingCategory(priceCategory);
     setPriceCategoryForm({
-      priceCategoryName: priceCategory.priceCategoryName
+      priceCategoryName: priceCategory.priceCategoryName,
+      description: priceCategory.description
     });
     setDialogOpen(true);
   };
@@ -87,7 +91,7 @@ export const PriceCategoryPage = () => {
 
   const resetForm = () => {
     setEditingCategory(null);
-    setPriceCategoryForm({ priceCategoryName: '' });
+    setPriceCategoryForm({ priceCategoryName: '', description: '' });
   };
 
   const handleViewDrivers = (category: PriceCategory) => {
@@ -119,7 +123,13 @@ export const PriceCategoryPage = () => {
                 <Input
                   placeholder="Driver Category Name (e.g., Classic, Prime, Premium)"
                   value={priceCategoryForm.priceCategoryName}
-                  onChange={(e) => setPriceCategoryForm({ priceCategoryName: e.target.value })}
+                  onChange={(e) => setPriceCategoryForm({ ...priceCategoryForm, priceCategoryName: e.target.value })}
+                  required
+                />
+                <Input
+                  placeholder="Description"
+                  value={priceCategoryForm.description}
+                  onChange={(e) => setPriceCategoryForm({ ...priceCategoryForm, description: e.target.value })}
                   required
                 />
                 <Button type="submit" className="w-full">
@@ -134,13 +144,14 @@ export const PriceCategoryPage = () => {
           <TableHeader>
             <TableRow>
               <TableHead>Driver Category Name</TableHead>
+              <TableHead>Description</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-center py-8">
+                <TableCell colSpan={3} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <Loader className="w-6 h-6 animate-spin mr-2" />
                     <span>Loading driver categories...</span>
@@ -149,7 +160,7 @@ export const PriceCategoryPage = () => {
               </TableRow>
             ) : priceCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-center">
+                <TableCell colSpan={3} className="text-center">
                   No driver categories found. Create your first one!
                 </TableCell>
               </TableRow>
@@ -157,6 +168,7 @@ export const PriceCategoryPage = () => {
               priceCategories.map((priceCategory) => (
                 <TableRow key={priceCategory._id}>
                   <TableCell className="font-medium">{priceCategory.priceCategoryName}</TableCell>
+                  <TableCell>{priceCategory.description}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="outline" size="sm" onClick={() => handleViewDrivers(priceCategory)}>

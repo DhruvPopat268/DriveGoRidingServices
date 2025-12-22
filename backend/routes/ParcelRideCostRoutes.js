@@ -23,7 +23,6 @@ router.get('/', async (req, res) => {
       .populate('subcategory', 'name')
       .populate('parcelCategory', 'categoryName')
       .populate('parcelVehicle', 'name')
-      .sort({ createdAt: -1 });
 
     res.json({ data: parcelRideCosts });
   } catch (error) {
@@ -214,7 +213,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
     
     const rideCostModels = await ParcelRideCost.find(rideCostQuery)
       .populate('category', 'name')
-      .populate('parcelVehicle', 'name');
+      .populate('parcelVehicle', 'name description weight');
     
       
 
@@ -305,6 +304,8 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         packageId: model._id,
         categoryId : model.parcelVehicle?._id,
         category: model.parcelVehicle?.name, // keep price category also if needed
+        description: model.parcelVehicle?.description,
+        weightAllowed: model.parcelVehicle?.weight + 'kg',
         driverCharges: Math.round(driverCharges),
         pickCharges: Math.round(modelPickCharges),
         peakCharges: Math.round(peakCharges),

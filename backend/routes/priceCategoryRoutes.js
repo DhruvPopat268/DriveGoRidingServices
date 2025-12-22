@@ -5,14 +5,10 @@ const PriceCategory = require('../models/PriceCategory');
 // Create new price category
 router.post('/', async (req, res) => {
   try {
-    const { priceCategoryName, description, category, subcategory, chargePerKm, chargePerMinute } = req.body;
+    const { priceCategoryName, description } = req.body;
     const newCategory = new PriceCategory({
       priceCategoryName,
-      description,
-      category,
-      subcategory,
-      chargePerKm,
-      chargePerMinute
+      description
     });
     const saved = await newCategory.save();
     res.status(201).json(saved);
@@ -21,7 +17,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get all price categories
+// Get price categories
 router.get('/', async (req, res) => {
   try {
     const categories = await PriceCategory.find().sort({ createdAt: -1 });
@@ -71,67 +67,5 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Get price categories by category
-router.post('/by-category', async (req, res) => {
-  try {
-    const { categoryId } = req.body;
-
-    if (!categoryId) {
-      return res.status(400).json({ error: 'categoryId is required' });
-    }
-
-    const priceCategories = await PriceCategory.find({ category: categoryId })
-      .populate('category', 'name description image')
-      .populate('subcategory', 'name description')
-      .sort({ createdAt: -1 });
-
-    res.json(priceCategories);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get price categories by subcategory
-router.post('/by-subcategory', async (req, res) => {
-  try {
-    const { subcategoryId } = req.body;
-
-    if (!subcategoryId) {
-      return res.status(400).json({ error: 'subcategoryId is required' });
-    }
-
-    const priceCategories = await PriceCategory.find({ subcategory: subcategoryId })
-      .populate('category', 'name description image')
-      .populate('subcategory', 'name description')
-      .sort({ createdAt: -1 });
-
-    res.json(priceCategories);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get price categories by both category and subcategory
-router.post('/by-category-subcategory', async (req, res) => {
-  try {
-    const { categoryId, subcategoryId } = req.body;
-
-    if (!categoryId || !subcategoryId) {
-      return res.status(400).json({ error: 'Both categoryId and subcategoryId are required' });
-    }
-
-    const priceCategories = await PriceCategory.find({
-      category: categoryId,
-      subcategory: subcategoryId
-    })
-      .populate('category', 'name description image')
-      .populate('subcategory', 'name description')
-      .sort({ createdAt: -1 });
-
-    res.json(priceCategories);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 module.exports = router;

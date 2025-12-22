@@ -44,7 +44,6 @@ router.get('/', async (req, res) => {
       .populate('subcategory', 'name')
       .populate('subSubCategory', 'name')
       .populate('priceCategory', 'priceCategoryName')
-      .sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: rideCosts.length,
@@ -253,6 +252,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
         packageId: model._id,
         categoryId: priceCategory?._id || null,
         category: priceCategory?.priceCategoryName || "Unknown",
+        description: priceCategory?.description || "",
         driverCharges: Math.round(driverCharges),
         pickCharges: Math.round(modelPickCharges),
         peakCharges: Math.round(peakCharges),
