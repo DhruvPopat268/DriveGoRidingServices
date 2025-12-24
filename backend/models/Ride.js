@@ -4,10 +4,13 @@ const { type } = require("os");
 const locationSchema = new mongoose.Schema(
   {
     address: { type: String, required: true },
-    address_components: { type: Array }, // optional, store Google Place components
+    houseNo: { type: String },
+    landmark: { type: String },
+    //address_components: { type: Array }, // optional, store Google Place components
     lat: { type: Number, required: true },
     lng: { type: Number, required: true },
-    place_id: { type: String },
+    
+    //place_id: { type: String },
   },
   { _id: false }
 );

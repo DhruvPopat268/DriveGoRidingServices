@@ -4,6 +4,8 @@ const addressSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     address: { type: String, required: true },
+    houseNo: { type: String },
+    landmark: { type: String },
     lat: { type: Number, required: true },
     lng: { type: Number, required: true }
   },
