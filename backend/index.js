@@ -147,6 +147,9 @@ app.use('/api/rider/bank-card', require('./routes/RiderBankCard'));
 app.use('/api/rider/withdraw', require('./routes/RiderWithdrawReq'));
 app.use('/api/rider/wallet-config', require('./routes/riderWalletConfigRoute'));
 
+// Ride reschedule routes
+app.use('/api/ride-reschedule', require('./routes/rideRescheduleRoutes'));
+
 // Global object to store online drivers
 const onlineDrivers = {};
 

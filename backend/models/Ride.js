@@ -6,11 +6,8 @@ const locationSchema = new mongoose.Schema(
     address: { type: String, required: true },
     houseNo: { type: String },
     landmark: { type: String },
-    //address_components: { type: Array }, // optional, store Google Place components
     lat: { type: Number, required: true },
-    lng: { type: Number, required: true },
-    
-    //place_id: { type: String },
+    lng: { type: Number, required: true }
   },
   { _id: false }
 );
@@ -126,6 +123,16 @@ const rideSchema = new mongoose.Schema(
       type: String,
       enum: ["BOOKED", "CONFIRMED", "ONGOING", "COMPLETED", "CANCELLED", "EXTENDED", "REACHED"],
       default: "BOOKED",
+    },
+
+    // Reschedule tracking
+    rescheduleRequest: {
+      status: { type: String, enum: ["PENDING", "ACCEPTED", "REJECTED"], default: null },
+      requestedDate: { type: Date },
+      requestedTime: { type: String },
+      requestedAt: { type: Date },
+      respondedAt: { type: Date },
+      _id: false
     },
   },
   { timestamps: true }

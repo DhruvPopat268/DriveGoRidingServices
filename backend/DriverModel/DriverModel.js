@@ -106,6 +106,17 @@ const driverSchema = new mongoose.Schema(
       default: "WAITING"
     },
 
+    // Reschedule notifications
+    pendingRescheduleRequests: [{
+      rideId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ride' },
+      status: { type: String, enum: ["PENDING", "ACCEPTED", "REJECTED"], default: "PENDING" },
+      requestedDate: { type: Date },
+      requestedTime: { type: String },
+      requestedAt: { type: Date, default: Date.now },
+      respondedAt: { type: Date },
+      _id: false
+    }],
+
     isOnline: {
       type: Boolean,
       default: false

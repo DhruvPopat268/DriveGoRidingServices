@@ -227,6 +227,84 @@ class NotificationService {
       return { success: false, error: error.message };
     }
   }
+
+  // Send reschedule notification to driver
+  static async sendRescheduleNotification(driver, ride, rescheduleData) {
+    const { selectedDate, selectedTime } = rescheduleData;
+    
+    // Format date to dd/mm/yy
+    const dateObj = new Date(selectedDate);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = String(dateObj.getFullYear()).slice(-2);
+    const formattedDate = `${day}/${month}/${year}`;
+    
+    // Format time to 12-hour format with AM/PM
+    const formatTo12Hour = (time24) => {
+      const [hours, minutes] = time24.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    };
+    const formattedTime = formatTo12Hour(selectedTime);
+    
+    const title = 'Ride Reschedule Request';
+    const message = `Rider wants to reschedule ride to ${formattedDate} at ${formattedTime}`;
+    
+    return await this.sendAndStoreDriverNotification(
+      driver._id,
+      driver.oneSignalPlayerId,
+      title,
+      message,
+      'reschedule_request',
+      {
+        rideId: ride._id,
+        selectedDate,
+        selectedTime,
+        action: 'reschedule_request'
+      }
+    );
+  }
+
+  // Send reschedule accepted notification to rider
+  static async sendRescheduleAcceptedNotification(rider, driver, rescheduleData) {
+    const { selectedDate, selectedTime } = rescheduleData;
+    
+    // Format date to dd/mm/yy
+    const dateObj = new Date(selectedDate);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = String(dateObj.getFullYear()).slice(-2);
+    const formattedDate = `${day}/${month}/${year}`;
+    
+    // Format time to 12-hour format with AM/PM
+    const formatTo12Hour = (time24) => {
+      const [hours, minutes] = time24.split(':');
+      const hour = parseInt(hours);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      const hour12 = hour % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    };
+    const formattedTime = formatTo12Hour(selectedTime);
+    
+    const driverName = driver.personalInformation?.fullName || 'Your driver';
+    const title = 'Reschedule Request Accepted';
+    const message = `${driverName} accepted your reschedule request. New ride time: ${formattedDate} at ${formattedTime}`;
+    
+    return await this.sendAndStoreRiderNotification(
+      rider._id,
+      rider.oneSignalPlayerId,
+      title,
+      message,
+      'reschedule_accepted',
+      {
+        selectedDate,
+        selectedTime,
+        driverName
+      }
+    );
+  }
 }
 
 module.exports = NotificationService;
