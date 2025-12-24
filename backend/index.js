@@ -29,6 +29,7 @@ const CabRideCostRoutes = require('./routes/CabRideCostRoutes');
 const serviceWalletBalanceRoutes = require('./routes/serviceWalletBalanceRoutes');
 
 const riderAuthRoutes = require('./routes/riderAuth_otp_Routes');
+const riderAddressesRoutes = require('./routes/riderAddressesRoutes');
 const connectToDb = require('./database/db');
 const cookieParser = require("cookie-parser");
 const rideRoutes = require("./routes/rideRoutes");
@@ -42,13 +43,15 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    // origin: [
-    //   "http://localhost:8081",
-    //   "http://localhost:8080",
-    //   "https://journey-cost-estimator.vercel.app",
-    //   "https://drive-go-riding-services.vercel.app"
-    // ],
-    origin: "*",
+     origin: [
+    //"http://localhost:5173",
+    //"http://localhost:8081",
+    //"http://localhost:8080",
+    "https://hire4drivedriverdeleteaccount.onrender.com",
+    "https://drive-go-riding-services.vercel.app",
+    "https://www.hire4drive.com",
+    "https://www.hire4drive.in",
+     ],
     credentials: true
   }
 });
@@ -58,11 +61,10 @@ app.set('io', io);
 // Middleware
 app.use(cors({
   origin: [
-    "http://localhost:5173",
-    "http://localhost:8081",
-    "http://localhost:8080",
+    //"http://localhost:5173",
+    //"http://localhost:8081",
+    //"http://localhost:8080",
     "https://hire4drivedriverdeleteaccount.onrender.com",
-    "https://journey-cost-estimator.vercel.app",
     "https://drive-go-riding-services.vercel.app",
     "https://www.hire4drive.com",
     "https://www.hire4drive.in",
@@ -115,6 +117,7 @@ app.use("/app/cloud/documents", express.static(path.join(__dirname, "cloud/docum
 
 // Rider routes
 app.use("/api/rider-auth", riderAuthRoutes);
+app.use("/api/rider/addresses", riderAddressesRoutes);
 
 app.use("/api/rides", rideRoutes);
 
