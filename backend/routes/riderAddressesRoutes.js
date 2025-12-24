@@ -45,15 +45,25 @@ router.post("/", authMiddleware, async (req, res) => {
       });
     }
 
+    const newAddress = {
+      name,
+      address,
+      lat: Number(lat),
+      lng: Number(lng)
+    };
+
+    if (houseNo) newAddress.houseNo = houseNo;
+    if (landmark) newAddress.landmark = landmark;
+
     let riderAddresses = await RiderAddresses.findOne({ riderId });
 
     if (!riderAddresses) {
       riderAddresses = new RiderAddresses({
         riderId,
-        addresses: [{ name, address, houseNo, landmark, lat, lng }]
+        addresses: [newAddress]
       });
     } else {
-      riderAddresses.addresses.push({ name, address, houseNo, landmark, lat, lng });
+      riderAddresses.addresses.push(newAddress);
     }
 
     await riderAddresses.save();
