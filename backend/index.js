@@ -63,7 +63,7 @@ app.use(cors({
   origin: [
     //"http://localhost:5173",
     //"http://localhost:8081",
-    "http://localhost:8080",
+    //"http://localhost:8080",
     "https://hire4drivedriverdeleteaccount.onrender.com",
     "https://drive-go-riding-services.vercel.app",
     "https://www.hire4drive.com",

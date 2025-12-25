@@ -658,6 +658,17 @@ router.post("/web/verify-otp", async (req, res) => {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
 
+    // Block Postman/cURL from setting cookies
+    const userAgent = req.headers['user-agent'] || '';
+    const isPostmanOrCurl = userAgent.includes('Postman') || userAgent.includes('curl') || userAgent.includes('insomnia');
+    
+    if (isPostmanOrCurl) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Cookie authentication not allowed for API testing tools" 
+      });
+    }
+
     // 🔒 Check against fixed dummy OTP
     if (otp !== "123456") {
       return res.status(400).json({ message: "Invalid OTP" });
@@ -709,7 +720,7 @@ router.post("/web/verify-otp", async (req, res) => {
     } else {
       // Development - works with localhost
       cookieOptions.sameSite = 'lax';
-      // No domain restriction for localhost
+      // No domain restriction for localhost testing
     }
 
     res.cookie('authToken', token, cookieOptions);
