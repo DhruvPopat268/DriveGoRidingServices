@@ -507,6 +507,10 @@ router.post("/delete-rider", async (req, res) => {
       return res.status(404).json({ success: false, message: "Rider not found or already deleted" });
     }
 
+    // Remove sessions and clear cookies
+    await Session.deleteMany({ mobileNumber: mobile });
+    res.clearCookie('authToken');
+
     res.status(200).json({
       success: true,
       message: "Rider deleted successfully",
@@ -1077,6 +1081,27 @@ router.get("/rider-info", authMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Get rider info error:", error);
     res.status(500).json({ success: false, message: "Failed to get rider info" });
+  }
+});
+
+// Web logout - clears all cookies
+router.post("/web/logout", authMiddleware, async (req, res) => {
+  try {
+    const { mobile } = req.rider;
+    
+    // Remove session from database
+    await Session.deleteMany({ mobileNumber: mobile });
+    
+    // Clear all cookies
+    res.clearCookie('authToken');
+    
+    res.json({
+      success: true,
+      message: "Logged out successfully"
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ success: false, message: "Logout failed" });
   }
 });
 
