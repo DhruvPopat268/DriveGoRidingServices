@@ -1235,7 +1235,7 @@ export const CabRideCostPage = () => {
                                     <p className="text-sm text-gray-600">₹{viewingRideCost.cancellationFee}</p>
                                 </div>
                                 <div>
-                                    <label className="text-sm font-medium">Cancellation Buffer Time</label>
+                                    <label className="text-sm font-medium">User Cancellation Buffer Time</label>
                                     <p className="text-sm text-gray-600">{viewingRideCost.cancellationBufferTime} minutes</p>
                                 </div>
                                 <div>
