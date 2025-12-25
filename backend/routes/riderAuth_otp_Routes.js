@@ -646,6 +646,81 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
+// Web version with cookie authentication
+router.post("/web/verify-otp", async (req, res) => {
+  try {
+    const { mobile, otp, playerId } = req.body;
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
+
+    // 🔒 Check against fixed dummy OTP
+    if (otp !== "123456") {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Mark last OTP as verified (optional but clean)
+    await OtpSession.findOneAndUpdate(
+      { mobile },
+      { isVerified: true },
+      { sort: { createdAt: -1 } }
+    );
+
+    // Ensure Rider exists
+    let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
+    if (!rider) {
+      rider = new Rider({ mobile });
+      await rider.save();
+    }
+
+    // Store OneSignal playerId if provided
+    if (playerId) {
+      rider.oneSignalPlayerId = playerId;
+      await rider.save();
+    }
+
+    const isNew = !rider.name;
+
+    // Generate JWT
+    const token = jwt.sign(
+      { riderId: rider._id, mobile: rider.mobile },
+      process.env.JWT_SECRET_USER,
+      { expiresIn: "7d" }
+    );
+
+    // Store session
+    await createSession(mobile, token);
+
+    // Set token in httpOnly cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    };
+
+    // Different config for development vs production
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.sameSite = 'none';
+      cookieOptions.domain = '.hire4drive.com';
+    } else {
+      // Development - works with localhost
+      cookieOptions.sameSite = 'lax';
+      // No domain restriction for localhost
+    }
+
+    res.cookie('authToken', token, cookieOptions);
+
+    res.json({
+      success: true,
+      isNew,
+      rider
+    });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({ success: false, message: "OTP verification failed" });
+  }
+});
+
 /*
 //kaleyra integration
 router.post("/send-otp", async (req, res) => {

@@ -3,11 +3,16 @@ const Session = require("../models/Session"); // adjust path as needed
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // ✅ Get token from "Authorization: Bearer <token>"
+    // ✅ Get token from "Authorization: Bearer <token>" OR cookie
     const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.startsWith("Bearer ")
+    let token = authHeader && authHeader.startsWith("Bearer ")
       ? authHeader.split(" ")[1]
       : null;
+
+    // ✅ If no Authorization header, check for cookie
+    if (!token && req.cookies && req.cookies.authToken) {
+      token = req.cookies.authToken;
+    }
 
     if (!token) {
       return res.status(401).json({ success: false, message: "No token provided" });
