@@ -2429,7 +2429,8 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           rideId: currentRide._id,
           title: 'Partial Ride Cancelled',
           message: message,
-          type: 'partial_ride_cancelled'
+          type: 'partial_ride_cancelled',
+          
         });
       }
     } catch (notifError) {
@@ -2531,8 +2532,8 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
           message,
           'ride_extended',
           {},
-          null,
-          rideId
+          updatedRide.rideInfo?.categoryId,
+          updatedRide._id
         );
       }
     } catch (notifError) {
@@ -2797,7 +2798,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           message,
           'ride_completed',
           {},
-          null,
+          updatedRide.rideInfo?.categoryId,
           updatedRide._id
         );
       }
