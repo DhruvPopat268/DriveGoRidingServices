@@ -336,7 +336,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/get-included-data",adminAuthMiddleware, async (req, res) => {
+router.post("/get-included-data",authMiddleware, async (req, res) => {
   try {
     const { categoryId, subcategoryId, subSubcategoryId } = req.body;
 
