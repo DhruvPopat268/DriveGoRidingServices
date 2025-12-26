@@ -2798,7 +2798,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           'ride_completed',
           {},
           null,
-          rideId
+          updatedRide._id
         );
       }
     } catch (notifError) {
