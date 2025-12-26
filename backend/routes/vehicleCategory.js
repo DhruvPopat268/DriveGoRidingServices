@@ -18,7 +18,7 @@ router.get('/active',adminAuthMiddleware, async (req, res) => {
 });
 
 // POST get by DriverVehicleType ID
-router.post('/by-type',adminAuthMiddleware, async (req, res) => {
+router.post('/by-type', async (req, res) => {
   try {
     const { driverVehicleTypeId } = req.body;
     const categories = await VehicleCategory.find({ DriveVehicleType: driverVehicleTypeId , status: true }).populate('DriveVehicleType');

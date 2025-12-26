@@ -328,6 +328,23 @@ router.get("/find-rider", authMiddleware, async (req, res) => {
   }
 });
 
+router.get("/auth/check", (req, res) => {
+  // Get token from "Authorization: Bearer <token>"
+  const token = req.cookies && req.cookies.authToken ;
+
+
+
+  if (!token) return res.json({ loggedIn: false });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET_USER);
+    res.json({ loggedIn: true, user: decoded });
+  } catch (err) {
+    console.error("Invalid or expired token:", err.message);
+    res.json({ loggedIn: false });
+  }
+});
+
 //update rider profile data
 router.put("/update", upload.single('profilePhoto'), authMiddleware, async (req, res) => {
   try {

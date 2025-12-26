@@ -10,7 +10,7 @@ router.get('/',adminAuthMiddleware, async (req, res) => {
   res.json({ success: true, data: types });
 });
 
-router.get('/active',adminAuthMiddleware, async (req, res) => {
+router.get('/active', async (req, res) => {
   const types = await DriverVehicleType.find({ status: true });
   res.json({ success: true, data: types });
 });
