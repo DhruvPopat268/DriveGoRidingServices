@@ -38,11 +38,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // localStorage.setItem('user', JSON.stringify(newUser));
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('user');
+    }
   };
 
   return (

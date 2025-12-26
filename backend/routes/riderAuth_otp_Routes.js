@@ -8,7 +8,6 @@ const jwt = require("jsonwebtoken");
 const Session = require("../models/Session");
 const authMiddleware = require("../middleware/authMiddleware");
 const { createSession } = require("../Services/sessionService");
-const axios = require("axios");
 const Razorpay = require('razorpay');
 const multer = require('multer');
 const path = require('path');

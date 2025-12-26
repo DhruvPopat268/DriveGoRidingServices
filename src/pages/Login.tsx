@@ -33,6 +33,7 @@ export const Login = () => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
@@ -42,7 +43,8 @@ export const Login = () => {
         throw new Error(data.error || "Login failed");
       }
 
-      login(data.token, data.user);
+      // No token in response anymore, just user data
+      login('cookie-auth', data.user);
       navigate("/");
     } catch (err: any) {
       setError(err.message);

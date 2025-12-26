@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Role = require('../models/Role');
+const { createAdminSession, removeAdminSession } = require('../Services/AdminSessionService');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 router.post('/login', async (req, res) => {
   try {
@@ -33,11 +35,31 @@ router.post('/login', async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
+    // Create admin session (removes old sessions if any)
+    await createAdminSession(user.email, token);
+
     user.lastLogin = new Date();
     await user.save();
 
+    // Set token as httpOnly cookie
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    };
+
+    // Different config for development vs production
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.sameSite = 'none';
+      cookieOptions.domain = '.hire4drive.com';
+    } else {
+      // Development - works with localhost
+      cookieOptions.sameSite = 'lax';
+      // No domain restriction for localhost testing
+    }
+    res.cookie('adminToken', token, cookieOptions);
+
     res.json({
-      token,
       user: {
         id: user._id,
         name: user.name,
@@ -50,15 +72,9 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.get('/permissions', async (req, res) => {
+router.get('/permissions', adminAuthMiddleware, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_ADMIN);
-    const role = await Role.findOne({ name: decoded.role }).populate('permissions');
+    const role = await Role.findOne({ name: req.admin.role }).populate('permissions');
     
     if (!role) {
       return res.status(404).json({ error: 'Role not found' });
@@ -67,7 +83,21 @@ router.get('/permissions', async (req, res) => {
     const permissions = role.permissions.map(permission => permission.name);
     res.json({ permissions });
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/logout', adminAuthMiddleware, async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.adminToken;
+    await removeAdminSession(token);
+    
+    // Clear the cookie
+    res.clearCookie('adminToken');
+    
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -22,6 +22,10 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
+    if (ride.status !== "COMPLETED") {
+      return res.status(400).json({ message: "Rating can only be given for completed rides" });
+    }
+
     const DriverRatingg = await DriverRating.findOne({ rideId });
     if (DriverRatingg) {
       return res.status(400).json({ message: "Rating for this ride already exists" });

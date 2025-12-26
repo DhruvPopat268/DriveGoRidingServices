@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { rideId, rating, comment } = req.body;
+    const { rideId, rating, comment, driverFeedback, cabFeedback, parcelFeedback, wouldChooseAgain } = req.body;
 
     if (!rideId || !rating) {
       return res.status(400).json({ message: "rideId and rating are required" });
@@ -18,18 +18,42 @@ router.post("/", async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
+
+
+    if (ride.status !== "COMPLETED") {
+      return res.status(400).json({ message: "Rating can only be given for completed rides" });
+    }
+
+    // Category-based feedback validation
+    const categoryName = ride.rideInfo?.categoryName?.toLowerCase();
+    
+    if (categoryName === 'driver' && (cabFeedback?.length > 0 || parcelFeedback?.parcelCondition?.length > 0 || parcelFeedback?.deliveryExperience?.length > 0)) {
+      return res.status(400).json({ message: "Only driver feedback is allowed for driver category rides" });
+    }
+    
+    if (categoryName === 'cab' && (driverFeedback?.length > 0 || parcelFeedback?.parcelCondition?.length > 0 || parcelFeedback?.deliveryExperience?.length > 0)) {
+      return res.status(400).json({ message: "Only cab feedback is allowed for cab category rides" });
+    }
+    
+    if (categoryName === 'parcel' && (driverFeedback?.length > 0 || cabFeedback?.length > 0)) {
+      return res.status(400).json({ message: "Only parcel feedback is allowed for parcel category rides" });
+    }
+
     const userRatingg = await UserRating.findOne({ rideId });
     if (userRatingg) {
       return res.status(400).json({ message: "Rating for this ride already exists" });
     }
-
 
     const userRating = new UserRating({
       userId: ride.riderId,
       driverId: ride.driverId,
       rideId,
       rating,
-      comment
+      comment,
+      driverFeedback,
+      cabFeedback,
+      parcelFeedback,
+      wouldChooseAgain
     });
 
     await userRating.save();

@@ -1,37 +1,60 @@
-import axios from 'axios';
+// API interceptor for handling authentication and redirects
+class ApiInterceptor {
+  static async fetch(url: string, options: RequestInit = {}) {
+    // Always include credentials for cookie-based auth
+    const config: RequestInit = {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    };
 
-// Create axios instance
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-});
-
-// Function to handle 401 redirects
-const handleUnauthorized = () => {
-  localStorage.removeItem('adminToken');
-  window.location.href = '/login';
-};
-
-// Axios interceptor
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      handleUnauthorized();
+    try {
+      const response = await fetch(url, config);
+      
+      // Handle 401 Unauthorized - redirect to login
+      if (response.status === 401) {
+        // Clear any local storage
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('user');
+        
+        // Redirect to login page
+        window.location.href = '/login';
+        return response;
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('API request failed:', error);
+      throw error;
     }
-    return Promise.reject(error);
   }
-);
 
-// Fetch interceptor
-const originalFetch = window.fetch;
-window.fetch = async (...args) => {
-  const response = await originalFetch(...args);
-  
-  if (response.status === 401) {
-    handleUnauthorized();
+  static async get(url: string, options: RequestInit = {}) {
+    return this.fetch(url, { ...options, method: 'GET' });
   }
-  
-  return response;
-};
 
-export { apiClient };
+  static async post(url: string, body?: any, options: RequestInit = {}) {
+    return this.fetch(url, {
+      ...options,
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  static async put(url: string, body?: any, options: RequestInit = {}) {
+    return this.fetch(url, {
+      ...options,
+      method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  static async delete(url: string, options: RequestInit = {}) {
+    return this.fetch(url, { ...options, method: 'DELETE' });
+  }
+}
+
+export default ApiInterceptor;

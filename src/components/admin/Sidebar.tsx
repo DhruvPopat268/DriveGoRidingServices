@@ -60,8 +60,8 @@ const menuItems = [
     subItems: [
       { icon: Bike, label: "Driver Vehicle Type", key: "drivervehicletype" },
       { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
-      { icon: DollarSign, label: "Driver Category", key: "pricecategory" },
-      { icon: Calculator, label: "Driver Ride Cost Management", key: "ridecost" }
+      { icon: DollarSign, label: "Driver Category", key: "drivercategory" },
+      { icon: Calculator, label: "Driver Ride Cost Management", key: "DriverRidecost" }
     ]
   },
   {
@@ -84,7 +84,7 @@ const menuItems = [
     subItems: [
       { icon: Tags, label: "Parcel Category", key: "parcelcategory" },
       { icon: Truck, label: "Parcel Vehicle Type", key: "parcelvehicletype" },
-      { icon: Truck, label: "Parcel Vehicle Management", key: "parcelvehicletypes" },
+      { icon: Truck, label: "Parcel Vehicle Management", key: "parcelvehicleManagement" },
       { icon: Calculator, label: "Parcel Ride Cost Management", key: "parcelridecost" }
     ]
   },
@@ -132,7 +132,7 @@ const menuItems = [
       { icon: MapPin, label: "Reached Rides", key: "reached-rides" }
     ]
   },
-  { icon: Gift, label: "Refer Earn", key: "referearn" },
+  { icon: Gift, label: "Refer Earn", key: "UserReferearn" },
 {
     icon: Wallet,
     label: "Driver Wallet & Payments Management",
@@ -198,13 +198,8 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
-        const adminToken = localStorage.getItem('adminToken');
-        if (!adminToken) return;
-
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/permissions`, {
-          headers: {
-            'Authorization': `Bearer ${adminToken}`
-          }
+          credentials: 'include'
         });
 
         if (response.ok) {
@@ -220,22 +215,25 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
   }, []);
 
   const filteredMenuItems = menuItems.filter(item => {
-    if (userPermissions.includes('all')) {
+    // Show if user has permission for the parent section
+    if (userPermissions.includes(item.key)) {
       return true;
     }
-    return userPermissions.includes(item.key);
-  });
-
-  useEffect(() => {
-    if (userPermissions.length > 0 && filteredMenuItems.length > 0 && !activeSection) {
-      const firstItem = filteredMenuItems[0];
-      if (firstItem.isDropdown && firstItem.subItems) {
-        onSectionChange(firstItem.subItems[0].key);
-      } else {
-        onSectionChange(firstItem.key);
-      }
+    // Show if user has permission for any sub-item
+    if (item.subItems) {
+      return item.subItems.some(subItem => userPermissions.includes(subItem.key));
     }
-  }, [userPermissions, filteredMenuItems, onSectionChange, activeSection]);
+    return false;
+  }).map(item => {
+    // Filter sub-items based on permissions
+    if (item.subItems) {
+      return {
+        ...item,
+        subItems: item.subItems.filter(subItem => userPermissions.includes(subItem.key))
+      };
+    }
+    return item;
+  });
 
   const toggleDropdown = (key: string) => {
     setOpenDropdowns(prev => ({ ...prev, [key]: !prev[key] }));

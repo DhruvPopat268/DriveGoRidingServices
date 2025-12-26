@@ -91,6 +91,13 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Set default active section to dashboard if none is set
+    if (!activeSection) {
+      setActiveSection("dashboard");
+    }
+  }, []);
+
+  useEffect(() => {
     const path = location.pathname;
     const match = path.match(/\/admin\/category-assignment\/(\w+)\/([a-f0-9]+)/);
     if (match) {
@@ -261,17 +268,17 @@ const Index = () => {
         return <VehicleCategoryPage />;
       case "drivervehicletype":
         return <DriverVehicleTypePage />;
-      case "pricecategory":
+      case "drivercategory":
         return <PriceCategoryPage />;
       case "parcelcategory":
         return <ParcelCategoryPage />;
       case "parcelvehicletype":
         return <ParcelVehicleTypePage />;
-      case "parcelvehicletypes":
+      case "parcelvehicleManagement":
         return <ParcelVehicleManagementPage />;
       case "parcelridecost":
         return <ParcelRideCostPage />;
-      case "ridecost":
+      case "DriverRidecost":
         return <DriverRideCostPage />;  
       case "cabridecost":
         return <CabRideCostPage />;
@@ -291,7 +298,7 @@ const Index = () => {
         return <SafetyPage />;
       case "settings":
         return <SettingsPage />;
-      case "referearn":
+      case "UserReferearn":
         return <ReferEarnPage />;
       case "rbac":
         return <RBACManagementPage />;

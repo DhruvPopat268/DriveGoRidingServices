@@ -14,8 +14,245 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import ApiInterceptor from "@/lib/apiInterceptor";
 
+const permissionSections = [
+  { key: "dashboard", label: "Dashboard", subItems: [] },
+  {
+    key: "location-management",
+    label: "Location Management",
+    subItems: [
+      { key: "states", label: "States" },
+      { key: "cities", label: "Cities" }
+    ]
+  },
+  { key: "category", label: "Category", subItems: [] },
+  { key: "subcategory", label: "Sub Category", subItems: [] },
+  { key: "subsubcategory", label: "Sub-Sub Category", subItems: [] },
+  {
+    key: "driver-category-management",
+    label: "Driver Category Management",
+    subItems: [
+      { key: "drivervehicletype", label: "Driver Vehicle Type" },
+      { key: "vehiclecategory", label: "Vehicle Category" },
+      { key: "drivercategory", label: "Driver Category" },
+      { key: "DriverRidecost", label: "Driver Ride Cost Management" }
+    ]
+  },
+  {
+    key: "cab-category-management",
+    label: "Cab Category Management",
+    subItems: [
+      { key: "carcategory", label: "Cab Category" },
+      { key: "vehicletype", label: "Vehicle Type" },
+      { key: "carmanagement", label: "Cab Management" },
+      { key: "cabridecost", label: "Cab Ride Cost Management" }
+    ]
+  },
+  {
+    key: "parcel-category-management",
+    label: "Parcel Category Management",
+    subItems: [
+      { key: "parcelcategory", label: "Parcel Category" },
+      { key: "parcelvehicletype", label: "Parcel Vehicle Type" },
+      { key: "parcelvehicleManagement", label: "Parcel Vehicle Management" },
+      { key: "parcelridecost", label: "Parcel Ride Cost Management" }
+    ]
+  },
+  {
+    key: "vehicle-management",
+    label: "Vehicle Management",
+    subItems: [
+      { key: "pending-vehicles", label: "Pending Vehicles" },
+      { key: "approved-vehicles", label: "Approved Vehicles" },
+      { key: "rejected-vehicles", label: "Rejected Vehicles" }
+    ]
+  },
+  { key: "peakhours", label: "Peak and Night Charges Management", subItems: [] },
+  {
+    key: "drivers-management",
+    label: "Drivers Registration Management",
+    subItems: [
+      { key: "drivers-onreview", label: "OnReview Registration Requests" },
+      { key: "drivers-pending", label: "Pending Registration Requests" },
+      { key: "drivers-approved", label: "Approved Registration Requests" },
+      { key: "drivers-pending-payment", label: "Pending For Payment Requests" },
+      { key: "drivers-rejected", label: "Rejected Registration Requests" },
+      { key: "drivers-deleted", label: "Deleted Drivers" },
+      { key: "drivers-suspended", label: "Suspended Drivers" },
+      { key: "suspend-driver", label: "Suspend Driver" }
+    ]
+  },
+  { key: "t&c", label: "T & C", subItems: [] },
+  {
+    key: "rides-management",
+    label: "Rides Management",
+    subItems: [
+      { key: "booked-rides", label: "Booked Rides" },
+      { key: "confirmed-rides", label: "Confirmed Rides" },
+      { key: "ongoing-rides", label: "Ongoing Rides" },
+      { key: "completed-rides", label: "Completed Rides" },
+      { key: "cancelled-rides", label: "Cancelled Rides" },
+      { key: "extended-rides", label: "Extended Rides" },
+      { key: "reached-rides", label: "Reached Rides" }
+    ]
+  },
+  { key: "UserReferearn", label: "Refer Earn", subItems: [] },
+  {
+    key: "payments-management",
+    label: "Driver Wallet & Payments Management",
+    subItems: [
+      { key: "pending-withdrawals", label: "Pending Withdrawal Requests" },
+      { key: "completed-withdrawals", label: "Completed Withdrawal Requests" },
+      { key: "rejected-withdrawals", label: "Rejected Withdrawal Requests" },
+      { key: "driver-transactions", label: "Driver Transactions" },
+      { key: "min-withdraw-balance", label: "Min Withdrawal Balance" },
+      { key: "service-wallet-balance", label: "Service Wise Min Wallet Balance" },
+      { key: "driver-incentives", label: "Driver Incentives" }
+    ]
+  },
+  {
+    key: "driver-cancellation-credits",
+    label: "Driver Cancellation Credits Management",
+    subItems: [
+      { key: "all-drivers-credits", label: "All Drivers" },
+      { key: "manage-driver-credits", label: "Manage Driver Credits" }
+    ]
+  },
+  {
+    key: "ratings-management",
+    label: "Ratings Management",
+    subItems: [
+      { key: "user-ratings", label: "User Ratings" },
+      { key: "driver-ratings", label: "Driver Ratings" }
+    ]
+  },
+  {
+    key: "users-management",
+    label: "Users Management",
+    subItems: [
+      { key: "users", label: "Users" },
+      { key: "rider-pending-withdrawals", label: "Pending Withdrawal Requests" },
+      { key: "rider-approved-withdrawals", label: "Approved Withdrawal Requests" },
+      { key: "rider-rejected-withdrawals", label: "Rejected Withdrawal Requests" },
+      { key: "rider-wallet-config", label: "Rider Wallet Config" }
+    ]
+  },
+  { key: "rolemanagement", label: "Role Management", subItems: [] },
+  { key: "driversubscription", label: "Driver Subscription & Registration fee management", subItems: [] },
+  { key: "driver-purchased-plans", label: "Driver Purchased Plans History", subItems: [] }
+];
 
+const PermissionSelector = ({ selectedPermissions, onPermissionsChange, availablePermissions }) => {
+  const [activeSection, setActiveSection] = useState(permissionSections[0]?.key || "");
+
+  // Group available permissions by section
+  const groupedPermissions = permissionSections.map(section => {
+    const sectionPermissions = availablePermissions.filter(perm => {
+      if (section.subItems.length > 0) {
+        return section.subItems.some(subItem => subItem.key === perm.name);
+      } else {
+        return section.key === perm.name;
+      }
+    });
+    return { ...section, permissions: sectionPermissions };
+  });
+
+  const handleSectionPermissionChange = (sectionKey, checked) => {
+    const section = groupedPermissions.find(s => s.key === sectionKey);
+    if (!section) return;
+
+    const sectionPermissionIds = section.permissions.map(p => p._id);
+
+    if (checked) {
+      const newPermissions = [...new Set([...selectedPermissions, ...sectionPermissionIds])];
+      onPermissionsChange(newPermissions);
+    } else {
+      const newPermissions = selectedPermissions.filter(p => !sectionPermissionIds.includes(p));
+      onPermissionsChange(newPermissions);
+    }
+  };
+
+  const handleSubPermissionChange = (permissionId, checked) => {
+    if (checked) {
+      onPermissionsChange([...selectedPermissions, permissionId]);
+    } else {
+      onPermissionsChange(selectedPermissions.filter(p => p !== permissionId));
+    }
+  };
+
+  const isSectionSelected = (section) => {
+    const sectionPermissionIds = section.permissions.map(p => p._id);
+    return sectionPermissionIds.length > 0 && sectionPermissionIds.every(p => selectedPermissions.includes(p));
+  };
+
+  const isSectionPartiallySelected = (section) => {
+    const sectionPermissionIds = section.permissions.map(p => p._id);
+    return sectionPermissionIds.some(p => selectedPermissions.includes(p)) && !isSectionSelected(section);
+  };
+
+  const activePermissionSection = groupedPermissions.find(s => s.key === activeSection);
+
+  return (
+    <div className="space-y-4">
+      <Label>Permissions</Label>
+
+      {/* Horizontal Section Navigation */}
+      <div className="flex flex-wrap gap-2 p-2  rounded-lg max-h-32 overflow-y-auto">
+        {groupedPermissions.map((section) => (
+          <Button
+            key={section.key}
+            variant={activeSection === section.key ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveSection(section.key)}
+            className={`text-xs ${isSectionSelected(section)
+                ? "bg-green-100 border-green-300 text-green-800"
+                : isSectionPartiallySelected(section)
+                  ? "bg-yellow-100 border-yellow-300 text-yellow-800"
+                  : ""
+              }`}
+          >
+            {section.label} ({section.permissions.length})
+          </Button>
+        ))}
+      </div>
+
+      {/* Permission Details */}
+      {activePermissionSection && (
+        <div className="border rounded-lg p-4 bg-white">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-medium">{activePermissionSection.label}</h4>
+            {activePermissionSection.permissions.length > 0 && (
+              <Checkbox
+                checked={isSectionSelected(activePermissionSection)}
+                onCheckedChange={(checked) => handleSectionPermissionChange(activePermissionSection.key, checked)}
+              />
+            )}
+          </div>
+
+          {activePermissionSection.permissions.length > 0 ? (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {activePermissionSection.permissions.map((permission) => (
+                <div key={permission._id} className="flex items-center justify-between p-2 rounded">
+                  <Label htmlFor={permission._id} className="text-sm">{permission.name}</Label>
+                  <Checkbox
+                    id={permission._id}
+                    checked={selectedPermissions.includes(permission._id)}
+                    onCheckedChange={(checked) => handleSubPermissionChange(permission._id, checked)}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center p-4 bg-gray-50 rounded text-gray-500">
+              <span className="text-sm">No permissions created for this section yet</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const RBACManagementPage = () => {
   const [activeTab, setActiveTab] = useState("roles");
@@ -51,9 +288,9 @@ export const RBACManagementPage = () => {
   const fetchData = async () => {
     try {
       const [permissionsRes, rolesRes, usersRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/rbac/roles`),
-        fetch(`${import.meta.env.VITE_API_URL}/api/rbac/users`)
+        ApiInterceptor.get(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`),
+        ApiInterceptor.get(`${import.meta.env.VITE_API_URL}/api/rbac/roles`),
+        ApiInterceptor.get(`${import.meta.env.VITE_API_URL}/api/rbac/users`)
       ]);
       setPermissions(await permissionsRes.json());
       setRoles(await rolesRes.json());
@@ -67,11 +304,7 @@ export const RBACManagementPage = () => {
 
   const addPermission = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/permissions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPermission)
-      });
+      const res = await ApiInterceptor.post(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`, newPermission);
       const permission = await res.json();
 
       // Add the new permission with createdAt if not provided by backend
@@ -90,11 +323,7 @@ export const RBACManagementPage = () => {
 
   const addRole = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/roles`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRole)
-      });
+      const res = await ApiInterceptor.post(`${import.meta.env.VITE_API_URL}/api/rbac/roles`, newRole);
       const role = await res.json();
 
       // Map permission IDs to full permission objects for immediate display
@@ -116,11 +345,7 @@ export const RBACManagementPage = () => {
 
   const addUser = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser)
-      });
+      const res = await ApiInterceptor.post(`${import.meta.env.VITE_API_URL}/api/rbac/users`, newUser);
       const user = await res.json();
 
       // Map role ID to full role object for immediate display
@@ -160,11 +385,7 @@ export const RBACManagementPage = () => {
 
   const updatePermission = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/permissions/${editingItem._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPermission)
-      });
+      const res = await ApiInterceptor.put(`${import.meta.env.VITE_API_URL}/api/rbac/permissions/${editingItem._id}`, newPermission);
       const updated = await res.json();
       setPermissions(permissions.map(p => p._id === editingItem._id ? updated : p));
       resetForm();
@@ -175,11 +396,7 @@ export const RBACManagementPage = () => {
 
   const updateRole = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/roles/${editingItem._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newRole)
-      });
+      const res = await ApiInterceptor.put(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${editingItem._id}`, newRole);
       const updated = await res.json();
       setRoles(roles.map(r => r._id === editingItem._id ? { ...updated, userCount: r.userCount } : r));
       resetForm();
@@ -190,11 +407,7 @@ export const RBACManagementPage = () => {
 
   const updateUser = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/users/${editingItem._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser)
-      });
+      const res = await ApiInterceptor.put(`${import.meta.env.VITE_API_URL}/api/rbac/users/${editingItem._id}`, newUser);
       const updated = await res.json();
       setUsers(users.map(u => u._id === editingItem._id ? updated : u));
       resetForm();
@@ -234,7 +447,7 @@ export const RBACManagementPage = () => {
 
   const deletePermission = async (id) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/permissions/${id}`, { method: 'DELETE' });
+      await ApiInterceptor.delete(`${import.meta.env.VITE_API_URL}/api/rbac/permissions/${id}`);
       setPermissions(permissions.filter(p => p._id !== id));
     } catch (error) {
       console.error('Error deleting permission:', error);
@@ -243,7 +456,7 @@ export const RBACManagementPage = () => {
 
   const deleteRole = async (id) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${id}`, { method: 'DELETE' });
+      await ApiInterceptor.delete(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${id}`);
       setRoles(roles.filter(r => r._id !== id));
     } catch (error) {
       console.error('Error deleting role:', error);
@@ -252,7 +465,7 @@ export const RBACManagementPage = () => {
 
   const deleteUser = async (id) => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/rbac/users/${id}`, { method: 'DELETE' });
+      await ApiInterceptor.delete(`${import.meta.env.VITE_API_URL}/api/rbac/users/${id}`);
       setUsers(users.filter(u => u._id !== id));
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -363,7 +576,7 @@ export const RBACManagementPage = () => {
             <ChevronLeft className="w-4 h-4" />
             Previous
           </Button>
-          
+
           <div className="flex items-center space-x-1">
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               let pageNumber;
@@ -376,7 +589,7 @@ export const RBACManagementPage = () => {
               } else {
                 pageNumber = currentPage - 2 + i;
               }
-              
+
               return (
                 <Button
                   key={pageNumber}
@@ -390,7 +603,7 @@ export const RBACManagementPage = () => {
               );
             })}
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -425,7 +638,7 @@ export const RBACManagementPage = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          {/* <TabsTrigger value="permissions">Permissions</TabsTrigger> */}
+          <TabsTrigger value="permissions">Permissions</TabsTrigger>
           <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>
@@ -471,16 +684,6 @@ export const RBACManagementPage = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <PaginationControls
-                currentPage={permissionsPage}
-                totalPages={permissionsTotalPages}
-                onPageChange={handlePermissionsPageChange}
-                startRecord={permissionsStartRecord}
-                endRecord={permissionsEndRecord}
-                totalRecords={permissions.length}
-                recordsPerPage={permissionsPerPage}
-                onRecordsPerPageChange={handlePermissionsPerPageChange}
-              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -548,7 +751,7 @@ export const RBACManagementPage = () => {
           </Card>
         </TabsContent>
 
-        {/* Roles Tab */}
+{/* Roles Tab */}
         <TabsContent value="roles">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -563,12 +766,14 @@ export const RBACManagementPage = () => {
                     Add Role
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingItem ? 'Edit Role' : 'Add New Role'}</DialogTitle>
-                    <DialogDescription>{editingItem ? 'Update the role details and permissions.' : 'Create a new role by combining permissions.'}</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
+                <DialogContent className="max-w-7xl w-full h-[75vh] flex flex-col p-0">
+                  <div className="px-6 pt-6">
+                    <DialogHeader>
+                      <DialogTitle>{editingItem ? 'Edit Role' : 'Add New Role'}</DialogTitle>
+                      <DialogDescription>{editingItem ? 'Update the role details and permissions.' : 'Create a new role by combining permissions.'}</DialogDescription>
+                    </DialogHeader>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                     <div>
                       <Label htmlFor="roleName">Role Name</Label>
                       <Input
@@ -587,42 +792,24 @@ export const RBACManagementPage = () => {
                         placeholder="Describe this role"
                       />
                     </div>
-                    <div>
-                      <Label>Permissions</Label>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {permissions.map((permission) => (
-                          <div key={permission._id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={permission._id}
-                              checked={newRole.permissions.includes(permission._id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setNewRole({ ...newRole, permissions: [...newRole.permissions, permission._id] });
-                                } else {
-                                  setNewRole({ ...newRole, permissions: newRole.permissions.filter(p => p !== permission._id) });
-                                }
-                              }}
-                            />
-                            <Label htmlFor={permission._id}>{permission.name}</Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    <PermissionSelector
+                      selectedPermissions={newRole.permissions}
+                      onPermissionsChange={(permissions) => setNewRole({ ...newRole, permissions })}
+                      availablePermissions={permissions}
+                    />
                   </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={resetForm}>Cancel</Button>
-                    <Button onClick={editingItem ? updateRole : addRole}>
-                      {editingItem ? 'Update Role' : 'Add Role'}
-                    </Button>
-                  </DialogFooter>
+                  <div className="px-6 py-4 border-t bg-white shadow-lg">
+                    <DialogFooter>
+                      <Button variant="outline" onClick={resetForm}>Cancel</Button>
+                      <Button onClick={editingItem ? updateRole : addRole}>
+                        {editingItem ? 'Update Role' : 'Add Role'}
+                      </Button>
+                    </DialogFooter>
+                  </div>
                 </DialogContent>
               </Dialog>
             </CardHeader>
             <CardContent>
-              <RecordsPerPageDropdown
-                recordsPerPage={rolesPerPage}
-                onRecordsPerPageChange={handleRolesPerPageChange}
-              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -668,8 +855,8 @@ export const RBACManagementPage = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge className="bg-green-100 text-green-800">
-                            {role.userCount} users
+                          <Badge className="bg-white-200 text-black-800">
+                            {role.userCount} 
                           </Badge>
                         </TableCell>
 
@@ -828,10 +1015,6 @@ export const RBACManagementPage = () => {
               </Dialog>
             </CardHeader>
             <CardContent>
-              <RecordsPerPageDropdown
-                recordsPerPage={usersPerPage}
-                onRecordsPerPageChange={handleUsersPerPageChange}
-              />
               <Table>
                 <TableHeader>
                   <TableRow>
