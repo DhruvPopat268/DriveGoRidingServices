@@ -81,7 +81,7 @@ const SuspendDriverPage = () => {
   const fetchDrivers = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get('/api/driver');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver`);
       const data = response.data;
       setDrivers(data);
       setFilteredDrivers(data);
@@ -95,7 +95,7 @@ const SuspendDriverPage = () => {
   const fetchSuspendHistory = async () => {
     setHistoryLoading(true);
     try {
-      const response = await apiClient.get('/api/driver/admin/suspend-history');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/suspend-history`);
       const data = response.data;
       setSuspendHistory(data.data);
     } catch (error) {
@@ -145,7 +145,7 @@ const SuspendDriverPage = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const response = await apiClient.post('/api/driver/admin/suspend-drivers', {
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/suspend-drivers`, {
         driverIds: selectedDrivers,
         suspendFrom,
         suspendTo,

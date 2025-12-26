@@ -48,7 +48,7 @@ export const PendingWithdrawalPage = () => {
   const fetchPendingWithdrawals = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/api/rides/withdrawals/pending');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/withdrawals/pending`);
       setWithdrawals(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -62,7 +62,7 @@ export const PendingWithdrawalPage = () => {
     
     try {
       setActionLoading(true);
-      const response = await apiClient.post('/api/driver/admin/withdrawal/complete', { requestId: selectedRequest });
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/withdrawal/complete`, { requestId: selectedRequest });
 
       toast({ title: "Success", description: "Withdrawal request approved successfully" });
       setShowApproveDialog(false);
@@ -80,7 +80,7 @@ export const PendingWithdrawalPage = () => {
     
     try {
       setActionLoading(true);
-      const response = await apiClient.post('/api/driver/admin/withdrawal/reject', { requestId: selectedRequest, adminRemarks: rejectRemarks });
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/withdrawal/reject`, { requestId: selectedRequest, adminRemarks: rejectRemarks });
 
       toast({ title: "Success", description: "Withdrawal request rejected successfully" });
       setShowRejectDialog(false);

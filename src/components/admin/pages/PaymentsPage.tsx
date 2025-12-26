@@ -42,7 +42,7 @@ export const PaymentsPage = () => {
         return;
       }
 
-      const response = await fetch('/api/payments/wallet', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/wallet`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -66,7 +66,7 @@ export const PaymentsPage = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('/api/payments/history?type=deposit', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/history?type=deposit`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -98,7 +98,7 @@ export const PaymentsPage = () => {
         return;
       }
 
-      const response = await fetch('/api/payments/create-order', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/create-order`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -38,7 +38,7 @@ export const DriversPendingForPaymentPage = ({ onNavigateToDetail }: DriversPend
 
   const fetchDrivers = async () => {
     try {
-      const response = await apiClient.get('/api/driver/PendingForPayment');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/PendingForPayment`);
       const data = response.data;
       setDrivers(Array.isArray(data.data) ? data.data : []);
     } catch (error) {

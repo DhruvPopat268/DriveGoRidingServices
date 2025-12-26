@@ -49,7 +49,7 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
   const fetchSuspendedDrivers = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get('/api/driver/Suspended');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/Suspended`);
       const data = response.data;
       setDrivers(data.data);
       setFilteredDrivers(data.data);

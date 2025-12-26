@@ -38,7 +38,7 @@ export default function RejectedVehiclesPage() {
 
   const fetchRejectedVehicles = async () => {
     try {
-      const response = await apiClient.get('/api/driver/vehicles/admin/rejected');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/rejected`);
       if (response.data.success) {
         setVehicles(response.data.data);
       }

@@ -22,7 +22,7 @@ cloudinary.config({
 // ================= ROUTES ================= //
 
 // ✅ Get all sub-subcategories
-router.get("/", adminAuthMiddleware, async (req, res) => {
+router.get("/",  async (req, res) => {
   try {
     const subSubCategories = await SubSubCategory.find()
       .populate("categoryId", "name")

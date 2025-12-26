@@ -38,7 +38,7 @@ export const DriversPendingPage = ({ onNavigateToDetail }: DriversPendingPagePro
 
   const fetchDrivers = async () => {
     try {
-      const response = await apiClient.get('/api/driver/Pending');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/Pending`);
       const data = response.data;
       setDrivers(Array.isArray(data.data) ? data.data : []);
     } catch (error) {

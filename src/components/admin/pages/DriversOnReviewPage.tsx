@@ -80,7 +80,7 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
 
   const fetchDrivers = async () => {
     try {
-      const response = await apiClient.get('/api/driver/Onreview');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/Onreview`);
       const data = response.data;
       // console.log(data)
       setDrivers(Array.isArray(data.data) ? data.data : []);

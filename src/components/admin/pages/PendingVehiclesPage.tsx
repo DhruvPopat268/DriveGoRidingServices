@@ -46,7 +46,7 @@ export default function PendingVehiclesPage() {
 
   const fetchPendingVehicles = async () => {
     try {
-      const response = await apiClient.get('/api/driver/vehicles/admin/pending');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/pending`);
       if (response.data.success) {
         setVehicles(response.data.data);
       }

@@ -18,7 +18,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-router.get("/", adminAuthMiddleware, async (req, res) => {
+router.get("/",  async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
     res.status(200).json(categories);

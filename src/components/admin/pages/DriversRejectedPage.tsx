@@ -39,7 +39,7 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
 
   const fetchDrivers = async () => {
     try {
-      const response = await apiClient.get('/api/driver/Rejected');
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/Rejected`);
       const data = response.data;
       setDrivers(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
