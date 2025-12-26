@@ -1198,6 +1198,9 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             'Trip Cancelled',
             `${rideToCancel.riderInfo.riderName} has cancelled the ${rideToCancel.rideInfo.subcategoryName} trip`,
             'ride_cancelled',
+            {},
+            null,
+            rideId
           );
         }
       } catch (notifError) {
@@ -1535,22 +1538,17 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
         
         const message = `Your ride has been confirmed by ${driverName}. Ready at ${formattedDate} on ${formattedTime}`;
         
-        await NotificationService.sendToUser(
+        await NotificationService.sendAndStoreRiderNotification(
+          updatedRide.riderId,
           rider.oneSignalPlayerId,
           'Ride Confirmed',
-          message
+          message,
+          'ride_confirmed',
+          {},
+          updatedRide.rideInfo?.categoryId || null,
+          rideId
         );
         console.log('Rider notification sent for ride confirmation',rider.oneSignalPlayerId);
-        
-        // Store notification in database
-        await RiderNotification.create({
-          riderId: updatedRide.riderId,
-          rideId: updatedRide._id,
-          title: 'Ride Confirmed',
-          message: message,
-          categoryId: updatedRide.rideInfo?.categoryId || null,
-          type: 'ride_confirmed'
-        });
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);
@@ -1668,21 +1666,16 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
         const driverName = driver.personalInformation?.fullName || 'Your driver';
         const message = `${driverName} has reached your pickup location. Please come out!`;
         
-        await NotificationService.sendToUser(
+        await NotificationService.sendAndStoreRiderNotification(
+          updatedRide.riderId,
           rider.oneSignalPlayerId,
           'Driver Reached',
-          message
+          message,
+          'driver_reached',
+          {},
+          updatedRide.rideInfo?.categoryId || null,
+          rideId
         );
-        
-        // Store notification in database
-        await RiderNotification.create({
-          riderId: updatedRide.riderId,
-          rideId: updatedRide._id,
-          title: 'Driver Reached',
-          message: message,
-          categoryId: updatedRide.rideInfo?.categoryId || null,
-          type: 'driver_reached'
-        });
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);
@@ -2531,19 +2524,16 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       if (rider && rider.oneSignalPlayerId) {
         const message = `${driverName} has extended your ride. You may experience additional charges based on extra time or distance.`;
         
-        await NotificationService.sendToUser(
+        await NotificationService.sendAndStoreRiderNotification(
+          updatedRide.riderId,
           rider.oneSignalPlayerId,
           'Ride Extended',
-          message
+          message,
+          'ride_extended',
+          {},
+          null,
+          rideId
         );
-        
-        await RiderNotification.create({
-          riderId: updatedRide.riderId,
-          rideId: updatedRide._id,
-          title: 'Ride Extended',
-          message: message,
-          type: 'ride_extended'
-        });
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);
@@ -2800,19 +2790,16 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       if (rider && rider.oneSignalPlayerId) {
         const message = `Your ride with ${driverName} has been completed successfully. Thank you for choosing our service!`;
         
-        await NotificationService.sendToUser(
+        await NotificationService.sendAndStoreRiderNotification(
+          updatedRide.riderId,
           rider.oneSignalPlayerId,
           'Ride Completed',
-          message
+          message,
+          'ride_completed',
+          {},
+          null,
+          rideId
         );
-        
-        await RiderNotification.create({
-          riderId: updatedRide.riderId,
-          rideId: updatedRide._id,
-          title: 'Ride Completed',
-          message: message,
-          type: 'ride_completed'
-        });
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);

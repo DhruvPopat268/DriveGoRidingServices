@@ -627,7 +627,8 @@ router.post("/approve/:driverId",adminAuthMiddleware, async (req, res) => {
         'Your driver registration has been approved. Welcome aboard!',
         'registration_approved',
         { driverId },
-        driver.personalInformation?.category || null
+        driver.personalInformation?.category || null,
+        null
       );
     } catch (notifError) {
       console.error('Driver approval notification error:', notifError);
@@ -698,7 +699,8 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
         'Your driver registration has been rejected.',
         'registration_rejected',
         { driverId },
-        driver.personalInformation?.category || null
+        driver.personalInformation?.category || null,
+        null
       );
     } catch (notifError) {
       console.error('Driver rejection notification error:', notifError);
@@ -1731,7 +1733,8 @@ router.post("/admin/withdrawal/complete",adminAuthMiddleware, async (req, res) =
           `Your withdrawal request of ₹${withdrawal.amount} has been approved.`,
           'withdrawal_approved',
           { amount: withdrawal.amount, requestId },
-          driver.personalInformation?.category || null
+          driver.personalInformation?.category || null,
+          null
         );
       }
     } catch (notifError) {
@@ -1799,7 +1802,8 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
           `Your withdrawal request of ₹${withdrawal.amount} has been rejected.`,
           'withdrawal_rejected',
           { amount: withdrawal.amount, requestId, reason: adminRemarks },
-          driver.personalInformation?.category || null
+          driver.personalInformation?.category || null,
+          null
         );
       }
     } catch (notifError) {
@@ -2408,7 +2412,8 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
             `Your account has been suspended from ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}. Reason: ${description.trim()}`,
             'account_suspended',
             { suspendFrom: fromDate, suspendTo: toDate, description: description.trim() },
-            driver.personalInformation?.category || null
+            driver.personalInformation?.category || null,
+            null
           );
         } catch (notifError) {
           console.error('Suspension notification error:', notifError);

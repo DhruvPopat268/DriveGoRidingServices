@@ -55,26 +55,21 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
     // Send notification to rider
     try {
       const driver = await Driver.findById(ride.driverId);
-      if (rider && rider.oneSignalPlayerId && driver) {
+      if (rider && driver) {
         const driverName = driver.personalInformation?.fullName || 'Your driver';
         const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
         const message = `${driverName} rated you ${rating}/5 stars (${stars}). ${comment ? `Comment: "${comment}"` : 'Keep up the great work!'}`;
         
-        await NotificationService.sendToUser(
+        await NotificationService.sendAndStoreRiderNotification(
+          ride.riderId,
           rider.oneSignalPlayerId,
           'Driver Rating Received',
-          message
+          message,
+          'driver_rating_received',
+          { rating, comment },
+          ride.rideInfo?.categoryId || null,
+          rideId
         );
-        
-        
-        await RiderNotification.create({
-          riderId: ride.riderId,
-          rideId: ride._id,
-          title: 'Driver Rating Received',
-          message: message,
-          categoryId: ride.rideInfo?.categoryId || null,
-          type: 'driver_rating_received'
-        });
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);

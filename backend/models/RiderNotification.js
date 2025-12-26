@@ -19,6 +19,10 @@ const riderNotificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
   },
+  rideId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Ride'
+  },
   type: {
     type: String,
     required: true,

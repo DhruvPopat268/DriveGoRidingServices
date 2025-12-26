@@ -11,6 +11,10 @@ const driverNotificationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
   },
+  rideId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Ride',
+  },
   title: {
     type: String,
     required: true

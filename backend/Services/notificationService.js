@@ -143,12 +143,13 @@ class NotificationService {
   }
 
   // Store notification in database for driver
-  static async storeDriverNotification(driverId, title, message, type, data = {}, categoryId = null) {
-    console.log('💾 Storing driver notification:', { driverId, title, message, type, data, categoryId });
+  static async storeDriverNotification(driverId, title, message, type, data = {}, categoryId = null, rideId = null) {
+    console.log('💾 Storing driver notification:', { driverId, title, message, type, data, categoryId, rideId });
     try {
       const notification = await DriverNotification.create({
         driverId,
         categoryId,
+        rideId,
         title,
         message,
         type,
@@ -161,8 +162,8 @@ class NotificationService {
   }
 
   // Send notification to driver and store in database
-  static async sendAndStoreDriverNotification(driverId, playerId, title, message, type, data = {}, categoryId = null) {
-    console.log('🚗 sendAndStoreDriverNotification called:', { driverId, playerId, title, message, type, data, categoryId });
+  static async sendAndStoreDriverNotification(driverId, playerId, title, message, type, data = {}, categoryId = null, rideId = null) {
+    console.log('🚗 sendAndStoreDriverNotification called:', { driverId, playerId, title, message, type, data, categoryId, rideId });
     try {
       // Send push notification if playerId exists
       if (playerId) {
@@ -175,7 +176,7 @@ class NotificationService {
 
       // Store in database
       console.log('💾 Storing driver notification in database...');
-      await this.storeDriverNotification(driverId, title, message, type, data, categoryId);
+      await this.storeDriverNotification(driverId, title, message, type, data, categoryId, rideId);
       console.log('✅ Driver notification stored successfully');
 
       return { success: true };
@@ -186,14 +187,15 @@ class NotificationService {
   }
 
   // Store notification in database for rider
-  static async storeRiderNotification(riderId, title, message, type, data = {}, categoryId = null) {
-    console.log('💾 Storing rider notification:', { riderId, title, message, type, data, categoryId });
+  static async storeRiderNotification(riderId, title, message, type, data = {}, categoryId = null, rideId = null) {
+    console.log('💾 Storing rider notification:', { riderId, title, message, type, data, categoryId, rideId });
     try {
       const notification = await RiderNotification.create({
         riderId,
         title,
         message,
         categoryId,
+        rideId,
         type,
         data
       });
@@ -204,8 +206,8 @@ class NotificationService {
   }
 
   // Send notification to rider and store in database
-  static async sendAndStoreRiderNotification(riderId, playerId, title, message, type, data = {}, categoryId = null) {
-    console.log('🏍️ sendAndStoreRiderNotification called:', { riderId, playerId, title, message, type, data, categoryId });
+  static async sendAndStoreRiderNotification(riderId, playerId, title, message, type, data = {}, categoryId = null, rideId = null) {
+    console.log('🏍️ sendAndStoreRiderNotification called:', { riderId, playerId, title, message, type, data, categoryId, rideId });
     try {
       // Send push notification if playerId exists
       if (playerId) {
@@ -218,7 +220,7 @@ class NotificationService {
 
       // Store in database
       console.log('💾 Storing rider notification in database...');
-      await this.storeRiderNotification(riderId, title, message, type, data, categoryId);
+      await this.storeRiderNotification(riderId, title, message, type, data, categoryId, rideId);
       console.log('✅ Rider notification stored successfully');
 
       return { success: true };
@@ -263,7 +265,9 @@ class NotificationService {
         selectedDate,
         selectedTime,
         action: 'reschedule_request'
-      }
+      },
+      null,
+      ride._id
     );
   }
 
@@ -302,7 +306,9 @@ class NotificationService {
         selectedDate,
         selectedTime,
         driverName
-      }
+      },
+      null,
+      rescheduleData.rideId || null
     );
   }
 }

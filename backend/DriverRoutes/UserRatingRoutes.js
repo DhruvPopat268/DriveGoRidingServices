@@ -78,7 +78,8 @@ router.post("/", authMiddleware, async (req, res) => {
           'The customer rated your ride. Tap to view details',
           'rating_received',
           { rideId, rating },
-          ride.rideInfo?.categoryId || null
+          ride.rideInfo?.categoryId || null,
+          rideId
         );
       } catch (notifError) {
         console.error('Rating notification error:', notifError);
