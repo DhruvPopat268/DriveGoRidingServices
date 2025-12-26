@@ -8,6 +8,13 @@ interface UserRating {
   rideId: string;
   rating: number;
   comment?: string;
+  driverFeedback?: string[];
+  cabFeedback?: string[];
+  parcelFeedback?: {
+    parcelCondition?: string[];
+    deliveryExperience?: string[];
+  };
+  wouldChooseAgain?: boolean;
   createdAt: string;
 }
 
@@ -171,6 +178,9 @@ const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
                   Rating
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Feedback
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Comment
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -184,7 +194,7 @@ const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
             <tbody className="bg-white divide-y divide-gray-200">
               {ratings.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                     No ratings found
                   </td>
                 </tr>
@@ -204,6 +214,66 @@ const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
                       <div className="flex items-center gap-2">
                         <div className="flex">{renderStars(rating.rating)}</div>
                         <span className="text-sm text-gray-600">({rating.rating})</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                      <div className="space-y-1">
+                        {rating.driverFeedback && rating.driverFeedback.length > 0 && (
+                          <div>
+                            <span className="text-xs font-medium text-blue-600">Driver:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {rating.driverFeedback.map((feedback, idx) => (
+                                <span key={idx} className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                                  {feedback}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {rating.cabFeedback && rating.cabFeedback.length > 0 && (
+                          <div>
+                            <span className="text-xs font-medium text-green-600">Cab:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {rating.cabFeedback.map((feedback, idx) => (
+                                <span key={idx} className="inline-block px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
+                                  {feedback}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {rating.parcelFeedback && (
+                          <div>
+                            {rating.parcelFeedback.parcelCondition && rating.parcelFeedback.parcelCondition.length > 0 && (
+                              <div className="mb-1">
+                                <span className="text-xs font-medium text-purple-600">Parcel Condition:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {rating.parcelFeedback.parcelCondition.map((feedback, idx) => (
+                                    <span key={idx} className="inline-block px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">
+                                      {feedback}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {rating.parcelFeedback.deliveryExperience && rating.parcelFeedback.deliveryExperience.length > 0 && (
+                              <div>
+                                <span className="text-xs font-medium text-orange-600">Delivery:</span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {rating.parcelFeedback.deliveryExperience.map((feedback, idx) => (
+                                    <span key={idx} className="inline-block px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded">
+                                      {feedback}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {!rating.driverFeedback?.length && !rating.cabFeedback?.length && 
+                         !rating.parcelFeedback?.parcelCondition?.length && !rating.parcelFeedback?.deliveryExperience?.length && (
+                          <span className="text-gray-400 text-xs">No feedback</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
