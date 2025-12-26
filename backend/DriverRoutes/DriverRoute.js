@@ -390,10 +390,13 @@ router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Category ID and driver IDs array are required" });
     }
 
-    // Update selected drivers with the category
+    // Add category to selected drivers (push to array if not already present)
     await Driver.updateMany(
-      { _id: { $in: driverIds } },
-      { driverCategory: categoryId }
+      { 
+        _id: { $in: driverIds },
+        driverCategory: { $ne: categoryId } // Only update if category not already assigned
+      },
+      { $addToSet: { driverCategory: categoryId } } // Add to array without duplicates
     );
 
     // Remove category from drivers not in the selection for this category
@@ -402,7 +405,7 @@ router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
         _id: { $nin: driverIds },
         driverCategory: categoryId
       },
-      { $unset: { driverCategory: 1 } }
+      { $pull: { driverCategory: categoryId } } // Remove from array
     );
 
     res.json({

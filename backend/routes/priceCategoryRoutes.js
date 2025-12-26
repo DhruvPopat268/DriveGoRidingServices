@@ -29,7 +29,7 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
 });
 
 // Get price category by ID
-router.get('/:id', adminAuthMiddleware, async (req, res) => {
+router.get('/:id',  async (req, res) => {
   try {
     const category = await PriceCategory.findById(req.params.id);
     if (!category) {
@@ -41,7 +41,7 @@ router.get('/:id', adminAuthMiddleware, async (req, res) => {
   }
 });
 
-// Update price category by ID
+
 router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const updated = await PriceCategory.findByIdAndUpdate(

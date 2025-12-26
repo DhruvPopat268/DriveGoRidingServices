@@ -239,7 +239,7 @@ class RideRescheduleService {
           status: 'Approved',
           'personalInformation.category': categoryId,
           'personalInformation.subCategory': { $in: [subcategoryId] },
-          driverCategory: selectedCategoryId
+          driverCategory: { $in: [selectedCategoryId] } // Changed to $in for array search
         }).select('_id oneSignalPlayerId');
       } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
         const Vehicle = require('../DriverModel/VehicleModel');

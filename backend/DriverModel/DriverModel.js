@@ -136,11 +136,10 @@ const driverSchema = new mongoose.Schema(
       purchasedAt: { type: Date, default: Date.now }
     }],
 
-    driverCategory: {
+    driverCategory: [{
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'PriceCategory',
-      default: null
-    },
+      ref: 'PriceCategory'
+    }],
 
     cancellationRideCredits: { type: Number, default: 0 },
 

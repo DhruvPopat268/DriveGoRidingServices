@@ -664,7 +664,7 @@ router.post("/book", authMiddleware, async (req, res) => {
           status: 'Approved',
           'personalInformation.category': categoryId,
           'personalInformation.subCategory': { $in: [subcategoryId] },
-          driverCategory: selectedCategoryId
+          driverCategory: { $in: [selectedCategoryId] } // Changed to $in for array search
         };
         
         // Add vehicle type validations if carTypeId and transmissionTypeId exist
@@ -2340,7 +2340,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           status: 'Approved',
           'personalInformation.category': currentRide.rideInfo.categoryId,
           'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
-          driverCategory: currentRide.rideInfo.selectedCategoryId
+          driverCategory: { $in: [currentRide.rideInfo.selectedCategoryId] } // Changed to $in for array search
         };
         
         // Add vehicle type validations if carTypeId and transmissionTypeId exist
@@ -2676,13 +2676,29 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       }
     }
 
-    // ---------------------------------------------------
-    // 💳 RIDER WALLET UPDATE (ONLY WHEN PAYMENT IS CASH)
-    // ---------------------------------------------------
+    // -------------------------
+    // 💰 FINANCIAL CALCULATIONS (BEFORE STATUS UPDATES)
+    // -------------------------
 
     const riderId = updatedRide.riderId;
     const payableAmount = updatedRide.totalPayable;
     const paymentType = updatedRide.paymentType; // cash or wallet
+    const rideInfo = updatedRide.rideInfo;
+
+    const driverEarning =
+      (rideInfo.driverCharges || 0) +
+      (rideInfo.pickCharges || 0) +
+      (rideInfo.nightCharges || 0) +
+      (rideInfo.peakCharges || 0) +
+      (rideInfo.extraKmCharges || 0) +
+      (rideInfo.extraMinutesCharges || 0) +
+      (rideInfo.cancellationCharges || 0) +
+      (rideInfo.adminAddedRideExtraCharges?.Charges || 0);
+
+    const adminPayable = 
+      (rideInfo.adminCharges || 0) +
+      (rideInfo.gstCharges || 0) +
+      (rideInfo.insuranceCharges || 0);
 
     if (paymentType === "cash") {
       // Read Wallet model and update totalSpent
@@ -2706,43 +2722,52 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     // 💰 DRIVER WALLET LOGIC
     // -------------------------
 
-    const rideInfo = updatedRide.rideInfo;
-
-    const driverEarning =
-      (rideInfo.driverCharges || 0) +
-      (rideInfo.pickCharges || 0) +
-      (rideInfo.nightCharges || 0) +
-      (rideInfo.peakCharges || 0) +
-      (rideInfo.extraKmCharges || 0) +
-      (rideInfo.extraMinutesCharges || 0) +
-      (rideInfo.cancellationCharges || 0);
-
-    if (driverEarning > 0) {
-      let wallet = await driverWallet.findOne({ driverId });
-
-      if (!wallet) {
-        wallet = await driverWallet.create({
-          driverId,
-          balance: 0,
-          totalEarnings: 0,
-          totalWithdrawn: 0,
-          totalDeductions: 0,
-          transactions: [],
-        });
-      }
-
-      wallet.transactions.push({
-        type: "ride_payment",
-        amount: driverEarning,
-        rideId: updatedRide._id,
-        paymentMethod: updatedRide.paymentType,
-        description: `Ride completed (${rideInfo.categoryName} - ${rideInfo.subcategoryName})`,
-        status: "completed",
+    let wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) {
+      wallet = await driverWallet.create({
+        driverId,
+        balance: 0,
+        totalEarnings: 0,
+        totalWithdrawn: 0,
+        totalDeductions: 0,
+        transactions: [],
       });
+    }
 
-      wallet.balance += driverEarning;
-      wallet.totalEarnings += driverEarning;
-      await wallet.save();
+    if (paymentType === "cash") {
+      // For cash payments: Only deduct admin payable (driver already got cash)
+      // Deduct admin payable (admin charges + GST + insurance)
+      if (adminPayable > 0) {
+        wallet.transactions.push({
+          type: "admin_ride_commission",
+          amount: -adminPayable,
+          rideId: updatedRide._id,
+          paymentMethod: updatedRide.paymentType,
+          description: `Admin commission deducted (${rideInfo.categoryName} - ${rideInfo.subcategoryName})`,
+          status: "completed",
+        });
+        wallet.balance -= adminPayable;
+        wallet.totalDeductions += adminPayable;
+      }
+    } else if (paymentType === "wallet") {
+      // For wallet payments: Calculate what driver should get from total paid
+      const driverPaymentFromWallet = payableAmount - (rideInfo.extraKmCharges || 0) - (rideInfo.extraMinutesCharges || 0);
+      
+      if (driverPaymentFromWallet > 0) {
+        wallet.transactions.push({
+          type: "ride_payment",
+          amount: driverPaymentFromWallet,
+          rideId: updatedRide._id,
+          paymentMethod: updatedRide.paymentType,
+          description: `Ride payment from wallet (${rideInfo.categoryName} - ${rideInfo.subcategoryName})`,
+          status: "completed",
+        });
+        wallet.balance += driverPaymentFromWallet;
+        wallet.totalEarnings += driverPaymentFromWallet;
+      }
+    }
+
+    await wallet.save();
 
       const driver = await Driver.findById(driverId);
       const unclearedCharges = driver?.unclearedCancellationCharges || 0;
@@ -2784,7 +2809,6 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           await driver.save();
         }
       }
-    }
 
     // Send notification to rider
     try {

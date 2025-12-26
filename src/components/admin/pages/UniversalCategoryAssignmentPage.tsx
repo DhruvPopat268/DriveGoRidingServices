@@ -75,21 +75,10 @@ export const UniversalCategoryAssignmentPage = ({
       setLoading(true);
       const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/approved-driver-category`);
       
-      // Filter drivers: no driver category assignment OR current assignment only
-      const filteredDrivers = res.data.data.filter((driver: Driver) => {
-        const hasDriverCategory = driver.driverCategory;
-        
-        // Allow if no driver category OR only has current assignment
-        if (!hasDriverCategory) return true;
-        if (hasDriverCategory && (driver[config.field as keyof Driver] as any)?._id === categoryId) return true;
-        
-        return false;
-      });
-      console.log('Filtered Drivers:', filteredDrivers);
-      setDrivers(filteredDrivers);
+      setDrivers(res.data.data);
       
       // Pre-select drivers already in this category
-      const preSelected = filteredDrivers
+      const preSelected = res.data.data
         .filter((driver: Driver) => (driver[config.field as keyof Driver] as any)?._id === categoryId)
         .map((driver: Driver) => driver._id);
       

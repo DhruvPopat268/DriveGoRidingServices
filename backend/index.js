@@ -214,7 +214,7 @@ io.on('connection', (socket) => {
               // Check driver eligibility based on category
               if (categoryNameLower === 'driver') {
                 // Basic category match
-                let categoryMatch = driver.driverCategory?.toString() === selectedCategoryId?.toString();
+                let categoryMatch = driver.driverCategory?.includes(selectedCategoryId?.toString());
                 
                 // Additional vehicle type validations
                 let vehicleTypeMatch = true;
