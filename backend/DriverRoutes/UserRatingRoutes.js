@@ -4,8 +4,9 @@ const Ride = require("../models/Ride");
 const Driver = require("../DriverModel/DriverModel");
 const NotificationService = require('../Services/notificationService');
 const router = express.Router();
+const authMiddleware = require("../Middleware/authMiddleware");
 
-router.post("/", async (req, res) => {
+router.post("/", authMiddleware, async (req, res) => {
   try {
     const { rideId, rating, comment, driverFeedback, cabFeedback, parcelFeedback, wouldChooseAgain } = req.body;
 
