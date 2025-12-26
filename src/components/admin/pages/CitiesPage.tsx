@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface State {
   _id: string;
@@ -57,7 +57,7 @@ export const CitiesPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`${API_BASE_URL}/api/cities`);
+      const response = await apiClient.get(`${API_BASE_URL}/api/cities`);
       setCities(response.data || []);
     } catch (err) {
       setError('Network error. Please check your connection.');
@@ -70,7 +70,7 @@ export const CitiesPage = () => {
 
   const fetchActiveStates = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/cities/active-states`);
+      const response = await apiClient.get(`${API_BASE_URL}/api/cities/active-states`);
       setStates(response.data || []);
     } catch (err) {
       console.error('Fetch active states error:', err);
@@ -91,7 +91,7 @@ export const CitiesPage = () => {
       setActionLoading({ create: true });
       setError(null);
 
-      const response = await axios.post(`${API_BASE_URL}/api/cities`, {
+      const response = await apiClient.post(`${API_BASE_URL}/api/cities`, {
         name: cityForm.name.trim(),
         state: cityForm.state
       });
@@ -124,7 +124,7 @@ export const CitiesPage = () => {
       setActionLoading({ [`edit-${editingCity._id}`]: true });
       setError(null);
 
-      const response = await axios.put(`${API_BASE_URL}/api/cities/${editingCity._id}`, {
+      const response = await apiClient.put(`${API_BASE_URL}/api/cities/${editingCity._id}`, {
         name: cityForm.name.trim(),
         state: cityForm.state
       });
@@ -162,7 +162,7 @@ export const CitiesPage = () => {
       setActionLoading({ [`status-${id}`]: true });
       setError(null);
 
-      const response = await axios.put(`${API_BASE_URL}/api/cities/${id}`, {
+      const response = await apiClient.put(`${API_BASE_URL}/api/cities/${id}`, {
         status: !currentStatus
       });
 
@@ -190,7 +190,7 @@ export const CitiesPage = () => {
       setActionLoading({ [`delete-${id}`]: true });
       setError(null);
 
-      const response = await axios.delete(`${API_BASE_URL}/api/cities/${id}`);
+      const response = await apiClient.delete(`${API_BASE_URL}/api/cities/${id}`);
       const result: ApiResponse = response.data;
 
       if (result.success) {

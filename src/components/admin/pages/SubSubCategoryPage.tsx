@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { DeleteConfirmation } from '@/components/ui/delete-confirmation';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Category {
   _id: string;
@@ -81,7 +81,7 @@ export const SubSubCategoryPage = () => {
 
   const fetchSubCategoriesByCategory = async (categoryId: string) => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories/subcategories/${categoryId}`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories/subcategories/${categoryId}`);
       setSubCategories(response.data);
     } catch (error) {
       console.error("Failed to fetch subcategories:", error);
@@ -92,7 +92,7 @@ export const SubSubCategoryPage = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+        const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`);
         setCategories(response.data);
       } catch (error) {
         console.error("Failed to fetch categories:", error);
@@ -102,7 +102,7 @@ export const SubSubCategoryPage = () => {
     const fetchSubSubCategories = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
+        const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
         setSubSubCategories(response.data);
       } catch (error) {
         console.error("Failed to fetch sub-subcategories:", error);
@@ -145,7 +145,7 @@ export const SubSubCategoryPage = () => {
           formData.append('image', imageFile);
         }
 
-        await axios.post(
+        await apiClient.post(
           `${import.meta.env.VITE_API_URL}/api/subsubcategories`,
           formData,
           {
@@ -156,7 +156,7 @@ export const SubSubCategoryPage = () => {
         );
 
         // Refresh the list
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
+        const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
         setSubSubCategories(response.data);
 
         // Reset form
@@ -189,7 +189,7 @@ export const SubSubCategoryPage = () => {
         }
 
         const updateId = editingSubSubCategory._id || editingSubSubCategory.id;
-        await axios.put(
+        await apiClient.put(
           `${import.meta.env.VITE_API_URL}/api/subsubcategories/${updateId}`,
           formData,
           {
@@ -200,7 +200,7 @@ export const SubSubCategoryPage = () => {
         );
 
         // Refresh the list
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
+        const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
         setSubSubCategories(response.data);
 
         // Reset form
@@ -236,7 +236,7 @@ export const SubSubCategoryPage = () => {
   const handleDelete = async (subSubCategory: SubSubCategory) => {
     try {
       const deleteId = subSubCategory._id || subSubCategory.id;
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/subsubcategories/${deleteId}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/subsubcategories/${deleteId}`);
       setSubSubCategories(prev => prev.filter(subSubCat => subSubCat.id !== subSubCategory.id));
     } catch (error) {
       console.error('Error deleting sub-subcategory:', error);

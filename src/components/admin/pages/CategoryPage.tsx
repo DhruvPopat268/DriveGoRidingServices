@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Category {
   _id: string;
@@ -62,7 +62,7 @@ export const CategoryPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await axios.get(`${API_BASE_URL}/api/categories`);
+      const response = await apiClient.get(`${API_BASE_URL}/api/categories`);
       const categoriesData = response.data || [];
 
       const validCategories: Category[] = Array.isArray(categoriesData)
@@ -137,7 +137,7 @@ export const CategoryPage = () => {
         formData.append('image', categoryForm.image);
       }
 
-      const response = await axios.post(`${API_BASE_URL}/api/categories`, formData);
+      const response = await apiClient.post(`${API_BASE_URL}/api/categories`, formData);
 
       const result: ApiResponse = response.data;
 

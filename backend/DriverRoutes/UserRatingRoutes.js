@@ -4,7 +4,7 @@ const Ride = require("../models/Ride");
 const Driver = require("../DriverModel/DriverModel");
 const NotificationService = require('../Services/notificationService');
 const router = express.Router();
-const authMiddleware = require("../Middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 router.post("/", authMiddleware, async (req, res) => {
   try {

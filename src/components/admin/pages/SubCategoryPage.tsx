@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { DeleteConfirmation } from '@/components/ui/delete-confirmation';
-import axios from 'axios'
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Category {
   _id: number;
@@ -60,7 +60,7 @@ export const SubCategoryPage = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const cateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+      const cateData = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`);
       const categoryList = cateData.data;
 
       if (Array.isArray(categoryList)) {
@@ -81,7 +81,7 @@ export const SubCategoryPage = () => {
   // Fetch subcategories with category mapping
   const fetchSubCategories = async (categoriesData = categories) => {
     try {
-      const subcateData = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      const subcateData = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
 
       let subcategoryList = [];
       if (Array.isArray(subcateData.data)) {
@@ -152,7 +152,7 @@ export const SubCategoryPage = () => {
           formData.append('image', imageFile);
         }
 
-        const response = await axios.post(
+        const response = await apiClient.post(
           `${import.meta.env.VITE_API_URL}/api/subcategories`,
           formData,
           {
@@ -196,7 +196,7 @@ export const SubCategoryPage = () => {
           formData.append('image', editImageFile);
         }
 
-        await axios.put(
+        await apiClient.put(
           `${import.meta.env.VITE_API_URL}/api/subcategories/${editingSubCategory._id}`,
           formData,
           {
@@ -239,7 +239,7 @@ export const SubCategoryPage = () => {
   const handleDelete = async (subCategory: SubCategory) => {
     try {
       const deleteId = subCategory._id || subCategory.id;
-      const response = await axios.delete(`${import.meta.env.VITE_API_URL}/api/subcategories/${deleteId}`);
+      const response = await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/subcategories/${deleteId}`);
 
       if (response.status === 200) {
         setSubCategories(prev => prev.filter(subCat => subCat.id !== subCategory.id));

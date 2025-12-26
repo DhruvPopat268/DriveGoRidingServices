@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import ApiInterceptor from "@/lib/apiInterceptor";
+import apiClient from "../../../lib/axiosInterceptor";
 
 const permissionSections = [
   { key: "dashboard", label: "Dashboard", subItems: [] },
@@ -288,13 +288,13 @@ export const RBACManagementPage = () => {
   const fetchData = async () => {
     try {
       const [permissionsRes, rolesRes, usersRes] = await Promise.all([
-        ApiInterceptor.get(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`),
-        ApiInterceptor.get(`${import.meta.env.VITE_API_URL}/api/rbac/roles`),
-        ApiInterceptor.get(`${import.meta.env.VITE_API_URL}/api/rbac/users`)
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/rbac/roles`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/rbac/users`)
       ]);
-      setPermissions(await permissionsRes.json());
-      setRoles(await rolesRes.json());
-      setUsers(await usersRes.json());
+      setPermissions(permissionsRes.data);
+      setRoles(rolesRes.data);
+      setUsers(usersRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -304,8 +304,8 @@ export const RBACManagementPage = () => {
 
   const addPermission = async () => {
     try {
-      const res = await ApiInterceptor.post(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`, newPermission);
-      const permission = await res.json();
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rbac/permissions`, newPermission);
+      const permission = response.data;
 
       // Add the new permission with createdAt if not provided by backend
       const permissionWithDate = {
@@ -323,8 +323,8 @@ export const RBACManagementPage = () => {
 
   const addRole = async () => {
     try {
-      const res = await ApiInterceptor.post(`${import.meta.env.VITE_API_URL}/api/rbac/roles`, newRole);
-      const role = await res.json();
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rbac/roles`, newRole);
+      const role = response.data;
 
       // Map permission IDs to full permission objects for immediate display
       const roleWithPermissions = {
@@ -345,8 +345,8 @@ export const RBACManagementPage = () => {
 
   const addUser = async () => {
     try {
-      const res = await ApiInterceptor.post(`${import.meta.env.VITE_API_URL}/api/rbac/users`, newUser);
-      const user = await res.json();
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rbac/users`, newUser);
+      const user = response.data;
 
       // Map role ID to full role object for immediate display
       const userWithRole = {
@@ -385,8 +385,8 @@ export const RBACManagementPage = () => {
 
   const updatePermission = async () => {
     try {
-      const res = await ApiInterceptor.put(`${import.meta.env.VITE_API_URL}/api/rbac/permissions/${editingItem._id}`, newPermission);
-      const updated = await res.json();
+      const response = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/rbac/permissions/${editingItem._id}`, newPermission);
+      const updated = response.data;
       setPermissions(permissions.map(p => p._id === editingItem._id ? updated : p));
       resetForm();
     } catch (error) {
@@ -396,8 +396,8 @@ export const RBACManagementPage = () => {
 
   const updateRole = async () => {
     try {
-      const res = await ApiInterceptor.put(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${editingItem._id}`, newRole);
-      const updated = await res.json();
+      const response = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${editingItem._id}`, newRole);
+      const updated = response.data;
       setRoles(roles.map(r => r._id === editingItem._id ? { ...updated, userCount: r.userCount } : r));
       resetForm();
     } catch (error) {
@@ -407,8 +407,8 @@ export const RBACManagementPage = () => {
 
   const updateUser = async () => {
     try {
-      const res = await ApiInterceptor.put(`${import.meta.env.VITE_API_URL}/api/rbac/users/${editingItem._id}`, newUser);
-      const updated = await res.json();
+      const response = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/rbac/users/${editingItem._id}`, newUser);
+      const updated = response.data;
       setUsers(users.map(u => u._id === editingItem._id ? updated : u));
       resetForm();
     } catch (error) {
@@ -447,7 +447,7 @@ export const RBACManagementPage = () => {
 
   const deletePermission = async (id) => {
     try {
-      await ApiInterceptor.delete(`${import.meta.env.VITE_API_URL}/api/rbac/permissions/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/rbac/permissions/${id}`);
       setPermissions(permissions.filter(p => p._id !== id));
     } catch (error) {
       console.error('Error deleting permission:', error);
@@ -456,7 +456,7 @@ export const RBACManagementPage = () => {
 
   const deleteRole = async (id) => {
     try {
-      await ApiInterceptor.delete(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/rbac/roles/${id}`);
       setRoles(roles.filter(r => r._id !== id));
     } catch (error) {
       console.error('Error deleting role:', error);
@@ -465,7 +465,7 @@ export const RBACManagementPage = () => {
 
   const deleteUser = async (id) => {
     try {
-      await ApiInterceptor.delete(`${import.meta.env.VITE_API_URL}/api/rbac/users/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/rbac/users/${id}`);
       setUsers(users.filter(u => u._id !== id));
     } catch (error) {
       console.error('Error deleting user:', error);

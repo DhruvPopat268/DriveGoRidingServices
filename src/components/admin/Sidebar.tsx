@@ -30,6 +30,7 @@ import {
   Star
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import apiClient from "../../lib/axiosInterceptor";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -198,14 +199,8 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/permissions`, {
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setUserPermissions(data.permissions);
-        }
+        const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/auth/permissions`);
+        setUserPermissions(response.data.permissions);
       } catch (error) {
         console.error('Error fetching permissions:', error);
       }

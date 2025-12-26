@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface State {
   _id: string;
@@ -45,7 +45,7 @@ export const StatesPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await axios.get(`${API_BASE_URL}/api/states`);
+      const response = await apiClient.get(`${API_BASE_URL}/api/states`);
       setStates(response.data || []);
     } catch (err) {
       setError('Network error. Please check your connection.');
@@ -69,7 +69,7 @@ export const StatesPage = () => {
       setActionLoading({ create: true });
       setError(null);
 
-      const response = await axios.post(`${API_BASE_URL}/api/states`, {
+      const response = await apiClient.post(`${API_BASE_URL}/api/states`, {
         name: stateForm.name.trim()
       });
 
@@ -101,7 +101,7 @@ export const StatesPage = () => {
       setActionLoading({ [`edit-${editingState._id}`]: true });
       setError(null);
 
-      const response = await axios.put(`${API_BASE_URL}/api/states/${editingState._id}`, {
+      const response = await apiClient.put(`${API_BASE_URL}/api/states/${editingState._id}`, {
         name: stateForm.name.trim()
       });
 
@@ -138,7 +138,7 @@ export const StatesPage = () => {
       setActionLoading({ [`status-${id}`]: true });
       setError(null);
 
-      const response = await axios.put(`${API_BASE_URL}/api/states/${id}`, {
+      const response = await apiClient.put(`${API_BASE_URL}/api/states/${id}`, {
         status: !currentStatus
       });
 
@@ -166,7 +166,7 @@ export const StatesPage = () => {
       setActionLoading({ [`delete-${id}`]: true });
       setError(null);
 
-      const response = await axios.delete(`${API_BASE_URL}/api/states/${id}`);
+      const response = await apiClient.delete(`${API_BASE_URL}/api/states/${id}`);
       const result: ApiResponse = response.data;
 
       if (result.success) {
