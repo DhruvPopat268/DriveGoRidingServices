@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Car = require('../models/Car');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all cars
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const cars = await Car.find().populate('category', 'name').populate('vehicleType', 'name').sort({ createdAt: -1 });
     res.json(cars);
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get car by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id',adminAuthMiddleware, async (req, res) => {
   try {
     const car = await Car.findById(req.params.id).populate('category', 'name').populate('vehicleType', 'name');
     if (!car) {
@@ -27,7 +28,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create car
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description, category, vehicleType, image, seater } = req.body;
     const car = new Car({ name, description, category, vehicleType, image, seater });
@@ -40,7 +41,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update car
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description, category, vehicleType, image, seater } = req.body;
     const updateData = { name, description, category, vehicleType, seater };
@@ -64,7 +65,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Update car status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const car = await Car.findByIdAndUpdate(
@@ -85,7 +86,7 @@ router.patch('/:id/status', async (req, res) => {
 
 
 // Delete car
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const car = await Car.findByIdAndDelete(req.params.id);
     if (!car) {

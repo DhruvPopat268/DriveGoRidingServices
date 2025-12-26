@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Filter, Search, Eye, Loader } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface UserRating {
   _id: string;
@@ -42,10 +43,9 @@ const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider-auth/completeProfile`);
-      const data = await response.json();
-      if (data.success) {
-        setUsers(data.data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rider-auth/completeProfile`);
+      if (response.data.success) {
+        setUsers(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -54,10 +54,9 @@ const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
 
   const fetchAllRatings = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user-rating/all`);
-      const data = await response.json();
-      if (data.success) {
-        setRatings(data.data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/user-rating/all`);
+      if (response.data.success) {
+        setRatings(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching ratings:', error);
@@ -69,14 +68,11 @@ const UserRatingsPage = ({ onNavigateToRideDetail }: UserRatingsPageProps) => {
   const fetchUserRatings = async (userId: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user-rating/given-by-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/user-rating/given-by-user`, {
+        userId
       });
-      const data = await response.json();
-      if (data.success) {
-        setRatings(data.data);
+      if (response.data.success) {
+        setRatings(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching user ratings:', error);

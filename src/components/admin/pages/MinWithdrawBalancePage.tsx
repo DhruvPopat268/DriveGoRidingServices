@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Wallet, Plus, AlertCircle } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface MinHoldBalanceEntry {
   _id: string;
@@ -34,7 +34,7 @@ const MinWithdrawBalancePage = () => {
 
   const fetchEntries = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/min-withdraw-balance/all`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/min-withdraw-balance/all`);
       if (response.data.success) {
         setEntries(response.data.data);
       }
@@ -54,7 +54,7 @@ const MinWithdrawBalancePage = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/min-withdraw-balance`, {
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/min-withdraw-balance`, {
         minHoldBalance: parseFloat(minHoldBalance),
         minWithdrawAmount: parseFloat(minWithdrawAmount),
         minDepositAmount: parseFloat(minDepositAmount)

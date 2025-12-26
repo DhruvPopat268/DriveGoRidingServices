@@ -13,6 +13,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const AuthMiddleware = require("../middleware/authMiddleware");
+const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
 // Configure multer for memory storage with file size limit
 const storage = multer.memoryStorage();
@@ -224,7 +225,7 @@ router.post("/create-order", authMiddleware, async (req, res) => {
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User Web            >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Get all riders with non-empty names
-router.get("/completeProfile", async (req, res) => {
+router.get("/completeProfile",adminAuthMiddleware, async (req, res) => {
   try {
     const riders = await Rider.find({
       name: { $ne: "" },
@@ -249,7 +250,7 @@ router.get("/completeProfile", async (req, res) => {
   }
 });
 
-router.get("/inCompleteProfile", async (req, res) => {
+router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
   try {
     const riders = await Rider.find({ name: "", gender: "" }).sort({ createdAt: -1 });
 
@@ -271,7 +272,7 @@ router.get("/inCompleteProfile", async (req, res) => {
   }
 });
 
-router.get("/all", async (req, res) => {
+router.get("/all", adminAuthMiddleware, async (req, res) => {
   try {
     const riders = await Rider.find({}).sort({ createdAt: -1 });
 
@@ -290,24 +291,6 @@ router.get("/all", async (req, res) => {
     res.json({ success: true, data: ridersWithWallet });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-router.get("/auth/check", (req, res) => {
-  // Get token from "Authorization: Bearer <token>"
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-
-  // console.log("Checking auth token from headers:", token);
-
-  if (!token) return res.json({ loggedIn: false });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_USER);
-    res.json({ loggedIn: true, user: decoded });
-  } catch (err) {
-    console.error("Invalid or expired token:", err.message);
-    res.json({ loggedIn: false });
   }
 });
 

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '../../ui/button';
-import { Input } from '../../ui/input';
-import { Card } from '../../ui/card';
-import { Switch } from '../../ui/switch';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../../ui/alert-dialog';
-import { Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
-import { ScrollArea } from '../../ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Plus, Edit, Trash2, Search, Eye, Loader } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface ParcelVehicleType {
   _id: string;
@@ -38,11 +39,9 @@ const ParcelVehicleTypePage = () => {
   const fetchParcelVehicleTypes = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes`);
-      if (response.ok) {
-        const data = await response.json();
-        setParcelVehicleTypes(data);
-      }
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes`);
+      const data = response.data;
+      setParcelVehicleTypes(data);
     } catch (error) {
       console.error('Error fetching parcel vehicle types:', error);
     } finally {
@@ -54,23 +53,13 @@ const ParcelVehicleTypePage = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const url = editingParcelVehicleType 
-        ? `${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes/${editingParcelVehicleType._id}`
-        : `${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes`;
+      const response = editingParcelVehicleType 
+        ? await apiClient.put(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes/${editingParcelVehicleType._id}`, formData)
+        : await apiClient.post(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes`, formData);
       
-      const method = editingParcelVehicleType ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        await fetchParcelVehicleTypes();
-        setDialogOpen(false);
-        resetForm();
-      }
+      await fetchParcelVehicleTypes();
+      setDialogOpen(false);
+      resetForm();
     } catch (error) {
       console.error('Error saving parcel vehicle type:', error);
     } finally {
@@ -95,12 +84,8 @@ const ParcelVehicleTypePage = () => {
   const handleDelete = async (id: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes/${id}`, {
-        method: 'DELETE'
-      });
-      if (response.ok) {
-        await fetchParcelVehicleTypes();
-      }
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes/${id}`);
+      await fetchParcelVehicleTypes();
     } catch (error) {
       console.error('Error deleting parcel vehicle type:', error);
     } finally {
@@ -110,14 +95,10 @@ const ParcelVehicleTypePage = () => {
 
   const handleStatusToggle = async (id: string, currentStatus: boolean) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: !currentStatus })
+      await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes/${id}/status`, {
+        status: !currentStatus
       });
-      if (response.ok) {
-        await fetchParcelVehicleTypes();
-      }
+      await fetchParcelVehicleTypes();
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -207,11 +188,18 @@ const ParcelVehicleTypePage = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">Loading...</TableCell>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    <div className="flex justify-center items-center">
+                      <Loader className="w-6 h-6 animate-spin mr-2" />
+                      <span>Loading parcel vehicle types...</span>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ) : filteredParcelVehicleTypes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center">No parcel vehicle types found</TableCell>
+                  <TableCell colSpan={5} className="text-center py-8">
+                    <p className="text-gray-500 text-lg">No data found! Add first parcel vehicle type.</p>
+                  </TableCell>
                 </TableRow>
               ) : (
                 filteredParcelVehicleTypes.map((type) => (

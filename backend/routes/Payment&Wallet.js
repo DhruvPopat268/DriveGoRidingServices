@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { Wallet } = require('../models/Payment&Wallet');
 const authMiddleware = require('../middleware/authMiddleware');
 const { processDeposit } = require('../utils/depositHandler');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({

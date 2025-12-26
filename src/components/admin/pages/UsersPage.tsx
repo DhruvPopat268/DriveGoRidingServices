@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Users, Search, Filter, Phone, Mail, Calendar, User, Star } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface User {
   _id: string;
@@ -58,11 +59,10 @@ export const UsersPage = () => {
         endpoint = '/api/rider-auth/inCompleteProfile';
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`);
-      const data = await response.json();
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}${endpoint}`);
       
-      if (data.success) {
-        setUsers(data.data);
+      if (response.data.success) {
+        setUsers(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching users:', error);

@@ -6,9 +6,10 @@ const registration = require('../DriverModel/RegistrationFee')
 const DriverAuthMiddleware = require('../middleware/driverAuthMiddleware');
 const Driver = require('../DriverModel/DriverModel');
 const { totalmem } = require('os');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all subscription plans
-router.get('/', async (req, res) => {
+router.get('/',adminAuthMiddleware, async (req, res) => {
   try {
     const plans = await SubscriptionPlan.find().sort({ createdAt: -1 });
     res.json(plans);
@@ -18,7 +19,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create subscription plan
-router.post('/', async (req, res) => {
+router.post('/',adminAuthMiddleware, async (req, res) => {
   try {
     const { name, duration, days, description, amount } = req.body;
 
@@ -36,7 +37,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update subscription plan
-router.put('/:id', async (req, res) => {
+router.put('/:id',adminAuthMiddleware, async (req, res) => {
   try {
     const { name, duration, days, description, amount } = req.body;
 
@@ -57,7 +58,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Update subscription plan status
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const plan = await SubscriptionPlan.findByIdAndUpdate(
@@ -77,7 +78,7 @@ router.put('/:id/status', async (req, res) => {
 });
 
 // Delete subscription plan
-router.delete('/:id', async (req, res) => {
+router.delete('/:id',adminAuthMiddleware, async (req, res) => {
   try {
     const plan = await SubscriptionPlan.findByIdAndDelete(req.params.id);
 
@@ -91,7 +92,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.get("/drivers/purchased-plans", async (req, res) => {
+router.get("/drivers/purchased-plans",adminAuthMiddleware, async (req, res) => {
   try {
     // Fetch all drivers who have purchased plans
     const drivers = await Driver.find(

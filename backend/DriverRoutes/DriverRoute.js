@@ -19,7 +19,6 @@ const DriverSubscriptionPlan = require('../DriverModel/SubscriptionPlan')
 const driverWallet = require("../DriverModel/driverWallet");
 const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const MinHoldBalance = require("../models/MinWithdrawBalance");
-const adminAuthMiddleware = require("../middleware/authMiddleware");
 const CancellationCredit = require("../models/CancellationCredit");
 const axios = require("axios");
 const fs = require("fs").promises;
@@ -32,6 +31,7 @@ const NotificationService = require('../Services/notificationService');
 const DriverNotification = require('../DriverModel/DriverNotification');
 const { processDeposit } = require('../utils/depositHandler');
 const Razorpay = require('razorpay');
+const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -308,7 +308,7 @@ router.post("/deleteAccount", async (req, res) => {
 });
 
 
-router.get("/", async (req, res) => {
+router.get("/",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Approved" })
       .populate('driverCategory')
@@ -321,7 +321,7 @@ router.get("/", async (req, res) => {
 });
 
 // Get approved drivers with selectedCategory.name as 'Driver'
-router.get("/approved-driver-category", async (req, res) => {
+router.get("/approved-driver-category",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({
       status: "Approved",
@@ -382,7 +382,7 @@ router.get("/profile", DriverAuthMiddleware, async (req, res) => {
 });
 
 // Assign drivers to price category
-router.put("/assign-category", async (req, res) => {
+router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
   try {
     const { categoryId, driverIds } = req.body;
 
@@ -417,7 +417,7 @@ router.put("/assign-category", async (req, res) => {
 });
 
 //Onreview drivers
-router.get("/Pending", async (req, res) => {
+router.get("/Pending",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Pending" }).sort({ createdAt: -1 });
 
@@ -431,7 +431,7 @@ router.get("/Pending", async (req, res) => {
   }
 });
 
-router.get("/Onreview", async (req, res) => {
+router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Onreview" }).populate('drivingDetails.canDrive drivingDetails.vehicleType').sort({ createdAt: -1 });
 
@@ -446,7 +446,7 @@ router.get("/Onreview", async (req, res) => {
   }
 });
 
-router.get("/Approved", async (req, res) => {
+router.get("/Approved",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Approved" }).sort({ approvedDate: -1 });
 
@@ -461,7 +461,7 @@ router.get("/Approved", async (req, res) => {
   }
 });
 
-router.get("/Rejected", async (req, res) => {
+router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Rejected" }).sort({ createdAt: -1 });
 
@@ -476,7 +476,7 @@ router.get("/Rejected", async (req, res) => {
   }
 });
 
-router.get("/PendingForPayment", async (req, res) => {
+router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "PendingForPayment" }).sort({ createdAt: -1 });
 
@@ -489,7 +489,7 @@ router.get("/PendingForPayment", async (req, res) => {
   }
 });
 
-router.get("/deleted", async (req, res) => {
+router.get("/deleted",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "deleted" }).sort({ deletedDate: -1 });
 
@@ -502,7 +502,7 @@ router.get("/deleted", async (req, res) => {
   }
 });
 
-router.get("/Suspended", async (req, res) => {
+router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Suspended" }).sort({ createdAt: -1 });
 
@@ -533,7 +533,7 @@ router.get("/Suspended", async (req, res) => {
 });
 
 // Approve driver
-router.post("/approve/:driverId", async (req, res) => {
+router.post("/approve/:driverId",adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
 
@@ -641,7 +641,7 @@ router.post("/approve/:driverId", async (req, res) => {
 });
 
 // Reject driver
-router.post("/reject/:driverId", async (req, res) => {
+router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
     const { steps = [] } = req.body;
@@ -714,35 +714,8 @@ router.post("/reject/:driverId", async (req, res) => {
   }
 });
 
-// Get driver by uniqueId
-router.post("/get-by-uniqueid", async (req, res) => {
-  try {
-    const { uniqueId } = req.body;
-
-    if (!uniqueId) {
-      return res.status(400).json({ success: false, message: "uniqueId is required" });
-    }
-
-    const driver = await Driver.findOne({ uniqueId })
-      .populate('selectedCategory')
-      .populate('driverCategory', 'name')
-      .populate('parcelCategory', 'name')
-      .populate('assignedCar', 'name model')
-      .populate('vehiclesOwned')
-      .populate('vehiclesAssigned');
-
-    if (!driver) {
-      return res.status(404).json({ success: false, message: "Driver not found" });
-    }
-
-    res.json({ success: true, data: driver });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 // Get driver cancellation credits info
-router.get("/cancellation-credits", async (req, res) => {
+router.get("/cancellation-credits",adminAuthMiddleware, async (req, res) => {
   try {
     // console.log('Fetching driver cancellation credits...');
 
@@ -768,7 +741,7 @@ router.get("/cancellation-credits", async (req, res) => {
 });
 
 // Get all cancellation credit configurations
-router.get("/manage-credits", async (req, res) => {
+router.get("/manage-credits",adminAuthMiddleware, async (req, res) => {
   try {
     const credits = await CancellationCredit.find().sort({ createdAt: -1 });
     res.json({ success: true, data: credits });
@@ -778,7 +751,7 @@ router.get("/manage-credits", async (req, res) => {
 });
 
 // Update cancellation credits for all drivers
-router.post("/manage-credits", async (req, res) => {
+router.post("/manage-credits",adminAuthMiddleware, async (req, res) => {
   try {
     const { credits } = req.body;
 
@@ -904,7 +877,7 @@ router.get("/driverDetail", driverAuthMiddleware, async (req, res) => {
 });
 
 // Get driver by ID
-router.get("/:driverId", async (req, res) => {
+router.get("/:driverId", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
     const driver = await Driver.findById(driverId).populate('drivingDetails.canDrive drivingDetails.vehicleType');
@@ -1708,7 +1681,7 @@ router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) =
   }
 });
 
-router.post("/admin/withdrawal/complete", async (req, res) => {
+router.post("/admin/withdrawal/complete",adminAuthMiddleware, async (req, res) => {
   try {
     const { requestId } = req.body;
 
@@ -1776,7 +1749,7 @@ router.post("/admin/withdrawal/complete", async (req, res) => {
   }
 });
 
-router.post("/admin/withdrawal/reject", async (req, res) => {
+router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) => {
   try {
     const { requestId, adminRemarks } = req.body;
 
@@ -1896,7 +1869,7 @@ router.delete("/delete-account", DriverAuthMiddleware, async (req, res) => {
 });
 
 // Get all minimum hold balance entries
-router.get("/admin/min-withdraw-balance/all", async (req, res) => {
+router.get("/admin/min-withdraw-balance/all",adminAuthMiddleware, async (req, res) => {
   try {
     const entries = await MinHoldBalance.find().sort({ createdAt: -1 });
     res.json({
@@ -1909,7 +1882,7 @@ router.get("/admin/min-withdraw-balance/all", async (req, res) => {
 });
 
 // Create new minimum hold balance entry
-router.post("/admin/min-withdraw-balance", async (req, res) => {
+router.post("/admin/min-withdraw-balance", adminAuthMiddleware, async (req, res) => {
   try {
     const { minHoldBalance, minWithdrawAmount, minDepositAmount } = req.body;
 
@@ -2009,7 +1982,7 @@ router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/transactions/all", async (req, res) => {
+router.get("/transactions/all",adminAuthMiddleware, async (req, res) => {
   try {
     const wallets = await driverWallet.find()
       .populate("driverId", "personalInformation.fullName mobile")
@@ -2030,7 +2003,7 @@ router.get("/transactions/all", async (req, res) => {
   }
 });
 
-router.get("/transactions/stats", async (req, res) => {
+router.get("/transactions/stats", adminAuthMiddleware, async (req, res) => {
   try {
     const pipeline = [
       {
@@ -2096,7 +2069,7 @@ router.get("/transactions/stats", async (req, res) => {
   }
 });
 
-router.get("/transactions/paginated", async (req, res) => {
+router.get("/transactions/paginated", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -2168,7 +2141,7 @@ router.get("/transactions/paginated", async (req, res) => {
 });
 
 // Reference OTP endpoints
-router.post("/reference/send-otp", async (req, res) => {
+router.post("/reference/send-otp",DriverAuthMiddleware, async (req, res) => {
   // console.log("SID =>", process.env.KALEYRA_SID);
   // console.log("API KEY =>", process.env.KALEYRA_API_KEY);
   // console.log("SENDER ID =>", process.env.KALEYRA_SENDER_ID);
@@ -2230,7 +2203,7 @@ router.post("/reference/send-otp", async (req, res) => {
   }
 });
 
-router.post("/reference/verify-otp", async (req, res) => {
+router.post("/reference/verify-otp",DriverAuthMiddleware, async (req, res) => {
   try {
     const { mobile, otp } = req.body;
 
@@ -2285,7 +2258,7 @@ router.post("/reference/verify-otp", async (req, res) => {
 });
 
 // Admin: Create driver incentive
-router.post("/admin/create-incentive", async (req, res) => {
+router.post("/admin/create-incentive",adminAuthMiddleware, async (req, res) => {
   try {
     const { driverIds, amount, description } = req.body;
 
@@ -2368,7 +2341,7 @@ router.post("/admin/create-incentive", async (req, res) => {
 });
 
 // Get incentive history
-router.get("/admin/incentive-history", async (req, res) => {
+router.get("/admin/incentive-history", adminAuthMiddleware, async (req, res) => {
   try {
     const incentives = await DriverIncentive.find()
       .populate("drivers", "personalInformation.fullName mobile")
@@ -2381,7 +2354,7 @@ router.get("/admin/incentive-history", async (req, res) => {
 });
 
 // Admin: Suspend drivers
-router.post("/admin/suspend-drivers", async (req, res) => {
+router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverIds, suspendFrom, suspendTo, description } = req.body;
 
@@ -2472,7 +2445,7 @@ router.post("/admin/suspend-drivers", async (req, res) => {
 });
 
 // Get suspend history
-router.get("/admin/suspend-history", async (req, res) => {
+router.get("/admin/suspend-history", adminAuthMiddleware, async (req, res) => {
   try {
     const suspensions = await DriverSuspend.find()
       .populate("drivers", "personalInformation.fullName mobile")

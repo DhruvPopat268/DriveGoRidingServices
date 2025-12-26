@@ -2,9 +2,10 @@ const express = require('express');
 const RiderWalletConfig = require('../models/RiderWalletConfig');
 const adminAuthMiddleware = require('../middleware/authMiddleware');
 const router = express.Router();
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all rider wallet config entries
-router.get('/all',  async (req, res) => {
+router.get('/all', adminAuthMiddleware, async (req, res) => {
   try {
     const entries = await RiderWalletConfig.find().sort({ createdAt: -1 });
     res.json({
@@ -17,7 +18,7 @@ router.get('/all',  async (req, res) => {
 });
 
 // Create new rider wallet config entry
-router.post('/',  async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { minDepositAmount, minWithdrawAmount } = req.body;
 

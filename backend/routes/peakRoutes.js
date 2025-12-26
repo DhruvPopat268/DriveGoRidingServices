@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const Peak = require('../models/Peak');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Create
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const peak = new Peak(req.body);
     await peak.save();
@@ -14,7 +15,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get All
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const peaks = await Peak.find().sort({ createdAt: -1 });
     res.json({ success: true, data: peaks });
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 // Update
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const peak = await Peak.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!peak) return res.status(404).json({ success: false, message: 'Not found' });
@@ -35,7 +36,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Toggle Status
-router.patch('/:id/toggle-status', async (req, res) => {
+router.patch('/:id/toggle-status', adminAuthMiddleware, async (req, res) => {
   try {
     const peak = await Peak.findById(req.params.id);
     if (!peak) return res.status(404).json({ success: false, message: 'Not found' });
@@ -49,7 +50,7 @@ router.patch('/:id/toggle-status', async (req, res) => {
 });
 
 // Delete
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const peak = await Peak.findByIdAndDelete(req.params.id);
     if (!peak) return res.status(404).json({ success: false, message: 'Not found' });

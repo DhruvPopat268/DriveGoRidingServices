@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import apiClient from "../../../lib/axiosInterceptor";
 
 interface DriverDetail {
   _id: string;
@@ -91,9 +92,8 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
 
   const fetchDriverDetail = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/${driverId}`);
-      const data = await response.json();
-      setDriver(data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/${driverId}`);
+      setDriver(response.data);
     } catch (error) {
       console.error('Error fetching driver detail:', error);
     } finally {
@@ -103,12 +103,8 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
 
   const handleApprove = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/approve/${driverId}`, {
-        method: 'POST'
-      });
-      if (response.ok) {
-        onBack();
-      }
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/approve/${driverId}`);
+      onBack();
     } catch (error) {
       console.error('Error approving driver:', error);
     }
@@ -117,18 +113,12 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
   const handleReject = async () => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/reject/${driverId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ steps: selectedSteps })
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/reject/${driverId}`, {
+        steps: selectedSteps
       });
-      if (response.ok) {
-        setShowRejectDialog(false);
-        setSelectedSteps([]);
-        onBack();
-      }
+      setShowRejectDialog(false);
+      setSelectedSteps([]);
+      onBack();
     } catch (error) {
       console.error('Error rejecting driver:', error);
     } finally {

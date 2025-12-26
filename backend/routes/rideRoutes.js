@@ -33,6 +33,7 @@ const Category = require("../models/Category");
 const subcategory = require("../models/SubCategory");
 const subSubcategory = require("../models/SubSubCategory");
 const RiderNotification = require("../models/RiderNotification");
+const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -76,7 +77,7 @@ const getPaginatedRides = async (status = null, req) => {
   };
 };
 
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides(null, req);
     res.json(result);
@@ -85,7 +86,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/booked', async (req, res) => {
+router.get('/booked', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('BOOKED', req);
     res.json(result);
@@ -94,7 +95,7 @@ router.get('/booked', async (req, res) => {
   }
 });
 
-router.get('/confirmed', async (req, res) => {
+router.get('/confirmed', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('CONFIRMED', req);
     res.json(result);
@@ -103,7 +104,7 @@ router.get('/confirmed', async (req, res) => {
   }
 });
 
-router.get('/ongoing', async (req, res) => {
+router.get('/ongoing', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('ONGOING', req);
     res.json(result);
@@ -112,7 +113,7 @@ router.get('/ongoing', async (req, res) => {
   }
 });
 
-router.get('/completed', async (req, res) => {
+router.get('/completed', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('COMPLETED', req);
     res.json(result);
@@ -121,7 +122,7 @@ router.get('/completed', async (req, res) => {
   }
 });
 
-router.get('/cancelled', async (req, res) => {
+router.get('/cancelled', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('CANCELLED', req);
     res.json(result);
@@ -130,7 +131,7 @@ router.get('/cancelled', async (req, res) => {
   }
 });
 
-router.get('/extended', async (req, res) => {
+router.get('/extended', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('EXTENDED', req);
     res.json(result);
@@ -139,7 +140,7 @@ router.get('/extended', async (req, res) => {
   }
 });
 
-router.get('/reached', async (req, res) => {
+router.get('/reached', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('REACHED', req);
     res.json(result);
@@ -148,7 +149,7 @@ router.get('/reached', async (req, res) => {
   }
 });
 
-router.get("/booking/:id", async (req, res) => {
+router.get("/booking/:id", adminAuthMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -170,7 +171,7 @@ router.get("/booking/:id", async (req, res) => {
 });
 
 // Add admin extra charges to ride
-router.post("/admin/extra-charges", async (req, res) => {
+router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
   try {
     const { rideId, charges, description } = req.body;
 
@@ -224,7 +225,7 @@ router.post("/admin/extra-charges", async (req, res) => {
 });
 
 // update status to confirm and assign driver ride by driver
-router.post("/admin/driver/confirm", async (req, res) => {
+router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
   try {
     const { rideId, driverId } = req.body;
 
@@ -3054,7 +3055,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 });
 
 // 1️⃣ Get all PENDING withdrawal requests
-router.get("/withdrawals/pending", async (req, res) => {
+router.get("/withdrawals/pending",adminAuthMiddleware, async (req, res) => {
   try {
     const pendingRequests = await withdrawalRequest
       .find({ status: "pending" })
@@ -3066,7 +3067,7 @@ router.get("/withdrawals/pending", async (req, res) => {
 });
 
 // 2️⃣ Get all COMPLETED withdrawal requests
-router.get("/withdrawals/completed", async (req, res) => {
+router.get("/withdrawals/completed", adminAuthMiddleware, async (req, res) => {
   try {
     const completedRequests = await withdrawalRequest
       .find({ status: "completed" })
@@ -3078,7 +3079,7 @@ router.get("/withdrawals/completed", async (req, res) => {
 });
 
 // 3️⃣ Get all REJECTED withdrawal requests
-router.get("/withdrawals/rejected", async (req, res) => {
+router.get("/withdrawals/rejected", adminAuthMiddleware, async (req, res) => {
   try {
     const rejectedRequests = await withdrawalRequest
       .find({ status: "rejected" })
@@ -3242,7 +3243,7 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
 });
 
 // Get eligible drivers for a ride
-router.post("/eligible-drivers", async (req, res) => {
+router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
   try {
     const { rideId } = req.body;
 

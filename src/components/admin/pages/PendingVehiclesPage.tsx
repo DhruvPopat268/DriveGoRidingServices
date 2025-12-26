@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Eye, X, Check, XCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '../../ui/alert';
+import { Eye, X, Check, XCircle, Loader } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Vehicle {
   _id: string;
@@ -42,15 +46,9 @@ export default function PendingVehiclesPage() {
 
   const fetchPendingVehicles = async () => {
     try {
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/pending`, {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setVehicles(data.data);
+      const response = await apiClient.get('/api/driver/vehicles/admin/pending');
+      if (response.data.success) {
+        setVehicles(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching pending vehicles:', error);
@@ -85,23 +83,15 @@ export default function PendingVehiclesPage() {
     try {
       setActionLoading(vehicleToAction._id);
       setError(null);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/approve/${vehicleToAction._id}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
+      const response = await apiClient.post(`/api/driver/vehicles/admin/approve/${vehicleToAction._id}`);
+      if (response.data.success) {
         setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
         setShowApproveModal(false);
         setVehicleToAction(null);
         setSuccess('Vehicle approved successfully!');
         setTimeout(() => setSuccess(null), 3000);
       } else {
-        setError(data.message || 'Failed to approve vehicle');
+        setError(response.data.message || 'Failed to approve vehicle');
       }
     } catch (error) {
       console.error('Error approving vehicle:', error);
@@ -117,23 +107,15 @@ export default function PendingVehiclesPage() {
     try {
       setActionLoading(vehicleToAction._id);
       setError(null);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/reject/${vehicleToAction._id}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
+      const response = await apiClient.post(`/api/driver/vehicles/admin/reject/${vehicleToAction._id}`);
+      if (response.data.success) {
         setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
         setShowRejectModal(false);
         setVehicleToAction(null);
         setSuccess('Vehicle rejected successfully!');
         setTimeout(() => setSuccess(null), 3000);
       } else {
-        setError(data.message || 'Failed to reject vehicle');
+        setError(response.data.message || 'Failed to reject vehicle');
       }
     } catch (error) {
       console.error('Error rejecting vehicle:', error);

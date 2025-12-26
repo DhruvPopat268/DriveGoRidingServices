@@ -5,9 +5,10 @@ const Permission = require('../models/Permission');
 const Role = require('../models/Role');
 const User = require('../models/User');
 const { sendWelcomeEmail } = require('../Services/emailService');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Permission routes
-router.get('/permissions', async (req, res) => {
+router.get('/permissions', adminAuthMiddleware, async (req, res) => {
   try {
     const permissions = await Permission.find().sort({createdAt: -1});
     res.json(permissions);
@@ -16,7 +17,7 @@ router.get('/permissions', async (req, res) => {
   }
 });
 
-router.post('/permissions', async (req, res) => {
+router.post('/permissions', adminAuthMiddleware, async (req, res) => {
   try {
     const permission = new Permission(req.body);
     await permission.save();
@@ -26,7 +27,7 @@ router.post('/permissions', async (req, res) => {
   }
 });
 
-router.put('/permissions/:id', async (req, res) => {
+router.put('/permissions/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const permission = await Permission.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(permission);
@@ -35,7 +36,7 @@ router.put('/permissions/:id', async (req, res) => {
   }
 });
 
-router.delete('/permissions/:id', async (req, res) => {
+router.delete('/permissions/:id', adminAuthMiddleware, async (req, res) => {
   try {
     await Permission.findByIdAndDelete(req.params.id);
     res.status(204).send();
@@ -45,7 +46,7 @@ router.delete('/permissions/:id', async (req, res) => {
 });
 
 // Role routes
-router.get('/roles', async (req, res) => {
+router.get('/roles', adminAuthMiddleware, async (req, res) => {
   try {
     const roles = await Role.find().populate('permissions');
     const rolesWithUserCount = await Promise.all(
@@ -60,7 +61,7 @@ router.get('/roles', async (req, res) => {
   }
 });
 
-router.post('/roles', async (req, res) => {
+router.post('/roles', adminAuthMiddleware, async (req, res) => {
   try {
     const role = new Role(req.body);
     await role.save();
@@ -70,7 +71,7 @@ router.post('/roles', async (req, res) => {
   }
 });
 
-router.put('/roles/:id', async (req, res) => {
+router.put('/roles/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const role = await Role.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('permissions');
     res.json(role);
@@ -79,7 +80,7 @@ router.put('/roles/:id', async (req, res) => {
   }
 });
 
-router.delete('/roles/:id', async (req, res) => {
+router.delete('/roles/:id', adminAuthMiddleware, async (req, res) => {
   try {
     await Role.findByIdAndDelete(req.params.id);
     res.status(204).send();
@@ -89,7 +90,7 @@ router.delete('/roles/:id', async (req, res) => {
 });
 
 // User routes
-router.get('/users', async (req, res) => {
+router.get('/users', adminAuthMiddleware, async (req, res) => {
   try {
     const users = await User.find().populate('role');
     res.json(users);
@@ -98,7 +99,7 @@ router.get('/users', async (req, res) => {
   }
 });
 
-router.post('/users', async (req, res) => {
+router.post('/users', adminAuthMiddleware, async (req, res) => {
   try {
     const userData = req.body;
     const plainPassword = userData.password;
@@ -125,7 +126,7 @@ router.post('/users', async (req, res) => {
   }
 });
 
-router.put('/users/:id', async (req, res) => {
+router.put('/users/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const updateData = { ...req.body };
     if (updateData.password && updateData.password.trim() !== '') {
@@ -140,7 +141,7 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-router.delete('/users/:id', async (req, res) => {
+router.delete('/users/:id', adminAuthMiddleware, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
     res.status(204).send();

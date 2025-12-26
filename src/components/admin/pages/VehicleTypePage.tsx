@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Trash2, Loader } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface VehicleType {
   _id: string;
@@ -39,7 +39,7 @@ export const VehicleTypePage = () => {
   const fetchVehicleTypes = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes`);
       setVehicleTypes(response.data);
     } catch (error) {
       console.error('Error fetching vehicle types:', error);
@@ -54,9 +54,9 @@ export const VehicleTypePage = () => {
 
     try {
       if (editingVehicleType) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes/${editingVehicleType._id}`, vehicleTypeForm);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes/${editingVehicleType._id}`, vehicleTypeForm);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes`, vehicleTypeForm);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes`, vehicleTypeForm);
       }
       await fetchVehicleTypes();
       setDialogOpen(false);
@@ -80,7 +80,7 @@ export const VehicleTypePage = () => {
   const handleDelete = async (id: string) => {
     setLoading(true);
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes/${id}`);
       await fetchVehicleTypes();
     } catch (error) {
       console.error('Error deleting vehicle type:', error);
@@ -91,7 +91,7 @@ export const VehicleTypePage = () => {
 
   const handleStatusToggle = async (id: string, currentStatus: boolean) => {
     try {
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes/${id}/status`, {
+      await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes/${id}/status`, {
         status: !currentStatus
       });
       await fetchVehicleTypes();

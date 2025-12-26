@@ -1,8 +1,8 @@
-import { 
-  LayoutDashboard, 
-  Car, 
-  Users, 
-  MapPin, 
+import {
+  LayoutDashboard,
+  Car,
+  Users,
+  MapPin,
   Shield,
   Tags,
   FolderTree,
@@ -134,7 +134,7 @@ const menuItems = [
     ]
   },
   { icon: Gift, label: "Refer Earn", key: "UserReferearn" },
-{
+  {
     icon: Wallet,
     label: "Driver Wallet & Payments Management",
     key: "payments-management",
@@ -201,6 +201,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
       try {
         const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/auth/permissions`);
         setUserPermissions(response.data.permissions);
+        console.log('User permissions:', response.data.permissions); // Debug log
       } catch (error) {
         console.error('Error fetching permissions:', error);
       }
@@ -329,12 +330,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar 
-        isOpen={isOpen} 
-        activeSection={activeSection} 
+      <Sidebar
+        isOpen={isOpen}
+        activeSection={activeSection}
         onSectionChange={setActiveSection}
       />
-      
+
       {/* Main content area */}
       <div className={cn("transition-all duration-300", isOpen ? "ml-64" : "ml-16")}>
         <div className="p-8">
@@ -344,7 +345,7 @@ export default function App() {
           >
             Toggle Sidebar
           </button>
-          
+
           <div className="mt-8">
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Active Section: {activeSection}

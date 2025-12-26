@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
+import apiClient from '../../lib/axiosInterceptor';
 
 interface AdminExtraChargesDialogProps {
   isOpen: boolean;
@@ -34,23 +35,12 @@ export const AdminExtraChargesDialog = ({
 
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/admin/extra-charges`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          rideId,
-          charges: Number(charges),
-          description: description.trim() || undefined
-        })
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/admin/extra-charges`, {
+        rideId,
+        charges: Number(charges),
+        description: description.trim() || undefined
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to add extra charges');
-      }
-
-      const data = await response.json();
       setSuccess("Extra charges added successfully!");
       setTimeout(() => {
         onSuccess();

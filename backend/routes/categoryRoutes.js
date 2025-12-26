@@ -5,6 +5,7 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const Category = require('../models/Category');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware')
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Multer for file upload
 const storage = multer.memoryStorage();
@@ -17,7 +18,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-router.get("/", async (req, res) => {
+router.get("/", adminAuthMiddleware, async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
     res.status(200).json(categories);
@@ -27,7 +28,7 @@ router.get("/", async (req, res) => {
 });
 
 // CREATE CATEGORY
-router.post('/', upload.single('image'), async (req, res) => {
+router.post('/',adminAuthMiddleware, upload.single('image'), async (req, res) => {
   try {
     // console.log("➡️ Incoming request body:", req.body);
     // console.log("➡️ Incoming file:", req.file);
@@ -93,7 +94,7 @@ router.post('/', upload.single('image'), async (req, res) => {
 });
 
 // UPDATE CATEGORY
-router.put('/:id', upload.single('image'), async (req, res) => {
+router.put('/:id', adminAuthMiddleware, upload.single('image'), async (req, res) => {
   try {
     const { name, description } = req.body;
     let updateData = { name, description };
@@ -125,7 +126,7 @@ router.put('/:id', upload.single('image'), async (req, res) => {
 });
 
 // DELETE CATEGORY
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
     if (!category) return res.status(404).json({ success: false, message: 'Category not found' });

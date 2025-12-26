@@ -10,9 +10,10 @@ const {
 const authMiddleware = require('../middleware/authMiddleware');
 const Rider = require('../models/Rider');
 const { Wallet } = require('../models/Payment&Wallet');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // GET all referral rules
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const rules = await ReferralRule.find().sort({ createdAt: -1 });
     res.json(rules); // This will return an array
@@ -22,7 +23,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET a specific referral rule
-router.get('/:id', async (req, res) => {
+router.get('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const rule = await ReferralRule.findById(req.params.id);
     if (!rule) {
@@ -35,7 +36,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // CREATE a new referral rule
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { commission, MaxReferrals, allowCommissionToUsed, status } = req.body;
     
@@ -54,7 +55,7 @@ router.post('/', async (req, res) => {
 });
 
 // UPDATE a referral rule
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { commission, MaxReferrals, allowCommissionToUsed, status } = req.body;
     
@@ -80,7 +81,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE a referral rule
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const deletedRule = await ReferralRule.findByIdAndDelete(req.params.id);
     

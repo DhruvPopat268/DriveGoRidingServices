@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Button } from '../../ui/button';
-import { Input } from '../../ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
-import { Badge } from '../../ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Search, Ban, Eye } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
@@ -48,18 +49,10 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
   const fetchSuspendedDrivers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/Suspended`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDrivers(data.data);
-        setFilteredDrivers(data.data);
-      }
+      const response = await apiClient.get('/api/driver/Suspended');
+      const data = response.data;
+      setDrivers(data.data);
+      setFilteredDrivers(data.data);
     } catch (error) {
       console.error('Error fetching suspended drivers:', error);
     } finally {

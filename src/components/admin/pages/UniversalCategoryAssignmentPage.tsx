@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
@@ -73,7 +73,7 @@ export const UniversalCategoryAssignmentPage = ({
   const fetchDrivers = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/driver/approved-driver-category`);
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/approved-driver-category`);
       
       // Filter drivers: no driver category assignment OR current assignment only
       const filteredDrivers = res.data.data.filter((driver: Driver) => {
@@ -115,7 +115,7 @@ export const UniversalCategoryAssignmentPage = ({
       setSaving(true);
       const payload = { categoryId, driverIds: selectedDrivers };
         
-      await axios.put(`${import.meta.env.VITE_API_URL}${config.endpoint}`, payload);
+      await apiClient.put(`${import.meta.env.VITE_API_URL}${config.endpoint}`, payload);
       
      
     } catch (err) {

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Clock, DollarSign, User, Car, Phone, Calendar, CreditCard, Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
+import apiClient from "../../../lib/axiosInterceptor";
 
 interface CompletedRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -46,11 +47,8 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
         limit: recordsPerPage.toString(),
         ...(dateFilter && { date: dateFilter })
       });
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/completed?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch completed rides');
-      }
-      const data = await response.json();
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/completed?${params}`);
+      const data = response.data;
       setRides(data.data);
       setTotalPages(data.totalPages);
       setTotalRides(data.totalRides);

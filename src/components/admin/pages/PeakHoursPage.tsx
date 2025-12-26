@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 import { Plus, Trash2, Clock, Calendar, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +62,7 @@ export const PeakHoursPage = () => {
 
   const fetchPeakHours = async () => {
     try {
-      const res = await axios.get(API_URL);
+      const res = await apiClient.get('/api/peaks');
       if (res.data.success) {
         setPeakHours(res.data.data);
       }
@@ -73,7 +73,7 @@ export const PeakHoursPage = () => {
 
   const fetchNightCharges = async () => {
     try {
-      const res = await axios.get(NIGHT_API_URL);
+      const res = await apiClient.get('/api/night-charges');
       if (res.data.success) {
         setNightCharges(res.data.data);
       }
@@ -99,7 +99,7 @@ export const PeakHoursPage = () => {
         endDate: selectedType === 'peak_dates' ? formData.endDate : undefined,
         price: parseFloat(formData.price)
       };
-      const res = await axios.post(API_URL, payload);
+      const res = await apiClient.post('/api/peaks', payload);
       if (res.data.success) {
         setPeakHours(prev => [res.data.data, ...prev]);
         setDialogOpen(false);
@@ -119,7 +119,7 @@ export const PeakHoursPage = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`${API_URL}/${id}`);
+      await apiClient.delete(`/api/peaks/${id}`);
       setPeakHours(prev => prev.filter(hour => hour._id !== id));
     } catch (err) {
       console.error('Error deleting peak hour:', err);
@@ -128,7 +128,7 @@ export const PeakHoursPage = () => {
 
   const handleToggleStatus = async (id: string) => {
     try {
-      const res = await axios.patch(`${API_URL}/${id}/toggle-status`);
+      const res = await apiClient.patch(`/api/peaks/${id}/toggle-status`);
       if (res.data.success) {
         setPeakHours(prev => prev.map(hour => 
           hour._id === id ? { ...hour, status: res.data.data.status } : hour
@@ -147,7 +147,7 @@ export const PeakHoursPage = () => {
         startTime: nightFormData.startTime,
         endTime: nightFormData.endTime
       };
-      const res = await axios.post(NIGHT_API_URL, payload);
+      const res = await apiClient.post('/api/night-charges', payload);
       if (res.data.success) {
         setNightCharges(prev => [res.data.data, ...prev]);
         setNightDialogOpen(false);
@@ -160,7 +160,7 @@ export const PeakHoursPage = () => {
 
   const handleNightDelete = async (id: string) => {
     try {
-      await axios.delete(`${NIGHT_API_URL}/${id}`);
+      await apiClient.delete(`/api/night-charges/${id}`);
       setNightCharges(prev => prev.filter(charge => charge._id !== id));
     } catch (err) {
       console.error('Error deleting night charge:', err);
@@ -169,7 +169,7 @@ export const PeakHoursPage = () => {
 
   const handleNightToggleStatus = async (id: string) => {
     try {
-      const res = await axios.patch(`${NIGHT_API_URL}/${id}/toggle-status`);
+      const res = await apiClient.patch(`/api/night-charges/${id}/toggle-status`);
       if (res.data.success) {
         setNightCharges(prev => prev.map(charge => 
           charge._id === id ? { ...charge, status: res.data.data.status } : charge

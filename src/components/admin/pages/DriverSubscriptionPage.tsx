@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 import { useToast } from "@/components/ui/use-toast";
 
 
@@ -72,8 +72,8 @@ export const DriverSubscriptionPage = () => {
       setError(null);
 
       const [feesResponse, plansResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/registration-fees`),
-        axios.get(`${API_BASE_URL}/api/subscription-plans`)
+        apiClient.get(`${API_BASE_URL}/api/registration-fees`),
+        apiClient.get(`${API_BASE_URL}/api/subscription-plans`)
       ]);
 
       setRegistrationFees(feesResponse.data || []);
@@ -95,7 +95,7 @@ export const DriverSubscriptionPage = () => {
       setActionLoading({ createFee: true });
       setError(null);
 
-      const response = await axios.post(`${API_BASE_URL}/api/registration-fees`, {
+      const response = await apiClient.post(`${API_BASE_URL}/api/registration-fees`, {
         fee: parseFloat(feeForm.fee)
       });
 
@@ -117,7 +117,7 @@ export const DriverSubscriptionPage = () => {
     try {
       setActionLoading({ [`fee-${id}`]: true });
 
-      const response = await axios.put(`${API_BASE_URL}/api/registration-fees/${id}/status`, {
+      const response = await apiClient.put(`${API_BASE_URL}/api/registration-fees/${id}/status`, {
         status: !status
       });
 
@@ -137,7 +137,7 @@ export const DriverSubscriptionPage = () => {
     try {
       setActionLoading({ [`delete-fee-${id}`]: true });
 
-      const response = await axios.delete(`${API_BASE_URL}/api/registration-fees/${id}`);
+      const response = await apiClient.delete(`${API_BASE_URL}/api/registration-fees/${id}`);
 
       if (response.data.success) {
         setRegistrationFees(registrationFees.filter(fee => fee._id !== id));
@@ -178,7 +178,7 @@ export const DriverSubscriptionPage = () => {
       setActionLoading({ createPlan: true });
       setError(null);
 
-      const response = await axios.post(`${API_BASE_URL}/api/subscription-plans`, {
+      const response = await apiClient.post(`${API_BASE_URL}/api/subscription-plans`, {
         name: planForm.name,
         duration: planForm.duration,
         days: planForm.days,
@@ -221,7 +221,7 @@ export const DriverSubscriptionPage = () => {
       setActionLoading({ [`edit-${editingPlan._id}`]: true });
       setError(null);
 
-      const response = await axios.put(`${API_BASE_URL}/api/subscription-plans/${editingPlan._id}`, {
+      const response = await apiClient.put(`${API_BASE_URL}/api/subscription-plans/${editingPlan._id}`, {
         name: planForm.name,
         duration: planForm.duration,
         days: planForm.days,
@@ -250,7 +250,7 @@ export const DriverSubscriptionPage = () => {
     try {
       setActionLoading({ [`plan-${id}`]: true });
 
-      const response = await axios.put(`${API_BASE_URL}/api/subscription-plans/${id}/status`, {
+      const response = await apiClient.put(`${API_BASE_URL}/api/subscription-plans/${id}/status`, {
         status: !status
       });
 
@@ -270,7 +270,7 @@ export const DriverSubscriptionPage = () => {
     try {
       setActionLoading({ [`delete-plan-${id}`]: true });
 
-      const response = await axios.delete(`${API_BASE_URL}/api/subscription-plans/${id}`);
+      const response = await apiClient.delete(`${API_BASE_URL}/api/subscription-plans/${id}`);
 
       if (response.data.success) {
         setSubscriptionPlans(subscriptionPlans.filter(plan => plan._id !== id));

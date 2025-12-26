@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
 import { useState, useEffect } from "react";
+import apiClient from "../../../lib/axiosInterceptor";
 
 interface BookedRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -57,11 +58,8 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
         limit: recordsPerPage.toString(),
         ...(dateFilter && { date: dateFilter })
       });
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/booked?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch booked rides');
-      }
-      const data = await response.json();
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/booked?${params}`);
+      const data = response.data;
       setRides(data.data);
       setTotalPages(data.totalPages);
       setTotalRides(data.totalRides);
@@ -93,13 +91,10 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
     setSelectedRide(ride);
     setShowAssignDialog(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/eligible-drivers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rideId: ride._id })
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/eligible-drivers`, {
+        rideId: ride._id
       });
-      if (!response.ok) throw new Error('Failed to fetch eligible drivers');
-      const data = await response.json();
+      const data = response.data;
       setEligibleDrivers(data.drivers || []);
     } catch (err) {
       console.error('Error fetching drivers:', err);
@@ -111,12 +106,10 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
     if (!selectedDriver || !selectedRide) return;
     setAssigningDriver(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/admin/driver/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rideId: selectedRide._id, driverId: selectedDriver })
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/admin/driver/confirm`, {
+        rideId: selectedRide._id, 
+        driverId: selectedDriver
       });
-      if (!response.ok) throw new Error('Failed to assign driver');
       setShowAssignDialog(false);
       setSelectedDriver('');
       setSuccess('Driver assigned successfully!');

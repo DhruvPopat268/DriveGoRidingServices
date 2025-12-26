@@ -19,6 +19,7 @@ import {
   Timer,
   Loader
 } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface RideDetails {
   _id: string;
@@ -103,14 +104,8 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
   const fetchRideDetails = async (rideId: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/booking/${rideId}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch ride details');
-      }
-
-      const data = await response.json();
-      setRideDetails(data.data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/booking/${rideId}`);
+      setRideDetails(response.data.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

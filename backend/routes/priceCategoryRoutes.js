@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const PriceCategory = require('../models/PriceCategory');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Create new price category
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { priceCategoryName, description } = req.body;
     const newCategory = new PriceCategory({
@@ -18,7 +19,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get price categories
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const categories = await PriceCategory.find().sort({ createdAt: -1 });
     res.json(categories);
@@ -28,7 +29,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get price category by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const category = await PriceCategory.findById(req.params.id);
     if (!category) {
@@ -41,7 +42,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Update price category by ID
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const updated = await PriceCategory.findByIdAndUpdate(
       req.params.id,
@@ -57,7 +58,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete price category by ID
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const deleted = await PriceCategory.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: 'Price category not found' });

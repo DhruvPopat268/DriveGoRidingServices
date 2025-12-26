@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const VehicleType = require('../models/cabVehicleType');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all vehicle types
-router.get('/', async (req, res) => {
+router.get('/',adminAuthMiddleware, async (req, res) => {
   try {
     const vehicleTypes = await VehicleType.find().sort({ createdAt: -1 });
     res.json(vehicleTypes);
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create vehicle type
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description } = req.body;
     const vehicleType = new VehicleType({ name, description });
@@ -26,7 +27,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update vehicle type
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description } = req.body;
     const vehicleType = await VehicleType.findByIdAndUpdate(
@@ -44,7 +45,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Update vehicle type status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const vehicleType = await VehicleType.findByIdAndUpdate(
@@ -62,7 +63,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Delete vehicle type
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const vehicleType = await VehicleType.findByIdAndDelete(req.params.id);
     if (!vehicleType) {

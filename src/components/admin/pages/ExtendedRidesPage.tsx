@@ -4,6 +4,7 @@ import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, DollarSign } from "l
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
 import { useState, useEffect } from "react";
+import apiClient from "../../../lib/axiosInterceptor";
 
 interface ExtendedRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -48,11 +49,8 @@ export const ExtendedRidesPage = ({ onNavigateToDetail }: ExtendedRidesPageProps
         limit: recordsPerPage.toString(),
         ...(dateFilter && { date: dateFilter })
       });
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/extended?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch extended rides');
-      }
-      const data = await response.json();
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/extended?${params}`);
+      const data = response.data;
       setRides(data.data);
       setTotalPages(data.totalPages);
       setTotalRides(data.totalRides);

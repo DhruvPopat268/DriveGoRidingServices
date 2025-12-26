@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Badge } from '../../ui/badge';
 import { Skeleton } from '../../ui/skeleton';
 import { Users, Calendar, MapPin, Phone, CreditCard } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface DriverCredit {
   driverName: string;
@@ -24,15 +25,10 @@ export const AllDriversCreditsPage = () => {
   const fetchDriverCredits = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/cancellation-credits`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/cancellation-credits`);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch driver credits');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setDrivers(data.data);
+      if (response.data.success) {
+        setDrivers(response.data.data);
       } else {
         throw new Error('API returned error');
       }

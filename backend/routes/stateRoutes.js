@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const State = require('../models/State');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // GET ALL STATES
-router.get("/", async (req, res) => {
+router.get("/", adminAuthMiddleware, async (req, res) => {
   try {
     const states = await State.find().sort({ createdAt: -1 });
     res.status(200).json(states);
@@ -13,7 +14,7 @@ router.get("/", async (req, res) => {
 });
 
 // CREATE STATE
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { name } = req.body;
 
@@ -42,7 +43,7 @@ router.post('/', async (req, res) => {
 });
 
 // UPDATE STATE
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, status } = req.body;
     const updateData = {};
@@ -67,7 +68,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // TOGGLE STATE STATUS
-router.patch('/:id/toggle-status', async (req, res) => {
+router.patch('/:id/toggle-status', adminAuthMiddleware, async (req, res) => {
   try {
     const state = await State.findById(req.params.id);
     if (!state) return res.status(404).json({ success: false, message: 'State not found' });
@@ -88,7 +89,7 @@ router.patch('/:id/toggle-status', async (req, res) => {
 });
 
 // DELETE STATE
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const state = await State.findById(req.params.id);
     if (!state) return res.status(404).json({ success: false, message: 'State not found' });

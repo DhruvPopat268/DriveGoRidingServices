@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Eye, X } from 'lucide-react';
+import { Eye, X, Loader } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Vehicle {
   _id: string;
@@ -35,15 +38,9 @@ export default function ApprovedVehiclesPage() {
 
   const fetchApprovedVehicles = async () => {
     try {
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/approved`, {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`
-        }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setVehicles(data.data);
+      const response = await apiClient.get('/api/driver/vehicles/admin/approved');
+      if (response.data.success) {
+        setVehicles(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching approved vehicles:', error);
@@ -63,39 +60,44 @@ export default function ApprovedVehiclesPage() {
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return (
+      <div className="space-y-8">
+        <div className="flex justify-center items-center py-8">
+          <Loader className="w-6 h-6 animate-spin mr-2" />
+          <span>Loading approved vehicles...</span>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Approved Vehicles</h1>
-        <p className="text-gray-600">Vehicles approved by admin</p>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Approved Vehicles</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">RC Number</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unique ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Approved Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+      <Card className="p-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>#</TableHead>
+              <TableHead>RC Number</TableHead>
+              <TableHead>Owner Name</TableHead>
+              <TableHead>Mobile</TableHead>
+              <TableHead>Unique ID</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Approved Date</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
               {vehicles.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
-                    No approved vehicles found
-                  </td>
-                </tr>
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-8">
+                    <p className="text-gray-500 text-lg">No approved vehicles found</p>
+                  </TableCell>
+                </TableRow>
               ) : (
                 vehicles.map((vehicle, index) => (
                   <tr key={vehicle._id} className="hover:bg-gray-50">
@@ -137,10 +139,9 @@ export default function ApprovedVehiclesPage() {
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          </TableBody>
+        </Table>
+      </Card>
 
       {/* Modal */}
       {showModal && selectedVehicle && (

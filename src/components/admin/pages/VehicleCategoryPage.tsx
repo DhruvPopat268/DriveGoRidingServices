@@ -31,7 +31,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface VehicleCategory {
   _id: string;
@@ -68,8 +68,8 @@ export const VehicleCategoryPage = () => {
       try {
         setLoading(true);
         const [categoriesRes, typesRes] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`),
-          axios.get(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes`)
+          apiClient.get(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`),
+          apiClient.get(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes`)
         ]);
         setVehicleCategories(categoriesRes.data?.data || []);
         setDriverVehicleTypes(typesRes.data?.data || []);
@@ -85,7 +85,7 @@ export const VehicleCategoryPage = () => {
   const handleVehicleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (vehicleCategoryForm.vehicleName.trim() && vehicleCategoryForm.DriveVehicleType) {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`, vehicleCategoryForm);
+      const res = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/vehiclecategories`, vehicleCategoryForm);
       setVehicleCategories([...vehicleCategories, res.data.data]);
       setVehicleCategoryForm({ vehicleName: '', DriveVehicleType: '' });
       setVehicleCategoryDialogOpen(false);
@@ -95,7 +95,7 @@ export const VehicleCategoryPage = () => {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingVehicleCategory && vehicleCategoryForm.vehicleName.trim() && vehicleCategoryForm.DriveVehicleType) {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${editingVehicleCategory._id}`, vehicleCategoryForm);
+      const res = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${editingVehicleCategory._id}`, vehicleCategoryForm);
       setVehicleCategories(
         vehicleCategories.map(vc => (vc._id === editingVehicleCategory._id ? res.data.data : vc))
       );
@@ -115,13 +115,13 @@ export const VehicleCategoryPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await axios.delete(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${id}`);
+    await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${id}`);
     setVehicleCategories(vehicleCategories.filter(vc => vc._id !== id));
   };
 
   const handleStatusToggle = async (id: string, currentStatus: boolean) => {
     try {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${id}`, { status: !currentStatus });
+      const res = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/${id}`, { status: !currentStatus });
       setVehicleCategories(vehicleCategories.map(vc => vc._id === id ? res.data.data : vc));
     } catch (error) {
       console.error('Error updating status:', error);

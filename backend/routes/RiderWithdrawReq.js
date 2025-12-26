@@ -7,9 +7,10 @@ const authMiddleware = require('../middleware/authMiddleware');
 const NotificationService = require('../Services/notificationService');
 const RiderNotification = require('../models/RiderNotification');
 const Rider = require('../models/Rider');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // GET - Fetch pending withdrawal requests
-router.get('/pending', async (req, res) => {
+router.get('/pending', adminAuthMiddleware, async (req, res) => {
   try {
     const withdrawReqs = await RiderWithdrawReq.find({ status: 'pending' })
       .populate('riderId', 'name mobile email')
@@ -22,7 +23,7 @@ router.get('/pending', async (req, res) => {
 });
 
 // GET - Fetch approved withdrawal requests
-router.get('/approved', async (req, res) => {
+router.get('/approved', adminAuthMiddleware, async (req, res) => {
   try {
     const withdrawReqs = await RiderWithdrawReq.find({ status: 'approved' })
       .populate('riderId', 'name mobile email')
@@ -35,7 +36,7 @@ router.get('/approved', async (req, res) => {
 });
 
 // GET - Fetch rejected withdrawal requests
-router.get('/rejected', async (req, res) => {
+router.get('/rejected',adminAuthMiddleware, async (req, res) => {
   try {
     const withdrawReqs = await RiderWithdrawReq.find({ status: 'rejected' })
       .populate('riderId', 'name mobile email')
@@ -130,7 +131,7 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // APPROVE - Admin approve withdrawal request
-router.put('/approve', async (req, res) => {
+router.put('/approve', adminAuthMiddleware, async (req, res) => {
   try {
     const { id, adminNotes } = req.body;
 
@@ -194,7 +195,7 @@ router.put('/approve', async (req, res) => {
 });
 
 // REJECT - Admin reject withdrawal request
-router.put('/reject', async (req, res) => {
+router.put('/reject', adminAuthMiddleware, async (req, res) => {
   try {
     const { id, adminNotes } = req.body;
 

@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const NightCharge = require('../models/NightCharge');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Create
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const nightCharge = new NightCharge(req.body);
     await nightCharge.save();
@@ -14,7 +15,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get All
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const nightCharges = await NightCharge.find().sort({ createdAt: -1 });
     res.json({ success: true, data: nightCharges });
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 // Update
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const nightCharge = await NightCharge.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!nightCharge) return res.status(404).json({ success: false, message: 'Not found' });
@@ -35,7 +36,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Toggle Status
-router.patch('/:id/toggle-status', async (req, res) => {
+router.patch('/:id/toggle-status', adminAuthMiddleware, async (req, res) => {
   try {
     const nightCharge = await NightCharge.findById(req.params.id);
     if (!nightCharge) return res.status(404).json({ success: false, message: 'Not found' });
@@ -49,7 +50,7 @@ router.patch('/:id/toggle-status', async (req, res) => {
 });
 
 // Delete
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const nightCharge = await NightCharge.findByIdAndDelete(req.params.id);
     if (!nightCharge) return res.status(404).json({ success: false, message: 'Not found' });

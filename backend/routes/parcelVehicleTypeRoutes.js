@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const ParcelVehicleType = require('../models/parcelVehicleType');
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all parcel vehicle types
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const parcelVehicleTypes = await ParcelVehicleType.find().sort({ createdAt: -1 });
     res.json(parcelVehicleTypes);
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create parcel vehicle type
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description } = req.body;
     const parcelVehicleType = new ParcelVehicleType({ name, description });
@@ -26,7 +27,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update parcel vehicle type
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description } = req.body;
     const parcelVehicleType = await ParcelVehicleType.findByIdAndUpdate(
@@ -44,7 +45,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Update parcel vehicle type status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const parcelVehicleType = await ParcelVehicleType.findByIdAndUpdate(
@@ -62,7 +63,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Delete parcel vehicle type
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const parcelVehicleType = await ParcelVehicleType.findByIdAndDelete(req.params.id);
     if (!parcelVehicleType) {

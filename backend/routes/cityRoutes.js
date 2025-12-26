@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const City = require('../models/City');
 const State = require('../models/State');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // GET ALL CITIES
 router.get("/", async (req, res) => {
@@ -14,7 +15,7 @@ router.get("/", async (req, res) => {
 });
 
 // GET ACTIVE STATES FOR DROPDOWN
-router.get("/active-states", async (req, res) => {
+router.get("/active-states",adminAuthMiddleware, async (req, res) => {
   try {
     const states = await State.find({ status: true }).sort({ name: 1 });
     res.status(200).json(states);
@@ -24,7 +25,7 @@ router.get("/active-states", async (req, res) => {
 });
 
 // CREATE CITY
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, state } = req.body;
 
@@ -60,7 +61,7 @@ router.post('/', async (req, res) => {
 });
 
 // UPDATE CITY
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, state, status } = req.body;
     const updateData = {};
@@ -89,7 +90,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // TOGGLE CITY STATUS
-router.patch('/:id/toggle-status', async (req, res) => {
+router.patch('/:id/toggle-status', adminAuthMiddleware, async (req, res) => {
   try {
     const city = await City.findById(req.params.id).populate('state');
     if (!city) return res.status(404).json({ success: false, message: 'City not found' });
@@ -110,7 +111,7 @@ router.patch('/:id/toggle-status', async (req, res) => {
 });
 
 // DELETE CITY
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const city = await City.findById(req.params.id);
     if (!city) return res.status(404).json({ success: false, message: 'City not found' });

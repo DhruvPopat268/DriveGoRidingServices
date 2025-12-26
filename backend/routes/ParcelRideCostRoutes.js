@@ -10,12 +10,12 @@ const mongoose = require('mongoose');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const Rider = require('../models/Rider');
 const {Wallet} = require('../models/Payment&Wallet')
-
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 
 
 // Get all parcel ride costs
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const parcelRideCosts = await ParcelRideCost.find()
 
@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const rideCost = await ParcelRideCost.findById(req.params.id);
     if (!rideCost) {
@@ -51,7 +51,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     // Create new ParcelRideCost
     const parcelRideCost = new ParcelRideCost(req.body);
@@ -74,7 +74,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update parcel ride cost
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const parcelRideCost = await ParcelRideCost.findByIdAndUpdate(
       req.params.id,
@@ -100,7 +100,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Update status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const parcelRideCost = await ParcelRideCost.findByIdAndUpdate(
@@ -120,7 +120,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Delete parcel ride cost
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const parcelRideCost = await ParcelRideCost.findByIdAndDelete(req.params.id);
 
@@ -329,7 +329,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/get-included-data", async (req, res) => {
+router.post("/get-included-data",authMiddleware, async (req, res) => {
   try {
     const { categoryId, subcategoryId } = req.body;
 

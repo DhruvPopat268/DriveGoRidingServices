@@ -8,7 +8,6 @@ import { RecentRides } from "@/components/admin/RecentRides";
 import { DriverRequests } from "@/components/admin/DriverRequests";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import { LiveMap } from "@/components/admin/LiveMap";
-import { DriversPage } from "@/components/admin/pages/DriversPage";
 import { RidersPage } from "@/components/admin/pages/RidersPage";
 import { RidesPage } from "@/components/admin/pages/RidesPage";
 import { BookedRidesPage } from "@/components/admin/pages/BookedRidesPage";
@@ -166,8 +165,6 @@ const Index = () => {
         return <StatesPage />;
       case "cities":
         return <CitiesPage />;
-      case "drivers":
-        return <DriversPage />;
       case "riders":
         return <RidersPage />;
       case "rides":

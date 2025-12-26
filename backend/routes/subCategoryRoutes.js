@@ -5,7 +5,7 @@ const SubCategory = require("../models/SubCategory");
 const Category = require("../models/Category");
 const { ObjectId } = mongoose.Types;
 const driverAuthMiddleware = require('../middleware/driverAuthMiddleware')
-
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware')
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 
@@ -21,7 +21,7 @@ cloudinary.config({
 });
 
 // ✅ Get all subcategories
-router.get("/", async (req, res) => {
+router.get("/", adminAuthMiddleware, async (req, res) => {
   try {
     const subcategories = await SubCategory.find().populate("categoryId", "name");
 
@@ -41,7 +41,7 @@ router.get("/", async (req, res) => {
 });
 
 // ✅ Get single subcategory by id
-router.get("/:id", async (req, res) => {
+router.get("/:id", adminAuthMiddleware, async (req, res) => {
   try {
     const subcategory = await SubCategory.findById(req.params.id).populate("categoryId", "name");
     if (!subcategory) return res.status(404).json({ error: "Subcategory not found" });
@@ -52,7 +52,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // ✅ Create subcategory with Cloudinary image upload
-router.post("/", upload.single("image"), async (req, res) => {
+router.post("/", adminAuthMiddleware, upload.single("image"), async (req, res) => {
   try {
     const { name, categoryId, description } = req.body;
 
@@ -84,7 +84,7 @@ router.post("/", upload.single("image"), async (req, res) => {
 });
 
 // ✅ Update subcategory with optional Cloudinary image upload
-router.put("/:id", upload.single("image"), async (req, res) => {
+router.put("/:id", adminAuthMiddleware, upload.single("image"), async (req, res) => {
   try {
     const { name, categoryId, description } = req.body;
 
@@ -120,7 +120,7 @@ router.put("/:id", upload.single("image"), async (req, res) => {
 });
 
 // ✅ Delete subcategory
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", adminAuthMiddleware, async (req, res) => {
   try {
     await SubCategory.findByIdAndDelete(req.params.id);
     res.json({ message: "Deleted successfully" });

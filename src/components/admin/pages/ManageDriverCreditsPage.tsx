@@ -8,6 +8,7 @@ import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Plus, CreditCard, Calendar } from 'lucide-react';
 import { useToast } from '../../ui/use-toast';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface CreditConfig {
   _id: string;
@@ -31,11 +32,10 @@ export const ManageDriverCreditsPage = () => {
   const fetchCredits = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/manage-credits`);
-      const data = await response.json();
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/manage-credits`);
       
-      if (data.success) {
-        setCredits(data.data);
+      if (response.data.success) {
+        setCredits(response.data.data);
       } else {
         throw new Error('Failed to fetch credits');
       }
@@ -64,17 +64,11 @@ export const ManageDriverCreditsPage = () => {
 
     try {
       setSubmitting(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/manage-credits`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          credits: parseInt(formData.credits)
-        })
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/manage-credits`, {
+        credits: parseInt(formData.credits)
       });
 
-      const data = await response.json();
+      const data = response.data;
       
       if (data.success) {
         toast({

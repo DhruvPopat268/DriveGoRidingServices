@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
@@ -38,8 +39,8 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
 
   const fetchDrivers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/Approved`);
-      const data = await response.json();
+      const response = await apiClient.get('/api/driver/Approved');
+      const data = response.data;
       setDrivers(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('Error fetching drivers:', error);

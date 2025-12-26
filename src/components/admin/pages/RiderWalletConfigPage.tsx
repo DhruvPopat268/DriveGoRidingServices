@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Wallet, Plus, AlertCircle } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface RiderWalletConfigEntry {
   _id: string;
@@ -30,7 +30,7 @@ const RiderWalletConfigPage = () => {
 
   const fetchEntries = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/rider/wallet-config/all`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rider/wallet-config/all`);
       if (response.data.success) {
         setEntries(response.data.data);
       }
@@ -50,7 +50,7 @@ const RiderWalletConfigPage = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/rider/wallet-config`, {
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rider/wallet-config`, {
         minDepositAmount: parseFloat(minDepositAmount),
         minWithdrawAmount: parseFloat(minWithdrawAmount)
       });

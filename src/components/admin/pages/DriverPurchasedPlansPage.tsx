@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader } from "lucide-react";
+import apiClient from "../../../lib/axiosInterceptor";
 
 interface PurchasedPlan {
   driverId: string;
@@ -35,19 +36,9 @@ export const DriverPurchasedPlansPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subscription-plans/drivers/purchased-plans`, {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subscription-plans/drivers/purchased-plans`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch purchased plans');
-      }
-
-      const data: ApiResponse = await response.json();
+      const data: ApiResponse = response.data;
       setPlans(data.purchasedPlans || []);
       setTotalPlans(data.totalPlans || 0);
     } catch (err) {

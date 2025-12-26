@@ -3,13 +3,14 @@ const router = express.Router();
 const DriverVehicleType = require('../models/DriverVehicleType');
 const VehicleCategory = require('../models/VehicleCategory');
 const DriverAuthMiddleware = require('../middleware/driverAuthMiddleware');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
-router.get('/', async (req, res) => {
+router.get('/',adminAuthMiddleware, async (req, res) => {
   const types = await DriverVehicleType.find();
   res.json({ success: true, data: types });
 });
 
-router.get('/active', async (req, res) => {
+router.get('/active',adminAuthMiddleware, async (req, res) => {
   const types = await DriverVehicleType.find({ status: true });
   res.json({ success: true, data: types });
 });
@@ -19,7 +20,7 @@ router.get('/userApp/active', DriverAuthMiddleware, async (req, res) => {
   res.json({ success: true, data: types });
 });
 
-router.post('/', async (req, res) => {
+router.post('/',adminAuthMiddleware, async (req, res) => {
   try {
     const type = await DriverVehicleType.create(req.body);
     res.status(201).json({ success: true, data: type });
@@ -28,7 +29,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const updated = await DriverVehicleType.findByIdAndUpdate(req.params.id, req.body, { new: true });
     
@@ -45,7 +46,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     await DriverVehicleType.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Deleted successfully' });

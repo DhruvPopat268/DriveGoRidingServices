@@ -5,6 +5,7 @@ const Driver = require("../DriverModel/DriverModel");
 const NotificationService = require('../Services/notificationService');
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
 router.post("/", authMiddleware, async (req, res) => {
   try {
@@ -94,7 +95,7 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/given-by-user", async (req, res) => {
+router.post("/given-by-user",adminAuthMiddleware, async (req, res) => {
   try {
     const { userId } = req.body;
 
@@ -114,7 +115,7 @@ router.post("/given-by-user", async (req, res) => {
   }
 });
 
-router.get("/all", async (req, res) => {
+router.get("/all",adminAuthMiddleware, async (req, res) => {
   try {
     const ratings = await UserRating.find()
       .populate('userId', 'name')
@@ -126,7 +127,7 @@ router.get("/all", async (req, res) => {
   }
 });
 
-router.get("/:driverId", async (req, res) => {
+router.get("/:driverId",adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
     const ratings = await UserRating.find({ driverId })

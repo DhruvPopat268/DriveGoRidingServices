@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const ServiceWalletBalance = require('../models/ServiceWalletBalance');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all service wallet balances
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const walletBalances = await ServiceWalletBalance.find()
       .populate('category', 'name')
@@ -19,7 +20,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get service wallet balance by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const walletBalance = await ServiceWalletBalance.findById(req.params.id)
       .populate('category', 'name')
@@ -38,7 +39,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new service wallet balance
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { category, subcategory, subSubCategory, minWalletBalance } = req.body;
 
@@ -85,7 +86,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update service wallet balance
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { category, subcategory, subSubCategory, minWalletBalance } = req.body;
 
@@ -136,7 +137,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete service wallet balance
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const walletBalance = await ServiceWalletBalance.findByIdAndDelete(req.params.id);
     
@@ -152,7 +153,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Get minimum wallet balance for specific service with subSubCategory
-router.get('/service/:category/:subcategory/:subSubCategory', async (req, res) => {
+router.get('/service/:category/:subcategory/:subSubCategory', adminAuthMiddleware, async (req, res) => {
   try {
     const { category, subcategory, subSubCategory } = req.params;
     
@@ -177,7 +178,7 @@ router.get('/service/:category/:subcategory/:subSubCategory', async (req, res) =
 });
 
 // Get minimum wallet balance for specific service without subSubCategory
-router.get('/service/:category/:subcategory', async (req, res) => {
+router.get('/service/:category/:subcategory', adminAuthMiddleware, async (req, res) => {
   try {
     const { category, subcategory } = req.params;
     

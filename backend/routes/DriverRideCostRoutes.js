@@ -12,9 +12,9 @@ const authMiddleware = require('../middleware/authMiddleware'); // Ensure this p
 const Rider = require('../models/Rider');
 const mongoose = require('mongoose');
 const {Wallet} = require('../models/Payment&Wallet')
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
-
-router.post('/', async (req, res) => {
+router.post('/',adminAuthMiddleware, async (req, res) => {
   try {
     const rideCost = new DriverRideCost(req.body);
     const saved = await rideCost.save();
@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET ALL - Retrieve all ride cost models
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const rideCosts = await DriverRideCost.find()
       .populate('category', 'name')
@@ -58,7 +58,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET BY ID - Retrieve single ride cost model
-router.get('/:id', async (req, res) => {
+router.get('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const rideCost = await DriverRideCost.findById(req.params.id);
     if (!rideCost) {
@@ -277,7 +277,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
 });
 
 // GET BY MODEL TYPE - Retrieve ride cost models by type
-router.get('/type/:modelType', async (req, res) => {
+router.get('/type/:modelType', adminAuthMiddleware, async (req, res) => {
   try {
     const { modelType } = req.params;
     const validTypes = ['oneway', 'roundtrip', 'hourly', 'monthly', 'weekly'];
@@ -304,7 +304,7 @@ router.get('/type/:modelType', async (req, res) => {
 });
 
 // UPDATE - Update ride cost model
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const rideCost = await DriverRideCost.findByIdAndUpdate(
       req.params.id,
@@ -333,7 +333,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // PATCH - Update status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const rideCost = await DriverRideCost.findByIdAndUpdate(
@@ -363,7 +363,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // DELETE - Delete ride cost model
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const rideCost = await DriverRideCost.findByIdAndDelete(req.params.id);
 
@@ -386,7 +386,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.post("/get-included-data", async (req, res) => {
+router.post("/get-included-data",authMiddleware, async (req, res) => {
   try {
     const { categoryId, subcategoryId, subSubcategoryId } = req.body;
 

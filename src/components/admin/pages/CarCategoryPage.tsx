@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Edit, Trash2, Loader } from 'lucide-react';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface CarCategory {
   _id: string;
@@ -39,7 +39,7 @@ export const CarCategoryPage = () => {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/car-categories`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/car-categories`);
       setCategories(response.data);
     } catch (error) {
       console.error('Error fetching car categories:', error);
@@ -54,9 +54,9 @@ export const CarCategoryPage = () => {
 
     try {
       if (editingCategory) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/car-categories/${editingCategory._id}`, categoryForm);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/car-categories/${editingCategory._id}`, categoryForm);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/car-categories`, categoryForm);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/car-categories`, categoryForm);
       }
       await fetchCategories();
       setDialogOpen(false);
@@ -80,7 +80,7 @@ export const CarCategoryPage = () => {
   const handleDelete = async (id: string) => {
     setLoading(true);
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/car-categories/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/car-categories/${id}`);
       await fetchCategories();
     } catch (error) {
       console.error('Error deleting car category:', error);
@@ -91,7 +91,7 @@ export const CarCategoryPage = () => {
 
   const handleStatusToggle = async (id: string, currentStatus: boolean) => {
     try {
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/car-categories/${id}/status`, {
+      await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/car-categories/${id}/status`, {
         status: !currentStatus
       });
       await fetchCategories();

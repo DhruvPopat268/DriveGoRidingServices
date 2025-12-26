@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, CheckCircle, XCircle, Loader } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface WithdrawalRequest {
   _id: string;
@@ -47,20 +48,8 @@ export const PendingWithdrawalPage = () => {
   const fetchPendingWithdrawals = async () => {
     try {
       setLoading(true);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/withdrawals/pending`, {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch pending withdrawals');
-      }
-
-      const data = await response.json();
-      setWithdrawals(Array.isArray(data.data) ? data.data : []);
+      const response = await apiClient.get('/api/rides/withdrawals/pending');
+      setWithdrawals(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -73,19 +62,7 @@ export const PendingWithdrawalPage = () => {
     
     try {
       setActionLoading(true);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/withdrawal/complete`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ requestId: selectedRequest }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to approve withdrawal');
-      }
+      const response = await apiClient.post('/api/driver/admin/withdrawal/complete', { requestId: selectedRequest });
 
       toast({ title: "Success", description: "Withdrawal request approved successfully" });
       setShowApproveDialog(false);
@@ -103,19 +80,7 @@ export const PendingWithdrawalPage = () => {
     
     try {
       setActionLoading(true);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/withdrawal/reject`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ requestId: selectedRequest, adminRemarks: rejectRemarks }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to reject withdrawal');
-      }
+      const response = await apiClient.post('/api/driver/admin/withdrawal/reject', { requestId: selectedRequest, adminRemarks: rejectRemarks });
 
       toast({ title: "Success", description: "Withdrawal request rejected successfully" });
       setShowRejectDialog(false);

@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, User, Phone, Calendar, Eye, Loader } from "lucide-react";
 import { useState, useEffect } from "react";
+import apiClient from "../../../lib/axiosInterceptor";
 
 interface CancelledRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -38,11 +39,8 @@ export const CancelledRidesPage = ({ onNavigateToDetail }: CancelledRidesPagePro
         limit: limit.toString(),
         ...(dateFilter && { date: dateFilter })
       });
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/cancelled?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch cancelled rides');
-      }
-      const data = await response.json();
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/cancelled?${params}`);
+      const data = response.data;
       setRides(data.data);
       setTotalPages(data.totalPages);
       setTotalRides(data.totalRides);

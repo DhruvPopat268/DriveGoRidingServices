@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
@@ -79,8 +80,8 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
 
   const fetchDrivers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/Onreview`);
-      const data = await response.json();
+      const response = await apiClient.get('/api/driver/Onreview');
+      const data = response.data;
       // console.log(data)
       setDrivers(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
@@ -100,17 +101,12 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
     
     try {
       setActionLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/approve/${selectedDriverId}`, {
-        method: 'POST'
-      });
-      if (response.ok) {
-        const text = await response.text();
-        const data = text ? JSON.parse(text) : { success: true };
-        if (data.success) {
-          fetchDrivers();
-          setShowApproveDialog(false);
-          setSelectedDriverId(null);
-        }
+      const response = await apiClient.post(`/api/driver/approve/${selectedDriverId}`);
+      const data = response.data;
+      if (data.success) {
+        fetchDrivers();
+        setShowApproveDialog(false);
+        setSelectedDriverId(null);
       }
     } catch (error) {
       console.error('Error approving driver:', error);
@@ -124,22 +120,13 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
     
     try {
       setActionLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/reject/${selectedDriverId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ steps: selectedSteps })
-      });
-      if (response.ok) {
-        const text = await response.text();
-        const data = text ? JSON.parse(text) : { success: true };
-        if (data.success) {
-          fetchDrivers();
-          setShowRejectDialog(false);
-          setSelectedDriverId(null);
-          setSelectedSteps([]);
-        }
+      const response = await apiClient.post(`/api/driver/reject/${selectedDriverId}`, { steps: selectedSteps });
+      const data = response.data;
+      if (data.success) {
+        fetchDrivers();
+        setShowRejectDialog(false);
+        setSelectedDriverId(null);
+        setSelectedSteps([]);
       }
     } catch (error) {
       console.error('Error rejecting driver:', error);

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader, Search, TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Transaction {
   _id: string;
@@ -54,10 +55,9 @@ export const DriverTransactionsPage = () => {
 
   const fetchGlobalStats = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/transactions/stats`);
-      const data = await response.json();
-      if (data.success) {
-        setGlobalStats(data.stats);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/transactions/stats`);
+      if (response.data.success) {
+        setGlobalStats(response.data.stats);
       }
     } catch (error) {
       console.error('Error fetching global stats:', error);
@@ -72,8 +72,8 @@ export const DriverTransactionsPage = () => {
         limit: limit.toString(),
         ...(search && { search })
       });
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/transactions/paginated?${params}`);
-      const data = await response.json();
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/transactions/paginated?${params}`);
+      const data = response.data;
       setTransactions(Array.isArray(data.data) ? data.data : []);
       setTotalRecords(data.totalRecords || 0);
     } catch (error) {

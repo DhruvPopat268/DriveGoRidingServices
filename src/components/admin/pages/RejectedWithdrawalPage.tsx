@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Loader } from "lucide-react";
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface WithdrawalRequest {
   _id: string;
@@ -39,20 +40,8 @@ export const RejectedWithdrawalPage = () => {
   const fetchRejectedWithdrawals = async () => {
     try {
       setLoading(true);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides/withdrawals/rejected`, {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch rejected withdrawals');
-      }
-
-      const data = await response.json();
-      setWithdrawals(Array.isArray(data.data) ? data.data : []);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/withdrawals/rejected`);
+      setWithdrawals(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

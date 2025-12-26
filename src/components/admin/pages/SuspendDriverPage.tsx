@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
-import { Button } from '../../ui/button';
-import { Input } from '../../ui/input';
-import { Textarea } from '../../ui/textarea';
-import { Badge } from '../../ui/badge';
-import { Checkbox } from '../../ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
-import { Alert, AlertDescription } from '../../ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Search, Users, Ban, CheckCircle, XCircle, Plus, History, Calendar } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
@@ -80,18 +81,10 @@ const SuspendDriverPage = () => {
   const fetchDrivers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDrivers(data);
-        setFilteredDrivers(data);
-      }
+      const response = await apiClient.get('/api/driver');
+      const data = response.data;
+      setDrivers(data);
+      setFilteredDrivers(data);
     } catch (error) {
       console.error('Error fetching drivers:', error);
     } finally {
@@ -102,17 +95,9 @@ const SuspendDriverPage = () => {
   const fetchSuspendHistory = async () => {
     setHistoryLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/suspend-history`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setSuspendHistory(data.data);
-      }
+      const response = await apiClient.get('/api/driver/admin/suspend-history');
+      const data = response.data;
+      setSuspendHistory(data.data);
     } catch (error) {
       console.error('Error fetching suspend history:', error);
     } finally {
@@ -160,25 +145,15 @@ const SuspendDriverPage = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/suspend-drivers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          driverIds: selectedDrivers,
-          suspendFrom,
-          suspendTo,
-          description: description.trim()
-        })
+      const response = await apiClient.post('/api/driver/admin/suspend-drivers', {
+        driverIds: selectedDrivers,
+        suspendFrom,
+        suspendTo,
+        description: description.trim()
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setResults(data.results);
+      const data = response.data;
+      setResults(data.results);
         setShowResults(true);
         setShowCreateDialog(false);
         setSelectedDrivers([]);
@@ -189,9 +164,6 @@ const SuspendDriverPage = () => {
         fetchDrivers();
         setSuccess('Drivers suspended successfully!');
         setTimeout(() => setSuccess(null), 3000);
-      } else {
-        setError(data.message || 'Failed to suspend drivers');
-      }
     } catch (error) {
       console.error('Error suspending drivers:', error);
       setError('Failed to suspend drivers');

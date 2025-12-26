@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const CarCategory = require('../models/CarCategory');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all car categories
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const categories = await CarCategory.find().sort({ createdAt: -1 });
     res.json(categories);
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create car category
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description } = req.body;
     const category = new CarCategory({ name, description });
@@ -25,7 +26,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update car category
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { name, description } = req.body;
     const category = await CarCategory.findByIdAndUpdate(
@@ -43,7 +44,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Update category status
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
     const category = await CarCategory.findByIdAndUpdate(
@@ -69,7 +70,7 @@ router.patch('/:id/status', async (req, res) => {
 });
 
 // Delete car category
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const category = await CarCategory.findByIdAndDelete(req.params.id);
     if (!category) {

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface ParcelCategory {
   _id: string;
@@ -39,7 +39,7 @@ export const ParcelCategoryPage = () => {
   const fetchParcelCategories = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
       setParcelCategories(res.data);
     } catch (err) {
       console.error('Failed to fetch parcel categories', err);
@@ -57,9 +57,9 @@ export const ParcelCategoryPage = () => {
 
     try {
       if (editingCategory) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/parcel-categories/${editingCategory._id}`, payload);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/parcel-categories/${editingCategory._id}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/parcel-categories`, payload);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/parcel-categories`, payload);
       }
       await fetchParcelCategories();
       setDialogOpen(false);
@@ -81,7 +81,7 @@ export const ParcelCategoryPage = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/parcel-categories/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/parcel-categories/${id}`);
       fetchParcelCategories();
     } catch (err) {
       console.error('Failed to delete category', err);
@@ -157,8 +157,8 @@ export const ParcelCategoryPage = () => {
               </TableRow>
             ) : parcelCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="text-center">
-                  No parcel categories found. Create your first one!
+                <TableCell colSpan={3} className="text-center py-8">
+                  <p className="text-gray-500 text-lg">No data found! Add first category.</p>
                 </TableCell>
               </TableRow>
             ) : (

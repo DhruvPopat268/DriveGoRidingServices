@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { Alert, AlertDescription } from '../../ui/alert';
 import { Search, Users, DollarSign, Gift, CheckCircle, XCircle, Plus, History } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
@@ -80,17 +81,10 @@ const DriverIncentivePage = () => {
   const fetchDrivers = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDrivers(data);
-        setFilteredDrivers(data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver`);
+      if (response.status === 200) {
+        setDrivers(response.data);
+        setFilteredDrivers(response.data);
       }
     } catch (error) {
       console.error('Error fetching drivers:', error);
@@ -102,16 +96,9 @@ const DriverIncentivePage = () => {
   const fetchIncentiveHistory = async () => {
     setHistoryLoading(true);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/incentive-history`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIncentiveHistory(data.data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/incentive-history`);
+      if (response.status === 200) {
+        setIncentiveHistory(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching incentive history:', error);
@@ -155,23 +142,15 @@ const DriverIncentivePage = () => {
     setSubmitting(true);
     setError(null);
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver/admin/create-incentive`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          driverIds: selectedDrivers,
-          amount: parseFloat(amount),
-          description: description.trim()
-        })
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/create-incentive`, {
+        driverIds: selectedDrivers,
+        amount: parseFloat(amount),
+        description: description.trim()
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (response.ok) {
+      if (response.status === 200) {
         setResults(data.results);
         setShowResults(true);
         setShowCreateDialog(false);

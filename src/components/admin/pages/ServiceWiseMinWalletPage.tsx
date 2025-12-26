@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Plus, Edit, Trash2, Eye, X, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/components/ui/select';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface ServiceWalletBalance {
   _id?: string;
@@ -174,10 +174,10 @@ export const ServiceWiseMinWalletPage = () => {
     setLoading(true);
     try {
       const [walletBalancesRes, categoriesRes, subcategoriesRes, subSubCategoriesRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/categories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`)
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`)
       ]);
 
       setWalletBalances(walletBalancesRes.data.data || walletBalancesRes.data);
@@ -204,9 +204,9 @@ export const ServiceWiseMinWalletPage = () => {
 
     try {
       if (editingWalletBalance) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances/${editingWalletBalance._id}`, payload);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances/${editingWalletBalance._id}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances`, payload);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances`, payload);
       }
 
       await fetchData();
@@ -249,7 +249,7 @@ export const ServiceWiseMinWalletPage = () => {
     if (!id) return;
     setLoading(true);
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/service-wallet-balances/${id}`);
       await fetchData();
     } catch (error) {
       console.error('Error deleting wallet balance:', error);

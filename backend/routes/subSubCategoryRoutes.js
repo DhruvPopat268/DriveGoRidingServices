@@ -4,8 +4,7 @@ const mongoose = require("mongoose");
 const SubSubCategory = require("../models/SubSubCategory");
 const Category = require("../models/Category");
 const SubCategory = require("../models/SubCategory");
-const { ObjectId } = mongoose.Types;
-
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware')
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 
@@ -23,7 +22,7 @@ cloudinary.config({
 // ================= ROUTES ================= //
 
 // ✅ Get all sub-subcategories
-router.get("/", async (req, res) => {
+router.get("/", adminAuthMiddleware, async (req, res) => {
   try {
     const subSubCategories = await SubSubCategory.find()
       .populate("categoryId", "name")
@@ -47,7 +46,7 @@ router.get("/", async (req, res) => {
 });
 
 // ✅ Get single sub-subcategory by id
-router.get("/:id", async (req, res) => {
+router.get("/:id", adminAuthMiddleware, async (req, res) => {
   try {
     const subSubCategory = await SubSubCategory.findById(req.params.id)
       .populate("categoryId", "name")
@@ -60,7 +59,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // ✅ Get subcategories by category ID
-router.get("/subcategories/:categoryId", async (req, res) => {
+router.get("/subcategories/:categoryId", adminAuthMiddleware, async (req, res) => {
   try {
     const subcategories = await SubCategory.find({ categoryId: req.params.categoryId });
     res.json(subcategories);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 import { Plus, Edit, Trash2, Eye, X, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -313,13 +313,13 @@ export const CabRideCostPage = () => {
         setLoading(true);
         try {
             const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, carCategoriesRes, carsRes] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`),
-                axios.get(`${import.meta.env.VITE_API_URL}/api/categories`),
-                axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
-                axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
+                apiClient.get(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`),
+                apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`),
+                apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
+                apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
 
-                axios.get(`${import.meta.env.VITE_API_URL}/api/car-categories`),
-                axios.get(`${import.meta.env.VITE_API_URL}/api/cars`)
+                apiClient.get(`${import.meta.env.VITE_API_URL}/api/car-categories`),
+                apiClient.get(`${import.meta.env.VITE_API_URL}/api/cars`)
             ]);
 
             setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
@@ -342,7 +342,7 @@ export const CabRideCostPage = () => {
 
     const fetchParcelVehicles = async () => {
         try {
-            const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicles`);
+            const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcel-vehicles`);
             setParcelVehicles(response.data);
         } catch (error) {
             console.error('Error fetching parcel vehicles:', error);
@@ -379,9 +379,9 @@ export const CabRideCostPage = () => {
 
         try {
             if (editingRideCost) {
-                await axios.put(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${editingRideCost._id}`, payload);
+                await apiClient.put(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${editingRideCost._id}`, payload);
             } else {
-                await axios.post(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`, payload);
+                await apiClient.post(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`, payload);
             }
 
             await fetchData();
@@ -401,7 +401,7 @@ export const CabRideCostPage = () => {
         setLoading(true);
 
         try {
-            const response = await axios.get(
+            const response = await apiClient.get(
                 `${import.meta.env.VITE_API_URL}/api/CabRideCosts/${rideCost._id}`
             );
             const fetchedRideCost = response.data.data;
@@ -468,7 +468,7 @@ export const CabRideCostPage = () => {
 
     const handleStatusToggle = async (id: string, currentStatus: boolean) => {
         try {
-            await axios.patch(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}/status`, {
+            await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}/status`, {
                 status: !currentStatus
             });
             await fetchData();
@@ -481,7 +481,7 @@ export const CabRideCostPage = () => {
         if (!id) return;
         setLoading(true);
         try {
-            await axios.delete(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}`);
+            await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}`);
             await fetchData();
         } catch (error) {
             console.error('Error deleting ride cost:', error);

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface PriceCategory {
   _id: string;
@@ -40,7 +40,7 @@ export const PriceCategoryPage = () => {
   const fetchPriceCategories = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`);
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/price-categories`);
       setPriceCategories(res.data);
     } catch (err) {
       console.error('Failed to fetch price categories', err);
@@ -58,9 +58,9 @@ export const PriceCategoryPage = () => {
 
     try {
       if (editingCategory) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/price-categories/${editingCategory._id}`, payload);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/price-categories/${editingCategory._id}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/price-categories`, payload);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/price-categories`, payload);
       }
       await fetchPriceCategories();
       setDialogOpen(false);
@@ -82,7 +82,7 @@ export const PriceCategoryPage = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/price-categories/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/price-categories/${id}`);
       fetchPriceCategories();
     } catch (err) {
       console.error('Failed to delete category', err);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Filter, Search, Eye, Loader } from 'lucide-react';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface DriverRating {
   _id: string;
@@ -37,10 +38,9 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
 
   const fetchDrivers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver`);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setDrivers(data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver`);
+      if (Array.isArray(response.data)) {
+        setDrivers(response.data);
       }
     } catch (error) {
       console.error('Error fetching drivers:', error);
@@ -49,10 +49,9 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
 
   const fetchAllRatings = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver-rating/all`);
-      const data = await response.json();
-      if (data.success) {
-        setRatings(data.data);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver-rating/all`);
+      if (response.data.success) {
+        setRatings(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching ratings:', error);
@@ -64,14 +63,11 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
   const fetchDriverRatings = async (driverId: string) => {
     try {
       setLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/driver-rating/given-by-driver`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ driverId })
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver-rating/given-by-driver`, {
+        driverId
       });
-      const data = await response.json();
-      if (data.success) {
-        setRatings(data.data);
+      if (response.data.success) {
+        setRatings(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching driver ratings:', error);

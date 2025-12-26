@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Edit, Trash2, Loader } from 'lucide-react';
 
 
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface Car {
   _id: string;
@@ -81,7 +81,7 @@ export const CarManagementPage = () => {
   const fetchCars = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/cars`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/cars`);
       setCars(response.data);
     } catch (error) {
       console.error('Error fetching cars:', error);
@@ -92,7 +92,7 @@ export const CarManagementPage = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/car-categories`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/car-categories`);
       setCategories(response.data.filter((cat: CarCategory & { status: boolean }) => cat.status));
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -101,7 +101,7 @@ export const CarManagementPage = () => {
 
   const fetchVehicleTypes = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/cabVehicleTypes`);
       setVehicleTypes(response.data.filter((vt: CarCategory & { status: boolean }) => vt.status));
     } catch (error) {
       console.error('Error fetching vehicle types:', error);
@@ -144,9 +144,9 @@ export const CarManagementPage = () => {
       };
 
       if (editingCar) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/cars/${editingCar._id}`, payload);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/cars/${editingCar._id}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/cars`, payload);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/cars`, payload);
       }
       
       await fetchCars();
@@ -176,7 +176,7 @@ export const CarManagementPage = () => {
   const handleDelete = async (id: string) => {
     setLoading(true);
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/cars/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/cars/${id}`);
       await fetchCars();
     } catch (error) {
       console.error('Error deleting car:', error);
@@ -187,7 +187,7 @@ export const CarManagementPage = () => {
 
   const handleStatusToggle = async (id: string, currentStatus: boolean) => {
     try {
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/cars/${id}/status`, {
+      await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/cars/${id}/status`, {
         status: !currentStatus
       });
       await fetchCars();

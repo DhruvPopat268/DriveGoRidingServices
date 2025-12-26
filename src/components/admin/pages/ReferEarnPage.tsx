@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Edit, Trash2, } from 'lucide-react';
 import { DeleteConfirmation } from '@/components/ui/delete-confirmation';
+import apiClient from '../../../lib/axiosInterceptor';
 
 
 interface ReferralRule {
@@ -33,8 +33,7 @@ const ReferEarnPage: React.FC = () => {
   const fetchRules = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/referral-rules`);
-      // Ensure we always have an array, even if response.data is not
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/referral-rules`);
       setRules(Array.isArray(response.data) ? response.data : []);
       setError('');
     } catch (error) {
@@ -58,9 +57,9 @@ const ReferEarnPage: React.FC = () => {
     e.preventDefault();
     try {
       if (editingRule) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/referral-rules/${editingRule._id}`, formData);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/referral-rules/${editingRule._id}`, formData);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/referral-rules`, formData);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/referral-rules`, formData);
       }
       setShowForm(false);
       setEditingRule(null);
@@ -85,7 +84,7 @@ const ReferEarnPage: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/referral-rules/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/referral-rules/${id}`);
       fetchRules();
     } catch (error) {
       console.error('Error deleting rule:', error);
@@ -169,7 +168,7 @@ const ReferEarnPage: React.FC = () => {
                       type="button"
                       onClick={async () => {
                         try {
-                          await axios.put(`${import.meta.env.VITE_API_URL}/api/referral-rules/${rule._id}`, {
+                          await apiClient.put(`${import.meta.env.VITE_API_URL}/api/referral-rules/${rule._id}`, {
                             ...rule,
                             status: !rule.status
                           });

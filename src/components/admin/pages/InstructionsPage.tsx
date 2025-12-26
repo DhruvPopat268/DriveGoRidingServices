@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Loader } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { DeleteConfirmation } from "@/components/ui/delete-confirmation";
-import axios from "axios";
+import apiClient from '../../../lib/axiosInterceptor';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -110,7 +110,7 @@ export const InstructionsPage = () => {
   const { data: instructionsData = [], isLoading } = useQuery({
     queryKey: ["instructions"],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/instructions`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/instructions`);
       return response.data.data || [];
     },
   });
@@ -119,7 +119,7 @@ export const InstructionsPage = () => {
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`);
       return response.data || [];
     },
   });
@@ -128,7 +128,7 @@ export const InstructionsPage = () => {
   const { data: subCategories = [] } = useQuery({
     queryKey: ["subcategories"],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
       return response.data || [];
     },
   });
@@ -137,46 +137,46 @@ export const InstructionsPage = () => {
   const { data: driverCategories = [] } = useQuery({
     queryKey: ["driver-categories", selectedCategory],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/price-categories`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/price-categories`);
       return response.data || [];
     },
-    enabled: !!selectedCategory && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'driver',
+    enabled: !!selectedCategory && Array.isArray(categories) && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'driver',
   });
 
   // Fetch car categories - only when selected category is 'cab'
   const { data: carCategories = [] } = useQuery({
     queryKey: ["car-categories", selectedCategory],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/car-categories`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/car-categories`);
       return response.data || [];
     },
-    enabled: !!selectedCategory && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'cab',
+    enabled: !!selectedCategory && Array.isArray(categories) && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'cab',
   });
 
   // Fetch cars - only when selected category is 'cab'
   const { data: cars = [] } = useQuery({
     queryKey: ["cars", selectedCategory],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/cars`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/cars`);
       return response.data || [];
     },
-    enabled: !!selectedCategory && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'cab',
+    enabled: !!selectedCategory && Array.isArray(categories) && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'cab',
   });
 
   // Fetch parcel vehicle types - only when selected category is 'parcel'
   const { data: parcelVehicleTypes = [] } = useQuery({
     queryKey: ["parcel-vehicle-types", selectedCategory],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
       return response.data || [];
     },
-    enabled: !!selectedCategory && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'parcel',
+    enabled: !!selectedCategory && Array.isArray(categories) && categories.find((cat: Category) => cat._id === selectedCategory)?.name?.toLowerCase() === 'parcel',
   });
 
   // Filter subcategories based on selected category
-  const filteredSubCategories = subCategories.filter(
+  const filteredSubCategories = Array.isArray(subCategories) ? subCategories.filter(
     (sub: SubCategory) => sub.categoryId === selectedCategory
-  );
+  ) : [];
 
   console.log("All subcategories:", subCategories);
   console.log("Filtered subcategories:", filteredSubCategories);
@@ -185,7 +185,7 @@ export const InstructionsPage = () => {
   const { data: subSubCategories = [] } = useQuery({
     queryKey: ["subsubcategories", selectedSubCategory],
     queryFn: async () => {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
       return response.data || [];
     },
     enabled: !!selectedSubCategory && 
@@ -195,28 +195,28 @@ export const InstructionsPage = () => {
   });
 
   // Filter cars based on selected car category
-  const filteredCars = cars.filter(
+  const filteredCars = Array.isArray(cars) ? cars.filter(
     (car: Car) => car.category._id === selectedCarCategory
-  );
+  ) : [];
 
   // Get unique parcel categories
-  const uniqueParcelCategories = parcelVehicleTypes.reduce((acc: any[], current: ParcelVehicleType) => {
+  const uniqueParcelCategories = Array.isArray(parcelVehicleTypes) ? parcelVehicleTypes.reduce((acc: any[], current: ParcelVehicleType) => {
     const exists = acc.find(item => item._id === current.parcelCategory._id);
     if (!exists) {
       acc.push(current.parcelCategory);
     }
     return acc;
-  }, []);
+  }, []) : [];
 
   // Filter vehicle types based on selected parcel category
-  const filteredVehicleTypes = parcelVehicleTypes.filter(
+  const filteredVehicleTypes = Array.isArray(parcelVehicleTypes) ? parcelVehicleTypes.filter(
     (vt: ParcelVehicleType) => vt.parcelCategory._id === selectedParcelCategory
-  );
+  ) : [];
 
   // Filter subSubCategories based on selected subcategory
-  const filteredSubSubCategories = subSubCategories.filter(
+  const filteredSubSubCategories = Array.isArray(subSubCategories) ? subSubCategories.filter(
     (subSub: SubSubCategory) => subSub.subCategoryId === selectedSubCategory
-  );
+  ) : [];
 
   // Console logs for debugging
   console.log("Selected subcategory ID:", selectedSubCategory);
@@ -225,7 +225,7 @@ export const InstructionsPage = () => {
 
   // Reset subcategory when category changes or when filtered subcategories don't include current selection
   useEffect(() => {
-    if (selectedSubCategory && !filteredSubCategories.some((sub: SubCategory) => sub._id === selectedSubCategory)) {
+    if (selectedSubCategory && Array.isArray(filteredSubCategories) && !filteredSubCategories.some((sub: SubCategory) => sub._id === selectedSubCategory)) {
       // setSelectedSubCategory("");
     }
   }, [selectedCategory, filteredSubCategories, selectedSubCategory]);
@@ -233,7 +233,7 @@ export const InstructionsPage = () => {
   // Create instruction mutation
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/instructions`, data);
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/instructions`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -254,7 +254,7 @@ export const InstructionsPage = () => {
   // Update instruction mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const response = await axios.put(`${import.meta.env.VITE_API_URL}/api/instructions/${id}`, data);
+      const response = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/instructions/${id}`, data);
       return response.data;
     },
     onSuccess: () => {
@@ -275,7 +275,7 @@ export const InstructionsPage = () => {
   // Delete instruction mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await axios.delete(`${import.meta.env.VITE_API_URL}/api/instructions/${id}`);
+      const response = await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/instructions/${id}`);
       return response.data;
     },
     onSuccess: () => {
@@ -479,7 +479,7 @@ export const InstructionsPage = () => {
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((category: Category) => (
+                    {Array.isArray(categories) && categories.map((category: Category) => (
                       <SelectItem key={category._id} value={category._id}>
                         {category.name}
                       </SelectItem>
@@ -495,7 +495,7 @@ export const InstructionsPage = () => {
                   value={selectedSubCategory || ""}
                   onValueChange={(value) => {
                     console.log("Selected subcategory:", value);
-                    console.log("Subcategory name:", subCategories.find(sub => (sub._id || sub.id) === value)?.name);
+                    console.log("Subcategory name:", Array.isArray(subCategories) ? subCategories.find(sub => (sub._id || sub.id) === value)?.name : undefined);
                     setSelectedSubCategory(value);
                     setSelectedSubSubCategory(""); // Reset subsubcategory when subcategory changes
                   }}

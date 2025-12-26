@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface ParcelCategory {
   _id: string;
@@ -73,7 +73,7 @@ export const ParcelVehicleManagementPage = () => {
   const fetchParcelVehicles = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
       setParcelVehicles(res.data);
     } catch (err) {
       console.error('Failed to fetch parcel vehicles', err);
@@ -84,7 +84,7 @@ export const ParcelVehicleManagementPage = () => {
 
   const fetchParcelVehicleTypes = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes`);
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicleTypes`);
       setParcelVehicleTypes(res.data);
     } catch (err) {
       console.error('Failed to fetch parcel vehicle types', err);
@@ -93,7 +93,7 @@ export const ParcelVehicleManagementPage = () => {
 
   const fetchParcelCategories = async () => {
     try {
-      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
       setParcelCategories(res.data);
     } catch (err) {
       console.error('Failed to fetch parcel categories', err);
@@ -112,9 +112,9 @@ export const ParcelVehicleManagementPage = () => {
 
     try {
       if (editingVehicle) {
-        await axios.put(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${editingVehicle._id}`, payload);
+        await apiClient.put(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${editingVehicle._id}`, payload);
       } else {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`, payload);
+        await apiClient.post(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`, payload);
       }
       await fetchParcelVehicles();
       setDialogOpen(false);
@@ -139,7 +139,7 @@ export const ParcelVehicleManagementPage = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${id}`);
+      await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${id}`);
       fetchParcelVehicles();
     } catch (err) {
       console.error('Failed to delete parcel vehicle', err);
@@ -148,7 +148,7 @@ export const ParcelVehicleManagementPage = () => {
 
   const handleStatusToggle = async (id: string, currentStatus: boolean) => {
     try {
-      await axios.patch(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${id}/status`, {
+      await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/parcelVehicles/${id}/status`, {
         status: !currentStatus
       });
       await fetchParcelVehicles();

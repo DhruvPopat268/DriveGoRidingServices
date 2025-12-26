@@ -4,9 +4,11 @@ const Instruction = require('../models/Instruction');
 const SubCategory = require('../models/SubCategory');
 const Category = require('../models/Category');
 const axios = require('axios'); // Add this if not already imported
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // Create instruction
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { categoryId, subCategoryId, subSubCategoryId, instructions, driverCategoryId, carCategoryId, carId, parcelCategoryId, vehicleTypeId } = req.body;
 
@@ -111,7 +113,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get all instructions
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const instructions = await Instruction.find().sort({ createdAt: -1 });
     res.json({ success: true, data: instructions });
@@ -120,7 +122,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post("/getInstructions", async (req, res) => {
+router.post("/getInstructions",authMiddleware, async (req, res) => {
   try {
     const {
       categoryId,
@@ -173,7 +175,7 @@ router.post("/getInstructions", async (req, res) => {
 });
 
 // Update instruction
-router.put('/:id', async (req, res) => {
+router.put('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const { categoryId, subCategoryId, driverCategoryId, instructions } = req.body;
 
@@ -220,7 +222,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete instruction
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const instruction = await Instruction.findByIdAndDelete(req.params.id);
     if (!instruction) {

@@ -10,6 +10,7 @@ const fs = require("fs").promises;
 const sharp = require("sharp");
 const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
+const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
 // Helper function for file upload
 const uploadToServerFast = async (fileBuffer, filename, isImage = true) => {
@@ -517,7 +518,7 @@ router.get("/get-all-drivers", DriverAuthMiddleware, async (req, res) => {
 });
 
 // Get all vehicles for a specific driver
-router.post("/get-driver-vehicles", async (req, res) => {
+router.post("/get-driver-vehicles",adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.body;
 
@@ -640,7 +641,7 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
 });
 
 // Admin: Get all pending vehicles (adminStatus: 'pending')
-router.get("/admin/pending", async (req, res) => {
+router.get("/admin/pending",adminAuthMiddleware, async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ adminStatus: 'pending' })
       .populate('owner', 'personalInformation.fullName mobile uniqueId')
@@ -659,7 +660,7 @@ router.get("/admin/pending", async (req, res) => {
 });
 
 // Admin: Get all approved vehicles (adminStatus: 'approved')
-router.get("/admin/approved", async (req, res) => {
+router.get("/admin/approved",adminAuthMiddleware, async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ adminStatus: 'approved' })
       .populate('owner', 'personalInformation.fullName mobile uniqueId')
@@ -678,7 +679,7 @@ router.get("/admin/approved", async (req, res) => {
 });
 
 // Admin: Get all rejected vehicles (adminStatus: 'rejected')
-router.get("/admin/rejected", async (req, res) => {
+router.get("/admin/rejected",adminAuthMiddleware, async (req, res) => {
   try {
     const vehicles = await Vehicle.find({ adminStatus: 'rejected' })
       .populate('owner', 'personalInformation.fullName mobile uniqueId')
@@ -697,7 +698,7 @@ router.get("/admin/rejected", async (req, res) => {
 });
 
 // Admin: Approve vehicle
-router.post("/admin/approve/:vehicleId", async (req, res) => {
+router.post("/admin/approve/:vehicleId", adminAuthMiddleware, async (req, res) => {
   try {
     const { vehicleId } = req.params;
 
@@ -723,7 +724,7 @@ router.post("/admin/approve/:vehicleId", async (req, res) => {
 });
 
 // Admin: Reject vehicle
-router.post("/admin/reject/:vehicleId", async (req, res) => {
+router.post("/admin/reject/:vehicleId", adminAuthMiddleware, async (req, res) => {
   try {
     const { vehicleId } = req.params;
 

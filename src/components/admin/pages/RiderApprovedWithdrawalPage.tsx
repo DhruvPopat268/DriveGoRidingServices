@@ -4,6 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Loader } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface WithdrawRequest {
   _id: string;
@@ -44,20 +45,8 @@ export const RiderApprovedWithdrawalPage = () => {
   const fetchApprovedRequests = async () => {
     try {
       setLoading(true);
-      const adminToken = localStorage.getItem('adminToken');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/approved`, {
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch approved withdrawals');
-      }
-
-      const data = await response.json();
-      setRequests(Array.isArray(data.data) ? data.data : []);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rider/withdraw/approved`);
+      setRequests(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

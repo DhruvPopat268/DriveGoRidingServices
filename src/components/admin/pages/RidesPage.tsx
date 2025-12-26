@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, DollarSign, User, Car, Phone, Calendar, CreditCard, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface RidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -39,14 +40,10 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
         limit: limit.toString(),
         ...(dateFilter && { date: dateFilter })
       });
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/rides?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch rides');
-      }
-      const data = await response.json();
-      setRides(data.data);
-      setTotalPages(data.totalPages);
-      setTotalRides(data.totalRides);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides?${params}`);
+      setRides(response.data.data);
+      setTotalPages(response.data.totalPages);
+      setTotalRides(response.data.totalRides);
     } catch (err) {
       setError(err.message);
     } finally {

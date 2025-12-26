@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const RegistrationFee = require('../DriverModel/RegistrationFee');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all registration fees
-router.get('/', async (req, res) => {
+router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const fees = await RegistrationFee.find().sort({ createdAt: -1 });
     res.json(fees);
@@ -13,7 +14,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create registration fee
-router.post('/', async (req, res) => {
+router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
     const { fee, status } = req.body;
 
@@ -36,7 +37,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update registration fee status
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', adminAuthMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
 
@@ -78,7 +79,7 @@ router.put('/:id/status', async (req, res) => {
 });
 
 // Delete registration fee
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const fee = await RegistrationFee.findByIdAndDelete(req.params.id);
     

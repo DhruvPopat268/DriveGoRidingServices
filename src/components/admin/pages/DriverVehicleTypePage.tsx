@@ -30,7 +30,7 @@ import {
   TableRow
 } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
-import axios from 'axios';
+import apiClient from '../../../lib/axiosInterceptor';
 
 interface DriverVehicleType {
   _id: string;
@@ -50,7 +50,7 @@ export const DriverVehicleTypePage = () => {
     const fetchTypes = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes`);
+        const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes`);
         setTypes(res.data?.data || []);
       } catch (error) {
         console.error('Error fetching driver vehicle types:', error);
@@ -64,7 +64,7 @@ export const DriverVehicleTypePage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.name.trim()) {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes`, form);
+      const res = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes`, form);
       setTypes([...types, res.data.data]);
       setForm({ name: '' });
       setDialogOpen(false);
@@ -74,7 +74,7 @@ export const DriverVehicleTypePage = () => {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingType && form.name.trim()) {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/${editingType._id}`, form);
+      const res = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/${editingType._id}`, form);
       setTypes(types.map(t => (t._id === editingType._id ? res.data.data : t)));
       setForm({ name: '' });
       setEditDialogOpen(false);
@@ -89,13 +89,13 @@ export const DriverVehicleTypePage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await axios.delete(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/${id}`);
+    await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/${id}`);
     setTypes(types.filter(t => t._id !== id));
   };
 
   const handleStatusToggle = async (id: string, currentStatus: boolean) => {
     try {
-      const res = await axios.put(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/${id}`, { status: !currentStatus });
+      const res = await apiClient.put(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/${id}`, { status: !currentStatus });
       setTypes(types.map(t => t._id === id ? res.data.data : t));
     } catch (error) {
       console.error('Error updating status:', error);
