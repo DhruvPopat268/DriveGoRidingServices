@@ -4,7 +4,7 @@ const ParcelCategory = require('../models/ParcelCategory');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Create new parcel category
-router.post('/', adminAuthMiddleware, async (req, res) => {
+router.post('/', adminAuthMiddleware , async (req, res) => {
   try {
     const { categoryName, description } = req.body;
     const newCategory = new ParcelCategory({
@@ -19,7 +19,7 @@ router.post('/', adminAuthMiddleware, async (req, res) => {
 });
 
 // Get all parcel categories
-router.get('/', adminAuthMiddleware, async (req, res) => {
+router.get('/',  async (req, res) => {
   try {
     const categories = await ParcelCategory.find().sort({ createdAt: -1 });
     res.json(categories);

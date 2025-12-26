@@ -4,7 +4,7 @@ const CarCategory = require('../models/CarCategory');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Get all car categories
-router.get('/', adminAuthMiddleware, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const categories = await CarCategory.find().sort({ createdAt: -1 });
     res.json(categories);
