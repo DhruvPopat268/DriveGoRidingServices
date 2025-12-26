@@ -1,6 +1,5 @@
 const express = require('express');
 const RiderWalletConfig = require('../models/RiderWalletConfig');
-const adminAuthMiddleware = require('../middleware/authMiddleware');
 const router = express.Router();
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
