@@ -140,4 +140,40 @@ router.patch('/rider/read-all', authMiddleware, async (req, res) => {
   }
 });
 
+// Get reschedule notifications for driver
+router.get('/reschedule', DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+    
+    const notifications = await DriverNotification.find({ 
+      driverId, 
+      type: 'reschedule_request' 
+    })
+    .populate('rideId')
+    .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get reschedule notifications for rider
+router.get('/rider/reschedule', authMiddleware, async (req, res) => {
+  try {
+    const riderId = req.rider.riderId;
+    
+    const notifications = await RiderNotification.find({ 
+      riderId, 
+      type: { $in: ['reschedule_accepted', 'reschedule_rejected'] }
+    })
+    .populate('rideId')
+    .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: notifications });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;
