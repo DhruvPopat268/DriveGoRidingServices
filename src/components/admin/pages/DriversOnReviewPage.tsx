@@ -120,7 +120,7 @@ export const DriversOnReviewPage = ({ onNavigateToDetail }: DriversOnReviewPageP
     
     try {
       setActionLoading(true);
-      const response = await apiClient.post(`/api/driver/reject/${selectedDriverId}`, { steps: selectedSteps });
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/reject/${selectedDriverId}`, { steps: selectedSteps });
       const data = response.data;
       if (data.success) {
         fetchDrivers();
