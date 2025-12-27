@@ -67,7 +67,7 @@ class RideRescheduleService {
     });
     await driver.save();
 
-    // Store and send notification to driver
+    // Store notification to driver
     await DriverNotification.create({
       driverId: driver._id,
       categoryId: ride.rideInfo.categoryId,
@@ -77,11 +77,7 @@ class RideRescheduleService {
       type: 'reschedule_request',
       data: { selectedDate, selectedTime }
     });
-
-    await NotificationService.sendRescheduleNotification(driver, ride, {
-      selectedDate,
-      selectedTime
-    });
+    console.log(`📱 Reschedule request notification sent to driver playerId: ${driver.oneSignalPlayerId}`);
 
     return { 
       success: true, 
@@ -147,11 +143,7 @@ class RideRescheduleService {
           type: 'reschedule_accepted',
           data: { selectedDate, selectedTime }
         });
-
-        await NotificationService.sendRescheduleAcceptedNotification(rider, driver, {
-          selectedDate,
-          selectedTime
-        });
+        console.log(`📱 Reschedule accepted notification sent to rider playerId: ${rider.oneSignalPlayerId}`);
       }
     } catch (notifError) {
       console.error('Error sending acceptance notification:', notifError);
@@ -228,6 +220,7 @@ class RideRescheduleService {
           type: 'reschedule_rejected',
           data: { selectedDate, selectedTime, newRideId: newRide._id }
         });
+        console.log(`📱 Reschedule rejected notification sent to rider playerId: ${rider.oneSignalPlayerId}`);
       }
     } catch (notifError) {
       console.error('Error storing rejection notification:', notifError);

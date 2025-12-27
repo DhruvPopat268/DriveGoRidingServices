@@ -62,7 +62,7 @@ export const PeakHoursPage = () => {
 
   const fetchPeakHours = async () => {
     try {
-      const res = await apiClient.get('/api/peaks');
+      const res = await apiClient.get(`${API_URL}`);
       if (res.data.success) {
         setPeakHours(res.data.data);
       }
@@ -73,7 +73,7 @@ export const PeakHoursPage = () => {
 
   const fetchNightCharges = async () => {
     try {
-      const res = await apiClient.get('/api/night-charges');
+      const res = await apiClient.get(`${NIGHT_API_URL}`);
       if (res.data.success) {
         setNightCharges(res.data.data);
       }
@@ -119,7 +119,7 @@ export const PeakHoursPage = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await apiClient.delete(`/api/peaks/${id}`);
+      await apiClient.delete(`${API_URL}/${id}`);
       setPeakHours(prev => prev.filter(hour => hour._id !== id));
     } catch (err) {
       console.error('Error deleting peak hour:', err);
@@ -128,7 +128,7 @@ export const PeakHoursPage = () => {
 
   const handleToggleStatus = async (id: string) => {
     try {
-      const res = await apiClient.patch(`/api/peaks/${id}/toggle-status`);
+      const res = await apiClient.patch(`${API_URL}/${id}/toggle-status`);
       if (res.data.success) {
         setPeakHours(prev => prev.map(hour => 
           hour._id === id ? { ...hour, status: res.data.data.status } : hour
@@ -147,7 +147,7 @@ export const PeakHoursPage = () => {
         startTime: nightFormData.startTime,
         endTime: nightFormData.endTime
       };
-      const res = await apiClient.post('/api/night-charges', payload);
+      const res = await apiClient.post(`${NIGHT_API_URL}`, payload);
       if (res.data.success) {
         setNightCharges(prev => [res.data.data, ...prev]);
         setNightDialogOpen(false);
@@ -160,7 +160,7 @@ export const PeakHoursPage = () => {
 
   const handleNightDelete = async (id: string) => {
     try {
-      await apiClient.delete(`/api/night-charges/${id}`);
+      await apiClient.delete(`${NIGHT_API_URL}/${id}`);
       setNightCharges(prev => prev.filter(charge => charge._id !== id));
     } catch (err) {
       console.error('Error deleting night charge:', err);
@@ -169,7 +169,7 @@ export const PeakHoursPage = () => {
 
   const handleNightToggleStatus = async (id: string) => {
     try {
-      const res = await apiClient.patch(`/api/night-charges/${id}/toggle-status`);
+      const res = await apiClient.patch(`${NIGHT_API_URL}/${id}/toggle-status`);
       if (res.data.success) {
         setNightCharges(prev => prev.map(charge => 
           charge._id === id ? { ...charge, status: res.data.data.status } : charge
