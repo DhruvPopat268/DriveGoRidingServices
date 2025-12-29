@@ -128,6 +128,35 @@ router.get("/all",adminAuthMiddleware, async (req, res) => {
   }
 });
 
+router.get("/high-ratings",  async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalCount = await UserRating.countDocuments({ rating: { $gt: 3.5 } });
+    const ratings = await UserRating.find({ rating: { $gt: 3.5 } })
+      .populate('userId', 'name')
+      .populate('driverId', 'personalInformation.fullName')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: ratings,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalCount,
+        limit
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get("/:driverId",adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;

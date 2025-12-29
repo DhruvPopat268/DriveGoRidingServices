@@ -46,7 +46,7 @@ router.get("/",  async (req, res) => {
 });
 
 // ✅ Get single sub-subcategory by id
-router.get("/:id", adminAuthMiddleware, async (req, res) => {
+router.get("/:id",  async (req, res) => {
   try {
     const subSubCategory = await SubSubCategory.findById(req.params.id)
       .populate("categoryId", "name")

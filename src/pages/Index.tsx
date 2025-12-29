@@ -78,6 +78,8 @@ import RiderPendingWithdrawalPage from "@/components/admin/pages/RiderPendingWit
 import RiderApprovedWithdrawalPage from "@/components/admin/pages/RiderApprovedWithdrawalPage";
 import RiderRejectedWithdrawalPage from "@/components/admin/pages/RiderRejectedWithdrawalPage";
 import RiderWalletConfigPage from "@/components/admin/pages/RiderWalletConfigPage";
+import { CreateStaffPage } from "@/components/admin/pages/CreateStaffPage";
+import { ManageStaffPage } from "@/components/admin/pages/ManageStaffPage";
 import axios from "axios";
 
 const Index = () => {
@@ -456,6 +458,10 @@ const Index = () => {
         return <RiderRejectedWithdrawalPage />;
       case "rider-wallet-config":
         return <RiderWalletConfigPage />;
+      case "create-offline-staff":
+        return <CreateStaffPage />;
+      case "manage-offline-staff":
+        return <ManageStaffPage />;
 
       case "category-assignment":
         return categoryAssignment ? (

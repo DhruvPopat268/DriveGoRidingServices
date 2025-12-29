@@ -43,7 +43,7 @@ export const Login = () => {
         throw new Error(data.error || "Login failed");
       }
 
-      // No token in response anymore, just user data
+      // Using cookie-based auth, no token needed in localStorage
       login('cookie-auth', data.user);
       navigate("/");
     } catch (err: any) {

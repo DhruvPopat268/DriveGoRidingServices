@@ -122,6 +122,7 @@ app.use('/api/registration-fees', registrationFeeRoutes);
 app.use('/api/subscription-plans', subscriptionPlanRoutes);
 app.use('/api/user-rating', userRatingRoutes);
 app.use('/api/driver-rating', driverRatingRoutes);
+app.use('/api/offline-staff', require('./offline&agentBookingRoutes/offlineStaffRoutes'));
 
 // admin
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));

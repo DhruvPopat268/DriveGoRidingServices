@@ -171,6 +171,16 @@ const menuItems = [
   },
   {
     icon: Users,
+    label: "Offline Booking Management",
+    key: "offline-booking-management",
+    isDropdown: true,
+    subItems: [
+      { icon: UserCheck, label: "Create Staff", key: "create-offline-staff" },
+      { icon: Users, label: "Manage Staff", key: "manage-offline-staff" }
+    ]
+  },
+  {
+    icon: Users,
     label: "Users Management",
     key: "users-management",
     isDropdown: true,

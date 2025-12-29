@@ -8,6 +8,9 @@ const apiClient = axios.create({
   },
 });
 
+// Request interceptor to add auth token
+// Removed - using cookies only
+
 // Response interceptor for handling 401 errors
 apiClient.interceptors.response.use(
   (response) => response,
