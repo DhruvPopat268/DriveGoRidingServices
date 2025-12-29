@@ -1,6 +1,8 @@
 const Ride = require('../models/Ride');
 const Driver = require('../DriverModel/DriverModel');
 const NotificationService = require('./notificationService');
+const DriverNotification = require('../DriverModel/DriverNotification');
+const RiderNotification = require('../models/RiderNotification');
 
 class RideRescheduleService {
   
@@ -65,11 +67,17 @@ class RideRescheduleService {
     });
     await driver.save();
 
-    // Send notification to driver
-    await NotificationService.sendRescheduleNotification(driver, ride, {
-      selectedDate,
-      selectedTime
+    // Store notification to driver
+    await DriverNotification.create({
+      driverId: driver._id,
+      categoryId: ride.rideInfo.categoryId,
+      rideId: ride._id,
+      title: 'Reschedule Request',
+      message: `Rider has requested to reschedule ride to ${selectedDate} at ${selectedTime}`,
+      type: 'reschedule_request',
+      data: { selectedDate, selectedTime }
     });
+    console.log(`📱 Reschedule request notification sent to driver playerId: ${driver.oneSignalPlayerId}`);
 
     return { 
       success: true, 
@@ -126,10 +134,16 @@ class RideRescheduleService {
       const driver = await Driver.findById(ride.driverId);
       
       if (rider && driver) {
-        await NotificationService.sendRescheduleAcceptedNotification(rider, driver, {
-          selectedDate,
-          selectedTime
+        await RiderNotification.create({
+          riderId: rider._id,
+          categoryId: ride.rideInfo.categoryId,
+          rideId: ride._id,
+          title: 'Reschedule Accepted',
+          message: `Driver has accepted your reschedule request for ${selectedDate} at ${selectedTime}`,
+          type: 'reschedule_accepted',
+          data: { selectedDate, selectedTime }
         });
+        console.log(`📱 Reschedule accepted notification sent to rider playerId: ${rider.oneSignalPlayerId}`);
       }
     } catch (notifError) {
       console.error('Error sending acceptance notification:', notifError);
@@ -190,6 +204,27 @@ class RideRescheduleService {
 
     // Emit new-ride event to eligible drivers
     await this.emitNewRideEvent(newRide);
+
+    // Store notification to rider about rejection
+    try {
+      const Rider = require('../models/Rider');
+      const rider = await Rider.findById(ride.riderId);
+      
+      if (rider) {
+        await RiderNotification.create({
+          riderId: rider._id,
+          categoryId: ride.rideInfo.categoryId,
+          rideId: ride._id,
+          title: 'Reschedule Rejected',
+          message: `Driver has rejected your reschedule request. A new ride has been created for ${selectedDate} at ${selectedTime}`,
+          type: 'reschedule_rejected',
+          data: { selectedDate, selectedTime, newRideId: newRide._id }
+        });
+        console.log(`📱 Reschedule rejected notification sent to rider playerId: ${rider.oneSignalPlayerId}`);
+      }
+    } catch (notifError) {
+      console.error('Error storing rejection notification:', notifError);
+    }
 
     return { 
       success: true, 

@@ -83,7 +83,7 @@ export default function PendingVehiclesPage() {
     try {
       setActionLoading(vehicleToAction._id);
       setError(null);
-      const response = await apiClient.post(`/api/driver/vehicles/admin/approve/${vehicleToAction._id}`);
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/approve/${vehicleToAction._id}`);
       if (response.data.success) {
         setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
         setShowApproveModal(false);
@@ -107,7 +107,7 @@ export default function PendingVehiclesPage() {
     try {
       setActionLoading(vehicleToAction._id);
       setError(null);
-      const response = await apiClient.post(`/api/driver/vehicles/admin/reject/${vehicleToAction._id}`);
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/reject/${vehicleToAction._id}`);
       if (response.data.success) {
         setVehicles(vehicles.filter(v => v._id !== vehicleToAction._id));
         setShowRejectModal(false);
