@@ -209,6 +209,8 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
+        // Small delay to ensure cookie is set after login
+        await new Promise(resolve => setTimeout(resolve, 100));
         const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/auth/permissions`);
         setUserPermissions(response.data.permissions);
         console.log('User permissions:', response.data.permissions); // Debug log
