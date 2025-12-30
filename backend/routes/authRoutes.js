@@ -42,22 +42,13 @@ router.post('/login', async (req, res) => {
     await user.save();
 
     // Set token as httpOnly cookie
-    const cookieOptions = {
+    res.cookie('adminToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    };
-
-    // Different config for development vs production
-    if (process.env.NODE_ENV === 'production') {
-      cookieOptions.sameSite = 'none';
-      cookieOptions.domain = '.hire4drive.com';
-    } else {
-      // Development - works with localhost
-      cookieOptions.sameSite = 'lax';
-      // No domain restriction for localhost testing
-    }
-    res.cookie('adminToken', token, cookieOptions);
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.hire4drive.com' : undefined,
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
 
     res.json({
       user: {

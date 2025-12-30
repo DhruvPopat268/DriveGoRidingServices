@@ -32,6 +32,11 @@ const rideSchema = new mongoose.Schema(
       driverName: { type: String },
       driverMobile: { type: String }
     },
+    staffId: { type: mongoose.Schema.Types.ObjectId, ref: "OfflineStaff" },
+    staffInfo: {
+      staffName: { type: String },
+      staffMobile: { type: String }
+    },
     rideInfo: {
       categoryId: { type: String, required: true },
       subcategoryId: { type: String },
@@ -116,6 +121,7 @@ const rideSchema = new mongoose.Schema(
 
     totalPayable: { type: Number, required: true },
     paymentType: { type: String, enum: ["cash", "wallet"], required: true },
+    bookedBy: { type: String, enum: ["USER", "STAFF", "AGENT"], default: "USER" },
     cancellationReason: { type: String },
     whoCancel: { type: String, enum: ["Rider", "Driver"] },
 

@@ -7,7 +7,7 @@ const NightCharge = require('../models/NightCharge')
 const moment = require('moment');
 const SubCategory = require('../models/SubCategory');
 const mongoose = require('mongoose');
-const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
+const { combinedAuthMiddleware } = require('../services/authService');
 const Rider = require('../models/Rider');
 const {Wallet} = require('../models/Payment&Wallet')
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
@@ -134,7 +134,7 @@ router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post('/calculation', authMiddleware, async (req, res) => {
+router.post('/calculation', combinedAuthMiddleware, async (req, res) => {
   try {
     const {
       parcelCategoryId,
@@ -146,16 +146,28 @@ router.post('/calculation', authMiddleware, async (req, res) => {
       subcategoryId,
       subSubcategoryId,
       durationType,
-      durationValue
+      durationValue,
+      riderId // Add riderId for staff bookings
     } = req.body;
 
-    const riderId = req.rider?.riderId
+    // Determine riderId based on authentication type
+    let targetRiderId;
+    if (req.rider) {
+      // User authentication
+      targetRiderId = req.rider.riderId;
+    } else if (req.staff) {
+      // Staff authentication - riderId must be provided in body
+      if (!riderId) {
+        return res.status(400).json({ error: 'riderId is required for staff bookings' });
+      }
+      targetRiderId = riderId;
+    }
 
     // Get rider document
-    const rider = await Rider.findById(riderId);
+    const rider = await Rider.findById(targetRiderId);
     if (!rider) return res.status(404).json({ error: 'Rider not found' });
 
-    const cuurentBalanceDoc = await Wallet.findOne({ riderId: riderId }).select('balance')
+    const cuurentBalanceDoc = await Wallet.findOne({ riderId: targetRiderId }).select('balance')
     const currentBalance = cuurentBalanceDoc ? cuurentBalanceDoc.balance : null
 
     // --- validations ---
@@ -329,7 +341,7 @@ router.post('/calculation', authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/get-included-data",authMiddleware, async (req, res) => {
+router.post("/get-included-data", combinedAuthMiddleware, async (req, res) => {
   try {
     const { categoryId, subcategoryId } = req.body;
 

@@ -5,7 +5,7 @@ const SubCategory = require('../models/SubCategory');
 const Category = require('../models/Category');
 const axios = require('axios'); // Add this if not already imported
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
-const authMiddleware = require('../middleware/authMiddleware');
+const { combinedAuthMiddleware } = require('../services/authService');
 
 // Create instruction
 router.post('/', adminAuthMiddleware, async (req, res) => {
@@ -122,7 +122,7 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post("/getInstructions",authMiddleware, async (req, res) => {
+router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
   try {
     const {
       categoryId,

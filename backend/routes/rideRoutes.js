@@ -33,6 +33,7 @@ const Category = require("../models/Category");
 const subcategory = require("../models/SubCategory");
 const subSubcategory = require("../models/SubSubCategory");
 const RiderNotification = require("../models/RiderNotification");
+const { combinedAuthMiddleware } = require('../services/authService');
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -317,9 +318,10 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User / Rider                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-router.post("/book", authMiddleware, async (req, res) => {
+router.post("/book", combinedAuthMiddleware, async (req, res) => {
   try {
     const {
+      riderId: bodyRiderId, // Only for staff bookings
       categoryId,
       subcategoryId,
       subSubcategoryId,
@@ -346,12 +348,39 @@ router.post("/book", authMiddleware, async (req, res) => {
       selectedParcelCategoryId
     } = req.body;
 
-   
+    // Determine riderId based on authentication type
+    let riderId, riderData, riderName, staffId, staffInfo;
 
-    const { riderId, mobile } = req.rider;
-
-    const riderData = await Rider.findOne({ mobile });
-    const riderName = riderData.name;
+    if (req.rider) {
+      // User authentication - riderId from middleware
+      riderId = req.rider.riderId;
+      const mobile = req.rider.mobile;
+      
+      riderData = await Rider.findOne({ mobile });
+      riderName = riderData.name;
+    } else if (req.staff) {
+      // Staff authentication - riderId from body, staffId from middleware
+      if (!bodyRiderId) {
+        return res.status(400).json({ message: "riderId is required for staff bookings" });
+      }
+      riderId = bodyRiderId;
+      staffId = req.staff.staffId;
+      
+      // Get rider data
+      riderData = await Rider.findById(riderId);
+      if (!riderData) {
+        return res.status(404).json({ success: false, message: 'Rider not found' });
+      }
+      riderName = riderData.name;
+      
+      // Staff info from middleware
+      staffInfo = {
+        staffName: req.staff.name,
+        staffMobile: req.staff.mobile
+      };
+    } else {
+      return res.status(401).json({ message: "Authentication required" });
+    }
 
     if (!categoryId || !paymentType || !selectedDate || !selectedTime) {
       return res.status(400).json({ message: "Required fields missing" });
@@ -509,8 +538,12 @@ router.post("/book", authMiddleware, async (req, res) => {
       riderId,
       riderInfo: {
         riderName,
-        riderMobile: mobile
+        riderMobile: req.staff ? riderData.mobile : req.rider.mobile
       },
+      ...(staffId && {
+        staffId,
+        staffInfo
+      }),
       rideInfo: {
         categoryId,
         subcategoryId,
@@ -552,6 +585,7 @@ router.post("/book", authMiddleware, async (req, res) => {
       referralEarningUsedAmount: isReferralEarningUsed ? referralEarningUsedAmount : 0,
       totalPayable: adjustedTotalPayable,
       paymentType,
+      bookedBy: req.staff ? "STAFF" : "USER",
       status: "BOOKED",
     });
     let selectedCarCategoryName = null
@@ -610,6 +644,15 @@ router.post("/book", authMiddleware, async (req, res) => {
         lastTransaction.rideId = newRide._id;
         await wallet.save();
       }
+    }
+
+    // Add ride to staff's completed rides if booked by staff
+    if (req.staff) {
+      const OfflineStaff = require('../offline&agentBookingModels/offlineStaffModel');
+      await OfflineStaff.findByIdAndUpdate(
+        staffId,
+        { $addToSet: { completedRides: newRide._id } }
+      );
     }
 
     // console.log('📱 New ride booked:', newRide._id);
@@ -1976,6 +2019,10 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           riderName: currentRide.riderInfo.riderName,
           riderMobile: currentRide.riderInfo.riderMobile,
         },
+        ...(currentRide.staffId && {
+          staffId: currentRide.staffId,
+          staffInfo: currentRide.staffInfo
+        }),
         rideInfo: {
           categoryId: currentRide.rideInfo.categoryId,
           subcategoryId: currentRide.rideInfo.subcategoryId,
@@ -2011,6 +2058,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         referralEarningUsedAmount: currentRide.referralEarningUsedAmount || 0,
         totalPayable: currentRide.totalPayable,
         paymentType: currentRide.paymentType,
+        bookedBy: currentRide.bookedBy || "USER",
         status: "BOOKED",
         cancellationReason: reason || "Cancelled by driver",
       });
@@ -2228,6 +2276,10 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         riderName: currentRide.riderInfo.riderName,
         riderMobile: currentRide.riderInfo.riderMobile,
       },
+      ...(currentRide.staffId && {
+        staffId: currentRide.staffId,
+        staffInfo: currentRide.staffInfo
+      }),
       rideInfo: {
         categoryId: currentRide.rideInfo.categoryId,
         subcategoryId: currentRide.rideInfo.subcategoryId,
@@ -2263,6 +2315,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       referralEarningUsedAmount: currentRide.referralEarningUsedAmount || 0,
       totalPayable: cancelledChargesForNewRide.totalPayable,
       paymentType: currentRide.paymentType,
+      bookedBy: currentRide.bookedBy || "USER",
       status: "BOOKED",
       cancellationReason: reason || "Cancelled by user",
     });
@@ -2623,6 +2676,15 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       rideStatus: "WAITING",
       $push: { completedRides: rideId }
     });
+
+    // Add ride to staff's completed rides if ride was booked by staff
+    if (updatedRide.staffId) {
+      const OfflineStaff = require('../offline&agentBookingModels/offlineStaffModel');
+      await OfflineStaff.findByIdAndUpdate(
+        updatedRide.staffId,
+        { $addToSet: { completedRides: rideId } }
+      );
+    }
 
     // 🔹 Reset rider’s uncleared cancellation charges
     const rider = await Rider.findById(updatedRide.riderId);

@@ -699,30 +699,20 @@ router.post("/web/verify-otp", async (req, res) => {
     const token = jwt.sign(
       { riderId: rider._id, mobile: rider.mobile },
       process.env.JWT_SECRET_USER,
-      { expiresIn: "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
     // Store session
     await createSession(mobile, token);
 
     // Set token in httpOnly cookie
-    const cookieOptions = {
+    res.cookie('authToken', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      domain: process.env.NODE_ENV === 'production' ? '.hire4drive.com' : undefined,
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    };
-
-    // Different config for development vs production
-    if (process.env.NODE_ENV === 'production') {
-      cookieOptions.sameSite = 'none';
-      cookieOptions.domain = '.hire4drive.com';
-    } else {
-      // Development - works with localhost
-      cookieOptions.sameSite = 'lax';
-      // No domain restriction for localhost testing
-    }
-
-    res.cookie('authToken', token, cookieOptions);
+    });
 
     res.json({
       success: true,

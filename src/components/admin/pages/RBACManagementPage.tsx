@@ -128,6 +128,13 @@ const permissionSections = [
     ]
   },
   {
+    key: "offline-booking-management",
+    label: "Offline Booking Management",
+    subItems: [
+      { key: "create-offline-staff", label: "Staff Management" }
+    ]
+  },
+  {
     key: "users-management",
     label: "Users Management",
     subItems: [
