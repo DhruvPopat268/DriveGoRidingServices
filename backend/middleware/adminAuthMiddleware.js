@@ -21,8 +21,10 @@ const adminAuthMiddleware = async (req, res, next) => {
     // Verify JWT signature + expiry
     const decoded = jwt.verify(token, process.env.JWT_SECRET_ADMIN);
 
+    console.log(decoded , token);
     // Ensure token exists in AdminSession collection
     const session = await AdminSession.findOne({ email: decoded.email, token });
+    console.log("Admin session found:", session);
 
     if (!session) {
       return res.status(401).json({ success: false, message: "Session expired or not found" });
