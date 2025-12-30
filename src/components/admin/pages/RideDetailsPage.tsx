@@ -17,7 +17,8 @@ import {
   Shield,
   Route,
   Timer,
-  Loader
+  Loader,
+  UserCheck
 } from 'lucide-react';
 import apiClient from '../../../lib/axiosInterceptor';
 
@@ -32,6 +33,11 @@ interface RideDetails {
     driverName: string;
     driverMobile: string;
   };
+  staffInfo?: {
+    staffName: string;
+    staffMobile: string;
+  };
+  bookedBy?: string;
   rideInfo: {
     categoryName: string;
     subcategoryName: string;
@@ -224,6 +230,36 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Staff Information */}
+          {rideDetails.staffInfo && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <UserCheck className="w-5 h-5 mr-2" />
+                  Staff Information
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {rideDetails.bookedBy || 'STAFF'}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Staff Name</label>
+                    <p className="text-lg">{rideDetails.staffInfo.staffName}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Staff Mobile</label>
+                    <p className="text-lg flex items-center">
+                      <Phone className="w-4 h-4 mr-2" />
+                      {rideDetails.staffInfo.staffMobile}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Driver Information */}
           {rideDetails.driverInfo && (

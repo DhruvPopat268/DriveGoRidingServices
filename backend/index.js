@@ -62,6 +62,7 @@ app.use(cors({
     "http://localhost:8080",
     "http://localhost:8081",
     "http://localhost:8082",
+    "https://offlinepanel.hire4drive.com",
     "https://admin.hire4drive.com",
     "https://hire4drivedriverdeleteaccount.onrender.com",
     "https://drive-go-riding-services.vercel.app",

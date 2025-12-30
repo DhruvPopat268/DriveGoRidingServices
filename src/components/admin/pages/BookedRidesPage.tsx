@@ -208,15 +208,17 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <colgroup>
-                <col style={{ width: '4%' }} />
+                <col style={{ width: '3%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
                 <col style={{ width: '11%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '11%' }} />
-                <col style={{ width: '11%' }} />
-                <col style={{ width: '11%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '18%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
@@ -228,6 +230,8 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                   <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Payment Method</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Booked By</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Staff Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
                 </tr>
               </thead>
@@ -324,6 +328,23 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
 
                     <td className="p-3">
                       <span className="text-sm capitalize">{ride.paymentType}</span>
+                    </td>
+
+                    <td className="p-3">
+                      <Badge variant={ride.bookedBy === 'STAFF' ? 'secondary' : 'default'} className="text-xs">
+                        {ride.bookedBy || 'USER'}
+                      </Badge>
+                    </td>
+
+                    <td className="p-3">
+                      {ride.staffInfo ? (
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">{ride.staffInfo.staffName}</div>
+                          <div className="text-xs text-gray-600">{ride.staffInfo.staffMobile}</div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">N/A</span>
+                      )}
                     </td>
 
                     <td className="p-3">

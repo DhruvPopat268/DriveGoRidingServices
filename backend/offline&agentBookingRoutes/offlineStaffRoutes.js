@@ -9,7 +9,14 @@ const Ride = require('../models/Ride');
 const { Wallet } = require('../models/Payment&Wallet');
 const { sendOfflineStaffWelcomeEmail } = require('../Services/emailService');
 const staffAuthMiddleware = require('../middleware/staffAuthMiddleware');
-const { calculateDriverRideCost, calculateCabRideCost, calculateParcelRideCost } = require('../utils/rideCalculation');
+const { 
+  calculateDriverRideCost, 
+  calculateCabRideCost, 
+  calculateParcelRideCost,
+  calculateDriverRideCostWithReferral,
+  calculateCabRideCostWithReferral,
+  calculateParcelRideCostWithReferral
+} = require('../utils/rideCalculation');
 const Category = require('../models/Category');
 const SubCategory = require('../models/SubCategory');
 const SubSubCategory = require('../models/SubSubCategory');
@@ -434,6 +441,145 @@ router.patch('/:id/status', async (req, res) => {
     res.json({ success: true, data: staff });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST calculate ride cost with referral
+router.post('/calculate-ride', staffAuthMiddleware, async (req, res) => {
+  try {
+    const { categoryId, riderId } = req.body;
+
+    const rider = await Rider.findById(riderId);
+    if (!rider) {
+      return res.status(404).json({ message: 'Rider not found' });
+    }
+
+    req.body.rider = rider;
+
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const walletDoc = await Wallet.findOne({ riderId });
+    const walletBalance = walletDoc ? walletDoc.balance : 0;
+
+    const categoryName = category.name.toLowerCase();
+    let result;
+
+    if (categoryName === 'driver') {
+      result = await calculateDriverRideCostWithReferral(req.body);
+    } else if (categoryName === 'cab') {
+      result = await calculateCabRideCostWithReferral(req.body);
+    } else if (categoryName === 'parcel') {
+      result = await calculateParcelRideCostWithReferral(req.body);
+    } else {
+      return res.status(400).json({ message: 'Invalid category type' });
+    }
+
+    const totalPayable =
+      result.driverCharges +
+      result.pickCharges +
+      result.peakCharges +
+      result.nightCharges +
+      result.insuranceCharges +
+      result.adminCharges +
+      result.gstCharges +
+      result.cancellationCharges;
+
+    res.json({ ...result, totalPayable, walletBalance });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Current rides for staff
+router.get('/current/my-rides', staffAuthMiddleware, async (req, res) => {
+  try {
+    const { staffId } = req.staff;
+
+    const rides = await Ride.find({ staffId, status: { $in: ['BOOKED', 'CONFIRMED'] } }).sort({ createdAt: -1 });
+
+    if (!rides || rides.length === 0) {
+      return res.status(200).json({ success: false, message: 'No booked rides found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: rides.length,
+      rides,
+    });
+  } catch (error) {
+    console.error('Error fetching booked rides:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Ongoing rides for staff
+router.get('/ongoing/my-rides', staffAuthMiddleware, async (req, res) => {
+  try {
+    const { staffId } = req.staff;
+
+    const rides = await Ride.find({
+      staffId, status: { $in: ['ONGOING', 'EXTENDED', 'REACHED'] }
+    }).sort({ createdAt: -1 });
+
+    if (!rides || rides.length === 0) {
+      return res.status(200).json({ success: false, message: 'No booked rides found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: rides.length,
+      rides,
+    });
+  } catch (error) {
+    console.error('Error fetching booked rides:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Past rides for staff
+router.get('/past/my-rides', staffAuthMiddleware, async (req, res) => {
+  try {
+    const { staffId } = req.staff;
+
+    const rides = await Ride.find({ staffId, status: { $in: ['COMPLETED', 'CANCELLED'] } }).sort({ createdAt: -1 });
+
+    if (!rides || rides.length === 0) {
+      return res.status(200).json({ success: false, message: 'No rides found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: rides.length,
+      rides,
+    });
+  } catch (error) {
+    console.error('Error fetching rides:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Booking detail
+router.post('/bookingDetail', combinedAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId } = req.body;
+
+    if (!rideId) {
+      return res.status(400).json({ message: 'Ride ID is required' });
+    }
+
+    const ride = await Ride.findById(rideId);
+
+    if (!ride) {
+      return res.status(404).json({ message: 'Ride not found' });
+    }
+
+    res.json({ success: true, data: ride });
+  } catch (error) {
+    console.error('Error fetching booking:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 

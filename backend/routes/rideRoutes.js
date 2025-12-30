@@ -911,7 +911,7 @@ router.get("/past/my-rides", authMiddleware, async (req, res) => {
 });
 
 //give ride doc as per ride id for detail view
-router.post("/bookingDetail", authMiddleware, async (req, res) => {
+router.post("/bookingDetail", combinedAuthMiddleware, async (req, res) => {
   try {
     const { rideId } = req.body;
 
