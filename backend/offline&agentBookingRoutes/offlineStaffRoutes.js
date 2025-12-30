@@ -13,7 +13,7 @@ const { calculateDriverRideCost, calculateCabRideCost, calculateParcelRideCost }
 const Category = require('../models/Category');
 const SubCategory = require('../models/SubCategory');
 const SubSubCategory = require('../models/SubSubCategory');
-const { combinedAuthMiddleware } = require('../services/authService');
+const { combinedAuthMiddleware } = require('../Services/authService');
 const router = express.Router();
 
 // POST - Send OTP (unified for both user and staff)

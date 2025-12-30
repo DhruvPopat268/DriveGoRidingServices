@@ -33,7 +33,7 @@ const Category = require("../models/Category");
 const subcategory = require("../models/SubCategory");
 const subSubcategory = require("../models/SubSubCategory");
 const RiderNotification = require("../models/RiderNotification");
-const { combinedAuthMiddleware } = require('../services/authService');
+const { combinedAuthMiddleware } = require('../Services/authService');
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
