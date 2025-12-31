@@ -29,8 +29,8 @@ const driverSchema = new mongoose.Schema(
       currentAddress: { type: String },
       permanentAddress: { type: String },
 
-      category: { type: String },
-      subCategory: [{ type: String }],
+      category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+      subCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' }],
 
       // ✅ Identity Proofs (Cloudinary URLs)
       aadhar: [{ type: String }],             // array for front & back

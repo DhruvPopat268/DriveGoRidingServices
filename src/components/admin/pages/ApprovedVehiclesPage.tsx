@@ -38,7 +38,7 @@ export default function ApprovedVehiclesPage() {
 
   const fetchApprovedVehicles = async () => {
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}api/driver/vehicles/admin/approved`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/approved`);
       if (response.data.success) {
         setVehicles(response.data.data);
       }

@@ -87,6 +87,12 @@ const Index = () => {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string} | null>(null);
+
+  const handleSectionChange = (section: string) => {
+    setSelectedDriverId(null);
+    setSelectedRideId(null);
+    setActiveSection(section);
+  };
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -485,7 +491,7 @@ const Index = () => {
       <Sidebar
         isOpen={sidebarOpen}
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={handleSectionChange}
       />
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
         <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />

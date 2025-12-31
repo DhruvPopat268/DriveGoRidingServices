@@ -1082,6 +1082,42 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       const cancellationFee = cancellationDetails?.cancellationFee || 0;
       const cancellationBufferTime = cancellationDetails?.cancellationBufferTime || 0;
 
+      // Handle wallet refund for wallet payments
+      const handleWalletRefund = async () => {
+        if (rideToCancel.paymentType === 'wallet') {
+          const wallet = await Wallet.findOne({ riderId: riderId.toString() });
+          const rider = await Rider.findById(riderId);
+          
+          if (wallet && rider) {
+            const totalPayable = rideToCancel.totalPayable;
+            const totalUnclearedCharges = rider.unclearedCancellationCharges || 0;
+            const currentCancellationCharges = cancellationFee;
+            const totalDeductions = totalUnclearedCharges + currentCancellationCharges;
+            const refundAmount = Math.max(0, totalPayable - totalDeductions);
+            
+            if (refundAmount > 0) {
+              // Add refund transaction
+              wallet.transactions.push({
+                amount: refundAmount,
+                status: 'completed',
+                type: 'refund',
+                description: `Ride cancellation refund (Total: ₹${totalPayable}, Uncleared charges: ₹${totalUnclearedCharges}, Current cancellation: ₹${currentCancellationCharges}, Total deducted: ₹${totalDeductions}, Refunded: ₹${refundAmount})`,
+                rideId: rideId,
+                paidAt: new Date()
+              });
+              
+              wallet.balance += refundAmount;
+              wallet.lastTransactionAt = new Date();
+              await wallet.save();
+            }
+            
+            // Clear uncleared charges since they're now accounted for
+            rider.unclearedCancellationCharges = 0;
+            await rider.save();
+          }
+        }
+      };
+
       // Function to handle cancellation charges
       const applyCancellationCharges = async (description) => {
         const wallet = await Wallet.findOne({ riderId: riderId.toString() });
@@ -1194,9 +1230,11 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
         // Apply charges if conditions are met
         if (shouldApplyCharges) {
           await applyCancellationCharges(chargeReason);
-
         }
       }
+
+      // Handle wallet refund for wallet payments (after charges are processed)
+      await handleWalletRefund();
 
 
     } catch (modelError) {
