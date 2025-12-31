@@ -11,8 +11,15 @@ interface Driver {
   _id: string;
   personalInformation?: {
     fullName?: string;
+    category?: {
+      name: string;
+    };
+    subCategory?: Array<{
+      name: string;
+    }>;
   };
   mobile: string;
+  ownership?: string;
   status: string;
   createdAt: string;
   suspendFrom?: string;
@@ -103,6 +110,9 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
                 <TableRow>
                   <TableHead>Driver Name</TableHead>
                   <TableHead>Mobile</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Subcategory</TableHead>
+                  <TableHead>Ownership</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Suspend From</TableHead>
                   <TableHead>Suspend To</TableHead>
@@ -112,7 +122,7 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
               <TableBody>
                 {filteredDrivers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                       No suspended drivers found
                     </TableCell>
                   </TableRow>
@@ -123,6 +133,11 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
                         {driver.personalInformation?.fullName || 'No Name'}
                       </TableCell>
                       <TableCell>{driver.mobile}</TableCell>
+                      <TableCell>{driver.personalInformation?.category?.name || "N/A"}</TableCell>
+                      <TableCell>
+                        {driver.personalInformation?.subCategory?.map(sub => sub.name).join(", ") || "N/A"}
+                      </TableCell>
+                      <TableCell>{driver.ownership || "N/A"}</TableCell>
                       <TableCell>
                         <Badge variant="destructive">Suspended</Badge>
                       </TableCell>

@@ -17,7 +17,12 @@ interface DriverDetail {
   _id: string;
   mobile: string;
   status: string;
+  ownership?: string;
   createdAt: string;
+  selectedCategory?: {
+    id: string;
+    name: string;
+  };
   personalInformation?: {
     aadhar?: string[];
     drivingLicense?: string[];
@@ -31,6 +36,14 @@ interface DriverDetail {
     permanentAddress?: string;
     panCard?: string;
     passportPhoto?: string;
+    category?: {
+      _id: string;
+      name: string;
+    };
+    subCategory?: Array<{
+      _id: string;
+      name: string;
+    }>;
   };
   drivingDetails?: {
     vehicleType?: string[];
@@ -186,6 +199,28 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
                 <p className="font-semibold">Gender</p>
                 <p>{driver.personalInformation?.gender || 'Not provided'}</p>
               </div>
+              <div>
+                <p className="font-semibold">Category</p>
+                <p>{driver.personalInformation?.category?.name || driver.selectedCategory?.name || 'Not provided'}</p>
+              </div>
+              <div>
+                <p className="font-semibold">Ownership</p>
+                <p>{driver.ownership || 'Not provided'}</p>
+              </div>
+            </div>
+            <div>
+              <p className="font-semibold">Subcategories</p>
+              <div className="flex flex-wrap gap-2">
+                {driver.personalInformation?.subCategory?.length ? (
+                  driver.personalInformation.subCategory.map((sub) => (
+                    <Badge key={sub._id} variant="outline">{sub.name}</Badge>
+                  ))
+                ) : (
+                  <p className="text-gray-500">Not provided</p>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="font-semibold">Date of Birth</p>
                 <p>{driver.personalInformation?.dateOfBirth ? new Date(driver.personalInformation.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>

@@ -15,11 +15,19 @@ import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
+  mobile: string;
   personalInformation: {
     fullName: string;
     currentAddress: string;
     permanentAddress: string;
+    category?: {
+      name: string;
+    };
+    subCategory?: Array<{
+      name: string;
+    }>;
   };
+  ownership?: string;
   status: string;
   createdAt: string;
   deletedDate: string;
@@ -76,6 +84,9 @@ export const DriversDeletedPage = ({ onNavigateToDetail }: DriversDeletedPagePro
                 <TableHead>Index</TableHead>
                 <TableHead>Full Name</TableHead>
                 <TableHead>Mobile</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Subcategory</TableHead>
+                <TableHead>Ownership</TableHead>
                 <TableHead>Current Address</TableHead>
                 <TableHead>Permanent Address</TableHead>
                 <TableHead>Status</TableHead>
@@ -87,7 +98,7 @@ export const DriversDeletedPage = ({ onNavigateToDetail }: DriversDeletedPagePro
             <TableBody>
               {drivers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                     No deleted drivers registration requests found
                   </TableCell>
                 </TableRow>
@@ -99,6 +110,11 @@ export const DriversDeletedPage = ({ onNavigateToDetail }: DriversDeletedPagePro
                       {driver.personalInformation.fullName}
                     </TableCell>
                     <TableCell>{driver.mobile}</TableCell>
+                    <TableCell>{driver.personalInformation.category?.name || "N/A"}</TableCell>
+                    <TableCell>
+                      {driver.personalInformation.subCategory?.map(sub => sub.name).join(", ") || "N/A"}
+                    </TableCell>
+                    <TableCell>{driver.ownership || "N/A"}</TableCell>
                     <TableCell>{driver.personalInformation.currentAddress}</TableCell>
                     <TableCell>{driver.personalInformation.permanentAddress}</TableCell>
                     <TableCell>

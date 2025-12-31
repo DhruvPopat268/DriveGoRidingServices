@@ -422,7 +422,16 @@ router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
 //Onreview drivers
 router.get("/Pending",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Pending" }).sort({ createdAt: -1 });
+    const drivers = await Driver.find({ status: "Pending" }).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -436,7 +445,16 @@ router.get("/Pending",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Onreview" }).populate('drivingDetails.canDrive drivingDetails.vehicleType').sort({ createdAt: -1 });
+    const drivers = await Driver.find({ status: "Onreview" }).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -451,7 +469,16 @@ router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Approved",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Approved" }).sort({ approvedDate: -1 });
+    const drivers = await Driver.find({ status: "Approved" }).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -466,7 +493,16 @@ router.get("/Approved",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Rejected" }).sort({ createdAt: -1 });
+    const drivers = await Driver.find({ status: "Rejected" }).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -481,7 +517,16 @@ router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
 
 router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "PendingForPayment" }).sort({ createdAt: -1 });
+    const drivers = await Driver.find({ status: "PendingForPayment" }).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -494,7 +539,16 @@ router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
 
 router.get("/deleted",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "deleted" }).sort({ deletedDate: -1 });
+    const drivers = await Driver.find({ status: "deleted" }).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -507,7 +561,16 @@ router.get("/deleted",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Suspended" }).sort({ createdAt: -1 });
+    const drivers = await Driver.find({ status: "Suspended" }).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
 
     if (!drivers || drivers.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -885,7 +948,24 @@ router.get("/driverDetail", driverAuthMiddleware, async (req, res) => {
 router.get("/:driverId", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
-    const driver = await Driver.findById(driverId).populate('drivingDetails.canDrive drivingDetails.vehicleType');
+    const driver = await Driver.findById(driverId).populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        },
+        {
+          path: "drivingDetails.canDrive",
+          select: "vehicleName"
+        },
+        {
+          path: "drivingDetails.vehicleType",
+          select: "name"
+        }
+      ]).sort({ approvedDate: -1 });
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
