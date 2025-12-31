@@ -2369,6 +2369,7 @@ router.post("/admin/create-incentive",adminAuthMiddleware, async (req, res) => {
     });
 
     const results = [];
+    const totalIncentiveAmount = amount * driverIds.length;
 
     for (const driverId of driverIds) {
       try {
@@ -2407,6 +2408,25 @@ router.post("/admin/create-incentive",adminAuthMiddleware, async (req, res) => {
 
     const successCount = results.filter(r => r.success).length;
     const failCount = results.filter(r => !r.success).length;
+
+    // Debit admin wallet ledger for total incentive amount
+    if (successCount > 0) {
+      const AdminWalletLedger = require('../models/AdminWalletLedger');
+      let adminWallet = await AdminWalletLedger.findOne();
+      if (!adminWallet) {
+        adminWallet = new AdminWalletLedger();
+      }
+      
+      const actualIncentiveAmount = amount * successCount;
+      adminWallet.addTransaction({
+        transactionType: "DEBIT",
+        amount: actualIncentiveAmount,
+        description: `Driver incentive payout to ${successCount} drivers`,
+        type: "DRIVER_INCENTIVE"
+      });
+      
+      await adminWallet.save();
+    }
 
     res.json({
       success: true,

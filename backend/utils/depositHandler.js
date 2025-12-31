@@ -2,6 +2,7 @@ const driverWallet = require("../DriverModel/driverWallet");
 const MinHoldBalance = require("../models/MinWithdrawBalance");
 const Driver = require("../DriverModel/DriverModel");
 const SubscriptionPlan = require("../DriverModel/SubscriptionPlan");
+const AdminWalletLedger = require("../models/AdminWalletLedger");
 
 const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
   try {
@@ -506,6 +507,29 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
 
       driver.purchasedPlans.push(planPurchase);
       
+      // Add transaction to admin wallet ledger for successful payments
+      if (mappedStatus === 'Success') {
+        try {
+          let adminLedger = await AdminWalletLedger.findOne();
+          if (!adminLedger) {
+            adminLedger = new AdminWalletLedger();
+          }
+          
+          adminLedger.addTransaction({
+            transactionType: "CREDIT",
+            amount: webhookAmount,
+            description: `Driver registration fee or Driver purchase plan - ${plan.name}`,
+            type: "DRIVER_REGISTRATION_OR_SUBSCRIPTION_PLAN_PURCHASE",
+            status: "COMPLETED"
+          });
+          
+          await adminLedger.save();
+          console.log(`💰 Admin wallet credited: ₹${webhookAmount} for driver registration`);
+        } catch (adminError) {
+          console.error("Admin wallet ledger error:", adminError);
+        }
+      }
+      
       // Handle plan activation for successful payments
       if (mappedStatus === 'Success') {
         // Update current plan and expiry date
@@ -590,6 +614,27 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
       }
       
       console.log(`✅ Driver plan purchase verified and completed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
+      
+      // Add transaction to admin wallet ledger
+      try {
+        let adminLedger = await AdminWalletLedger.findOne();
+        if (!adminLedger) {
+          adminLedger = new AdminWalletLedger();
+        }
+        
+        adminLedger.addTransaction({
+          transactionType: "CREDIT",
+          amount: existingPlan.amount,
+          description: `Driver registration fee or Driver purchase plan - ${plan.name}`,
+          type: "DRIVER_REGISTRATION_OR_SUBSCRIPTION_PLAN_PURCHASE",
+          status: "COMPLETED"
+        });
+        
+        await adminLedger.save();
+        console.log(`💰 Admin wallet credited: ₹${existingPlan.amount} for driver registration`);
+      } catch (adminError) {
+        console.error("Admin wallet ledger error:", adminError);
+      }
     } else if (mappedStatus === 'Failed' && oldStatus === 'Pending') {
       console.log(`❌ Driver plan purchase failed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
     }

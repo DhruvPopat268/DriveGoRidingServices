@@ -35,6 +35,7 @@ const subSubcategory = require("../models/SubSubCategory");
 const RiderNotification = require("../models/RiderNotification");
 const { combinedAuthMiddleware } = require('../Services/authService');
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
+const AdminWalletLedger = require("../models/AdminWalletLedger");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -515,6 +516,21 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       wallet.lastTransactionAt = new Date();
       
       await wallet.save();
+
+      // Credit admin wallet ledger
+      let adminWallet = await AdminWalletLedger.findOne();
+      if (!adminWallet) {
+        adminWallet = new AdminWalletLedger();
+      }
+      
+      adminWallet.addTransaction({
+        transactionType: "CREDIT",
+        amount: adjustedTotalPayable,
+        description: `Ride payment from rider ${riderName}`,
+        type: "RIDE_PAYMENT"
+      });
+      
+      await adminWallet.save();
     }
 
     // Format selectedDate to "dd mm yy"
@@ -2816,6 +2832,23 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           totalSpent: payableAmount
         });
       }
+
+      // Credit admin wallet ledger with commission
+      if (adminPayable > 0) {
+        let adminWallet = await AdminWalletLedger.findOne();
+        if (!adminWallet) {
+          adminWallet = new AdminWalletLedger();
+        }
+        
+        adminWallet.addTransaction({
+          transactionType: "CREDIT",
+          amount: adminPayable,
+          description: `Ride commission from cash payment`,
+          type: "RIDE_COMMISSION"
+        });
+        
+        await adminWallet.save();
+      }
     }
 
     // -------------------------
@@ -2865,9 +2898,43 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         wallet.balance += driverPaymentFromWallet;
         wallet.totalEarnings += driverPaymentFromWallet;
       }
+
+      // Debit admin wallet ledger for driver payout
+      if (driverEarning > 0) {
+        let adminWallet = await AdminWalletLedger.findOne();
+        if (!adminWallet) {
+          adminWallet = new AdminWalletLedger();
+        }
+        
+        adminWallet.addTransaction({
+          transactionType: "DEBIT",
+          amount: driverEarning,
+          description: `Driver payout for wallet payment`,
+          type: "DRIVER_PAYOUT"
+        });
+        
+        await adminWallet.save();
+      }
     }
 
     await wallet.save();
+
+    // Debit admin wallet ledger for referral bonus if used
+    if (updatedRide.isReferralEarningUsed && updatedRide.referralEarningUsedAmount > 0) {
+      let adminWallet = await AdminWalletLedger.findOne();
+      if (!adminWallet) {
+        adminWallet = new AdminWalletLedger();
+      }
+      
+      adminWallet.addTransaction({
+        transactionType: "DEBIT",
+        amount: updatedRide.referralEarningUsedAmount,
+        description: `Referral bonus payout for ride completion`,
+        type: "REFERRAL_BONUS"
+      });
+      
+      await adminWallet.save();
+    }
 
       const driver = await Driver.findById(driverId);
       const unclearedCharges = driver?.unclearedCancellationCharges || 0;
