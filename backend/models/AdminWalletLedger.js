@@ -5,6 +5,7 @@ const transactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   description: { type: String, required: true },
   type: { type: String, enum: ["DRIVER_REGISTRATION_OR_SUBSCRIPTION_PLAN_PURCHASE", "RIDE_PAYMENT", "RIDE_COMMISSION", "OTHER", "DRIVER_PAYOUT", "DRIVER_INCENTIVE", "REFERRAL_BONUS"], required: true },
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
   status: { type: String, enum: ["PENDING", "COMPLETED", "FAILED", "CANCELLED"], default: "COMPLETED" }
 }, { timestamps: true });
 

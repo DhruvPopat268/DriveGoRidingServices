@@ -51,12 +51,12 @@ export const UsersPage = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      let endpoint = `${import.meta.env.VITE_API_URL}/api/rider-auth/all`;
+      let endpoint = `/api/rider-auth/all`;
       
       if (profileFilter === 'complete') {
-        endpoint = `${import.meta.env.VITE_API_URL}/api/rider-auth/completeProfile`;
+        endpoint = `/api/rider-auth/completeProfile`;
       } else if (profileFilter === 'incomplete') {
-        endpoint = `${import.meta.env.VITE_API_URL}/api/rider-auth/inCompleteProfile`;
+        endpoint = `/api/rider-auth/inCompleteProfile`;
       }
 
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}${endpoint}`);

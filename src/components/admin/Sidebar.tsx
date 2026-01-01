@@ -191,6 +191,7 @@ const menuItems = [
       { icon: Wallet, label: "Rider Wallet Config", key: "rider-wallet-config" }
     ]
   },
+  { icon: Wallet, label: "Admin Wallet Management", key: "admin-wallet-ledger" },
   { icon: Shield, label: "Role Management", key: "rolemanagement" },
   { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" },
   { icon: FileText, label: "Driver Purchased Plans History", key: "driver-purchased-plans" },

@@ -139,6 +139,12 @@ app.use('/api/rbac', require('./routes/rbacRoutes'));
 // Auth routes
 app.use('/api/auth', require('./routes/authRoutes'));
 
+// Admin wallet routes
+app.use('/api/admin-wallet', require('./routes/adminWalletRoutes'));
+
+// Dashboard routes
+app.use('/api/dashboard', require('./routes/dashboard'));
+
 //Driver Mobile Application Routes
 app.use('/api/driver/notifications', require('./DriverRoutes/notificationRoutes'));
 

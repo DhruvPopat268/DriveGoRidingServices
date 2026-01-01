@@ -4,8 +4,8 @@ const { type } = require("os");
 const locationSchema = new mongoose.Schema(
   {
     address: { type: String, required: true },
-    houseNo: { type: String },
-    landmark: { type: String },
+    houseNo: { type: String, default: "" },
+    landmark: { type: String , default: "" },
     lat: { type: Number, required: true },
     lng: { type: Number, required: true }
   },

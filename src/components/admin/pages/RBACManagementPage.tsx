@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import apiClient from "../../../lib/axiosInterceptor";
-
 const permissionSections = [
   { key: "dashboard", label: "Dashboard", subItems: [] },
   {
@@ -145,6 +144,11 @@ const permissionSections = [
       { key: "rider-wallet-config", label: "Rider Wallet Config" }
     ]
   },
+  {
+    key: "admin-wallet-ledger",
+    label: "Admin Wallet Management",
+    subItems: []
+  },
   { key: "rolemanagement", label: "Role Management", subItems: [] },
   { key: "driversubscription", label: "Driver Subscription & Registration fee management", subItems: [] },
   { key: "driver-purchased-plans", label: "Driver Purchased Plans History", subItems: [] }
@@ -162,6 +166,11 @@ const PermissionSelector = ({ selectedPermissions, onPermissionsChange, availabl
         return section.key === perm.name;
       }
     });
+    console.log('Section:', section.key, 'Permissions:', sectionPermissions);
+    if (section.key === 'admin-wallet-management') {
+      console.log('Available permission names:', availablePermissions.map(p => p.name));
+      console.log('Looking for subItem keys:', section.subItems.map(s => s.key));
+    }
     return { ...section, permissions: sectionPermissions };
   });
 

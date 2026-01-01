@@ -5,8 +5,12 @@ import { Sidebar } from "@/components/admin/Sidebar";
 import { Header } from "@/components/admin/Header";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { RecentRides } from "@/components/admin/RecentRides";
+import { BookedRides } from "@/components/admin/BookedRides";
+import { ConfirmedRides } from "@/components/admin/ConfirmedRides";
 import { DriverRequests } from "@/components/admin/DriverRequests";
 import { RevenueChart } from "@/components/admin/RevenueChart";
+import { RideStatusChart } from "@/components/admin/RideStatusChart";
+import { RevenueDistributionChart } from "@/components/admin/RevenueDistributionChart";
 import { LiveMap } from "@/components/admin/LiveMap";
 import { RidersPage } from "@/components/admin/pages/RidersPage";
 import { RidesPage } from "@/components/admin/pages/RidesPage";
@@ -78,6 +82,7 @@ import RiderPendingWithdrawalPage from "@/components/admin/pages/RiderPendingWit
 import RiderApprovedWithdrawalPage from "@/components/admin/pages/RiderApprovedWithdrawalPage";
 import RiderRejectedWithdrawalPage from "@/components/admin/pages/RiderRejectedWithdrawalPage";
 import RiderWalletConfigPage from "@/components/admin/pages/RiderWalletConfigPage";
+import AdminWalletLedger from "@/components/admin/pages/AdminWalletLedger";
 import { OfflineStaffPage } from "@/components/admin/pages/OfflineStaffPage";
 import axios from "axios";
 
@@ -152,18 +157,23 @@ const Index = () => {
         return (
           <div className="space-y-6">
             <DashboardStats />
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-              <div className="xl:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div>
                 <RevenueChart />
               </div>
               <div>
-                <DriverRequests />
-              </div>
-              <div className="lg:col-span-2">
-                <LiveMap />
+                <RideStatusChart />
               </div>
               <div>
-                <RecentRides />
+                <RevenueDistributionChart />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <BookedRides />
+              </div>
+              <div>
+                <ConfirmedRides />
               </div>
             </div>
           </div>
@@ -466,6 +476,8 @@ const Index = () => {
       case "create-offline-staff":
       case "manage-offline-staff":
         return <OfflineStaffPage />;
+      case "admin-wallet-ledger":
+        return <AdminWalletLedger />;
 
       case "category-assignment":
         return categoryAssignment ? (

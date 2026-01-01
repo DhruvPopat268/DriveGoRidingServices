@@ -1,18 +1,31 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
-
-const data = [
-  { name: "Mon", revenue: 2400, rides: 45 },
-  { name: "Tue", revenue: 1398, rides: 32 },
-  { name: "Wed", revenue: 9800, rides: 87 },
-  { name: "Thu", revenue: 3908, rides: 64 },
-  { name: "Fri", revenue: 4800, rides: 91 },
-  { name: "Sat", revenue: 3800, rides: 78 },
-  { name: "Sun", revenue: 4300, rides: 82 }
-];
+import { useState, useEffect } from "react";
 
 export const RevenueChart = () => {
+  const [data, setData] = useState([]);
+  const [summary, setSummary] = useState({ totalRevenue: 0, totalRides: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWeeklyRevenue = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/weekly-revenue`);
+        const result = await response.json();
+        if (result.success) {
+          setData(result.data.chartData);
+          setSummary(result.data.summary);
+        }
+      } catch (error) {
+        console.error('Error fetching weekly revenue:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeeklyRevenue();
+  }, []);
   return (
     <Card className="bg-white border border-gray-300 shadow-md">
       <CardHeader>
@@ -43,11 +56,15 @@ export const RevenueChart = () => {
 
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div className="text-center">
-            <p className="text-2xl font-bold text-black">$34,406</p>
+            <p className="text-2xl font-bold text-black">
+              {loading ? '...' : `₹${summary.totalRevenue.toLocaleString()}`}
+            </p>
             <p className="text-gray-600 text-sm">Total Revenue</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-black">479</p>
+            <p className="text-2xl font-bold text-black">
+              {loading ? '...' : summary.totalRides}
+            </p>
             <p className="text-gray-600 text-sm">Total Rides</p>
           </div>
         </div>
