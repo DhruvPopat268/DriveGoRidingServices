@@ -64,11 +64,8 @@ export const Header = ({ onToggleSidebar }: HeaderProps) => {
               align="end"
               className="bg-white border border-gray-200"
             >
-              <DropdownMenuItem className="text-black hover:text-black hover:bg-gray-100">
-                <User className="w-4 h-4 mr-2" />
-                Profile
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-gray-200" />
+             
+             
               <DropdownMenuItem 
                 className="text-black hover:text-black hover:bg-gray-100 cursor-pointer"
                 onClick={handleLogout}
