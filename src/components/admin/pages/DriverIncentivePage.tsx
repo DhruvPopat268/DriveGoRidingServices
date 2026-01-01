@@ -8,8 +8,9 @@ import { Checkbox } from '../../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { Alert, AlertDescription } from '../../ui/alert';
-import { Search, Users, Gift, CheckCircle, XCircle, Plus, History } from 'lucide-react';
+import { Search, Users, Gift, CheckCircle, XCircle, Plus, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { RupeeIcon } from "@/components/ui/RupeeIcon";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
@@ -60,11 +61,17 @@ const DriverIncentivePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Pagination states for history
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+
   // Fetch all approved drivers and incentive history
   useEffect(() => {
     fetchDrivers();
     fetchIncentiveHistory();
-  }, []);
+  }, [currentPage, recordsPerPage]);
 
   // Filter drivers based on search term
   useEffect(() => {
@@ -97,15 +104,27 @@ const DriverIncentivePage = () => {
   const fetchIncentiveHistory = async () => {
     setHistoryLoading(true);
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/incentive-history`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/incentive-history?page=${currentPage}&limit=${recordsPerPage}`);
       if (response.status === 200) {
-        setIncentiveHistory(response.data.data);
+        const data = response.data;
+        setIncentiveHistory(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalRecords(data.totalRecords || 0);
       }
     } catch (error) {
       console.error('Error fetching incentive history:', error);
     } finally {
       setHistoryLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
   };
 
   const handleSelectAll = () => {
@@ -401,6 +420,25 @@ const DriverIncentivePage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Records per page selector */}
+          <div className="flex items-center justify-end mb-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Show</span>
+              <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">records</span>
+            </div>
+          </div>
+
           {historyLoading ? (
             <div className="flex items-center justify-center h-32">
               <div className="text-lg">Loading history...</div>
@@ -466,6 +504,63 @@ const DriverIncentivePage = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {!historyLoading && incentiveHistory.length > 0 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-gray-600">
+                Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Search, Filter, Phone, Mail, Calendar, User, Star } from 'lucide-react';
+import { Users, Search, Filter, Phone, Mail, Calendar, User, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface User {
@@ -34,19 +34,20 @@ interface User {
 
 export const UsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [profileFilter, setProfileFilter] = useState('all');
   const [sortOrder, setSortOrder] = useState('newest');
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchUsers();
-  }, [profileFilter]);
-
-  useEffect(() => {
-    filterAndSortUsers();
-  }, [users, searchTerm, sortOrder]);
+  }, [profileFilter, currentPage, recordsPerPage, searchTerm, sortOrder]);
 
   const fetchUsers = async () => {
     try {
@@ -59,10 +60,20 @@ export const UsersPage = () => {
         endpoint = `/api/rider-auth/inCompleteProfile`;
       }
 
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}${endpoint}`);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: recordsPerPage.toString(),
+        search: searchTerm,
+        sort: sortOrder
+      });
+
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}${endpoint}?${params}`);
       
       if (response.data.success) {
-        setUsers(response.data.data);
+        const data = response.data;
+        setUsers(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalRecords(data.totalRecords || 0);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -71,21 +82,28 @@ export const UsersPage = () => {
     }
   };
 
-  const filterAndSortUsers = () => {
-    let filtered = users.filter(user => 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.mobile.includes(searchTerm) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
-    // Sort by createdAt
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
-    });
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
 
-    setFilteredUsers(filtered);
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (value: string) => {
+    setProfileFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleSortChange = (value: string) => {
+    setSortOrder(value);
+    setCurrentPage(1);
   };
 
   const formatDate = (dateString: string) => {
@@ -130,12 +148,12 @@ export const UsersPage = () => {
               <Input
                 placeholder="Search users..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
               />
             </div>
             
-            <Select value={profileFilter} onValueChange={setProfileFilter}>
+            <Select value={profileFilter} onValueChange={handleFilterChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Profile Status" />
               </SelectTrigger>
@@ -146,7 +164,7 @@ export const UsersPage = () => {
               </SelectContent>
             </Select>
 
-            <Select value={sortOrder} onValueChange={setSortOrder}>
+            <Select value={sortOrder} onValueChange={handleSortChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Sort by Date" />
               </SelectTrigger>
@@ -166,10 +184,29 @@ export const UsersPage = () => {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Users className="w-5 h-5 mr-2" />
-            Users ({filteredUsers.length})
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center">
+              <Users className="w-5 h-5 mr-2" />
+              Users ({totalRecords})
+            </CardTitle>
+            
+            {/* Records per page selector */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Show</span>
+              <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">records</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -192,7 +229,7 @@ export const UsersPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
+                  {users.map((user) => (
                     <TableRow key={user._id}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
@@ -266,11 +303,68 @@ export const UsersPage = () => {
                 </TableBody>
               </Table>
               
-              {filteredUsers.length === 0 && !loading && (
+              {users.length === 0 && !loading && (
                 <div className="text-center py-8 text-muted-foreground">
                   No users found matching your criteria
                 </div>
               )}
+            </div>
+          )}
+          
+          {/* Pagination Controls */}
+          {!loading && users.length > 0 && (
+            <div className="flex items-center justify-between mt-6">
+              <div className="text-sm text-gray-600">
+                Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

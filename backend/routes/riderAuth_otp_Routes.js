@@ -227,10 +227,36 @@ router.post("/create-order", authMiddleware, async (req, res) => {
 // Get all riders with non-empty names
 router.get("/completeProfile",adminAuthMiddleware, async (req, res) => {
   try {
-    const riders = await Rider.find({
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    const sort = req.query.sort || 'newest';
+
+    // Build search query
+    let searchQuery = {
       name: { $ne: "" },
-      gender: { $ne: "" }   // <-- added gender filter
-    }).sort({ createdAt: -1 });
+      gender: { $ne: "" }
+    };
+
+    if (search) {
+      searchQuery.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { mobile: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort query
+    let sortQuery = { createdAt: sort === 'newest' ? -1 : 1 };
+
+    const totalRecords = await Rider.countDocuments(searchQuery);
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const riders = await Rider.find(searchQuery)
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(limit);
 
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
       const wallet = await Wallet.findOne({ riderId: rider._id });
@@ -244,7 +270,13 @@ router.get("/completeProfile",adminAuthMiddleware, async (req, res) => {
       };
     }));
 
-    res.json({ success: true, data: ridersWithWallet });
+    res.json({ 
+      success: true, 
+      data: ridersWithWallet,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -252,7 +284,40 @@ router.get("/completeProfile",adminAuthMiddleware, async (req, res) => {
 
 router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
   try {
-    const riders = await Rider.find({ name: "", gender: "" }).sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    const sort = req.query.sort || 'newest';
+
+    // Build search query
+    let searchQuery = { name: "", gender: "" };
+
+    if (search) {
+      searchQuery = {
+        $and: [
+          { name: "" },
+          { gender: "" },
+          {
+            $or: [
+              { mobile: { $regex: search, $options: 'i' } },
+              { email: { $regex: search, $options: 'i' } }
+            ]
+          }
+        ]
+      };
+    }
+
+    // Build sort query
+    let sortQuery = { createdAt: sort === 'newest' ? -1 : 1 };
+
+    const totalRecords = await Rider.countDocuments(searchQuery);
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const riders = await Rider.find(searchQuery)
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(limit);
 
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
       const wallet = await Wallet.findOne({ riderId: rider._id });
@@ -266,7 +331,13 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
       };
     }));
 
-    res.json({ success: true, data: ridersWithWallet });
+    res.json({ 
+      success: true, 
+      data: ridersWithWallet,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -274,7 +345,33 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
 
 router.get("/all", adminAuthMiddleware, async (req, res) => {
   try {
-    const riders = await Rider.find({}).sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const search = req.query.search || '';
+    const sort = req.query.sort || 'newest';
+
+    // Build search query
+    let searchQuery = {};
+
+    if (search) {
+      searchQuery.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { mobile: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort query
+    let sortQuery = { createdAt: sort === 'newest' ? -1 : 1 };
+
+    const totalRecords = await Rider.countDocuments(searchQuery);
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const riders = await Rider.find(searchQuery)
+      .sort(sortQuery)
+      .skip(skip)
+      .limit(limit);
 
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
       const wallet = await Wallet.findOne({ riderId: rider._id });
@@ -288,7 +385,13 @@ router.get("/all", adminAuthMiddleware, async (req, res) => {
       };
     }));
 
-    res.json({ success: true, data: ridersWithWallet });
+    res.json({ 
+      success: true, 
+      data: ridersWithWallet,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

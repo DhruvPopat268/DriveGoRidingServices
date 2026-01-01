@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Wallet, TrendingUp, TrendingDown, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import apiClient from '../../../lib/axiosInterceptor';
@@ -10,12 +11,12 @@ const AdminWalletLedger = () => {
   const [walletData, setWalletData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(10);
 
-  const fetchWalletData = async (page = 1) => {
+  const fetchWalletData = async (page = 1, pageLimit = limit) => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/admin-wallet/ledger?page=${page}&limit=${limit}`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/admin-wallet/ledger?page=${page}&limit=${pageLimit}`);
 
       const data = response.data;
       if (data.success) {
@@ -40,6 +41,12 @@ const AdminWalletLedger = () => {
     if (page >= 1 && page <= walletData?.pagination?.totalPages) {
       fetchWalletData(page);
     }
+  };
+
+  const handleLimitChange = (value) => {
+    setLimit(parseInt(value));
+    setCurrentPage(1);
+    fetchWalletData(1, parseInt(value));
   };
 
   const formatAmount = (amount) => {
@@ -143,7 +150,26 @@ const AdminWalletLedger = () => {
       {/* Transactions Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Transaction History</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Transaction History</CardTitle>
+            
+            {/* Records per page selector */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Show</span>
+              <Select value={limit.toString()} onValueChange={handleLimitChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">records</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -207,9 +233,34 @@ const AdminWalletLedger = () => {
                   <ChevronLeft className="h-4 w-4" />
                   Previous
                 </Button>
-                <span className="text-sm">
-                  Page {currentPage} of {walletData.pagination.totalPages}
-                </span>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, walletData.pagination.totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (walletData.pagination.totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= walletData.pagination.totalPages - 2) {
+                      pageNumber = walletData.pagination.totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
                 <Button
                   variant="outline"
                   size="sm"

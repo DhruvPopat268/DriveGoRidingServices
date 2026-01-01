@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Filter, Search, Eye, Loader } from 'lucide-react';
+import { Star, Filter, Search, Eye, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '../../ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface DriverRating {
@@ -30,11 +32,17 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
   const [loading, setLoading] = useState(true);
   const [selectedDriver, setSelectedDriver] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchDrivers();
     fetchAllRatings();
-  }, []);
+  }, [currentPage, recordsPerPage]);
 
   const fetchDrivers = async () => {
     try {
@@ -49,9 +57,12 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
 
   const fetchAllRatings = async () => {
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver-rating/all`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver-rating/all?page=${currentPage}&limit=${recordsPerPage}`);
       if (response.data.success) {
-        setRatings(response.data.data);
+        const data = response.data;
+        setRatings(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalRecords(data.totalRecords || 0);
       }
     } catch (error) {
       console.error('Error fetching ratings:', error);
@@ -63,11 +74,14 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
   const fetchDriverRatings = async (driverId: string) => {
     try {
       setLoading(true);
-      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver-rating/given-by-driver`, {
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver-rating/given-by-driver?page=${currentPage}&limit=${recordsPerPage}`, {
         driverId
       });
       if (response.data.success) {
-        setRatings(response.data.data);
+        const data = response.data;
+        setRatings(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalRecords(data.totalRecords || 0);
       }
     } catch (error) {
       console.error('Error fetching driver ratings:', error);
@@ -76,8 +90,18 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
     }
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
+
   const handleDriverFilter = (driverId: string) => {
     setSelectedDriver(driverId);
+    setCurrentPage(1);
     if (driverId) {
       fetchDriverRatings(driverId);
     } else {
@@ -150,6 +174,27 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
           </div>
         </div>
       </div>
+
+      {/* Records per page selector */}
+      {!loading && ratings.length > 0 && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Show</span>
+            <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-600">records</span>
+          </div>
+        </div>
+      )}
 
       {/* Ratings Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -227,6 +272,63 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {!loading && ratings.length > 0 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-600">
+            Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNumber = totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNumber)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNumber}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

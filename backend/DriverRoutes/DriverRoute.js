@@ -422,7 +422,15 @@ router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
 //Onreview drivers
 router.get("/Pending",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Pending" }).populate([
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "Pending" });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find({ status: "Pending" })
+      .populate([
         {
           path: "personalInformation.category",
           select: "name"
@@ -431,13 +439,18 @@ router.get("/Pending",adminAuthMiddleware, async (req, res) => {
           path: "personalInformation.subCategory",
           select: "name"
         }
-      ]).sort({ approvedDate: -1 });
+      ])
+      .sort({ approvedDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    if (!drivers || drivers.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-    }
-
-    res.status(200).json({ success: true, data: drivers });
+    res.status(200).json({ 
+      success: true, 
+      data: drivers,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -445,7 +458,15 @@ router.get("/Pending",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Onreview" }).populate([
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "Onreview" });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find({ status: "Onreview" })
+      .populate([
         {
           path: "personalInformation.category",
           select: "name"
@@ -454,14 +475,18 @@ router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
           path: "personalInformation.subCategory",
           select: "name"
         }
-      ]).sort({ approvedDate: -1 });
+      ])
+      .sort({ approvedDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    if (!drivers || drivers.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-
-    }
-
-    res.status(200).json({ success: true, data: drivers });
+    res.status(200).json({ 
+      success: true, 
+      data: drivers,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -469,7 +494,15 @@ router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Approved",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Approved" }).populate([
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "Approved" });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find({ status: "Approved" })
+      .populate([
         {
           path: "personalInformation.category",
           select: "name"
@@ -478,14 +511,18 @@ router.get("/Approved",adminAuthMiddleware, async (req, res) => {
           path: "personalInformation.subCategory",
           select: "name"
         }
-      ]).sort({ approvedDate: -1 });
+      ])
+      .sort({ approvedDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    if (!drivers || drivers.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-
-    }
-
-    res.status(200).json({ success: true, data: drivers });
+    res.status(200).json({ 
+      success: true, 
+      data: drivers,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -493,7 +530,15 @@ router.get("/Approved",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Rejected" }).populate([
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "Rejected" });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find({ status: "Rejected" })
+      .populate([
         {
           path: "personalInformation.category",
           select: "name"
@@ -502,14 +547,18 @@ router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
           path: "personalInformation.subCategory",
           select: "name"
         }
-      ]).sort({ approvedDate: -1 });
+      ])
+      .sort({ approvedDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    if (!drivers || drivers.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-
-    }
-
-    res.status(200).json({ success: true, data: drivers });
+    res.status(200).json({ 
+      success: true, 
+      data: drivers,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -517,7 +566,15 @@ router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
 
 router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "PendingForPayment" }).populate([
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "PendingForPayment" });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find({ status: "PendingForPayment" })
+      .populate([
         {
           path: "personalInformation.category",
           select: "name"
@@ -526,12 +583,18 @@ router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
           path: "personalInformation.subCategory",
           select: "name"
         }
-      ]).sort({ approvedDate: -1 });
+      ])
+      .sort({ approvedDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    if (!drivers || drivers.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-    }
-    res.status(200).json({ success: true, data: drivers });
+    res.status(200).json({ 
+      success: true, 
+      data: drivers,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -539,7 +602,15 @@ router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
 
 router.get("/deleted",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "deleted" }).populate([
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "deleted" });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find({ status: "deleted" })
+      .populate([
         {
           path: "personalInformation.category",
           select: "name"
@@ -548,12 +619,18 @@ router.get("/deleted",adminAuthMiddleware, async (req, res) => {
           path: "personalInformation.subCategory",
           select: "name"
         }
-      ]).sort({ approvedDate: -1 });
+      ])
+      .sort({ approvedDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    if (!drivers || drivers.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-    }
-    res.status(200).json({ success: true, data: drivers });
+    res.status(200).json({ 
+      success: true, 
+      data: drivers,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -561,7 +638,15 @@ router.get("/deleted",adminAuthMiddleware, async (req, res) => {
 
 router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
   try {
-    const drivers = await Driver.find({ status: "Suspended" }).populate([
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "Suspended" });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find({ status: "Suspended" })
+      .populate([
         {
           path: "personalInformation.category",
           select: "name"
@@ -570,11 +655,10 @@ router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
           path: "personalInformation.subCategory",
           select: "name"
         }
-      ]).sort({ approvedDate: -1 });
-
-    if (!drivers || drivers.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-    }
+      ])
+      .sort({ approvedDate: -1 })
+      .skip(skip)
+      .limit(limit);
 
     // Get suspend details for each driver
     const driversWithSuspendInfo = await Promise.all(
@@ -592,7 +676,13 @@ router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
       })
     );
 
-    res.status(200).json({ success: true, data: driversWithSuspendInfo });
+    res.status(200).json({ 
+      success: true, 
+      data: driversWithSuspendInfo,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -785,13 +875,18 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
 // Get driver cancellation credits info
 router.get("/cancellation-credits",adminAuthMiddleware, async (req, res) => {
   try {
-    // console.log('Fetching driver cancellation credits...');
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments({ status: "Approved" });
+    const totalPages = Math.ceil(totalRecords / limit);
 
     const drivers = await Driver.find({ status: "Approved" })
       .select("personalInformation.fullName mobile personalInformation.currentAddress cancellationRideCredits createdAt")
-      .sort({ createdAt: -1 });
-
-    // console.log(`Found ${drivers.length} approved drivers`);
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     const driversData = drivers.map(driver => ({
       driverName: driver.personalInformation?.fullName || "N/A",
@@ -801,7 +896,13 @@ router.get("/cancellation-credits",adminAuthMiddleware, async (req, res) => {
       createdAt: driver.createdAt
     }));
 
-    res.json({ success: true, data: driversData });
+    res.json({ 
+      success: true, 
+      data: driversData,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     console.error('Cancellation credits API error:', error);
     res.status(500).json({ success: false, message: "Failed to fetch driver", error: error.message });
@@ -811,8 +912,25 @@ router.get("/cancellation-credits",adminAuthMiddleware, async (req, res) => {
 // Get all cancellation credit configurations
 router.get("/manage-credits",adminAuthMiddleware, async (req, res) => {
   try {
-    const credits = await CancellationCredit.find().sort({ createdAt: -1 });
-    res.json({ success: true, data: credits });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await CancellationCredit.countDocuments();
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const credits = await CancellationCredit.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: credits,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -1766,6 +1884,95 @@ router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) =
   }
 });
 
+// Admin routes for driver withdrawal requests
+
+// GET - Fetch pending driver withdrawal requests
+router.get("/admin/withdrawals/pending", adminAuthMiddleware, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await withdrawalRequest.countDocuments({ status: 'pending' });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const withdrawals = await withdrawalRequest.find({ status: 'pending' })
+      .populate('driverId', 'personalInformation.fullName personalInformation.currentAddress mobile')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: withdrawals,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
+  } catch (error) {
+    console.error('Fetch pending driver withdrawal requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch pending withdrawal requests' });
+  }
+});
+
+// GET - Fetch completed driver withdrawal requests
+router.get("/admin/withdrawals/completed", adminAuthMiddleware, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await withdrawalRequest.countDocuments({ status: 'completed' });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const withdrawals = await withdrawalRequest.find({ status: 'completed' })
+      .populate('driverId', 'personalInformation.fullName personalInformation.currentAddress mobile')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: withdrawals,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
+  } catch (error) {
+    console.error('Fetch completed driver withdrawal requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch completed withdrawal requests' });
+  }
+});
+
+// GET - Fetch rejected driver withdrawal requests
+router.get("/admin/withdrawals/rejected", adminAuthMiddleware, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await withdrawalRequest.countDocuments({ status: 'rejected' });
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const withdrawals = await withdrawalRequest.find({ status: 'rejected' })
+      .populate('driverId', 'personalInformation.fullName personalInformation.currentAddress mobile')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: withdrawals,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
+  } catch (error) {
+    console.error('Fetch rejected driver withdrawal requests error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch rejected withdrawal requests' });
+  }
+});
+
 router.post("/admin/withdrawal/complete",adminAuthMiddleware, async (req, res) => {
   try {
     const { requestId } = req.body;
@@ -2450,11 +2657,26 @@ router.post("/admin/create-incentive",adminAuthMiddleware, async (req, res) => {
 // Get incentive history
 router.get("/admin/incentive-history", adminAuthMiddleware, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await DriverIncentive.countDocuments();
+    const totalPages = Math.ceil(totalRecords / limit);
+
     const incentives = await DriverIncentive.find()
       .populate("drivers", "personalInformation.fullName mobile")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    res.status(200).json({ success: true, data: incentives });
+    res.status(200).json({ 
+      success: true, 
+      data: incentives,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -94,7 +94,11 @@ router.delete('/:id',adminAuthMiddleware, async (req, res) => {
 
 router.get("/drivers/purchased-plans",adminAuthMiddleware, async (req, res) => {
   try {
-    // Fetch all drivers who have purchased plans
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Fetch all drivers who have purchased plans with pagination
     const drivers = await Driver.find(
       { "purchasedPlans.0": { $exists: true } } // only drivers with purchasedPlans
     )
@@ -103,10 +107,11 @@ router.get("/drivers/purchased-plans",adminAuthMiddleware, async (req, res) => {
         path: "purchasedPlans.plan", // populate the plan ObjectId
         model: "SubscriptionPlan",
         select: "name" // only fetch the plan name
-      }).sort({ 'purchasedPlans.purchasedAt': -1 }); // sort by purchasedAt descending
+      })
+      .sort({ 'purchasedPlans.purchasedAt': -1 }); // sort by purchasedAt descending
 
     // Transform response to include driver info and plan name
-    const result = drivers.map(driver => {
+    const allPlans = drivers.map(driver => {
       return driver.purchasedPlans.map(plan => ({
         driverId: driver._id,
         driverName: driver.personalInformation.fullName,
@@ -119,10 +124,21 @@ router.get("/drivers/purchased-plans",adminAuthMiddleware, async (req, res) => {
       }));
     }).flat();
 
+    // Sort all plans by purchasedAt descending
+    allPlans.sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt));
+
+    // Apply pagination to the flattened array
+    const totalRecords = allPlans.length;
+    const totalPages = Math.ceil(totalRecords / limit);
+    const paginatedPlans = allPlans.slice(skip, skip + limit);
+
     res.json({
       success: true,
-      totalPlans: result.length,
-      purchasedPlans: result
+      totalPlans: totalRecords, // Keep for backward compatibility
+      totalRecords,
+      totalPages,
+      currentPage: page,
+      purchasedPlans: paginatedPlans
     });
 
   } catch (error) {

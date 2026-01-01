@@ -643,17 +643,35 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
 // Admin: Get all pending vehicles (adminStatus: 'pending')
 router.get("/admin/pending",adminAuthMiddleware, async (req, res) => {
   try {
-    const vehicles = await Vehicle.find({ adminStatus: 'pending' })
-      .populate('owner', 'personalInformation.fullName mobile uniqueId')
-      .populate('category', 'name')
-      .populate('assignedTo', 'personalInformation.fullName mobile')
-      .populate('cabVehicleDetails.vehicleType')
-      .populate('cabVehicleDetails.modelType')
-      .populate('parcelVehicleDetails.vehicleType')
-      .populate('parcelVehicleDetails.modelType')
-      .sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    res.json({ success: true, data: vehicles });
+    const [vehicles, totalRecords] = await Promise.all([
+      Vehicle.find({ adminStatus: 'pending' })
+        .populate('owner', 'personalInformation.fullName mobile uniqueId')
+        .populate('category', 'name')
+        .populate('assignedTo', 'personalInformation.fullName mobile')
+        .populate('cabVehicleDetails.vehicleType')
+        .populate('cabVehicleDetails.modelType')
+        .populate('parcelVehicleDetails.vehicleType')
+        .populate('parcelVehicleDetails.modelType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Vehicle.countDocuments({ adminStatus: 'pending' })
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    res.json({ 
+      success: true, 
+      data: vehicles,
+      totalRecords,
+      totalPages,
+      currentPage: page,
+      limit
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -662,17 +680,35 @@ router.get("/admin/pending",adminAuthMiddleware, async (req, res) => {
 // Admin: Get all approved vehicles (adminStatus: 'approved')
 router.get("/admin/approved",adminAuthMiddleware, async (req, res) => {
   try {
-    const vehicles = await Vehicle.find({ adminStatus: 'approved' })
-      .populate('owner', 'personalInformation.fullName mobile uniqueId')
-      .populate('category', 'name')
-      .populate('assignedTo', 'personalInformation.fullName mobile')
-      .populate('cabVehicleDetails.vehicleType')
-      .populate('cabVehicleDetails.modelType')
-      .populate('parcelVehicleDetails.vehicleType')
-      .populate('parcelVehicleDetails.modelType')
-      .sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    res.json({ success: true, data: vehicles });
+    const [vehicles, totalRecords] = await Promise.all([
+      Vehicle.find({ adminStatus: 'approved' })
+        .populate('owner', 'personalInformation.fullName mobile uniqueId')
+        .populate('category', 'name')
+        .populate('assignedTo', 'personalInformation.fullName mobile')
+        .populate('cabVehicleDetails.vehicleType')
+        .populate('cabVehicleDetails.modelType')
+        .populate('parcelVehicleDetails.vehicleType')
+        .populate('parcelVehicleDetails.modelType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Vehicle.countDocuments({ adminStatus: 'approved' })
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    res.json({ 
+      success: true, 
+      data: vehicles,
+      totalRecords,
+      totalPages,
+      currentPage: page,
+      limit
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -681,17 +717,35 @@ router.get("/admin/approved",adminAuthMiddleware, async (req, res) => {
 // Admin: Get all rejected vehicles (adminStatus: 'rejected')
 router.get("/admin/rejected",adminAuthMiddleware, async (req, res) => {
   try {
-    const vehicles = await Vehicle.find({ adminStatus: 'rejected' })
-      .populate('owner', 'personalInformation.fullName mobile uniqueId')
-      .populate('category', 'name')
-      .populate('assignedTo', 'personalInformation.fullName mobile')
-      .populate('cabVehicleDetails.vehicleType')
-      .populate('cabVehicleDetails.modelType')
-      .populate('parcelVehicleDetails.vehicleType')
-      .populate('parcelVehicleDetails.modelType')
-      .sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    res.json({ success: true, data: vehicles });
+    const [vehicles, totalRecords] = await Promise.all([
+      Vehicle.find({ adminStatus: 'rejected' })
+        .populate('owner', 'personalInformation.fullName mobile uniqueId')
+        .populate('category', 'name')
+        .populate('assignedTo', 'personalInformation.fullName mobile')
+        .populate('cabVehicleDetails.vehicleType')
+        .populate('cabVehicleDetails.modelType')
+        .populate('parcelVehicleDetails.vehicleType')
+        .populate('parcelVehicleDetails.modelType')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Vehicle.countDocuments({ adminStatus: 'rejected' })
+    ]);
+
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    res.json({ 
+      success: true, 
+      data: vehicles,
+      totalRecords,
+      totalPages,
+      currentPage: page,
+      limit
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

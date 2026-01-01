@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Skeleton } from '../../ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
-import { Plus, CreditCard, Calendar } from 'lucide-react';
+import { Plus, CreditCard, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../../ui/use-toast';
 import apiClient from '../../../lib/axiosInterceptor';
 
@@ -24,18 +25,27 @@ export const ManageDriverCreditsPage = () => {
   const [formData, setFormData] = useState({ credits: '' });
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchCredits();
-  }, []);
+  }, [currentPage, recordsPerPage]);
 
   const fetchCredits = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/manage-credits`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/manage-credits?page=${currentPage}&limit=${recordsPerPage}`);
       
       if (response.data.success) {
-        setCredits(response.data.data);
+        const data = response.data;
+        setCredits(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalRecords(data.totalRecords || 0);
       } else {
         throw new Error('Failed to fetch credits');
       }
@@ -48,6 +58,15 @@ export const ManageDriverCreditsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,6 +202,27 @@ export const ManageDriverCreditsPage = () => {
         </Dialog>
       </div>
 
+      {/* Records per page selector */}
+      {!loading && credits.length > 0 && (
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Show</span>
+            <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-600">records</span>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         {credits.map((credit) => (
           <Card key={credit._id} className="hover:shadow-md transition-shadow">
@@ -216,7 +256,64 @@ export const ManageDriverCreditsPage = () => {
         ))}
       </div>
 
-      {credits.length === 0 && (
+      {/* Pagination Controls */}
+      {!loading && credits.length > 0 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-600">
+            Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNumber = totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNumber)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNumber}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {credits.length === 0 && !loading && (
         <Card>
           <CardContent className="p-12 text-center">
             <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />

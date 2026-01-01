@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Eye, X, Loader } from 'lucide-react';
+import { Eye, X, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Vehicle {
@@ -31,16 +33,24 @@ export default function RejectedVehiclesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showModal, setShowModal] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchRejectedVehicles();
-  }, []);
+  }, [currentPage, recordsPerPage]);
 
   const fetchRejectedVehicles = async () => {
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/rejected`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/vehicles/admin/rejected?page=${currentPage}&limit=${recordsPerPage}`);
       if (response.data.success) {
         setVehicles(response.data.data);
+        setTotalPages(response.data.totalPages || 1);
+        setTotalRecords(response.data.totalRecords || 0);
       }
     } catch (error) {
       console.error('Error fetching rejected vehicles:', error);
@@ -52,6 +62,15 @@ export default function RejectedVehiclesPage() {
   const handleView = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setShowModal(true);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
   };
 
   const closeModal = () => {
@@ -77,6 +96,25 @@ export default function RejectedVehiclesPage() {
       </div>
 
       <Card className="p-6">
+        {/* Records per page selector */}
+        <div className="flex items-center justify-end mb-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Show</span>
+            <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-600">records</span>
+          </div>
+        </div>
+
         <Table>
           <TableHeader>
             <TableRow>
@@ -102,7 +140,7 @@ export default function RejectedVehiclesPage() {
                 vehicles.map((vehicle, index) => (
                   <tr key={vehicle._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {index+1}
+                      {(currentPage - 1) * recordsPerPage + index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {vehicle.rcNumber}
@@ -141,6 +179,63 @@ export default function RejectedVehiclesPage() {
               )}
           </TableBody>
         </Table>
+
+        {/* Pagination Controls */}
+        {totalRecords > 0 && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + i;
+                  } else {
+                    pageNumber = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Modal */}

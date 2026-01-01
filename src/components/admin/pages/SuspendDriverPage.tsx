@@ -60,6 +60,12 @@ const SuspendDriverPage = () => {
   const [selectedSuspendDrivers, setSelectedSuspendDrivers] = useState<SuspendHistory['drivers']>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // Pagination for history
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchDrivers();
@@ -95,9 +101,11 @@ const SuspendDriverPage = () => {
   const fetchSuspendHistory = async () => {
     setHistoryLoading(true);
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/suspend-history`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/admin/suspend-history?page=${currentPage}&limit=${recordsPerPage}`);
       const data = response.data;
       setSuspendHistory(data.data);
+      setTotalPages(data.totalPages || 1);
+      setTotalRecords(data.totalRecords || 0);
     } catch (error) {
       console.error('Error fetching suspend history:', error);
     } finally {

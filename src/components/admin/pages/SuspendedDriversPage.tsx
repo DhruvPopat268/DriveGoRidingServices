@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Ban, Eye } from 'lucide-react';
+import { Search, Ban, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
@@ -36,10 +37,16 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
   const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchSuspendedDrivers();
-  }, []);
+  }, [currentPage, recordsPerPage]);
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -56,15 +63,26 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
   const fetchSuspendedDrivers = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/Suspended`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/Suspended?page=${currentPage}&limit=${recordsPerPage}`);
       const data = response.data;
       setDrivers(data.data);
       setFilteredDrivers(data.data);
+      setTotalPages(data.totalPages || 1);
+      setTotalRecords(data.totalRecords || 0);
     } catch (error) {
       console.error('Error fetching suspended drivers:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
   };
 
   if (loading) {
@@ -92,8 +110,8 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
           <CardTitle>Suspended Drivers List</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <div className="relative">
+          <div className="flex items-center justify-between mb-4">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 placeholder="Search by name or mobile..."
@@ -101,6 +119,21 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Show</span>
+              <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-gray-600">records</span>
             </div>
           </div>
 
@@ -174,6 +207,61 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Previous
+              </Button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + i;
+                  } else {
+                    pageNumber = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

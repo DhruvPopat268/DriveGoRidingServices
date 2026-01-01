@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Skeleton } from '../../ui/skeleton';
-import { Users, Calendar, MapPin, Phone, CreditCard } from 'lucide-react';
+import { Users, Calendar, MapPin, Phone, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface DriverCredit {
@@ -17,18 +19,27 @@ export const AllDriversCreditsPage = () => {
   const [drivers, setDrivers] = useState<DriverCredit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage, setRecordsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchDriverCredits();
-  }, []);
+  }, [currentPage, recordsPerPage]);
 
   const fetchDriverCredits = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/cancellation-credits`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/cancellation-credits?page=${currentPage}&limit=${recordsPerPage}`);
       
       if (response.data.success) {
-        setDrivers(response.data.data);
+        const data = response.data;
+        setDrivers(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalRecords(data.totalRecords || 0);
       } else {
         throw new Error('API returned error');
       }
@@ -37,6 +48,15 @@ export const AllDriversCreditsPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleRecordsPerPageChange = (value: string) => {
+    setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
   };
 
   const formatDate = (dateString: string) => {
@@ -117,24 +137,43 @@ export const AllDriversCreditsPage = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{drivers.length}</div>
+                <div className="text-2xl font-bold text-blue-600">{totalRecords}</div>
                 <div className="text-sm text-gray-600">Total Drivers</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
                   {drivers.filter(d => d.cancellationRideCredits > 0).length}
                 </div>
-                <div className="text-sm text-gray-600">With Credits</div>
+                <div className="text-sm text-gray-600">With Credits (Current Page)</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">
                   {drivers.filter(d => d.cancellationRideCredits === 0).length}
                 </div>
-                <div className="text-sm text-gray-600">No Credits</div>
+                <div className="text-sm text-gray-600">No Credits (Current Page)</div>
               </div>
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Records per page selector */}
+      <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">Show</span>
+          <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-gray-600">records</span>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -183,7 +222,64 @@ export const AllDriversCreditsPage = () => {
         ))}
       </div>
 
-      {drivers.length === 0 && (
+      {/* Pagination Controls */}
+      {!loading && drivers.length > 0 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-600">
+            Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNumber = totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNumber)}
+                    className="w-8 h-8 p-0"
+                  >
+                    {pageNumber}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {drivers.length === 0 && !loading && (
         <Card>
           <CardContent className="p-12 text-center">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />

@@ -12,10 +12,26 @@ const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 // GET - Fetch pending withdrawal requests
 router.get('/pending', adminAuthMiddleware, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await RiderWithdrawReq.countDocuments({ status: 'pending' });
+    const totalPages = Math.ceil(totalRecords / limit);
+
     const withdrawReqs = await RiderWithdrawReq.find({ status: 'pending' })
       .populate('riderId', 'name mobile email')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, data: withdrawReqs });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: withdrawReqs,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     console.error('Fetch pending withdrawal requests error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch pending withdrawal requests' });
@@ -25,10 +41,26 @@ router.get('/pending', adminAuthMiddleware, async (req, res) => {
 // GET - Fetch approved withdrawal requests
 router.get('/approved', adminAuthMiddleware, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await RiderWithdrawReq.countDocuments({ status: 'approved' });
+    const totalPages = Math.ceil(totalRecords / limit);
+
     const withdrawReqs = await RiderWithdrawReq.find({ status: 'approved' })
       .populate('riderId', 'name mobile email')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, data: withdrawReqs });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: withdrawReqs,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     console.error('Fetch approved withdrawal requests error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch approved withdrawal requests' });
@@ -38,10 +70,26 @@ router.get('/approved', adminAuthMiddleware, async (req, res) => {
 // GET - Fetch rejected withdrawal requests
 router.get('/rejected',adminAuthMiddleware, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await RiderWithdrawReq.countDocuments({ status: 'rejected' });
+    const totalPages = Math.ceil(totalRecords / limit);
+
     const withdrawReqs = await RiderWithdrawReq.find({ status: 'rejected' })
       .populate('riderId', 'name mobile email')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, data: withdrawReqs });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: withdrawReqs,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     console.error('Fetch rejected withdrawal requests error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch rejected withdrawal requests' });

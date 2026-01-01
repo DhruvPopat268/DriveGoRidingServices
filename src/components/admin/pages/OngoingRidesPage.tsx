@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Phone, Calendar, Eye, Loader } from "lucide-react";
+import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
@@ -347,21 +347,48 @@ export const OngoingRidesPage = ({ onNavigateToDetail }: OngoingRidesPageProps) 
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-end items-center space-x-2 mt-6">
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-gray-600">
+              Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRides)} to {Math.min(currentPage * recordsPerPage, totalRides)} of {totalRides} entries
+            </div>
+            <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
               >
+                <ChevronLeft className="w-4 h-4" />
                 Previous
               </Button>
-
-              <span className="text-sm text-gray-600">
-                Page {currentPage} of {totalPages} ({totalRides} total rides)
-              </span>
-
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNumber = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNumber = totalPages - 4 + i;
+                  } else {
+                    pageNumber = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+              </div>
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -369,9 +396,10 @@ export const OngoingRidesPage = ({ onNavigateToDetail }: OngoingRidesPageProps) 
                 disabled={currentPage === totalPages}
               >
                 Next
+                <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 

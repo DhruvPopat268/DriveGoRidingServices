@@ -99,18 +99,31 @@ router.post("/", authMiddleware, async (req, res) => {
 router.post("/given-by-user",adminAuthMiddleware, async (req, res) => {
   try {
     const { userId } = req.body;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
     if (!userId) {
       return res.status(400).json({ message: "userId is required" });
     }
 
-
+    const totalRecords = await UserRating.countDocuments({ userId });
+    const totalPages = Math.ceil(totalRecords / limit);
 
     const ratings = await UserRating.find({ userId })
       .populate('userId', 'name')
       .populate('driverId', 'personalInformation.fullName')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, data: ratings });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: ratings,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -118,11 +131,27 @@ router.post("/given-by-user",adminAuthMiddleware, async (req, res) => {
 
 router.get("/all",adminAuthMiddleware, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await UserRating.countDocuments();
+    const totalPages = Math.ceil(totalRecords / limit);
+
     const ratings = await UserRating.find()
       .populate('userId', 'name')
       .populate('driverId', 'personalInformation.fullName')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, data: ratings });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({ 
+      success: true, 
+      data: ratings,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
