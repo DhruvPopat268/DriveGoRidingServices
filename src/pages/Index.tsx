@@ -97,24 +97,36 @@ const Index = () => {
     setSelectedDriverId(null);
     setSelectedRideId(null);
     setActiveSection(section);
+    
+    // Update URL for specific sections
+    if (section === 'booked-rides') {
+      navigate('/booked-rides');
+    } else if (section === 'confirmed-rides') {
+      navigate('/confirmed-rides');
+    } else if (section === 'dashboard') {
+      navigate('/');
+    }
   };
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Set default active section to dashboard if none is set
-    if (!activeSection) {
-      setActiveSection("dashboard");
-    }
-  }, []);
-
-  useEffect(() => {
     const path = location.pathname;
-    const match = path.match(/\/admin\/category-assignment\/(\w+)\/([a-f0-9]+)/);
-    if (match) {
-      const [, categoryType, categoryId] = match;
-      fetchCategoryAndSet(categoryType, categoryId);
-      setActiveSection('category-assignment');
+    
+    // Handle direct URL navigation
+    if (path === '/booked-rides') {
+      setActiveSection('booked-rides');
+    } else if (path === '/confirmed-rides') {
+      setActiveSection('confirmed-rides');
+    } else {
+      const match = path.match(/\/admin\/category-assignment\/(\w+)\/([a-f0-9]+)/);
+      if (match) {
+        const [, categoryType, categoryId] = match;
+        fetchCategoryAndSet(categoryType, categoryId);
+        setActiveSection('category-assignment');
+      } else if (!activeSection) {
+        setActiveSection("dashboard");
+      }
     }
   }, [location.pathname]);
 

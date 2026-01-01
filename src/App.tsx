@@ -24,6 +24,8 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Index />} />
+            <Route path="/booked-rides" element={<Index />} />
+            <Route path="/confirmed-rides" element={<Index />} />
             <Route path="/admin/category-assignment/:categoryType/:categoryId" element={<Index />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -4,6 +4,7 @@ const Driver = require('../DriverModel/DriverModel'); // Adjust path as needed
 const Rider = require('../models/Rider'); // Adjust path as needed
 const Ride = require('../models/Ride'); // Adjust path as needed
 const AdminWalletLedger = require('../models/AdminWalletLedger'); // Adjust path as needed
+const category = require('../models/Category');
 
 // Helper function to get start and end of day
 const getDateRange = (date) => {
@@ -234,7 +235,7 @@ router.get('/revenue-distribution', async (req, res) => {
     const totalDebits = allTransactions.find(r => r._id === 'DEBIT')?.total || 0;
     const totalNetRevenue = totalCredits - totalDebits;
     
-    // Get transactions grouped by category (only those with category)
+    // Get transactions grouped by category with category details
     const transactionsByCategory = await AdminWalletLedger.aggregate([
       { $unwind: '$transactions' },
       {
@@ -243,9 +244,35 @@ router.get('/revenue-distribution', async (req, res) => {
         }
       },
       {
+        $addFields: {
+          'transactions.categoryObjectId': { $toObjectId: '$transactions.category' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'transactions.categoryObjectId',
+          foreignField: '_id',
+          as: 'categoryInfo'
+        }
+      },
+      {
+        $addFields: {
+          categoryInfo: {
+            $cond: {
+              if: { $eq: [{ $size: '$categoryInfo' }, 0] },
+              then: [{ categoryName: 'Unknown Category' }],
+              else: '$categoryInfo'
+            }
+          }
+        }
+      },
+      { $unwind: '$categoryInfo' },
+      {
         $group: {
           _id: {
             category: '$transactions.category',
+            categoryName: '$categoryInfo.categoryName',
             transactionType: '$transactions.transactionType'
           },
           total: { $sum: '$transactions.amount' }
@@ -253,16 +280,23 @@ router.get('/revenue-distribution', async (req, res) => {
       }
     ]);
 
+    console.log('Transactions by category result:', JSON.stringify(transactionsByCategory, null, 2));
+
     // Calculate net revenue by category (credits - debits)
     const categoryRevenue = {};
     
     transactionsByCategory.forEach(item => {
       const categoryId = item._id.category;
+      const categoryName = item._id.categoryName;
       const transactionType = item._id.transactionType;
       const amount = item.total;
       
       if (!categoryRevenue[categoryId]) {
-        categoryRevenue[categoryId] = { credits: 0, debits: 0 };
+        categoryRevenue[categoryId] = { 
+          categoryName: categoryName,
+          credits: 0, 
+          debits: 0 
+        };
       }
       
       if (transactionType === 'CREDIT') {
@@ -272,34 +306,34 @@ router.get('/revenue-distribution', async (req, res) => {
       }
     });
 
-    // Get category details and calculate net revenue
+    // Calculate net revenue for each category
     const categories = [];
+    let totalCategoryRevenue = 0;
 
     for (const [categoryId, revenue] of Object.entries(categoryRevenue)) {
-      const category = await Category.findById(categoryId);
-      if (category) {
-        const netRevenue = revenue.credits - revenue.debits;
-        
-        categories.push({
-          categoryId: categoryId,
-          categoryName: category.categoryName,
-          netRevenue: netRevenue
-        });
-      }
+      const netRevenue = revenue.credits - revenue.debits;
+      totalCategoryRevenue += netRevenue;
+      const categoryName = await Category.findById(categoryId).select('name')
+      categories.push({
+        categoryId: categoryId,
+        categoryName: categoryName? categoryName.name : null,
+        netRevenue: netRevenue
+      });
     }
 
-    // Calculate percentages based on total net revenue and sort by netRevenue descending
-    const categoriesWithPercentage = categories
+    // Sort categories by netRevenue descending and add percentage
+    const sortedCategories = categories
+      .sort((a, b) => b.netRevenue - a.netRevenue)
       .map(cat => ({
         ...cat,
-        percentage: totalNetRevenue > 0 ? parseFloat(((cat.netRevenue / totalNetRevenue) * 100).toFixed(2)) : 0
-      }))
-      .sort((a, b) => b.netRevenue - a.netRevenue);
+        percentage: totalCategoryRevenue > 0 ? parseFloat(((cat.netRevenue / totalCategoryRevenue) * 100).toFixed(2)) : 0
+      }));
 
     res.json({
       success: true,
       totalNetRevenue,
-      categories: categoriesWithPercentage
+      totalCategoryRevenue,
+      categories: sortedCategories
     });
 
   } catch (error) {

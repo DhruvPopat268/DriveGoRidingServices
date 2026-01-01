@@ -654,7 +654,7 @@ export const RBACManagementPage = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
+          {/* <TabsTrigger value="permissions">Permissions</TabsTrigger> */}
           <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>

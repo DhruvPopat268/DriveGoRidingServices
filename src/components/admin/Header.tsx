@@ -45,26 +45,7 @@ export const Header = ({ onToggleSidebar }: HeaderProps) => {
 
         {/* Right side */}
         <div className="flex items-center space-x-4">
-          {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-black hover:text-black hover:bg-gray-100 relative"
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-              3
-            </span>
-          </Button>
-
-          {/* Settings */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-black hover:text-black hover:bg-gray-100"
-          >
-            <Settings className="w-5 h-5" />
-          </Button>
+        
 
           {/* User menu */}
           <DropdownMenu>

@@ -12,6 +12,7 @@ export const RevenueDistributionChart = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalNetRevenue, setTotalNetRevenue] = useState(0);
   const [error, setError] = useState(null);
   const [hoveredSlice, setHoveredSlice] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
@@ -32,7 +33,8 @@ export const RevenueDistributionChart = () => {
         color: COLORS[category.categoryName.toLowerCase()]
       })).filter(item => item.value > 0);
       
-      setTotalRevenue(responseData.totalNetRevenue);
+      setTotalRevenue(responseData.totalCategoryRevenue);
+      setTotalNetRevenue(responseData.totalNetRevenue);
       setData(formattedData);
     } catch (error) {
       console.error('Error fetching revenue data:', error);
@@ -55,8 +57,52 @@ export const RevenueDistributionChart = () => {
 
   const createPieSlice = (item, index) => {
     const percentage = item.percentage;
-    const startAngle = cumulativePercentage * 3.6; // Convert to degrees
+    
+    // If it's 100% (single category), show as full circle
+    if (percentage === 100) {
+      const textX = 50;
+      const textY = 50;
+      
+      return (
+        <g key={index}>
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            fill={item.color}
+            stroke="white"
+            strokeWidth="1"
+            className="cursor-pointer transition-opacity duration-200"
+            style={{ opacity: hoveredSlice === index ? 0.8 : 1 }}
+            title={`${item.name}: ${formatCurrency(item.value)}`}
+            onMouseEnter={(e) => {
+              setHoveredSlice(index);
+              setTooltipPosition({ x: e.clientX, y: e.clientY });
+            }}
+            onMouseLeave={() => setHoveredSlice(null)}
+            onMouseMove={(e) => {
+              setTooltipPosition({ x: e.clientX, y: e.clientY });
+            }}
+          />
+          <text
+            x={textX}
+            y={textY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="5"
+            fill="black"
+            fontWeight="bold"
+            className="pointer-events-none"
+          >
+            {percentage.toFixed(0)}%
+          </text>
+        </g>
+      );
+    }
+
+    const startAngle = cumulativePercentage * 3.6;
     const endAngle = (cumulativePercentage + percentage) * 3.6;
+    const midAngle = (startAngle + endAngle) / 2;
     cumulativePercentage += percentage;
 
     const isLargeArc = percentage > 50 ? 1 : 0;
@@ -64,6 +110,10 @@ export const RevenueDistributionChart = () => {
     const y1 = 50 + 40 * Math.sin((startAngle - 90) * Math.PI / 180);
     const x2 = 50 + 40 * Math.cos((endAngle - 90) * Math.PI / 180);
     const y2 = 50 + 40 * Math.sin((endAngle - 90) * Math.PI / 180);
+
+    // Calculate text position (middle of the slice)
+    const textX = 50 + 25 * Math.cos((midAngle - 90) * Math.PI / 180);
+    const textY = 50 + 25 * Math.sin((midAngle - 90) * Math.PI / 180);
 
     const pathData = [
       'M', 50, 50,
@@ -73,24 +123,39 @@ export const RevenueDistributionChart = () => {
     ].join(' ');
 
     return (
-      <path
-        key={index}
-        d={pathData}
-        fill={item.color}
-        stroke="white"
-        strokeWidth="1"
-        className="cursor-pointer transition-opacity duration-200"
-        style={{ opacity: hoveredSlice === index ? 0.8 : 1 }}
-        title={`${item.name}: ${formatCurrency(item.value)}`}
-        onMouseEnter={(e) => {
-          setHoveredSlice(index);
-          setTooltipPosition({ x: e.clientX, y: e.clientY });
-        }}
-        onMouseLeave={() => setHoveredSlice(null)}
-        onMouseMove={(e) => {
-          setTooltipPosition({ x: e.clientX, y: e.clientY });
-        }}
-      />
+      <g key={index}>
+        <path
+          d={pathData}
+          fill={item.color}
+          stroke="white"
+          strokeWidth="1"
+          className="cursor-pointer transition-opacity duration-200"
+          style={{ opacity: hoveredSlice === index ? 0.8 : 1 }}
+          title={`${item.name}: ${formatCurrency(item.value)}`}
+          onMouseEnter={(e) => {
+            setHoveredSlice(index);
+            setTooltipPosition({ x: e.clientX, y: e.clientY });
+          }}
+          onMouseLeave={() => setHoveredSlice(null)}
+          onMouseMove={(e) => {
+            setTooltipPosition({ x: e.clientX, y: e.clientY });
+          }}
+        />
+        {percentage > 5 && (
+          <text
+            x={textX}
+            y={textY}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="5"
+            fill="black"
+            fontWeight="bold"
+            className="pointer-events-none"
+          >
+            {percentage.toFixed(0)}%
+          </text>
+        )}
+      </g>
     );
   };
 
@@ -101,7 +166,7 @@ export const RevenueDistributionChart = () => {
           Revenue Distribution by Category
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Total: {formatCurrency(totalRevenue)}
+          Net Revenue: {formatCurrency(totalNetRevenue)} | Category Revenue: {formatCurrency(totalRevenue)}
         </p>
       </CardHeader>
       <CardContent>
@@ -119,12 +184,7 @@ export const RevenueDistributionChart = () => {
               <svg width="280" height="280" viewBox="0 0 100 100">
                 {data.map((item, index) => createPieSlice(item, index))}
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-xs font-bold">{formatCurrency(totalRevenue)}</div>
-                  <div className="text-xs text-gray-500">Total</div>
-                </div>
-              </div>
+             
             </div>
             {hoveredSlice !== null && data[hoveredSlice] && (
               <div 
