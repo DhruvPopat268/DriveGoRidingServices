@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
+import apiClient from "../../lib/axiosInterceptor";
 
 export const RevenueChart = () => {
   const [data, setData] = useState([]);
@@ -11,11 +12,10 @@ export const RevenueChart = () => {
   useEffect(() => {
     const fetchWeeklyRevenue = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/dashboard/weekly-revenue`);
-        const result = await response.json();
-        if (result.success) {
-          setData(result.data.chartData);
-          setSummary(result.data.summary);
+        const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/dashboard/weekly-revenue`);
+        if (response.data.success) {
+          setData(response.data.data.chartData);
+          setSummary(response.data.data.summary);
         }
       } catch (error) {
         console.error('Error fetching weekly revenue:', error);

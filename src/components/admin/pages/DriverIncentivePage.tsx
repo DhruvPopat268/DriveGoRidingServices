@@ -8,7 +8,8 @@ import { Checkbox } from '../../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { Alert, AlertDescription } from '../../ui/alert';
-import { Search, Users, DollarSign, Gift, CheckCircle, XCircle, Plus, History } from 'lucide-react';
+import { Search, Users, Gift, CheckCircle, XCircle, Plus, History } from 'lucide-react';
+import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
@@ -280,7 +281,7 @@ const DriverIncentivePage = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
-                    <DollarSign className="w-5 h-5" />
+                    <RupeeIcon className="w-5 h-5" />
                     <span>Incentive Details</span>
                   </CardTitle>
                 </CardHeader>

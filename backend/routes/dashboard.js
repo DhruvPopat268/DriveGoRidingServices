@@ -5,6 +5,7 @@ const Rider = require('../models/Rider'); // Adjust path as needed
 const Ride = require('../models/Ride'); // Adjust path as needed
 const AdminWalletLedger = require('../models/AdminWalletLedger'); // Adjust path as needed
 const category = require('../models/Category');
+const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // Helper function to get start and end of day
 const getDateRange = (date) => {
@@ -24,7 +25,7 @@ const calculatePercentageChange = (today, yesterday) => {
 };
 
 // GET /api/dashboard/stats - Get dashboard statistics
-router.get('/stats', async (req, res) => {
+router.get('/stats',adminAuthMiddleware, async (req, res) => {
   try {
     const today = new Date();
     const yesterday = new Date(today);
@@ -120,10 +121,20 @@ router.get('/stats', async (req, res) => {
       createdAt: { $gte: todayRange.start, $lte: todayRange.end }
     });
 
-    const extendedRidesToday = await Ride.countDocuments({
-      status: 'EXTENDED',
-      createdAt: { $gte: todayRange.start, $lte: todayRange.end }
-    });
+    // Calculate total net revenue (all time)
+    const totalNetRevenue = await AdminWalletLedger.aggregate([
+      { $unwind: '$transactions' },
+      {
+        $group: {
+          _id: '$transactions.transactionType',
+          total: { $sum: '$transactions.amount' }
+        }
+      }
+    ]);
+
+    const totalCredits = totalNetRevenue.find(r => r._id === 'CREDIT')?.total || 0;
+    const totalDebits = totalNetRevenue.find(r => r._id === 'DEBIT')?.total || 0;
+    const allTimeNetRevenue = totalCredits - totalDebits;
 
     const cancelledRidesToday = await Ride.countDocuments({
       status: 'CANCELLED',
@@ -152,7 +163,7 @@ router.get('/stats', async (req, res) => {
       bookedToday: bookedRidesToday,
       confirmedToday: confirmedRidesToday,
       ongoingToday: ongoingRidesToday,
-      extendedToday: extendedRidesToday,
+      totalNetRevenue: allTimeNetRevenue,
       cancelledToday: cancelledRidesToday
     };
 
@@ -172,7 +183,7 @@ router.get('/stats', async (req, res) => {
 });
 
 // GET /api/dashboard/ride-status-distribution - Get ride status distribution for pie chart
-router.get('/ride-status-distribution', async (req, res) => {
+router.get('/ride-status-distribution', adminAuthMiddleware,async (req, res) => {
   try {
     const rideStatusCounts = await Ride.aggregate([
       {
@@ -216,7 +227,7 @@ router.get('/ride-status-distribution', async (req, res) => {
 });
 
 // GET /api/dashboard/revenue-distribution - Get revenue distribution by category
-router.get('/revenue-distribution', async (req, res) => {
+router.get('/revenue-distribution',adminAuthMiddleware, async (req, res) => {
   try {
     const Category = require('../models/Category');
     
@@ -347,7 +358,7 @@ router.get('/revenue-distribution', async (req, res) => {
 });
 
 // GET /api/dashboard/weekly-revenue - Get weekly revenue data for chart
-router.get('/weekly-revenue', async (req, res) => {
+router.get('/weekly-revenue',adminAuthMiddleware, async (req, res) => {
   try {
     const today = new Date();
     const weekStart = new Date(today);

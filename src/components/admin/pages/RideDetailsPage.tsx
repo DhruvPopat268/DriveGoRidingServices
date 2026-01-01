@@ -12,7 +12,6 @@ import {
   Clock,
   Car,
   CreditCard,
-  DollarSign,
   FileText,
   Shield,
   Route,
@@ -20,6 +19,7 @@ import {
   Loader,
   UserCheck
 } from 'lucide-react';
+import { RupeeIcon } from '@/components/ui/RupeeIcon';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface RideDetails {

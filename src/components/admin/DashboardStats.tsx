@@ -1,44 +1,8 @@
-import { TrendingUp, TrendingDown, Users, Car, MapPin, DollarSign, Calendar, CheckCircle, Clock, ArrowRight, CalendarClock, XCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Users, Car, MapPin, Calendar, CheckCircle, Clock, ArrowRight, CalendarClock, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import apiClient from "../../lib/axiosInterceptor";
-
-const staticStats = [
-  {
-    title: "Total Rides Today",
-    value: "1,247",
-    change: "+12.3%",
-    trend: "up",
-    icon: MapPin,
-    color: "text-blue-600"
-  },
-  {
-    title: "Scheduled Rides Today",
-    value: "89",
-    icon: CalendarClock,
-    color: "text-indigo-600"
-  },
-  {
-    title: "Active Drivers",
-    value: "89",
-    icon: Car,
-    color: "text-green-600"
-  },
-  {
-    title: "Active Riders",
-    value: "342",
-    icon: Users,
-    color: "text-purple-600"
-  },
-  {
-    title: "Revenue Today",
-    value: "$12,847",
-    change: "+18.7%",
-    trend: "up",
-    icon: DollarSign,
-    color: "text-yellow-600"
-  }
-];
+import { RupeeIcon } from "@/components/ui/RupeeIcon";
 
 export const DashboardStats = () => {
   const [stats, setStats] = useState(null);
@@ -112,7 +76,7 @@ export const DashboardStats = () => {
       value: `₹${stats.revenueToday.amount.toLocaleString()}`,
       change: stats.revenueToday.percentage,
       trend: stats.revenueToday.trend,
-      icon: DollarSign,
+      icon: RupeeIcon,
       color: "text-yellow-600"
     },
     {
@@ -134,17 +98,17 @@ export const DashboardStats = () => {
       color: "text-blue-600"
     },
     {
-      title: "Extended Rides Today",
-      value: stats.extendedToday.toString(),
-      icon: ArrowRight,
-      color: "text-purple-600"
-    },
-    {
       title: "Cancelled Rides Today",
       value: stats.cancelledToday.toString(),
       icon: XCircle,
       color: "text-red-600"
-    }
+    },
+    {
+      title: "Total Net Revenue",
+      value: `₹${stats.totalNetRevenue.toLocaleString()}`,
+      icon: RupeeIcon,
+      color: "text-yellow-600"
+    },
   ];
 
   return (

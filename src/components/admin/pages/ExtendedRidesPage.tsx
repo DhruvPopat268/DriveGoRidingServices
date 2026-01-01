@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, DollarSign } from "lucide-react";
+import { MapPin, Clock, User, Phone, Calendar, Eye, Loader } from "lucide-react";
+import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
 import { useState, useEffect } from "react";
@@ -325,7 +326,7 @@ export const ExtendedRidesPage = ({ onNavigateToDetail }: ExtendedRidesPageProps
                             setShowExtraChargesDialog(true);
                           }}
                         >
-                          <DollarSign className="w-4 h-4" />
+                          <RupeeIcon className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>

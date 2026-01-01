@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight, UserPlus, DollarSign } from "lucide-react";
+import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
+import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -374,7 +375,7 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                             setShowExtraChargesDialog(true);
                           }}
                         >
-                          <DollarSign className="w-4 h-4" />
+                          <RupeeIcon className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>

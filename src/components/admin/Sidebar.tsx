@@ -7,7 +7,6 @@ import {
   Tags,
   FolderTree,
   Truck,
-  DollarSign,
   Calculator,
   Clock,
   BookOpen,
@@ -29,6 +28,7 @@ import {
   Ban,
   Star
 } from "lucide-react";
+import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import { useState, useEffect } from "react";
 import apiClient from "../../lib/axiosInterceptor";
 
@@ -61,7 +61,7 @@ const menuItems = [
     subItems: [
       { icon: Bike, label: "Driver Vehicle Type", key: "drivervehicletype" },
       { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
-      { icon: DollarSign, label: "Driver Category", key: "drivercategory" },
+      { icon: RupeeIcon, label: "Driver Category", key: "drivercategory" },
       { icon: Calculator, label: "Driver Ride Cost Management", key: "DriverRidecost" }
     ]
   },

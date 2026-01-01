@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign, User, Car, Phone, Calendar, CreditCard, Eye } from "lucide-react";
+import { MapPin, Clock, User, Car, Phone, Calendar, CreditCard, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import apiClient from '../../../lib/axiosInterceptor';
 

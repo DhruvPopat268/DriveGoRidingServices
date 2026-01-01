@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, DollarSign } from "lucide-react";
+import { MapPin, Clock } from "lucide-react";
+import { RupeeIcon } from "@/components/ui/RupeeIcon";
 
 const recentRides = [
   {
@@ -95,7 +96,7 @@ export const RecentRides = () => {
                 <span>{ride.time}</span>
               </div>
               <div className="flex items-center space-x-1 text-green-600">
-                <DollarSign className="w-3 h-3" />
+                <RupeeIcon className="w-3 h-3" />
                 <span>{ride.amount}</span>
               </div>
             </div>

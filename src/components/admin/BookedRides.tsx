@@ -38,7 +38,12 @@ export const BookedRides = () => {
   };
 
   const formatTime = (timeString) => {
-    return timeString || 'N/A';
+    if (!timeString) return 'N/A';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
   };
 
   const formatCurrency = (amount) => {
