@@ -17,6 +17,10 @@ const UserRatingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
     },
 
+    city: {
+      type: String
+    },
+
     rating: {
       type: Number,
       min: 1,

@@ -20,8 +20,16 @@ router.post("/", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-
-
+    // Extract city from fromLocation address
+    let city = null;
+    if (ride.rideInfo?.fromLocation?.address) {
+      const addressParts = ride.rideInfo.fromLocation.address.split(', ');
+      if (addressParts.length >= 3) {
+        // Skip last component and take the next 2 components
+        // Example: "Gotri, Vadodara, Gujarat, India" -> "Vadodara, Gujarat"
+        city = addressParts.slice(-3, -1).join(', ');
+      }
+    }
     if (ride.status !== "COMPLETED") {
       return res.status(400).json({ message: "Rating can only be given for completed rides" });
     }
@@ -50,6 +58,7 @@ router.post("/", authMiddleware, async (req, res) => {
       userId: ride.riderId,
       driverId: ride.driverId,
       rideId,
+      city,
       rating,
       comment,
       driverFeedback,
