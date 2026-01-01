@@ -1594,6 +1594,15 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
+    // Check if driver already has a confirmed ride
+    if (driverInfo.rideStatus === 'CONFIRMED') {
+      return res.status(409).json({
+        success: false,
+        message: "You already have an active ride. Please complete your current ride before accepting a new one.",
+        errorCode: 'RIDE_ALREADY_ACTIVE'
+      });
+    }
+
     const driverName = driverInfo.personalInformation?.fullName
 
 
