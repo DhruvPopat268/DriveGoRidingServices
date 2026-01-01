@@ -527,7 +527,8 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
         transactionType: "CREDIT",
         amount: adjustedTotalPayable,
         description: `Ride payment from rider ${riderName}`,
-        type: "RIDE_PAYMENT"
+        type: "RIDE_PAYMENT",
+        category: categoryId
       });
       
       await adminWallet.save();
@@ -2853,7 +2854,8 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           transactionType: "CREDIT",
           amount: adminPayable,
           description: `Ride commission from cash payment`,
-          type: "RIDE_COMMISSION"
+          type: "RIDE_COMMISSION",
+          category: updatedRide.rideInfo.categoryId
         });
         
         await adminWallet.save();
@@ -2919,7 +2921,8 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           transactionType: "DEBIT",
           amount: driverEarning,
           description: `Driver payout for wallet payment`,
-          type: "DRIVER_PAYOUT"
+          type: "DRIVER_PAYOUT",
+          category: updatedRide.rideInfo.categoryId
         });
         
         await adminWallet.save();

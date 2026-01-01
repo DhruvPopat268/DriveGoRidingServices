@@ -23,16 +23,16 @@ export const RevenueDistributionChart = () => {
   const fetchRevenueData = async () => {
     try {
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/dashboard/revenue-distribution`);
-      const data = response.data.data;
+      const responseData = response.data;
       
-      const formattedData = [
-        { name: 'Driver', value: data.driver, color: COLORS.driver },
-        { name: 'Cab', value: data.cab, color: COLORS.cab },
-        { name: 'Parcel', value: data.parcel, color: COLORS.parcel }
-      ].filter(item => item.value > 0);
+      const formattedData = responseData.categories.map(category => ({
+        name: category.categoryName,
+        value: category.netRevenue,
+        percentage: category.percentage,
+        color: COLORS[category.categoryName.toLowerCase()]
+      })).filter(item => item.value > 0);
       
-      const total = data.driver + data.cab + data.parcel;
-      setTotalRevenue(total);
+      setTotalRevenue(responseData.totalNetRevenue);
       setData(formattedData);
     } catch (error) {
       console.error('Error fetching revenue data:', error);
@@ -54,7 +54,7 @@ export const RevenueDistributionChart = () => {
   let cumulativePercentage = 0;
 
   const createPieSlice = (item, index) => {
-    const percentage = (item.value / totalRevenue) * 100;
+    const percentage = item.percentage;
     const startAngle = cumulativePercentage * 3.6; // Convert to degrees
     const endAngle = (cumulativePercentage + percentage) * 3.6;
     cumulativePercentage += percentage;
@@ -81,7 +81,7 @@ export const RevenueDistributionChart = () => {
         strokeWidth="1"
         className="cursor-pointer transition-opacity duration-200"
         style={{ opacity: hoveredSlice === index ? 0.8 : 1 }}
-        title={`${item.name}: ${formatCurrency(item.value)} (${((item.value / totalRevenue) * 100).toFixed(1)}%)`}
+        title={`${item.name}: ${formatCurrency(item.value)}`}
         onMouseEnter={(e) => {
           setHoveredSlice(index);
           setTooltipPosition({ x: e.clientX, y: e.clientY });
@@ -136,12 +136,11 @@ export const RevenueDistributionChart = () => {
               >
                 <div className="font-medium">{data[hoveredSlice].name}</div>
                 <div>Revenue: {formatCurrency(data[hoveredSlice].value)}</div>
-                <div>Share: {((data[hoveredSlice].value / totalRevenue) * 100).toFixed(1)}%</div>
+                <div>Share: {data[hoveredSlice].percentage}%</div>
               </div>
             )}
             <div className="space-y-2 mt-4 w-full">
               {data.map((item, index) => {
-                const percentage = ((item.value / totalRevenue) * 100).toFixed(1);
                 return (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
@@ -153,7 +152,7 @@ export const RevenueDistributionChart = () => {
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-medium">{formatCurrency(item.value)}</div>
-                      <div className="text-xs text-gray-500">{percentage}%</div>
+                      <div className="text-xs text-gray-500">{item.percentage}%</div>
                     </div>
                   </div>
                 );

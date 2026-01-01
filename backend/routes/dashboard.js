@@ -217,43 +217,89 @@ router.get('/ride-status-distribution', async (req, res) => {
 // GET /api/dashboard/revenue-distribution - Get revenue distribution by category
 router.get('/revenue-distribution', async (req, res) => {
   try {
-    // Get all revenue transactions (not just today)
-    const revenueByCategory = await AdminWalletLedger.aggregate([
+    const Category = require('../models/Category');
+    
+    // First, get total net revenue from all transactions
+    const allTransactions = await AdminWalletLedger.aggregate([
       { $unwind: '$transactions' },
       {
-        $match: {
-          'transactions.transactionType': 'CREDIT'
-        }
-      },
-      {
         $group: {
-          _id: '$transactions.type',
+          _id: '$transactions.transactionType',
           total: { $sum: '$transactions.amount' }
         }
       }
     ]);
 
-    // Format data for pie chart
-    const categoryData = {
-      driver: 0,
-      cab: 0,
-      parcel: 0
-    };
+    const totalCredits = allTransactions.find(r => r._id === 'CREDIT')?.total || 0;
+    const totalDebits = allTransactions.find(r => r._id === 'DEBIT')?.total || 0;
+    const totalNetRevenue = totalCredits - totalDebits;
+    
+    // Get transactions grouped by category (only those with category)
+    const transactionsByCategory = await AdminWalletLedger.aggregate([
+      { $unwind: '$transactions' },
+      {
+        $match: {
+          'transactions.category': { $exists: true, $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            category: '$transactions.category',
+            transactionType: '$transactions.transactionType'
+          },
+          total: { $sum: '$transactions.amount' }
+        }
+      }
+    ]);
 
-    revenueByCategory.forEach(item => {
-      // Map your transaction types to categories
-      if (item._id && item._id.toLowerCase().includes('driver')) {
-        categoryData.driver += item.total;
-      } else if (item._id && item._id.toLowerCase().includes('cab')) {
-        categoryData.cab += item.total;
-      } else if (item._id && item._id.toLowerCase().includes('parcel')) {
-        categoryData.parcel += item.total;
+    // Calculate net revenue by category (credits - debits)
+    const categoryRevenue = {};
+    
+    transactionsByCategory.forEach(item => {
+      const categoryId = item._id.category;
+      const transactionType = item._id.transactionType;
+      const amount = item.total;
+      
+      if (!categoryRevenue[categoryId]) {
+        categoryRevenue[categoryId] = { credits: 0, debits: 0 };
+      }
+      
+      if (transactionType === 'CREDIT') {
+        categoryRevenue[categoryId].credits += amount;
+      } else if (transactionType === 'DEBIT') {
+        categoryRevenue[categoryId].debits += amount;
       }
     });
 
+    // Get category details and calculate net revenue
+    const categories = [];
+
+    for (const [categoryId, revenue] of Object.entries(categoryRevenue)) {
+      const category = await Category.findById(categoryId);
+      if (category) {
+        const netRevenue = revenue.credits - revenue.debits;
+        
+        categories.push({
+          categoryId: categoryId,
+          categoryName: category.categoryName,
+          netRevenue: netRevenue
+        });
+      }
+    }
+
+    // Calculate percentages based on total net revenue and sort by netRevenue descending
+    const categoriesWithPercentage = categories
+      .map(cat => ({
+        ...cat,
+        percentage: totalNetRevenue > 0 ? parseFloat(((cat.netRevenue / totalNetRevenue) * 100).toFixed(2)) : 0
+      }))
+      .sort((a, b) => b.netRevenue - a.netRevenue);
+
     res.json({
       success: true,
-      data: categoryData
+      totalNetRevenue,
+      categories: categoriesWithPercentage
     });
 
   } catch (error) {
