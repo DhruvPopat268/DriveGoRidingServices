@@ -95,24 +95,6 @@ const authMiddleware = async (req, res, next) => {
       }
     }
 
-    // ✅ Check current plan and expiry
-    const currentPlan = driverFromDB.currentPlan || {};
-
-
-    // ✅ Only check expiry if expiryDate exists
-    if (currentPlan.expiryDate) {
-      const now = new Date();
-      const expiry = new Date(currentPlan.expiryDate);
-
-      if (expiry < now) {
-     
-        return res.status(402).json({
-          success: false,
-          message: "Subscription plan expired. Please renew to continue."
-        });
-      }
-    }
-
     // ✅ Attach driver info and continue
     req.driver = decoded;
  

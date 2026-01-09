@@ -164,7 +164,7 @@ router.post('/calculation', combinedAuthMiddleware, async (req, res) => {
     if (subSubcategoryId) {
       rideCostQuery.subSubCategory = subSubcategoryId;
     }
-    //console.log('Ride Cost Query:', rideCostQuery);
+    console.log('Ride Cost Query:', rideCostQuery);
     const rideCostModels = await DriverRideCost.find(rideCostQuery);
     if (rideCostModels.length === 0) {
       return res.status(404).json({ error: 'No ride cost models found' });

@@ -1552,6 +1552,25 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
+    // Check current plan and expiry
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    const currentPlan = driverInfo.currentPlan || {};
+    if (currentPlan.expiryDate) {
+      const now = new Date();
+      const expiry = new Date(currentPlan.expiryDate);
+
+      if (expiry < now) {
+        return res.status(402).json({
+          success: false,
+          message: "Subscription plan expired. Please renew to continue."
+        });
+      }
+    }
+
 
 
     if (!rideId) {
