@@ -1609,11 +1609,6 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    const driverInfo = await Driver.findById(driverId);
-    if (!driverInfo) {
-      return res.status(404).json({ message: "Driver not found" });
-    }
-
     // Check if driver already has a confirmed ride
     if (driverInfo.rideStatus === 'CONFIRMED') {
       return res.status(409).json({
