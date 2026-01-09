@@ -1611,7 +1611,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     // Check if driver already has a confirmed ride
     if (driverInfo.rideStatus === 'CONFIRMED') {
-      return res.status(409).json({
+      return res.status(400).json({
         success: false,
         message: "You already have an active ride. Please complete your current ride before accepting a new one.",
         errorCode: 'RIDE_ALREADY_ACTIVE'
