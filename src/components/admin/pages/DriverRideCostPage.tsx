@@ -494,15 +494,16 @@ export const DriverRideCostPage = () => {
     return item.name || item.priceCategoryName || 'Unknown';
   };
 
-  // Helper function to format minutes display for hourly subcategory
+  // Helper function to format minutes display
   const formatMinutesDisplay = (minutes: string | number, subcategoryItem: string | { name?: string }) => {
-    const subcategoryName = getName(subcategoryItem);
-    if (subcategoryName.toLowerCase() === 'hourly') {
-      const minutesNum = typeof minutes === 'string' ? parseInt(minutes) : minutes;
-      if (!isNaN(minutesNum) && minutesNum >= 60 && minutesNum % 60 === 0) {
-        const hours = minutesNum / 60;
-        return `${minutes} (${hours}h)`;
+    const minutesNum = typeof minutes === 'string' ? parseInt(minutes) : minutes;
+    if (!isNaN(minutesNum) && minutesNum >= 60 && minutesNum % 60 === 0) {
+      const hours = minutesNum / 60;
+      if (hours >= 24 && hours % 24 === 0) {
+        const days = hours / 24;
+        return `${minutes} (${days}d)`;
       }
+      return `${minutes} (${hours}h)`;
     }
     return minutes.toString();
   };
@@ -514,7 +515,7 @@ export const DriverRideCostPage = () => {
       </div>
 
       <div className="flex items-center justify-between">
-        <h4 className="text-red-600">***for monthly or weekly packages add basefare as per 1 day</h4>
+        <h4 className="text-red-600">***for monthly or weekly packages create package as per 1 day</h4>
       </div>
 
       <Card className="p-6">

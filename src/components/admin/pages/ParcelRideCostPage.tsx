@@ -552,15 +552,16 @@ export const ParcelRideCostPage = () => {
     return item.name || item.priceCategoryName || item.categoryName || 'Unknown';
   };
 
-  // Helper function to format minutes display for hourly subcategory
+  // Helper function to format minutes display
   const formatMinutesDisplay = (minutes: string | number, subcategoryItem: string | { name?: string }) => {
-    const subcategoryName = getName(subcategoryItem);
-    if (subcategoryName.toLowerCase() === 'hourly') {
-      const minutesNum = typeof minutes === 'string' ? parseInt(minutes) : minutes;
-      if (!isNaN(minutesNum) && minutesNum >= 60 && minutesNum % 60 === 0) {
-        const hours = minutesNum / 60;
-        return `${minutes} (${hours}h)`;
+    const minutesNum = typeof minutes === 'string' ? parseInt(minutes) : minutes;
+    if (!isNaN(minutesNum) && minutesNum >= 60 && minutesNum % 60 === 0) {
+      const hours = minutesNum / 60;
+      if (hours >= 24 && hours % 24 === 0) {
+        const days = hours / 24;
+        return `${minutes} (${days}d)`;
       }
+      return `${minutes} (${hours}h)`;
     }
     return minutes.toString();
   };

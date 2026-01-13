@@ -144,4 +144,33 @@ const rideSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Pre-save middleware to update completedRides for both driver and rider
+rideSchema.pre('save', async function(next) {
+  if (this.isModified('status') && this.status === 'COMPLETED') {
+    try {
+      const Driver = mongoose.model('Driver');
+      const Rider = mongoose.model('Rider');
+      
+      // Add ride to driver's completedRides if not already present
+      if (this.driverId) {
+        await Driver.findByIdAndUpdate(
+          this.driverId,
+          { $addToSet: { completedRides: this._id } }
+        );
+      }
+      
+      // Add ride to rider's completedRides if not already present
+      if (this.riderId) {
+        await Rider.findByIdAndUpdate(
+          this.riderId,
+          { $addToSet: { completedRides: this._id } }
+        );
+      }
+    } catch (error) {
+      console.error('Error updating completedRides:', error);
+    }
+  }
+  next();
+});
+
 module.exports = mongoose.model("Ride", rideSchema);
