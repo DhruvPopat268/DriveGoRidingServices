@@ -663,15 +663,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       }
     }
 
-    // Add ride to staff's completed rides if booked by staff
-    if (req.staff) {
-      const OfflineStaff = require('../offline&agentBookingModels/offlineStaffModel');
-      await OfflineStaff.findByIdAndUpdate(
-        staffId,
-        { $addToSet: { completedRides: newRide._id } }
-      );
-    }
-
     // console.log('📱 New ride booked:', newRide._id);
 
     // Emit socket event to drivers with EXTENDED rides only
@@ -2763,6 +2754,12 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         { $addToSet: { completedRides: rideId } }
       );
     }
+
+    // 🔹 Add ride to rider's completed rides
+    await Rider.findByIdAndUpdate(
+      updatedRide.riderId,
+      { $addToSet: { completedRides: rideId } }
+    );
 
     // 🔹 Reset rider’s uncleared cancellation charges
     const rider = await Rider.findById(updatedRide.riderId);
