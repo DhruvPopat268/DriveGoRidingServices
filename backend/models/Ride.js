@@ -147,27 +147,35 @@ const rideSchema = new mongoose.Schema(
 // Pre-save middleware to update completedRides for both driver and rider
 rideSchema.pre('save', async function(next) {
   if (this.isModified('status') && this.status === 'COMPLETED') {
+    console.log(`🚀 Ride ${this._id} status changed to COMPLETED - updating completedRides`);
+    
     try {
       const Driver = mongoose.model('Driver');
       const Rider = mongoose.model('Rider');
       
       // Add ride to driver's completedRides if not already present
       if (this.driverId) {
+        console.log(`📝 Adding ride ${this._id} to driver ${this.driverId} completedRides`);
         await Driver.findByIdAndUpdate(
           this.driverId,
           { $addToSet: { completedRides: this._id } }
         );
+        console.log(`✅ Successfully updated driver ${this.driverId} completedRides`);
       }
       
       // Add ride to rider's completedRides if not already present
       if (this.riderId) {
+        console.log(`📝 Adding ride ${this._id} to rider ${this.riderId} completedRides`);
         await Rider.findByIdAndUpdate(
           this.riderId,
           { $addToSet: { completedRides: this._id } }
         );
+        console.log(`✅ Successfully updated rider ${this.riderId} completedRides`);
       }
+      
+      console.log(`🎉 Completed updating completedRides for ride ${this._id}`);
     } catch (error) {
-      console.error('Error updating completedRides:', error);
+      console.error(`❌ Error updating completedRides for ride ${this._id}:`, error);
     }
   }
   next();

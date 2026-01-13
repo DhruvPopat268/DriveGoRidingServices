@@ -1208,4 +1208,36 @@ router.post("/web/logout", authMiddleware, async (req, res) => {
   }
 });
 
+// Get rider's rides (Admin route)
+router.post("/admin/rider-rides", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { riderId } = req.body;
+    
+    if (!riderId) {
+      return res.status(400).json({ success: false, message: "riderId is required" });
+    }
+    
+    const Ride = require('../models/Ride');
+    
+    const rides = await Ride.find({ riderId })
+      .select('_id rideInfo.categoryName rideInfo.selectedDate status')
+      .sort({ createdAt: -1 });
+    
+    const formattedRides = rides.map(ride => ({
+      rideId: ride._id,
+      category: ride.rideInfo.categoryName,
+      selectedDate: ride.rideInfo.selectedDate,
+      status: ride.status
+    }));
+    
+    res.json({
+      success: true,
+      rides: formattedRides
+    });
+  } catch (error) {
+    console.error("Get rides error:", error);
+    res.status(500).json({ success: false, message: "Failed to get rides" });
+  }
+});
+
 module.exports = router;
