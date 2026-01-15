@@ -534,6 +534,7 @@ export const DriverRideCostPage = () => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
+                    <label className="text-sm font-medium block mb-2">Category</label>
                     <Select
                       value={rideCostForm.category}
                       onValueChange={(value) => setRideCostForm(prev => ({ ...prev, category: value }))}
@@ -555,90 +556,100 @@ export const DriverRideCostPage = () => {
                     )}
                   </div>
 
-                  <Select
-                    value={rideCostForm.subcategory}
-                    onValueChange={(value) => setRideCostForm(prev => ({ ...prev, subcategory: value }))}
-                    disabled={!rideCostForm.category}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Subcategory" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {filteredSubcategories.map((sub) => (
-                        <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
-                          {sub.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Subcategory</label>
+                    <Select
+                      value={rideCostForm.subcategory}
+                      onValueChange={(value) => setRideCostForm(prev => ({ ...prev, subcategory: value }))}
+                      disabled={!rideCostForm.category}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Subcategory" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredSubcategories.map((sub) => (
+                          <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
+                            {sub.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
 
 
                   {/* Sub-Sub Category and Driver Category - Two column layout for outstation */}
                   {isOutstationSubCategory() && (
                     <div className="grid grid-cols-2 gap-4 col-span-2">
-                      <Select
-                        value={rideCostForm.subSubCategory}
-                        onValueChange={(value) => setRideCostForm(prev => ({ ...prev, subSubCategory: value }))}
-                        disabled={!rideCostForm.subcategory}
-                        required
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Sub-Sub Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {filteredSubSubCategories.map((subSub) => (
-                            <SelectItem key={subSub.id || subSub._id} value={subSub.id || subSub._id}>
-                              {subSub.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div>
+                        <label className="text-sm font-medium block mb-2">Sub-Sub Category</label>
+                        <Select
+                          value={rideCostForm.subSubCategory}
+                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, subSubCategory: value }))}
+                          disabled={!rideCostForm.subcategory}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Sub-Sub Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredSubSubCategories.map((subSub) => (
+                              <SelectItem key={subSub.id || subSub._id} value={subSub.id || subSub._id}>
+                                {subSub.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                      {isFormParcelCategory() ? (
-                        <Select
-                          value={rideCostForm.priceCategory}
-                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
-                          disabled={!rideCostForm.subcategory || (isOutstationSubCategory() && !rideCostForm.subSubCategory)}
-                          required
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Parcel Vehicle" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {parcelVehicles.map((vehicle) => (
-                              <SelectItem key={vehicle._id} value={vehicle._id}>
-                                {vehicle.vehicleName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Select
-                          value={rideCostForm.priceCategory}
-                          onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
-                          disabled={!rideCostForm.subcategory || (isOutstationSubCategory() && !rideCostForm.subSubCategory)}
-                          required
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Driver Category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {filteredPriceCategories.map((pc) => (
-                              <SelectItem key={pc._id} value={pc._id}>
-                                {pc.priceCategoryName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
+                      <div>
+                        <label className="text-sm font-medium block mb-2">{isFormParcelCategory() ? 'Parcel Vehicle' : 'Driver Category'}</label>
+                        {isFormParcelCategory() ? (
+                          <Select
+                            value={rideCostForm.priceCategory}
+                            onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                            disabled={!rideCostForm.subcategory || (isOutstationSubCategory() && !rideCostForm.subSubCategory)}
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Parcel Vehicle" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {parcelVehicles.map((vehicle) => (
+                                <SelectItem key={vehicle._id} value={vehicle._id}>
+                                  {vehicle.vehicleName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Select
+                            value={rideCostForm.priceCategory}
+                            onValueChange={(value) => setRideCostForm(prev => ({ ...prev, priceCategory: value }))}
+                            disabled={!rideCostForm.subcategory || (isOutstationSubCategory() && !rideCostForm.subSubCategory)}
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Driver Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {filteredPriceCategories.map((pc) => (
+                                <SelectItem key={pc._id} value={pc._id}>
+                                  {pc.priceCategoryName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                     </div>
                   )}
 
                   {/* For non-outstation subcategories, show only the driver category dropdown spanning 2 columns */}
                   {!isOutstationSubCategory() && rideCostForm.subcategory && (
                     <div className="col-span-2">
+                      <label className="text-sm font-medium block mb-2">{isFormParcelCategory() ? 'Parcel Vehicle' : 'Driver Category'}</label>
                       {isFormParcelCategory() ? (
                         <Select
                           value={rideCostForm.priceCategory}
@@ -679,117 +690,162 @@ export const DriverRideCostPage = () => {
                     </div>
                   )}
                   {isFormParcelCategory() && (
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="Weight (kg)"
-                      value={rideCostForm.weight}
-                      onChange={(e) => setRideCostForm(prev => ({ ...prev, weight: e.target.value }))}
-                      required
-                    />
+                    <div>
+                      <label className="text-sm font-medium block mb-2">Weight (kg)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Weight (kg)"
+                        value={rideCostForm.weight}
+                        onChange={(e) => setRideCostForm(prev => ({ ...prev, weight: e.target.value }))}
+                        required
+                      />
+                    </div>
                   )}
 
 
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Base Fare (₹)"
-                    value={rideCostForm.baseFare}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, baseFare: e.target.value }))}
-                    required
-                  />
-                  <Input
-                    type="text"
-                    placeholder="Included KM (e.g., 10 km, Unlimited)"
-                    value={rideCostForm.includedKm}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, includedKm: e.target.value }))}
-                    required
-                  />
-                  <Input
-                    type="text"
-                    placeholder="Included Minutes (e.g., 60 min, Unlimited)"
-                    value={rideCostForm.includedMinutes}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, includedMinutes: e.target.value }))}
-                    required
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Extra Charge per KM (₹)"
-                    value={rideCostForm.extraChargePerKm}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargePerKm: e.target.value }))}
-                    required
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Extra Charge per Minute (₹)"
-                    value={rideCostForm.extraChargePerMinute}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargePerMinute: e.target.value }))}
-                    required
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Pick Charges"
-                    value={rideCostForm.pickCharges}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, pickCharges: e.target.value }))}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Night Charges"
-                    value={rideCostForm.nightCharges}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, nightCharges: e.target.value }))}
-                  />
-                <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="User Cancellation Charges"
-                    value={rideCostForm.cancellationFee}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationFee: e.target.value }))}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Cancellation Buffer Time (minutes)"
-                    value={rideCostForm.cancellationBufferTime}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationBufferTime: e.target.value }))}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Insurance"
-                    value={rideCostForm.insurance}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, insurance: e.target.value }))}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Admin Commission %"
-                    value={rideCostForm.extraChargesFromAdmin}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargesFromAdmin: e.target.value }))}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="GST %"
-                    value={rideCostForm.gst}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, gst: e.target.value }))}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Discount"
-                    value={rideCostForm.discount}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, discount: e.target.value }))}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Driver Cancellation Charges"
-                    value={rideCostForm.driverCancellationCharges}
-                    onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCharges: e.target.value }))}
-                  />
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Base Fare (₹)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Base Fare (₹)"
+                      value={rideCostForm.baseFare}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, baseFare: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Included KM</label>
+                    <Input
+                      type="text"
+                      placeholder="Included KM (e.g., 10 km, Unlimited)"
+                      value={rideCostForm.includedKm}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, includedKm: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Included Minutes</label>
+                    <Input
+                      type="text"
+                      placeholder="Included Minutes (e.g., 60 min, Unlimited)"
+                      value={rideCostForm.includedMinutes}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, includedMinutes: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Extra Charge per KM (₹)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Extra Charge per KM (₹)"
+                      value={rideCostForm.extraChargePerKm}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargePerKm: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Extra Charge per Minute (₹)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Extra Charge per Minute (₹)"
+                      value={rideCostForm.extraChargePerMinute}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargePerMinute: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Pick Charges</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Pick Charges"
+                      value={rideCostForm.pickCharges}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, pickCharges: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Night Charges</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Night Charges"
+                      value={rideCostForm.nightCharges}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, nightCharges: e.target.value }))}
+                    />
+                  </div>
+                <div>
+                    <label className="text-sm font-medium block mb-2">User Cancellation Charges</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="User Cancellation Charges"
+                      value={rideCostForm.cancellationFee}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationFee: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Cancellation Buffer Time (minutes)</label>
+                    <Input
+                      type="number"
+                      placeholder="Cancellation Buffer Time (minutes)"
+                      value={rideCostForm.cancellationBufferTime}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, cancellationBufferTime: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Insurance</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Insurance"
+                      value={rideCostForm.insurance}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, insurance: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Admin Commission %</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Admin Commission %"
+                      value={rideCostForm.extraChargesFromAdmin}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, extraChargesFromAdmin: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">GST %</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="GST %"
+                      value={rideCostForm.gst}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, gst: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Discount</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Discount"
+                      value={rideCostForm.discount}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, discount: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium block mb-2">Driver Cancellation Charges</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Driver Cancellation Charges"
+                      value={rideCostForm.driverCancellationCharges}
+                      onChange={(e) => setRideCostForm(prev => ({ ...prev, driverCancellationCharges: e.target.value }))}
+                    />
+                  </div>
                  
                 </div>
                 <Button type="submit" className="w-full" disabled={loading || (rideCostForm.category && !isFormDriverCategory())}>
