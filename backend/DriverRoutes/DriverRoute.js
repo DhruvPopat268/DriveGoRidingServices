@@ -32,6 +32,8 @@ const DriverNotification = require('../DriverModel/DriverNotification');
 const { processDeposit } = require('../utils/depositHandler');
 const Razorpay = require('razorpay');
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
+const Ride = require('../models/Ride');
+const mongoose = require('mongoose');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -1023,8 +1025,6 @@ router.post("/manage-credits",adminAuthMiddleware, async (req, res) => {
 router.get("/filter-for-incentive", adminAuthMiddleware, async (req, res) => {
   try {
     const { category, subcategory, startDate, endDate, minRides, minRating, maxRating } = req.query;
-    const Ride = require('../models/Ride');
-    const mongoose = require('mongoose');
 
     const pipeline = [];
     const matchStage = { status: "Approved" };
