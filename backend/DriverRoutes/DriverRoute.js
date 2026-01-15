@@ -1087,7 +1087,25 @@ router.get("/:driverId", adminAuthMiddleware, async (req, res) => {
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
-    res.json(driver);
+    
+    // Get rides for this driver
+    const Ride = require('../models/Ride');
+    const rides = await Ride.find({ driverId })
+      .select('_id rideInfo.categoryName rideInfo.selectedDate status')
+      .sort({ createdAt: -1 });
+    
+    const formattedRides = rides.map(ride => ({
+      rideId: ride._id,
+      category: ride.rideInfo.categoryName,
+      selectedDate: ride.rideInfo.selectedDate,
+      status: ride.status
+    }));
+    
+    res.json({
+      success: true,
+      driver,
+      rides: formattedRides
+    });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch driver" });
   }

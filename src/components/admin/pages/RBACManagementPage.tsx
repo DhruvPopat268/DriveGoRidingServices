@@ -1039,6 +1039,7 @@ export const RBACManagementPage = () => {
                     <TableHead className="text-center">Contact</TableHead>
                     <TableHead className="text-center">Role</TableHead>
                     <TableHead className="text-center">Last Login</TableHead>
+                    <TableHead className="text-center">Last Activity</TableHead>
                     <TableHead className="text-center">Created Date</TableHead>
                     <TableHead className="text-center">Status</TableHead>
 
@@ -1095,7 +1096,8 @@ export const RBACManagementPage = () => {
                           </Badge>
                         </TableCell>
 
-                        <TableCell className="text-center">{user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}</TableCell>
+                        <TableCell className="text-center">{user.lastLogin ? new Date(user.lastLogin).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never'}</TableCell>
+                        <TableCell className="text-center">{user.lastActivity ? new Date(user.lastActivity).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never'}</TableCell>
                         <TableCell className="text-center">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                         <TableCell className="text-center">
                           <Switch

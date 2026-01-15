@@ -38,6 +38,13 @@ interface RideDetails {
     staffMobile: string;
   };
   bookedBy?: string;
+  rescheduleRequest?: {
+    status: string;
+    requestedDate: string;
+    requestedTime: string;
+    requestedAt: string;
+    respondedAt: string;
+  };
   rideInfo: {
     categoryName: string;
     subcategoryName: string;
@@ -66,6 +73,9 @@ interface RideDetails {
     selectedCategory: string;
     includeInsurance: boolean;
     notes: string;
+    driverReachTime?: string;
+    ridseStartTime?: string;
+    rideEndTime?: string;
     driverCharges: number;
     pickCharges: number;
     peakCharges: number;
@@ -87,6 +97,8 @@ interface RideDetails {
   status: string;
   referralEarning: boolean;
   referralBalance: number;
+  isReferralEarningUsed?: boolean;
+  referralEarningUsedAmount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -146,9 +158,64 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
     });
   };
 
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const formatCurrency = (amount: number) => {
     if (!amount) return '₹0';
     return amount % 1 === 0 ? `₹${amount}` : `₹${amount.toFixed(2)}`;
+  };
+
+  const formatDuration = (minutes: number) => {
+    if (!minutes || minutes === 0) return null;
+    
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    const mins = minutes % 60;
+    
+    const parts = [];
+    if (days > 0) parts.push(`${days} ${days === 1 ? 'Day' : 'Days'}`);
+    if (hours > 0) parts.push(`${hours} ${hours === 1 ? 'Hour' : 'Hours'}`);
+    if (mins > 0) parts.push(`${mins} ${mins === 1 ? 'Minute' : 'Minutes'}`);
+    
+    return parts.join(' ');
+  };
+
+  const parseAndFormatUsage = (usageString: string) => {
+    if (!usageString) return null;
+    
+    // Parse "0Km & 120Mins" format
+    const kmMatch = usageString.match(/(\d+)Km/);
+    const minsMatch = usageString.match(/(\d+)Mins/);
+    
+    const km = kmMatch ? parseInt(kmMatch[1]) : 0;
+    const mins = minsMatch ? parseInt(minsMatch[1]) : 0;
+    
+    const parts = [];
+    
+    // Add KM if > 0
+    if (km > 0) {
+      parts.push(`${km} Km`);
+    }
+    
+    // Add formatted duration if > 0
+    if (mins > 0) {
+      const formattedDuration = formatDuration(mins);
+      if (formattedDuration) {
+        parts.push(formattedDuration);
+      }
+    }
+    
+    return parts.length > 0 ? parts.join(' & ') : null;
   };
 
   if (loading) {
@@ -191,7 +258,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
         <div className="flex items-center space-x-4">
           <Button variant="outline" onClick={onBack}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Rides
+            Back
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Ride Details</h1>
@@ -366,13 +433,42 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                 </div>
               </div>
 
-              {rideDetails.rideInfo.selectedUsage && (
+              {(rideDetails.rideInfo.driverReachTime || rideDetails.rideInfo.ridseStartTime || rideDetails.rideInfo.rideEndTime) && (
+                <>
+                  <Separator />
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Ride Timings</h4>
+                    <div className="grid grid-cols-3 gap-4">
+                      {rideDetails.rideInfo.driverReachTime && (
+                        <div>
+                          <label className="text-xs font-medium text-gray-600">Driver Reach Time</label>
+                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.driverReachTime}</p>
+                        </div>
+                      )}
+                      {rideDetails.rideInfo.ridseStartTime && (
+                        <div>
+                          <label className="text-xs font-medium text-gray-600">Ride Start Time</label>
+                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.ridseStartTime}</p>
+                        </div>
+                      )}
+                      {rideDetails.rideInfo.rideEndTime && (
+                        <div>
+                          <label className="text-xs font-medium text-gray-600">Ride End Time</label>
+                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.rideEndTime}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {rideDetails.rideInfo.selectedUsage && parseAndFormatUsage(rideDetails.rideInfo.selectedUsage) && (
                 <div>
                   <label className="text-sm font-medium text-gray-600 flex items-center">
                     <Timer className="w-4 h-4 mr-1" />
                     Duration
                   </label>
-                  <p className="text-lg">{rideDetails.rideInfo.selectedUsage} hours</p>
+                  <p className="text-lg">{parseAndFormatUsage(rideDetails.rideInfo.selectedUsage)}</p>
                 </div>
               )}
 
@@ -443,6 +539,49 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
               )}
             </CardContent>
           </Card>
+
+          {/* Reschedule Request */}
+          {rideDetails.rescheduleRequest && rideDetails.rescheduleRequest.status && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Calendar className="w-5 h-5 mr-2" />
+                    Reschedule Request
+                  </span>
+                  <Badge className={
+                    rideDetails.rescheduleRequest.status === 'ACCEPTED' ? 'bg-green-600 text-white' :
+                    rideDetails.rescheduleRequest.status === 'REJECTED' ? 'bg-red-600 text-white' :
+                    'bg-yellow-600 text-white'
+                  }>
+                    {rideDetails.rescheduleRequest.status}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Requested Date</label>
+                    <p className="text-lg">{formatDate(rideDetails.rescheduleRequest.requestedDate)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Requested Time</label>
+                    <p className="text-lg">{rideDetails.rescheduleRequest.requestedTime}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Requested At</label>
+                    <p className="text-sm">{formatDateTime(rideDetails.rescheduleRequest.requestedAt)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Responded At</label>
+                    <p className="text-sm">{formatDateTime(rideDetails.rescheduleRequest.respondedAt)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Right Column - Payment & Additional Info */}
@@ -489,6 +628,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                   <span>{formatCurrency(rideDetails.rideInfo.nightCharges)}</span>
                 </div>
               )}
+              {rideDetails.rideInfo.cancellationCharges > 0 && (
               <div className="flex justify-between">
                 <span className="flex items-center">
                   <Shield className="w-3 h-3 mr-1" />
@@ -496,6 +636,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                 </span>
                 <span>{formatCurrency(rideDetails.rideInfo.insuranceCharges)}</span>
               </div>
+              )}
               {rideDetails.rideInfo.cancellationCharges > 0 && (
                 <div className="flex justify-between">
                   <span>User Cancellation Charges</span>
@@ -529,6 +670,14 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                 <span>Total Payable</span>
                 <span>{formatCurrency(rideDetails.totalPayable)}</span>
               </div>
+              {rideDetails.isReferralEarningUsed && rideDetails.referralEarningUsedAmount > 0 && (
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-green-700">Referral Earning Used</span>
+                    <span className="text-sm font-semibold text-green-700">{formatCurrency(rideDetails.referralEarningUsedAmount)}</span>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between mt-4">
                 <span className="text-sm text-gray-600">Payment Method</span>
                 <div className="flex items-center">
@@ -549,6 +698,14 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                 <label className="text-sm font-medium text-gray-600">Ride ID</label>
                 <p className="font-mono text-sm">{rideDetails._id}</p>
               </div>
+              {rideDetails.bookedBy && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Booked By</label>
+                  <Badge variant="secondary" className="mt-1">
+                    {rideDetails.bookedBy}
+                  </Badge>
+                </div>
+              )}
               <div>
                 <label className="text-sm font-medium text-gray-600">Created At</label>
                 <p className="text-sm">{formatDate(rideDetails.createdAt)}</p>

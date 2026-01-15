@@ -39,6 +39,7 @@ router.post('/login', async (req, res) => {
     await createAdminSession(user.email, token);
 
     user.lastLogin = new Date();
+    user.lastActivity = new Date();
     await user.save();
 
     // Set token as httpOnly cookie

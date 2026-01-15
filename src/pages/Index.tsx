@@ -75,6 +75,7 @@ import DriverIncentivePage from "@/components/admin/pages/DriverIncentivePage";
 import SuspendDriverPage from "@/components/admin/pages/SuspendDriverPage";
 import SuspendedDriversPage from "@/components/admin/pages/SuspendedDriversPage";
 import { UsersPage } from "@/components/admin/pages/UsersPage";
+import { RiderDetailPage } from "@/components/admin/pages/RiderDetailPage";
 import PendingVehiclesPage from "@/components/admin/pages/PendingVehiclesPage";
 import ApprovedVehiclesPage from "@/components/admin/pages/ApprovedVehiclesPage";
 import RejectedVehiclesPage from "@/components/admin/pages/RejectedVehiclesPage";
@@ -91,12 +92,19 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
+  const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
   const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string} | null>(null);
 
   const handleSectionChange = (section: string) => {
     setSelectedDriverId(null);
     setSelectedRideId(null);
+    setSelectedRiderId(null);
     setActiveSection(section);
+    
+    // Clear URL parameters
+    const url = new URL(window.location.href);
+    url.searchParams.delete('section');
+    url.searchParams.delete('rideId');
     
     // Update URL for specific sections
     if (section === 'booked-rides') {
@@ -105,6 +113,9 @@ const Index = () => {
       navigate('/confirmed-rides');
     } else if (section === 'dashboard') {
       navigate('/');
+    } else {
+      // For other sections, just update the URL without parameters
+      window.history.replaceState({}, '', url.pathname);
     }
   };
   const location = useLocation();
@@ -112,6 +123,16 @@ const Index = () => {
 
   useEffect(() => {
     const path = location.pathname;
+    const urlParams = new URLSearchParams(location.search);
+    const section = urlParams.get('section');
+    const rideId = urlParams.get('rideId');
+    
+    // Handle URL parameters for navigation
+    if (section && rideId) {
+      setActiveSection(section);
+      setSelectedRideId(rideId);
+      return;
+    }
     
     // Handle direct URL navigation
     if (path === '/booked-rides') {
@@ -128,7 +149,7 @@ const Index = () => {
         setActiveSection("dashboard");
       }
     }
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   const fetchCategoryAndSet = async (categoryType: string, categoryId: string) => {
     try {
@@ -347,10 +368,16 @@ const Index = () => {
       case "support":
         return <SupportPage />;
       case "drivers-onreview":
-        return selectedDriverId ? (
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
           />
         ) : (
           <DriversOnReviewPage 
@@ -358,10 +385,16 @@ const Index = () => {
           />
         );
       case "drivers-pending":
-        return selectedDriverId ? (
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
           />
         ) : (
           <DriversPendingPage 
@@ -369,10 +402,16 @@ const Index = () => {
           />
         );
       case "drivers-approved":
-        return selectedDriverId ? (
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
           />
         ) : (
           <DriversApprovedPage 
@@ -380,10 +419,16 @@ const Index = () => {
           />
         );
       case "drivers-pending-payment":
-        return selectedDriverId ? (
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
           />
         ) : (
           <DriversPendingForPaymentPage 
@@ -391,10 +436,16 @@ const Index = () => {
           />
         );
       case "drivers-rejected":
-        return selectedDriverId ? (
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
           />
         ) : (
           <DriversRejectedPage 
@@ -402,10 +453,16 @@ const Index = () => {
           />
         );
       case "drivers-deleted":
-        return selectedDriverId ? (
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
           />
         ) : (
           <DriversDeletedPage 
@@ -413,10 +470,16 @@ const Index = () => {
           />
         );
       case "drivers-suspended":
-        return selectedDriverId ? (
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
           />
         ) : (
           <SuspendedDriversPage 
@@ -470,7 +533,22 @@ const Index = () => {
       case "suspend-driver":
         return <SuspendDriverPage />;
       case "users":
-        return <UsersPage />;
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedRiderId ? (
+          <RiderDetailPage 
+            riderId={selectedRiderId} 
+            onBack={() => setSelectedRiderId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
+          />
+        ) : (
+          <UsersPage 
+            onNavigateToRiderDetail={(riderId) => setSelectedRiderId(riderId)} 
+          />
+        );
       case "pending-vehicles":
         return <PendingVehiclesPage />;
       case "approved-vehicles":

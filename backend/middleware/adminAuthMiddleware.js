@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const AdminSession = require("../models/AdminSession");
+const User = require("../models/User");
 
 const adminAuthMiddleware = async (req, res, next) => {
   try {
@@ -31,6 +32,12 @@ const adminAuthMiddleware = async (req, res, next) => {
 
     // Attach admin info to request object
     req.admin = decoded; // contains { userId, email, role }
+    
+    // Update lastActivity asynchronously (don't await to avoid slowing down requests)
+    const now = new Date();
+    User.findByIdAndUpdate(decoded.userId, { lastActivity: now }).catch(err => 
+      console.error('Failed to update lastActivity:', err)
+    );
     
     next();
   } catch (error) {

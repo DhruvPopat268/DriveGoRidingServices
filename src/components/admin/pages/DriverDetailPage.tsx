@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Check, X, Loader, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, X, Loader, Loader2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import apiClient from "../../../lib/axiosInterceptor";
 
 interface DriverDetail {
@@ -78,18 +79,29 @@ interface DriverDetail {
   };
 }
 
+interface Ride {
+  rideId: string;
+  category: string;
+  selectedDate: string;
+  status: string;
+}
+
 interface DriverDetailPageProps {
   driverId: string;
   onBack: () => void;
+  onNavigateToRideDetail?: (rideId: string) => void;
 }
 
-export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) => {
+export const DriverDetailPage = ({ driverId, onBack, onNavigateToRideDetail }: DriverDetailPageProps) => {
   const [driver, setDriver] = useState<DriverDetail | null>(null);
+  const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [selectedSteps, setSelectedSteps] = useState<number[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [ridesCurrentPage, setRidesCurrentPage] = useState(1);
+  const [ridesPerPage] = useState(10);
 
   const stepOptions = [
     { step: 1, label: "Personal Information" },
@@ -106,7 +118,13 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
   const fetchDriverDetail = async () => {
     try {
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/${driverId}`);
-      setDriver(response.data);
+      if (response.data.success) {
+        setDriver(response.data.driver);
+        setRides(response.data.rides || []);
+      } else {
+        setDriver(response.data);
+        setRides([]);
+      }
     } catch (error) {
       console.error('Error fetching driver detail:', error);
     } finally {
@@ -145,6 +163,30 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
         ? prev.filter(s => s !== step)
         : [...prev, step]
     );
+  };
+
+  const handleViewRide = (rideId: string) => {
+    if (onNavigateToRideDetail) {
+      onNavigateToRideDetail(rideId);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const getRidesPaginated = () => {
+    const startIndex = (ridesCurrentPage - 1) * ridesPerPage;
+    const endIndex = startIndex + ridesPerPage;
+    return rides.slice(startIndex, endIndex);
+  };
+
+  const getTotalRidesPages = () => {
+    return Math.ceil(rides.length / ridesPerPage);
   };
 
   if (loading) {
@@ -313,105 +355,141 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Driving Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="font-semibold">License Type</p>
-              <p>{driver.drivingDetails?.licenseType || 'Not provided'}</p>
-            </div>
-            <div>
-              <p className="font-semibold">Driving Experience</p>
-              <p>{driver.drivingDetails?.drivingExperienceYears ? `${driver.drivingDetails.drivingExperienceYears} years` : 'Not provided'}</p>
-            </div>
-            <div>
-              <p className="font-semibold">Preferred Work</p>
-              <p>{driver.drivingDetails?.preferredWork || 'Not provided'}</p>
-            </div>
-            <div>
-              <p className="font-semibold">Vehicle Types</p>
-              <div className="flex flex-wrap gap-2">
-                {driver.drivingDetails?.vehicleType?.length ? (
-                  driver.drivingDetails.vehicleType.map((type, index) => (
-                    <Badge key={index} variant="outline">{type.name}</Badge>
-                  ))
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Driving Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <p className="font-semibold text-sm">License Type</p>
+                  <p className="text-sm">{driver.drivingDetails?.licenseType || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Experience</p>
+                  <p className="text-sm">{driver.drivingDetails?.drivingExperienceYears ? `${driver.drivingDetails.drivingExperienceYears} years` : 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Preferred Work</p>
+                  <p className="text-sm">{driver.drivingDetails?.preferredWork || 'Not provided'}</p>
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Vehicle Types</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {driver.drivingDetails?.vehicleType?.length ? (
+                    driver.drivingDetails.vehicleType.map((type, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">{type.name}</Badge>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">Not provided</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Can Drive</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {driver.drivingDetails?.canDrive?.length ? (
+                    driver.drivingDetails.canDrive.map((vehicle, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">{vehicle.vehicleName}</Badge>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">Not provided</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment & Subscription</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="font-semibold text-sm">Payment Cycle</p>
+                  <p className="text-sm">{driver.paymentAndSubscription?.preferredPaymentCycle || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Registration Fee</p>
+                  <p className="text-sm">{driver.paymentAndSubscription?.oneTimeRegistrationFee ? `₹${driver.paymentAndSubscription.oneTimeRegistrationFee}` : 'Not provided'}</p>
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">Bank Account Holder</p>
+                <p className="text-sm">{driver.paymentAndSubscription?.bankAccountHolderName || 'Not provided'}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="font-semibold text-sm">Bank Name</p>
+                  <p className="text-sm">{driver.paymentAndSubscription?.bankName || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Account Number</p>
+                  <p className="text-sm">{driver.paymentAndSubscription?.accountNumber || 'Not provided'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="font-semibold text-sm">IFSC Code</p>
+                  <p className="text-sm">{driver.paymentAndSubscription?.ifscCode || 'Not provided'}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">UPI ID</p>
+                  <p className="text-sm">{driver.paymentAndSubscription?.upiId || 'Not provided'}</p>
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold text-sm">UPI QR Code</p>
+                {driver.paymentAndSubscription?.upiQrCode ? (
+                  <img
+                    src={driver.paymentAndSubscription.upiQrCode}
+                    alt="UPI QR code"
+                    className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80 mt-1"
+                    onClick={() => setPreviewImage(driver.paymentAndSubscription.upiQrCode)}
+                  />
                 ) : (
-                  <p className="text-gray-500">Not provided</p>
+                  <p className="text-gray-500 text-sm">Not provided</p>
                 )}
               </div>
-            </div>
-            <div>
-              <p className="font-semibold">Can Drive</p>
-              <div className="flex flex-wrap gap-2">
-                {driver.drivingDetails?.canDrive?.length ? (
-                  driver.drivingDetails.canDrive.map((vehicle, index) => (
-                    <Badge key={index} variant="outline">{vehicle.vehicleName}</Badge>
-                  ))
-                ) : (
-                  <p className="text-gray-500">Not provided</p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment & Subscription</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="font-semibold">Payment Cycle</p>
-                <p>{driver.paymentAndSubscription?.preferredPaymentCycle || 'Not provided'}</p>
+          <Card>
+            <CardHeader>
+              <CardTitle>Declaration & Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
+                  <div>
+                    <p className="font-semibold text-sm">Signed At</p>
+                    <p className="text-sm">{driver.declaration?.signedAt ? new Date(driver.declaration.signedAt).toLocaleString() : 'Not signed'}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Created At</p>
+                    <p className="text-sm">{driver.createdAt ? new Date(driver.createdAt).toLocaleString() : 'Not available'}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Signature</p>
+                  {driver.declaration?.signature ? (
+                    <img
+                      src={driver.declaration.signature}
+                      alt="Signature"
+                      className="w-32 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
+                      onClick={() => setPreviewImage(driver.declaration.signature)}
+                    />
+                  ) : (
+                    <p className="text-gray-500 text-sm">Not provided</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <p className="font-semibold">Registration Fee</p>
-                <p>{driver.paymentAndSubscription?.oneTimeRegistrationFee ? `₹${driver.paymentAndSubscription.oneTimeRegistrationFee}` : 'Not provided'}</p>
-              </div>
-            </div>
-            <div>
-              <p className="font-semibold">Bank Account Holder</p>
-              <p>{driver.paymentAndSubscription?.bankAccountHolderName || 'Not provided'}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="font-semibold">Bank Name</p>
-                <p>{driver.paymentAndSubscription?.bankName || 'Not provided'}</p>
-              </div>
-              <div>
-                <p className="font-semibold">Account Number</p>
-                <p>{driver.paymentAndSubscription?.accountNumber || 'Not provided'}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="font-semibold">IFSC Code</p>
-                <p>{driver.paymentAndSubscription?.ifscCode || 'Not provided'}</p>
-              </div>
-              <div>
-                <p className="font-semibold">UPI ID</p>
-                <p>{driver.paymentAndSubscription?.upiId || 'Not provided'}</p>
-              </div>
-            </div>
-
-            <div>
-              <p className="font-semibold">UPI Qr code</p>
-              {driver.paymentAndSubscription?.upiQrCode ? (
-                <img
-                  src={driver.paymentAndSubscription.upiQrCode}
-                  alt="upi Qr code"
-                  className="w-20 h-20 object-cover rounded cursor-pointer hover:opacity-80"
-                  onClick={() => setPreviewImage(driver.paymentAndSubscription.upiQrCode)}
-                />
-              ) : (
-                <p className="text-gray-500">Not provided</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
@@ -449,34 +527,108 @@ export const DriverDetailPage = ({ driverId, onBack }: DriverDetailPageProps) =>
           </CardContent>
         </Card>
 
+{/* Rides History */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Declaration & Status</CardTitle>
+            <CardTitle>Rides History ({rides.length})</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="font-semibold">Signed At</p>
-                <p>{driver.declaration?.signedAt ? new Date(driver.declaration.signedAt).toLocaleString() : 'Not signed'}</p>
+          <CardContent>
+            {rides.length > 0 ? (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ride ID</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getRidesPaginated().map((ride) => (
+                      <TableRow key={ride.rideId}>
+                        <TableCell>
+                          <code className="bg-muted px-2 py-1 rounded text-xs">
+                            {ride.rideId}
+                          </code>
+                        </TableCell>
+                        <TableCell>{ride.category}</TableCell>
+                        <TableCell>{formatDate(ride.selectedDate)}</TableCell>
+                        <TableCell>
+                          <Badge className={
+                            ride.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                            ride.status === 'BOOKED' ? 'bg-blue-100 text-blue-800' :
+                            ride.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }>
+                            {ride.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewRide(ride.rideId)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {/* Rides Pagination */}
+                {getTotalRidesPages() > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-gray-600">
+                      Showing {Math.min((ridesCurrentPage - 1) * ridesPerPage + 1, rides.length)} to {Math.min(ridesCurrentPage * ridesPerPage, rides.length)} of {rides.length} rides
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRidesCurrentPage(ridesCurrentPage - 1)}
+                        disabled={ridesCurrentPage === 1}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
+                      </Button>
+                      
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: getTotalRidesPages() }, (_, i) => (
+                          <Button
+                            key={i + 1}
+                            variant={ridesCurrentPage === i + 1 ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setRidesCurrentPage(i + 1)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {i + 1}
+                          </Button>
+                        ))}
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setRidesCurrentPage(ridesCurrentPage + 1)}
+                        disabled={ridesCurrentPage === getTotalRidesPages()}
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No rides found for this driver
               </div>
-              <div>
-                <p className="font-semibold">Created At</p>
-                <p>{driver.createdAt ? new Date(driver.createdAt).toLocaleString() : 'Not available'}</p>
-              </div>
-            </div>
-            <div>
-              <p className="font-semibold">Signature</p>
-              {driver.declaration?.signature ? (
-                <img
-                  src={driver.declaration.signature}
-                  alt="Signature"
-                  className="w-32 h-16 object-cover rounded border cursor-pointer hover:opacity-80"
-                  onClick={() => setPreviewImage(driver.declaration.signature)}
-                />
-              ) : (
-                <p className="text-gray-500">Not provided</p>
-              )}
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
