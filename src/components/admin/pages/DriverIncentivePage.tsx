@@ -17,9 +17,24 @@ interface Driver {
   _id: string;
   personalInformation?: {
     fullName?: string;
+    category?: string;
+    subCategory?: string[];
   };
   mobile: string;
   status: string;
+  eligibleRides?: number;
+}
+
+interface Category {
+  _id: string;
+  name: string;
+}
+
+interface Subcategory {
+  _id?: string;
+  id?: string;
+  name: string;
+  categoryId: string;
 }
 
 interface IncentiveResult {
@@ -61,6 +76,20 @@ const DriverIncentivePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Category and Subcategory states
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
+  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([]);
+
+  // Filter criteria states
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [minRides, setMinRides] = useState('');
+  const [minRating, setMinRating] = useState('');
+  const [maxRating, setMaxRating] = useState('');
+
   // Pagination states for history
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
@@ -69,11 +98,23 @@ const DriverIncentivePage = () => {
 
   // Fetch all approved drivers and incentive history
   useEffect(() => {
-    fetchDrivers();
     fetchIncentiveHistory();
+    fetchCategories();
   }, [currentPage, recordsPerPage]);
 
-  // Filter drivers based on search term
+  // Filter subcategories when category changes
+  useEffect(() => {
+    if (selectedCategory) {
+      const filtered = subcategories.filter(sub => sub.categoryId === selectedCategory);
+      setFilteredSubcategories(filtered);
+      setSelectedSubcategory('');
+    } else {
+      setFilteredSubcategories([]);
+      setSelectedSubcategory('');
+    }
+  }, [selectedCategory, subcategories]);
+
+  // Filter drivers based on search term only (other filters applied via API)
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredDrivers(drivers);
@@ -89,15 +130,45 @@ const DriverIncentivePage = () => {
   const fetchDrivers = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver`);
+      const params: any = {};
+      
+      if (selectedCategory && selectedCategory !== 'all') params.category = selectedCategory;
+      if (selectedSubcategory && selectedSubcategory !== 'all') params.subcategory = selectedSubcategory;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (minRides) params.minRides = minRides;
+      if (minRating) params.minRating = minRating;
+      if (maxRating) params.maxRating = maxRating;
+
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/filter-for-incentive`, { params });
       if (response.status === 200) {
-        setDrivers(response.data);
-        setFilteredDrivers(response.data);
+        const mappedDrivers = response.data.drivers.map((d: any) => ({
+          _id: d._id,
+          personalInformation: { fullName: d.fullName },
+          mobile: d.mobile,
+          status: 'Approved',
+          eligibleRides: d.eligibleRides
+        }));
+        setDrivers(mappedDrivers);
+        setFilteredDrivers(mappedDrivers);
       }
     } catch (error) {
       console.error('Error fetching drivers:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const [categoriesRes, subcategoriesRes] = await Promise.all([
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`)
+      ]);
+      setCategories(categoriesRes.data);
+      setSubcategories(subcategoriesRes.data);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -125,6 +196,23 @@ const DriverIncentivePage = () => {
   const handleRecordsPerPageChange = (value: string) => {
     setRecordsPerPage(parseInt(value));
     setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedCategory('');
+    setSelectedSubcategory('');
+    setStartDate('');
+    setEndDate('');
+    setMinRides('');
+    setMinRating('');
+    setMaxRating('');
+    setSearchTerm('');
+    setDrivers([]);
+    setFilteredDrivers([]);
+  };
+
+  const handleFindDrivers = () => {
+    fetchDrivers();
   };
 
   const handleSelectAll = () => {
@@ -233,7 +321,7 @@ const DriverIncentivePage = () => {
               <span>Create Incentive</span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Driver Incentive</DialogTitle>
             </DialogHeader>
@@ -247,50 +335,213 @@ const DriverIncentivePage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Search */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      placeholder="Search drivers by name or mobile..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Category Selection */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Category</label>
+                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="All Categories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Categories</SelectItem>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat._id} value={cat._id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Subcategory Selection */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Subcategory</label>
+                      <Select 
+                        value={selectedSubcategory} 
+                        onValueChange={setSelectedSubcategory}
+                        disabled={!selectedCategory || selectedCategory === 'all'}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All Subcategories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Subcategories</SelectItem>
+                          {filteredSubcategories.map((sub) => (
+                            <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
+                              {sub.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Date Range */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Start Date</label>
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">End Date</label>
+                      <Input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        min={startDate}
+                      />
+                    </div>
+
+                    {/* Number of Rides */}
+                   
+
+                    {/* Rating Range */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Min. Rating</label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 3.5"
+                        value={minRating}
+                        onChange={(e) => setMinRating(e.target.value)}
+                        min="0"
+                        max="5"
+                        step="0.1"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Max. Rating</label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 5.0"
+                        value={maxRating}
+                        onChange={(e) => setMaxRating(e.target.value)}
+                        min={minRating || "0"}
+                        max="5"
+                        step="0.1"
+                      />
+                    </div>
+
+                     <div>
+                      <label className="block text-sm font-medium mb-2">Min. Rides</label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 20"
+                        value={minRides}
+                        onChange={(e) => setMinRides(e.target.value)}
+                        min="0"
+                      />
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative">
+                      <label className="block text-sm font-medium mb-2">Search</label>
+                      <Search className="absolute left-3 bottom-3 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Search by name or mobile..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+
+                    {/* Filter Buttons */}
+                    <div className="col-span-2 flex space-x-2">
+                      <Button 
+                        onClick={handleFindDrivers}
+                        className="flex-1"
+                        disabled={loading}
+                      >
+                        {loading ? 'Finding...' : 'Find Drivers'}
+                      </Button>
+                      <Button 
+                        onClick={handleClearFilters}
+                        variant="outline"
+                        className="flex-1"
+                      >
+                        Clear All Filters
+                      </Button>
+                    </div>
+
+                    {/* Active Filters Summary */}
+                    {(selectedCategory || startDate || minRides || minRating) && (
+                      <div className="col-span-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                        <div className="text-xs font-medium text-blue-800 mb-1">Active Filters:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedCategory && selectedCategory !== 'all' && (
+                            <Badge variant="secondary" className="text-xs">
+                              Category: {categories.find(c => c._id === selectedCategory)?.name}
+                            </Badge>
+                          )}
+                          {selectedSubcategory && selectedSubcategory !== 'all' && (
+                            <Badge variant="secondary" className="text-xs">
+                              Subcategory: {filteredSubcategories.find(s => (s.id || s._id) === selectedSubcategory)?.name}
+                            </Badge>
+                          )}
+                          {startDate && endDate && (
+                            <Badge variant="secondary" className="text-xs">
+                              Date: {startDate} to {endDate}
+                            </Badge>
+                          )}
+                          {minRides && (
+                            <Badge variant="secondary" className="text-xs">
+                              Min Rides: {minRides}
+                            </Badge>
+                          )}
+                          {minRating && maxRating && (
+                            <Badge variant="secondary" className="text-xs">
+                              Rating: {minRating} - {maxRating}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Select All */}
-                  <div className="flex items-center space-x-2 p-2 border rounded bg-gray-50">
-                    <Checkbox
-                      checked={selectedDrivers.length === filteredDrivers.length && filteredDrivers.length > 0}
-                      onCheckedChange={handleSelectAll}
-                    />
-                    <label className="font-medium">
-                      Select All ({filteredDrivers.length} drivers)
-                    </label>
-                  </div>
+                  {filteredDrivers.length > 0 && (
+                    <div className="flex items-center space-x-2 p-2 border rounded bg-gray-50">
+                      <Checkbox
+                        checked={selectedDrivers.length === filteredDrivers.length && filteredDrivers.length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                      <label className="font-medium">
+                        Select All ({filteredDrivers.length} drivers)
+                      </label>
+                    </div>
+                  )}
 
                   {/* Driver List */}
-                  <div className="max-h-64 overflow-y-auto space-y-2">
-                    {filteredDrivers.map((driver) => (
-                      <div key={driver._id} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50">
-                        <Checkbox
-                          checked={selectedDrivers.includes(driver._id)}
-                          onCheckedChange={() => handleDriverSelect(driver._id)}
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium">
-                            {driver.personalInformation?.fullName || 'No Name'}
-                          </div>
-                          <div className="text-sm text-gray-500">{driver.mobile}</div>
-                        </div>
-                        <Badge variant="outline">{driver.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-
-                  {filteredDrivers.length === 0 && (
+                  {loading ? (
                     <div className="text-center py-8 text-gray-500">
-                      No drivers found
+                      Loading drivers...
+                    </div>
+                  ) : filteredDrivers.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      Click "Find Drivers" to search
+                    </div>
+                  ) : (
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {filteredDrivers.map((driver) => (
+                        <div key={driver._id} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50">
+                          <Checkbox
+                            checked={selectedDrivers.includes(driver._id)}
+                            onCheckedChange={() => handleDriverSelect(driver._id)}
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium">
+                              {driver.personalInformation?.fullName || 'No Name'}
+                            </div>
+                            <div className="text-sm text-gray-500">{driver.mobile}</div>
+                           
+                          </div>
+                          <Badge variant="outline">{driver.status}</Badge>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>

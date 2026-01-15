@@ -32,6 +32,8 @@ const DriverNotification = require('../DriverModel/DriverNotification');
 const { processDeposit } = require('../utils/depositHandler');
 const Razorpay = require('razorpay');
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
+const Ride = require('../models/Ride');
+const mongoose = require('mongoose');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -1016,6 +1018,72 @@ router.post("/manage-credits",adminAuthMiddleware, async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Filter drivers for incentive based on category, subcategory, date range, rides, and rating
+router.get("/filter-for-incentive", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { category, subcategory, startDate, endDate, minRides, minRating, maxRating } = req.query;
+
+    const pipeline = [];
+    const matchStage = { status: "Approved" };
+    
+    if (category) matchStage["personalInformation.category"] = new mongoose.Types.ObjectId(category);
+    if (subcategory) matchStage["personalInformation.subCategory"] = new mongoose.Types.ObjectId(subcategory);
+    if (minRating || maxRating) {
+      matchStage["ratings.avgRating"] = {};
+      if (minRating) matchStage["ratings.avgRating"].$gte = parseFloat(minRating);
+      if (maxRating) matchStage["ratings.avgRating"].$lte = parseFloat(maxRating);
+    }
+
+    pipeline.push({ $match: matchStage });
+    pipeline.push({
+      $lookup: {
+        from: "rides",
+        let: { driverId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$driverId", "$$driverId"] },
+                  { $eq: ["$status", "COMPLETED"] },
+                  ...(startDate && endDate ? [{
+                    $and: [
+                      { $gte: ["$rideInfo.selectedDate", new Date(startDate)] },
+                      { $lte: ["$rideInfo.selectedDate", new Date(endDate)] }
+                    ]
+                  }] : [])
+                ]
+              }
+            }
+          }
+        ],
+        as: "completedRidesInRange"
+      }
+    });
+    pipeline.push({ $addFields: { rideCount: { $size: "$completedRidesInRange" } } });
+    if (minRides) pipeline.push({ $match: { rideCount: { $gte: parseInt(minRides) } } });
+    pipeline.push({ $project: { _id: 1, "personalInformation.fullName": 1, mobile: 1, rideCount: 1 } });
+
+    const drivers = await Driver.aggregate(pipeline);
+    const formattedDrivers = drivers.map(driver => ({
+      _id: driver._id,
+      fullName: driver.personalInformation?.fullName || "No Name",
+      mobile: driver.mobile,
+      eligibleRides: driver.rideCount
+    }));
+
+    res.json({ success: true, count: formattedDrivers.length, drivers: formattedDrivers });
+  } catch (error) {
+    console.error("Filter drivers error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to filter drivers", 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+    });
   }
 });
 
@@ -2997,5 +3065,7 @@ router.post("/webhook", async (req, res) => {
     res.status(500).json({ error: "Webhook processing failed" });
   }
 });
+
+
 
 module.exports = router;
