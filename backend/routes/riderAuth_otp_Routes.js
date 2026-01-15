@@ -1219,6 +1219,23 @@ router.post("/admin/rider-rides", adminAuthMiddleware, async (req, res) => {
     
     const Ride = require('../models/Ride');
     
+    // Get full rider document
+    const rider = await Rider.findById(riderId);
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+    
+    // Get wallet info
+    const wallet = await Wallet.findOne({ riderId: rider._id });
+    const riderWithWallet = {
+      ...rider.toObject(),
+      wallet: {
+        totalDeposited: wallet?.totalDeposited || 0,
+        totalSpent: wallet?.totalSpent || 0,
+        balance: wallet?.balance || 0
+      }
+    };
+    
     const rides = await Ride.find({ riderId })
       .select('_id rideInfo.categoryName rideInfo.selectedDate status')
       .sort({ createdAt: -1 });
@@ -1232,6 +1249,7 @@ router.post("/admin/rider-rides", adminAuthMiddleware, async (req, res) => {
     
     res.json({
       success: true,
+      rider: riderWithWallet,
       rides: formattedRides
     });
   } catch (error) {

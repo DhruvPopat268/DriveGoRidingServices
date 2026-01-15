@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Search, Filter, Phone, Mail, Calendar, User, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Search, Filter, Phone, Mail, Calendar, User, Star, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface User {
@@ -32,11 +32,15 @@ interface User {
   updatedAt: string;
 }
 
-export const UsersPage = () => {
+interface UsersPageProps {
+  onNavigateToRiderDetail?: (riderId: string) => void;
+}
+
+export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [profileFilter, setProfileFilter] = useState('all');
+  const [profileFilter, setProfileFilter] = useState('complete');
   const [sortOrder, setSortOrder] = useState('newest');
   
   // Pagination states
@@ -122,6 +126,10 @@ export const UsersPage = () => {
   const getProfileStatusColor = (user: User) => {
     const isComplete = user.name && user.name.trim() !== '' && user.gender && user.gender.trim() !== '';
     return isComplete ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+  };
+
+  const handleViewRider = (riderId: string) => {
+    onNavigateToRiderDetail?.(riderId);
   };
 
   return (
@@ -221,11 +229,9 @@ export const UsersPage = () => {
                     <TableHead>User Info</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Profile Status</TableHead>
-                    <TableHead>Referral Code</TableHead>
-                    <TableHead>Wallet</TableHead>
-                    <TableHead>Referral Earnings</TableHead>
                     <TableHead>Rating</TableHead>
                     <TableHead>Joined Date</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -265,27 +271,6 @@ export const UsersPage = () => {
                       </TableCell>
                       
                       <TableCell>
-                        <code className="bg-muted px-2 py-1 rounded text-sm">
-                          {user.referralCode}
-                        </code>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="text-sm space-y-1">
-                          <p>Deposited: ₹{user.wallet?.totalDeposited || 0}</p>
-                          <p>Spent: ₹{user.wallet?.totalSpent || 0}</p>
-                          <p className="font-medium">Balance: ₹{user.wallet?.balance || 0}</p>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
-                        <div className="text-sm space-y-1">
-                          <p>Total: ₹{user.referralEarning?.totalEarnings || 0}</p>
-                          <p className="font-medium">Balance: ₹{user.referralEarning?.currentBalance || 0}</p>
-                        </div>
-                      </TableCell>
-                      
-                      <TableCell>
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-500 mr-1" />
                           <span>{user.ratings?.avgRating?.toFixed(1) || '0.0'}</span>
@@ -297,6 +282,17 @@ export const UsersPage = () => {
                           <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
                           {formatDate(user.createdAt)}
                         </div>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewRider(user._id)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
