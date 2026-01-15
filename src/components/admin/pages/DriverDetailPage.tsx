@@ -47,8 +47,8 @@ interface DriverDetail {
     }>;
   };
   drivingDetails?: {
-    vehicleType?: string[];
-    canDrive?: string[];
+    vehicleType?: Array<{ name: string }>;
+    canDrive?: Array<{ vehicleName: string }>;
     drivingExperienceYears?: number;
     licenseType?: string;
     preferredWork?: string;

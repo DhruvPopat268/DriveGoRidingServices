@@ -74,7 +74,7 @@ interface RideDetails {
     includeInsurance: boolean;
     notes: string;
     driverReachTime?: string;
-    ridseStartTime?: string;
+    rideStartTime?: string;
     rideEndTime?: string;
     driverCharges: number;
     pickCharges: number;
@@ -433,7 +433,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                 </div>
               </div>
 
-              {(rideDetails.rideInfo.driverReachTime || rideDetails.rideInfo.ridseStartTime || rideDetails.rideInfo.rideEndTime) && (
+              {(rideDetails.rideInfo.driverReachTime || rideDetails.rideInfo.rideStartTime || rideDetails.rideInfo.rideEndTime) && (
                 <>
                   <Separator />
                   <div className="bg-blue-50 p-4 rounded-lg">
@@ -445,10 +445,10 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                           <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.driverReachTime}</p>
                         </div>
                       )}
-                      {rideDetails.rideInfo.ridseStartTime && (
+                      {rideDetails.rideInfo.rideStartTime && (
                         <div>
                           <label className="text-xs font-medium text-gray-600">Ride Start Time</label>
-                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.ridseStartTime}</p>
+                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.rideStartTime}</p>
                         </div>
                       )}
                       {rideDetails.rideInfo.rideEndTime && (
@@ -628,7 +628,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                   <span>{formatCurrency(rideDetails.rideInfo.nightCharges)}</span>
                 </div>
               )}
-              {rideDetails.rideInfo.cancellationCharges > 0 && (
+              {rideDetails.rideInfo.insuranceCharges > 0 && (
               <div className="flex justify-between">
                 <span className="flex items-center">
                   <Shield className="w-3 h-3 mr-1" />
