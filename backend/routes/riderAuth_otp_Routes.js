@@ -189,15 +189,17 @@ router.post("/create-order", authMiddleware, async (req, res) => {
       });
     }
 
+    const finalNotes = notes || {};
+    if (!finalNotes.riderId) {
+      finalNotes.riderId = req.rider.riderId;
+    }
+
     const options = {
       amount: amount * 100,          // ₹ to paise
       currency: currency || "INR",
       receipt: receipt || `rcpt_${Date.now()}`,
-
-      // 🔥 THIS ENABLES AUTO CAPTURE
       payment_capture: 1,
-
-      notes: notes || {},            // { type, driverId, ... }
+      notes: finalNotes
     };
 
 

@@ -291,8 +291,6 @@ router.get('/revenue-distribution',adminAuthMiddleware, async (req, res) => {
       }
     ]);
 
-    console.log('Transactions by category result:', JSON.stringify(transactionsByCategory, null, 2));
-
     // Calculate net revenue by category (credits - debits)
     const categoryRevenue = {};
     

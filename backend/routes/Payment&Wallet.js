@@ -1,17 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Razorpay = require('razorpay');
-const crypto = require('crypto');
 const { Wallet } = require('../models/Payment&Wallet');
 const authMiddleware = require('../middleware/authMiddleware');
-const { processDeposit } = require('../utils/depositHandler');
-const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
-
-// Initialize Razorpay
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
 
 // Deposit money to user wallet
 router.post('/deposit', authMiddleware, async (req, res) => {
@@ -268,77 +259,6 @@ router.get('/wallet', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Get wallet error:', error);
     res.status(500).json({ error: 'Failed to fetch wallet details' });
-  }
-});
-
-
-
-// Webhook for Razorpay payment updates
-router.post('/webhook', async (req, res) => {
-  try {
-    const webhookPayload = req.body;
-    const receivedSignature = req.headers['x-razorpay-signature'];
-
-    // Verify webhook signature
-    if (!receivedSignature) {
-      return res.status(400).json({ error: 'Missing webhook signature' });
-    }
-
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-
-    if (!webhookSecret) {
-      console.error('⚠️ RAZORPAY_WEBHOOK_SECRET not configured');
-      return res.status(500).json({ error: 'Webhook secret not configured' });
-    }
-
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(JSON.stringify(webhookPayload))
-      .digest('hex');
-
-    if (receivedSignature !== expectedSignature) {
-      console.error('⚠️ Invalid webhook signature');
-      return res.status(400).json({ error: 'Invalid webhook signature' });
-    }
-
-    // Extract payment info from Razorpay webhook payload
-    const event = webhookPayload.event;
-    const paymentEntity = webhookPayload.payload?.payment?.entity;
-    const orderEntity = webhookPayload.payload?.order?.entity;
-
-    if (!paymentEntity || !paymentEntity.id) {
-      return res.status(400).json({ error: 'Invalid webhook payload' });
-    }
-
-    const payment_id = paymentEntity.id;
-    const status = paymentEntity.status;
-    const webhookAmount = paymentEntity.amount ? paymentEntity.amount / 100 : null; // Convert paise to rupees
-
-    // Get payment notes from order or payment entity
-    const notes = orderEntity?.notes || paymentEntity.notes || {};
-
-    // Only process final payment events
-    const supportedEvents = ['payment.captured', 'payment.failed', 'payment.refunded'];
-    if (!supportedEvents.includes(event)) {
-      return res.json({ status: 'ignored', event, reason: 'Unsupported event type' });
-    }
-
-    // For captured payments, treat as completed regardless of existing status
-    if (event === 'payment.captured') {
-      status = 'captured';
-    }
-
-    const result = await processDeposit(payment_id, status, webhookAmount, notes);
-
-    if (result.success) {
-      return res.json({ status: 'ok', event, verified: true, result: result.details });
-    } else {
-      return res.json({ status: 'error', event, error: result.error });
-    }
-
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 
