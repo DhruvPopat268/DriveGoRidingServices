@@ -360,7 +360,7 @@ router.post("/get-included-data", combinedAuthMiddleware, async (req, res) => {
       });
     }
 
-    const formattedSubcategory = subcategory.name.toLowerCase();
+    const formattedSubcategory = subcategory.name.toLowerCase().replace(/[^a-z0-9]/g, '');
 
     const records = await ParcelRideCost.aggregate([
       {
@@ -385,7 +385,6 @@ router.post("/get-included-data", combinedAuthMiddleware, async (req, res) => {
           includedMinutes: "$_id.includedMinutes",
         },
       },
-      // --- Sorting logic using pre-calculated field ---
       {
         $addFields: {
           sortField:

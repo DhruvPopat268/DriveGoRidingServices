@@ -6,6 +6,7 @@ const Category = require('../models/Category');
 const axios = require('axios'); // Add this if not already imported
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 const { combinedAuthMiddleware } = require('../Services/authService');
+const { getDriverRideIncludedData, getCabRideIncludedData, getParcelRideIncludedData } = require('../Services/rideCostService');
 
 // Create instruction
 router.post('/', adminAuthMiddleware, async (req, res) => {
@@ -132,7 +133,8 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
       carCategoryId,
       parcelCategoryId,
       vehicleTypeId,
-      carId
+      carId,
+      selectedUsage
     } = req.body;
 
     // categoryId & subCategoryId are minimum required
@@ -153,17 +155,37 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
     if (parcelCategoryId) query.parcelCategoryId = parcelCategoryId;
     if (vehicleTypeId) query.vehicleTypeId = vehicleTypeId;
 
-    // console.log("Instruction Query =>", query);
-
     // Fetch all instructions matching the given IDs
     const instructions = await Instruction.find(query);
-
-    // Map only instruction text array
     const instructionTexts = instructions.map((item) => item.instructions);
+
+    // Get ride cost data if selectedUsage is provided
+    let rideCostData = null;
+    if (selectedUsage) {
+      try {
+        let fullData;
+        if (driverCategoryId) {
+          fullData = await getDriverRideIncludedData(categoryId, subCategoryId, subSubCategoryId, selectedUsage, driverCategoryId);
+        } else if (carId) {
+          fullData = await getCabRideIncludedData(categoryId, subCategoryId, subSubCategoryId, selectedUsage, carId);
+        } else if (vehicleTypeId) {
+          fullData = await getParcelRideIncludedData(categoryId, subCategoryId, selectedUsage, vehicleTypeId);
+        }
+        
+        // Filter out unwanted fields
+        if (fullData) {
+          const { extraChargesFromAdmin, gst, cancellationBufferTime, ...filteredData } = fullData;
+          rideCostData = filteredData;
+        }
+      } catch (error) {
+        console.error("Error fetching ride cost data:", error);
+      }
+    }
 
     return res.json({
       success: true,
       data: instructionTexts,
+      rideCostData
     });
   } catch (err) {
     console.error("Error fetching instructions:", err);

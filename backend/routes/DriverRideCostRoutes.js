@@ -417,7 +417,7 @@ router.post("/get-included-data", combinedAuthMiddleware, async (req, res) => {
       });
     }
 
-    const formattedSubcategory = subcategory.name.toLowerCase();
+    const formattedSubcategory = subcategory.name.toLowerCase().replace(/[^a-z0-9]/g, '');
 
     const records = await DriverRideCost.aggregate([
       {
