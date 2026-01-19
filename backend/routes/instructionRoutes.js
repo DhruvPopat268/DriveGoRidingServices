@@ -175,11 +175,19 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
         // Filter out unwanted fields
         if (fullData) {
           const { extraChargesFromAdmin, gst, cancellationBufferTime, includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute } = fullData;
+          
+          // Calculate final charges with admin charges and GST
+          const baseExtraKm = extraChargePerKm + (extraChargePerKm * extraChargesFromAdmin / 100);
+          const finalExtraKm = baseExtraKm + (baseExtraKm * gst / 100);
+          
+          const baseExtraMinute = extraChargePerMinute + (extraChargePerMinute * extraChargesFromAdmin / 100);
+          const finalExtraMinute = baseExtraMinute + (baseExtraMinute * gst / 100);
+          
           rideCostData = {
             includedKm: includedKm[0] || "0",
             includedMinutes: includedMinutes[0] || "0", 
-            extraChargePerKm,
-            extraChargePerMinute
+            finalExtraChargePerKm: parseFloat(finalExtraKm.toFixed(2)),
+            finalExtraChargePerMinute: parseFloat(finalExtraMinute.toFixed(2))
           };
         }
       } catch (error) {
