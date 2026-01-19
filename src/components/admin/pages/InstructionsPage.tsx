@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Loader } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Loader, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { DeleteConfirmation } from "@/components/ui/delete-confirmation";
 import apiClient from '../../../lib/axiosInterceptor';
@@ -98,6 +99,12 @@ export const InstructionsPage = () => {
   const [selectedParcelCategory, setSelectedParcelCategory] = useState("");
   const [selectedSubSubCategory, setSelectedSubSubCategory] = useState("");
   const [instructions, setInstructions] = useState("");
+
+  // Filter states
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+  const [filteredInstructions, setFilteredInstructions] = useState<Instruction[]>([]);
+  const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<SubCategory[]>([]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -222,6 +229,34 @@ export const InstructionsPage = () => {
   console.log("Selected subcategory ID:", selectedSubCategory);
   console.log("All subSubCategories:", subSubCategories);
   console.log("Filtered subSubCategories:", filteredSubSubCategories);
+
+  // Filter subcategories for filter dropdown
+  useEffect(() => {
+    if (filterCategory && filterCategory !== 'all') {
+      const filtered = subCategories.filter((sub: SubCategory) => sub.categoryId === filterCategory);
+      setFilterSubcategoriesForFilter(filtered);
+      setFilterSubcategory('all');
+    } else {
+      setFilterSubcategoriesForFilter([]);
+      setFilterSubcategory('all');
+    }
+  }, [filterCategory, subCategories]);
+
+  // Apply filters to instructions
+  useEffect(() => {
+    let filtered = [...instructionsData];
+
+    if (filterCategory && filterCategory !== 'all') {
+      filtered = filtered.filter(instruction => instruction.categoryId === filterCategory);
+    }
+
+    if (filterSubcategory && filterSubcategory !== 'all') {
+      filtered = filtered.filter(instruction => instruction.subCategoryId === filterSubcategory);
+    }
+
+    setFilteredInstructions(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [instructionsData, filterCategory, filterSubcategory]);
 
   // Reset subcategory when category changes or when filtered subcategories don't include current selection
   useEffect(() => {
@@ -434,13 +469,18 @@ export const InstructionsPage = () => {
   useEffect(() => {
     const startIndex = (currentPage - 1) * recordsPerPage;
     const endIndex = startIndex + recordsPerPage;
-    setPaginatedInstructions(instructionsData.slice(startIndex, endIndex));
-  }, [instructionsData, currentPage, recordsPerPage]);
+    setPaginatedInstructions(filteredInstructions.slice(startIndex, endIndex));
+  }, [filteredInstructions, currentPage, recordsPerPage]);
 
   // Calculate pagination info
-  const totalPages = Math.ceil(instructionsData.length / recordsPerPage);
-  const startRecord = instructionsData.length === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
-  const endRecord = Math.min(currentPage * recordsPerPage, instructionsData.length);
+  const totalPages = Math.ceil(filteredInstructions.length / recordsPerPage);
+  const startRecord = filteredInstructions.length === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
+  const endRecord = Math.min(currentPage * recordsPerPage, filteredInstructions.length);
+
+  const clearFilters = () => {
+    setFilterCategory('all');
+    setFilterSubcategory('all');
+  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -718,6 +758,76 @@ export const InstructionsPage = () => {
       {/* Instructions Table */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6">
+          {/* Filter Section */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between mb-3">
+              {(filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-xs"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Filter by Category
+                </label>
+                <Select
+                  value={filterCategory}
+                  onValueChange={setFilterCategory}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((cat: Category) => (
+                      <SelectItem key={cat._id} value={cat._id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  Filter by Subcategory
+                </label>
+                <Select
+                  value={filterSubcategory}
+                  onValueChange={setFilterSubcategory}
+                  disabled={!filterCategory || filterCategory === 'all'}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="All Subcategories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subcategories</SelectItem>
+                    {filterSubcategoriesForFilter.map((sub: SubCategory) => (
+                      <SelectItem key={sub._id} value={sub._id}>
+                        {sub.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <div className="text-sm text-gray-600">
+                  Showing {startRecord}-{endRecord} of {filteredInstructions.length} instructions
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">T & C List</h2>
             <div className="flex items-center space-x-2">
@@ -759,10 +869,13 @@ export const InstructionsPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {instructionsData.length === 0 ? (
+                  {filteredInstructions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-gray-500">
-                        No T & C found
+                        {instructionsData.length === 0
+                          ? "No T & C found"
+                          : "No instructions match the selected filters."
+                        }
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -813,10 +926,10 @@ export const InstructionsPage = () => {
           )}
           
           {/* Pagination Controls */}
-          {instructionsData.length > 0 && (
+          {filteredInstructions.length > 0 && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-gray-600">
-                Showing {startRecord} to {endRecord} of {instructionsData.length} entries
+                Showing {startRecord} to {endRecord} of {filteredInstructions.length} entries
               </div>
               <div className="flex items-center space-x-2">
                 <Button
