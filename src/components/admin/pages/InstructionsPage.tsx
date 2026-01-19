@@ -812,7 +812,7 @@ export const InstructionsPage = () => {
                   <SelectContent>
                     <SelectItem value="all">All Subcategories</SelectItem>
                     {filterSubcategoriesForFilter.map((sub: SubCategory) => (
-                      <SelectItem key={sub._id} value={sub._id}>
+                      <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
                         {sub.name}
                       </SelectItem>
                     ))}
