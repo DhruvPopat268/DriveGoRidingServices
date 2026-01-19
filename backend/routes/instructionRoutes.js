@@ -174,8 +174,13 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
         
         // Filter out unwanted fields
         if (fullData) {
-          const { extraChargesFromAdmin, gst, cancellationBufferTime, ...filteredData } = fullData;
-          rideCostData = filteredData;
+          const { extraChargesFromAdmin, gst, cancellationBufferTime, includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute } = fullData;
+          rideCostData = {
+            includedKm: includedKm[0] || "0",
+            includedMinutes: includedMinutes[0] || "0", 
+            extraChargePerKm,
+            extraChargePerMinute
+          };
         }
       } catch (error) {
         console.error("Error fetching ride cost data:", error);
