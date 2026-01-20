@@ -143,16 +143,19 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
       rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
     }
 
-    const records = await ParcelRideCost.find(rideCostQuery).select("includedKm extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
+    
+    const records = await ParcelRideCost.find(rideCostQuery).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
+
 
     const includedKm = [...new Set(records.map(r => r.includedKm))];
+  const includedMinutes = [...new Set(records.map(r => r.includedMinutes))];
     const extraChargePerKm = records[0]?.extraChargePerKm || 0;
     const extraChargePerMinute = records[0]?.extraChargePerMinute || 0;
     const extraChargesFromAdmin = records[0]?.extraChargesFromAdmin || 0;
     const gst = records[0]?.gst || 0;
     const cancellationBufferTime = records[0]?.cancellationBufferTime || 0
 
-    return { includedKm, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
+    return { includedKm,includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
   }
 
   return {};
