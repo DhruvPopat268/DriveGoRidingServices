@@ -305,6 +305,34 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
+    const driverInfo = await Driver.findById(driverId);
+    if (!driverInfo) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    // Check current plan and expiry
+    const currentPlan = driverInfo.currentPlan || {};
+    if (currentPlan.expiryDate) {
+      const now = new Date();
+      const expiry = new Date(currentPlan.expiryDate);
+
+      if (expiry < now) {
+        return res.status(402).json({
+          success: false,
+          message: "Driver's subscription plan expired. Please ask driver to renew."
+        });
+      }
+    }
+
+    // Check if driver already has a confirmed ride
+    if (driverInfo.rideStatus === 'CONFIRMED') {
+      return res.status(400).json({
+        success: false,
+        message: "Driver already has an active ride. Please wait for current ride completion.",
+        errorCode: 'RIDE_ALREADY_ACTIVE'
+      });
+    }
+
     // Check wallet balance before confirming ride
     try {
       const balanceCheck = await checkDriverWalletBalance(
@@ -331,11 +359,6 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
       });
     }
 
-    const driverInfo = await Driver.findById(driverId);
-    if (!driverInfo) {
-      return res.status(404).json({ message: "Driver not found" });
-    }
-
     const driverName = driverInfo.personalInformation?.fullName
     const driverMobile = driverInfo.mobile
 
@@ -360,6 +383,37 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
     // Update driver rideStatus to CONFIRMED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
 
+    // Send notification to rider
+    try {
+      const rider = await Rider.findById(updatedRide.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const rideDate = new Date(updatedRide.rideInfo.selectedDate);
+        const formattedDate = rideDate.toLocaleDateString('en-GB');
+        
+        // Convert 24-hour time to 12-hour format with AM/PM
+        const [hours, minutes] = updatedRide.rideInfo.selectedTime.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        const formattedTime = `${hour12}:${minutes} ${ampm}`;
+        
+        const message = `Your ride has been confirmed by ${driverName}. Ready at ${formattedDate} on ${formattedTime}`;
+        
+        await NotificationService.sendAndStoreRiderNotification(
+          updatedRide.riderId,
+          rider.oneSignalPlayerId,
+          'Ride Confirmed',
+          message,
+          'ride_confirmed',
+          {},
+          updatedRide.rideInfo?.categoryId || null,
+          rideId
+        );
+        console.log('Rider notification sent for admin ride confirmation', rider.oneSignalPlayerId);
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
 
     // Emit socket event to remove ride from all drivers
     const io = req.app.get('io');

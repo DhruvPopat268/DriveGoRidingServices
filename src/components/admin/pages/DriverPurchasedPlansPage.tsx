@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader, ChevronLeft, ChevronRight, Calendar, X } from "lucide-react";
 import apiClient from "../../../lib/axiosInterceptor";
 
 interface PurchasedPlan {
@@ -38,16 +39,30 @@ export const DriverPurchasedPlansPage = () => {
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+  
+  // Date range states
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     fetchPurchasedPlans();
-  }, [currentPage, recordsPerPage]);
+  }, [currentPage, recordsPerPage, startDate, endDate]);
 
   const fetchPurchasedPlans = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subscription-plans/drivers/purchased-plans?page=${currentPage}&limit=${recordsPerPage}`);
+      
+      let url = `${import.meta.env.VITE_API_URL}/api/subscription-plans/drivers/purchased-plans?page=${currentPage}&limit=${recordsPerPage}`;
+      
+      if (startDate) {
+        url += `&startDate=${startDate}`;
+      }
+      if (endDate) {
+        url += `&endDate=${endDate}`;
+      }
+      
+      const response = await apiClient.get(url);
 
       const data: ApiResponse = response.data;
       setPlans(data.purchasedPlans || []);
@@ -67,6 +82,18 @@ export const DriverPurchasedPlansPage = () => {
 
   const handleRecordsPerPageChange = (value: string) => {
     setRecordsPerPage(parseInt(value));
+    setCurrentPage(1);
+  };
+
+  const handleDateRangeChange = (start: string, end: string) => {
+    setStartDate(start);
+    setEndDate(end);
+    setCurrentPage(1);
+  };
+
+  const clearDateRange = () => {
+    setStartDate('');
+    setEndDate('');
     setCurrentPage(1);
   };
 
@@ -108,24 +135,66 @@ export const DriverPurchasedPlansPage = () => {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Purchased Plans ({totalRecords})</CardTitle>
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <CardTitle>Purchased Plans ({totalRecords})</CardTitle>
+              
+              {/* Records per page selector */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Show</span>
+                <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-gray-600">records</span>
+              </div>
+            </div>
             
-            {/* Records per page selector */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">Show</span>
-              <Select value={recordsPerPage.toString()} onValueChange={handleRecordsPerPageChange}>
-                <SelectTrigger className="w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-gray-600">records</span>
+            {/* Date Range Filter */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Filter by Date Range:</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <label className="text-xs text-gray-600 font-medium">From:</label>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => handleDateRangeChange(e.target.value, endDate)}
+                    className="w-36 h-9"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="text-xs text-gray-600 font-medium">To:</label>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => handleDateRangeChange(startDate, e.target.value)}
+                    className="w-36 h-9"
+                  />
+                </div>
+                {(startDate || endDate) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearDateRange}
+                    className="h-9 px-3 text-xs"
+                    title="Clear date filter"
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>

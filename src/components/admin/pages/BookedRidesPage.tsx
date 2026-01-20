@@ -11,6 +11,7 @@ import { RideFilters } from "../shared/RideFilters";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../../lib/axiosInterceptor";
+import { toast, Toaster } from "react-hot-toast";
 
 interface SubCategory {
   _id: string;
@@ -194,13 +195,12 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
       });
       setShowAssignDialog(false);
       setSelectedDriver('');
-      setSuccess('Driver assigned successfully!');
-      setTimeout(() => setSuccess(null), 3000);
+      toast.success('Driver assigned successfully!');
       fetchRides();
     } catch (err) {
       console.error('Error assigning driver:', err);
-      setError('Failed to assign driver');
-      setTimeout(() => setError(null), 3000);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to assign driver';
+      toast.error(errorMessage);
     } finally {
       setAssigningDriver(false);
     }
@@ -607,6 +607,23 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
         }}
         rideId={selectedRideForCharges?._id || ''}
         onSuccess={fetchRides}
+      />
+      
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+          },
+          error: {
+            duration: 5000,
+          },
+        }}
       />
     </div>
   );
