@@ -3,8 +3,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, User, Car, Phone, Calendar, CreditCard, Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RideFilters } from "../shared/RideFilters";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../../lib/axiosInterceptor";
+
+interface SubCategory {
+  _id: string;
+  name: string;
+  categoryId: string;
+}
 
 interface CompletedRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -21,12 +29,79 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const limit = recordsPerPage;
 
+  // Filter states (applied filters)
+  const [appliedFilterCategory, setAppliedFilterCategory] = useState<string>('all');
+  const [appliedFilterSubcategory, setAppliedFilterSubcategory] = useState<string>('all');
+  const [appliedFilterCity, setAppliedFilterCity] = useState<string>('all');
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState<string>('');
+  const [appliedDateRange, setAppliedDateRange] = useState({ from: '', to: '' });
+
+  // Filter states (UI states - not applied until Apply is clicked)
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+  const [filterCity, setFilterCity] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<SubCategory[]>([]);
+
+  // Fetch subcategories
+  const { data: subCategories = [] } = useQuery({
+    queryKey: ["subcategories"],
+    queryFn: async () => {
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      return response.data || [];
+    },
+  });
+
   useEffect(() => {
     fetchRides();
-  }, [currentPage, dateFilter, recordsPerPage]);
+  }, [currentPage, dateFilter, appliedDateRange, recordsPerPage, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedSearchQuery]);
+
+  // Filter subcategories for filter dropdown
+  useEffect(() => {
+    if (filterCategory && filterCategory !== 'all') {
+      const filtered = subCategories.filter((sub: SubCategory) => sub.categoryId === filterCategory);
+      setFilterSubcategoriesForFilter(filtered);
+      setFilterSubcategory('all');
+    } else {
+      setFilterSubcategoriesForFilter([]);
+      setFilterSubcategory('all');
+    }
+  }, [filterCategory, subCategories]);
 
   const handleDateFilter = (filter: string) => {
     setDateFilter(filter === dateFilter ? '' : filter);
+    setDateRange({ from: '', to: '' });
+    setCurrentPage(1);
+  };
+
+  const handleDateRangeChange = (field: 'from' | 'to', value: string) => {
+    setDateRange(prev => ({ ...prev, [field]: value }));
+    setDateFilter('');
+    setCurrentPage(1);
+  };
+
+  const applyFilters = () => {
+    setAppliedFilterCategory(filterCategory);
+    setAppliedFilterSubcategory(filterSubcategory);
+    setAppliedFilterCity(filterCity);
+    setAppliedSearchQuery(searchQuery);
+    setAppliedDateRange(dateRange);
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilterCategory('all');
+    setFilterSubcategory('all');
+    setFilterCity('all');
+    setSearchQuery('');
+    setDateFilter('');
+    setDateRange({ from: '', to: '' });
+    setAppliedFilterCategory('all');
+    setAppliedFilterSubcategory('all');
+    setAppliedFilterCity('all');
+    setAppliedSearchQuery('');
+    setAppliedDateRange({ from: '', to: '' });
     setCurrentPage(1);
   };
 
@@ -45,7 +120,13 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: recordsPerPage.toString(),
-        ...(dateFilter && { date: dateFilter })
+        ...(dateFilter && { date: dateFilter }),
+        ...(appliedDateRange.from && { fromDate: appliedDateRange.from }),
+        ...(appliedDateRange.to && { toDate: appliedDateRange.to }),
+        ...(appliedFilterCategory && appliedFilterCategory !== 'all' && { categoryId: appliedFilterCategory }),
+        ...(appliedFilterSubcategory && appliedFilterSubcategory !== 'all' && { subCategoryId: appliedFilterSubcategory }),
+        ...(appliedFilterCity && appliedFilterCity !== 'all' && { city: appliedFilterCity }),
+        ...(appliedSearchQuery && { search: appliedSearchQuery })
       });
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/completed?${params}`);
       const data = response.data;
@@ -125,6 +206,24 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
           </CardTitle>
         </CardHeader>
         <div className="px-6">
+          {/* Filter Section */}
+          <RideFilters
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filterCategory={filterCategory}
+            setFilterCategory={setFilterCategory}
+            filterSubcategory={filterSubcategory}
+            setFilterSubcategory={setFilterSubcategory}
+            filterCity={filterCity}
+            setFilterCity={setFilterCity}
+            dateRange={dateRange}
+            handleDateRangeChange={handleDateRangeChange}
+            clearFilters={clearFilters}
+            applyFilters={applyFilters}
+            dateFilter={dateFilter}
+            filterSubcategoriesForFilter={filterSubcategoriesForFilter}
+          />
+
           <div className="flex items-center justify-end mb-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Show</span>

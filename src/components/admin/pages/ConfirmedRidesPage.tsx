@@ -5,8 +5,16 @@ import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, Chevron
 import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
+import { RideFilters } from "../shared/RideFilters";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../../lib/axiosInterceptor";
+
+interface SubCategory {
+  _id: string;
+  name: string;
+  categoryId: string;
+}
 
 interface ConfirmedRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -20,18 +28,69 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
   const [totalPages, setTotalPages] = useState(1);
   const [totalRides, setTotalRides] = useState(0);
   const [dateFilter, setDateFilter] = useState('');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const limit = recordsPerPage;
   const [showExtraChargesDialog, setShowExtraChargesDialog] = useState(false);
   const [selectedRideForCharges, setSelectedRideForCharges] = useState(null);
 
+  // Filter states
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+  const [filterCity, setFilterCity] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<SubCategory[]>([]);
+
+  // Fetch subcategories
+  const { data: subCategories = [] } = useQuery({
+    queryKey: ["subcategories"],
+    queryFn: async () => {
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      return response.data || [];
+    },
+  });
+
   useEffect(() => {
     fetchRides();
-  }, [currentPage, dateFilter, recordsPerPage]);
+  }, [currentPage, dateFilter, dateRange, recordsPerPage, filterCategory, filterSubcategory, filterCity, searchQuery]);
+
+  // Filter subcategories for filter dropdown
+  useEffect(() => {
+    if (filterCategory && filterCategory !== 'all') {
+      const filtered = subCategories.filter((sub: SubCategory) => sub.categoryId === filterCategory);
+      setFilterSubcategoriesForFilter(filtered);
+      setFilterSubcategory('all');
+    } else {
+      setFilterSubcategoriesForFilter([]);
+      setFilterSubcategory('all');
+    }
+  }, [filterCategory, subCategories]);
 
   const handleDateFilter = (filter: string) => {
     setDateFilter(filter === dateFilter ? '' : filter);
+    setDateRange({ from: '', to: '' });
     setCurrentPage(1);
+  };
+
+  const handleDateRangeChange = (field: 'from' | 'to', value: string) => {
+    setDateRange(prev => ({ ...prev, [field]: value }));
+    setDateFilter('');
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilterCategory('all');
+    setFilterSubcategory('all');
+    setFilterCity('all');
+    setSearchQuery('');
+    setDateFilter('');
+    setDateRange({ from: '', to: '' });
+    setCurrentPage(1);
+  };
+
+  const applyFilters = () => {
+    setCurrentPage(1);
+    fetchRides();
   };
 
   const handlePageChange = (page: number) => {
@@ -49,7 +108,13 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: recordsPerPage.toString(),
-        ...(dateFilter && { date: dateFilter })
+        ...(dateFilter && { date: dateFilter }),
+        ...(dateRange.from && { fromDate: dateRange.from }),
+        ...(dateRange.to && { toDate: dateRange.to }),
+        ...(filterCategory && filterCategory !== 'all' && { categoryId: filterCategory }),
+        ...(filterSubcategory && filterSubcategory !== 'all' && { subCategoryId: filterSubcategory }),
+        ...(filterCity && filterCity !== 'all' && { city: filterCity }),
+        ...(searchQuery && { search: searchQuery })
       });
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/confirmed?${params}`);
       const data = response.data;
@@ -129,6 +194,24 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
           </CardTitle>
         </CardHeader>
         <div className="px-6">
+          {/* Filter Section */}
+          <RideFilters
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filterCategory={filterCategory}
+            setFilterCategory={setFilterCategory}
+            filterSubcategory={filterSubcategory}
+            setFilterSubcategory={setFilterSubcategory}
+            filterCity={filterCity}
+            setFilterCity={setFilterCity}
+            dateRange={dateRange}
+            handleDateRangeChange={handleDateRangeChange}
+            clearFilters={clearFilters}
+            applyFilters={applyFilters}
+            dateFilter={dateFilter}
+            filterSubcategoriesForFilter={filterSubcategoriesForFilter}
+          />
+
           <div className="flex items-center justify-end mb-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Show</span>

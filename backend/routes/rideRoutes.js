@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Ride = require('../models/Ride'); // Ensure this path is correct
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const router = express.Router();
@@ -22,6 +23,7 @@ const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const { checkDriverWalletBalance } = require('../utils/walletBalanceChecker');
 const NotificationService = require('../Services/notificationService');
 const { calculateDriverRideCost, calculateCabRideCost, calculateParcelRideCost } = require('../utils/rideCalculation');
+const { formatUsage } = require('../utils/formatUsage');
 const priceCategory = require("../models/PriceCategory");
 const Car = require('../models/Car');
 const ParcelVehicle = require('../models/ParcelVehicle');
@@ -39,12 +41,23 @@ const AdminWalletLedger = require("../models/AdminWalletLedger");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
+// Helper function to escape regex metacharacters
+const escapeRegex = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 // Helper function for pagination and date filtering
 const getPaginatedRides = async (status = null, req) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const dateFilter = req.query.date;
+  const fromDate = req.query.fromDate;
+  const toDate = req.query.toDate;
+  const categoryId = req.query.categoryId;
+  const subCategoryId = req.query.subCategoryId;
+  const city = req.query.city;
+  const search = req.query.search;
 
   let query = {};
   if (status) query.status = status;
@@ -63,6 +76,57 @@ const getPaginatedRides = async (status = null, req) => {
     const today = new Date(yesterday);
     today.setDate(today.getDate() + 1);
     query.createdAt = { $gte: yesterday, $lt: today };
+  }
+
+  // Date range filtering
+  if (fromDate && toDate) {
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999);
+    query['rideInfo.selectedDate'] = { $gte: from, $lte: to };
+  } else if (fromDate) {
+    const from = new Date(fromDate);
+    query['rideInfo.selectedDate'] = { $gte: from };
+  } else if (toDate) {
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999);
+    query['rideInfo.selectedDate'] = { $lte: to };
+  }
+
+  // Category filtering
+  if (categoryId) {
+    query['rideInfo.categoryId'] = categoryId;
+  }
+
+  // Subcategory filtering
+  if (subCategoryId) {
+    query['rideInfo.subcategoryId'] = subCategoryId;
+  }
+
+  // City filtering
+  if (city) {
+    const escapedCity = escapeRegex(city);
+    query['rideInfo.fromLocation.address'] = { $regex: escapedCity, $options: 'i' };
+  }
+
+  // Search filtering
+  if (search) {
+    const escapedSearch = escapeRegex(search);
+    const searchConditions = [
+      { 'riderInfo.riderName': { $regex: escapedSearch, $options: 'i' } },
+      { 'riderInfo.riderMobile': { $regex: escapedSearch, $options: 'i' } },
+      { 'driverInfo.driverName': { $regex: escapedSearch, $options: 'i' } },
+      { 'driverInfo.driverMobile': { $regex: escapedSearch, $options: 'i' } },
+      { 'staffInfo.staffName': { $regex: escapedSearch, $options: 'i' } },
+      { 'staffInfo.staffMobile': { $regex: escapedSearch, $options: 'i' } }
+    ];
+    
+    // Check if search term is a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(search)) {
+      searchConditions.push({ _id: search });
+    }
+    
+    query.$or = searchConditions;
   }
 
   const [rides, totalRides] = await Promise.all([
@@ -417,6 +481,9 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       ? selectedCategoryDoc?.priceCategoryName
       : selectedCategoryDoc?.name;
 
+    // Format selectedUsage based on service type
+    const formattedSelectedUsage = formatUsage(selectedUsage, categoryName, subcategoryName, subSubcategoryName);
+
     // ✅ SERVER-SIDE CALCULATION & VALIDATION
     let calculatedCharges;
     try {
@@ -583,7 +650,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
 
         selectedDate: rideDate,
         selectedTime,
-        selectedUsage,
+        selectedUsage: formattedSelectedUsage,
         SelectedDays: durationValue,
         selectedDates: selectedDates || [],
         remainingDates: selectedDates || [],
