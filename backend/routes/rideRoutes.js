@@ -22,6 +22,7 @@ const withdrawalRequest = require("../DriverModel/withdrawalRequest");
 const { checkDriverWalletBalance } = require('../utils/walletBalanceChecker');
 const NotificationService = require('../Services/notificationService');
 const { calculateDriverRideCost, calculateCabRideCost, calculateParcelRideCost } = require('../utils/rideCalculation');
+const { formatUsage } = require('../utils/formatUsage');
 const priceCategory = require("../models/PriceCategory");
 const Car = require('../models/Car');
 const ParcelVehicle = require('../models/ParcelVehicle');
@@ -45,6 +46,12 @@ const getPaginatedRides = async (status = null, req) => {
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
   const dateFilter = req.query.date;
+  const fromDate = req.query.fromDate;
+  const toDate = req.query.toDate;
+  const categoryId = req.query.categoryId;
+  const subCategoryId = req.query.subCategoryId;
+  const city = req.query.city;
+  const search = req.query.search;
 
   let query = {};
   if (status) query.status = status;
@@ -63,6 +70,55 @@ const getPaginatedRides = async (status = null, req) => {
     const today = new Date(yesterday);
     today.setDate(today.getDate() + 1);
     query.createdAt = { $gte: yesterday, $lt: today };
+  }
+
+  // Date range filtering
+  if (fromDate && toDate) {
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999);
+    query['rideInfo.selectedDate'] = { $gte: from, $lte: to };
+  } else if (fromDate) {
+    const from = new Date(fromDate);
+    query['rideInfo.selectedDate'] = { $gte: from };
+  } else if (toDate) {
+    const to = new Date(toDate);
+    to.setHours(23, 59, 59, 999);
+    query['rideInfo.selectedDate'] = { $lte: to };
+  }
+
+  // Category filtering
+  if (categoryId) {
+    query['rideInfo.categoryId'] = categoryId;
+  }
+
+  // Subcategory filtering
+  if (subCategoryId) {
+    query['rideInfo.subcategoryId'] = subCategoryId;
+  }
+
+  // City filtering
+  if (city) {
+    query['rideInfo.fromLocation.address'] = { $regex: city, $options: 'i' };
+  }
+
+  // Search filtering
+  if (search) {
+    const searchConditions = [
+      { 'riderInfo.riderName': { $regex: search, $options: 'i' } },
+      { 'riderInfo.riderMobile': { $regex: search, $options: 'i' } },
+      { 'driverInfo.driverName': { $regex: search, $options: 'i' } },
+      { 'driverInfo.driverMobile': { $regex: search, $options: 'i' } },
+      { 'staffInfo.staffName': { $regex: search, $options: 'i' } },
+      { 'staffInfo.staffMobile': { $regex: search, $options: 'i' } }
+    ];
+    
+    // Check if search term looks like a valid ObjectId (24 hex characters)
+    if (search.match(/^[0-9a-fA-F]{24}$/)) {
+      searchConditions.push({ _id: search });
+    }
+    
+    query.$or = searchConditions;
   }
 
   const [rides, totalRides] = await Promise.all([
@@ -417,6 +473,9 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       ? selectedCategoryDoc?.priceCategoryName
       : selectedCategoryDoc?.name;
 
+    // Format selectedUsage based on service type
+    const formattedSelectedUsage = formatUsage(selectedUsage, categoryName, subcategoryName, subSubcategoryName);
+
     // ✅ SERVER-SIDE CALCULATION & VALIDATION
     let calculatedCharges;
     try {
@@ -583,7 +642,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
 
         selectedDate: rideDate,
         selectedTime,
-        selectedUsage,
+        selectedUsage: formattedSelectedUsage,
         SelectedDays: durationValue,
         selectedDates: selectedDates || [],
         remainingDates: selectedDates || [],

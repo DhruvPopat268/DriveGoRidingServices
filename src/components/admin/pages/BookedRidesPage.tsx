@@ -7,8 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
+import { RideFilters } from "../shared/RideFilters";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../../lib/axiosInterceptor";
+
+interface SubCategory {
+  _id: string;
+  name: string;
+  categoryId: string;
+}
 
 interface BookedRidesPageProps {
   onNavigateToDetail?: (rideId: string) => void;
@@ -33,12 +41,79 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
   const [selectedRideForCharges, setSelectedRideForCharges] = useState(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Filter states (applied filters)
+  const [appliedFilterCategory, setAppliedFilterCategory] = useState<string>('all');
+  const [appliedFilterSubcategory, setAppliedFilterSubcategory] = useState<string>('all');
+  const [appliedFilterCity, setAppliedFilterCity] = useState<string>('all');
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState<string>('');
+  const [appliedDateRange, setAppliedDateRange] = useState({ from: '', to: '' });
+
+  // Filter states (UI states - not applied until Apply is clicked)
+  const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+  const [filterCity, setFilterCity] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<SubCategory[]>([]);
+
+  // Fetch subcategories
+  const { data: subCategories = [] } = useQuery({
+    queryKey: ["subcategories"],
+    queryFn: async () => {
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      return response.data || [];
+    },
+  });
+
   useEffect(() => {
     fetchRides();
-  }, [currentPage, dateFilter, recordsPerPage]);
+  }, [currentPage, dateFilter, appliedDateRange, recordsPerPage, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedSearchQuery]);
+
+  // Filter subcategories for filter dropdown
+  useEffect(() => {
+    if (filterCategory && filterCategory !== 'all') {
+      const filtered = subCategories.filter((sub: SubCategory) => sub.categoryId === filterCategory);
+      setFilterSubcategoriesForFilter(filtered);
+      setFilterSubcategory('all');
+    } else {
+      setFilterSubcategoriesForFilter([]);
+      setFilterSubcategory('all');
+    }
+  }, [filterCategory, subCategories]);
 
   const handleDateFilter = (filter: string) => {
     setDateFilter(filter === dateFilter ? '' : filter);
+    setDateRange({ from: '', to: '' });
+    setCurrentPage(1);
+  };
+
+  const handleDateRangeChange = (field: 'from' | 'to', value: string) => {
+    setDateRange(prev => ({ ...prev, [field]: value }));
+    setDateFilter('');
+    setCurrentPage(1);
+  };
+
+  const applyFilters = () => {
+    setAppliedFilterCategory(filterCategory);
+    setAppliedFilterSubcategory(filterSubcategory);
+    setAppliedFilterCity(filterCity);
+    setAppliedSearchQuery(searchQuery);
+    setAppliedDateRange(dateRange);
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilterCategory('all');
+    setFilterSubcategory('all');
+    setFilterCity('all');
+    setSearchQuery('');
+    setDateFilter('');
+    setDateRange({ from: '', to: '' });
+    setAppliedFilterCategory('all');
+    setAppliedFilterSubcategory('all');
+    setAppliedFilterCity('all');
+    setAppliedSearchQuery('');
+    setAppliedDateRange({ from: '', to: '' });
     setCurrentPage(1);
   };
 
@@ -57,7 +132,13 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: recordsPerPage.toString(),
-        ...(dateFilter && { date: dateFilter })
+        ...(dateFilter && { date: dateFilter }),
+        ...(appliedDateRange.from && { fromDate: appliedDateRange.from }),
+        ...(appliedDateRange.to && { toDate: appliedDateRange.to }),
+        ...(appliedFilterCategory && appliedFilterCategory !== 'all' && { categoryId: appliedFilterCategory }),
+        ...(appliedFilterSubcategory && appliedFilterSubcategory !== 'all' && { subCategoryId: appliedFilterSubcategory }),
+        ...(appliedFilterCity && appliedFilterCity !== 'all' && { city: appliedFilterCity }),
+        ...(appliedSearchQuery && { search: appliedSearchQuery })
       });
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/booked?${params}`);
       const data = response.data;
@@ -187,6 +268,24 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
           </CardTitle>
         </CardHeader>
         <div className="px-6">
+          {/* Filter Section */}
+          <RideFilters
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filterCategory={filterCategory}
+            setFilterCategory={setFilterCategory}
+            filterSubcategory={filterSubcategory}
+            setFilterSubcategory={setFilterSubcategory}
+            filterCity={filterCity}
+            setFilterCity={setFilterCity}
+            dateRange={dateRange}
+            handleDateRangeChange={handleDateRangeChange}
+            clearFilters={clearFilters}
+            applyFilters={applyFilters}
+            dateFilter={dateFilter}
+            filterSubcategoriesForFilter={filterSubcategoriesForFilter}
+          />
+
           <div className="flex items-center justify-end mb-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Show</span>
@@ -210,20 +309,22 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
             <table className="w-full table-fixed border-collapse">
               <colgroup>
                 <col style={{ width: '3%' }} />
+                <col style={{ width: '12%' }} />
                 <col style={{ width: '10%' }} />
-                <col style={{ width: '14%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '12%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '8%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
                 <col style={{ width: '8%' }} />
-                <col style={{ width: '11%' }} />
+                <col style={{ width: '10%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left p-3 font-semibold text-gray-700">#</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
@@ -242,6 +343,12 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                     <td className="p-3">
                       <div className="font-mono text-sm ">
                         {index + 1 + (currentPage - 1) * limit}
+                      </div>
+                    </td>
+
+                    <td className="p-3">
+                      <div className="font-mono text-xs text-gray-600">
+                        {ride._id}
                       </div>
                     </td>
 
