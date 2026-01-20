@@ -184,8 +184,8 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
           const finalExtraMinute = baseExtraMinute + (baseExtraMinute * gst / 100);
           
           rideCostData = {
-            includedKm: includedKm[0] || "0",
-            includedMinutes: includedMinutes[0] || "0", 
+            includedKm: (includedKm && includedKm[0]) || "0",
+            includedMinutes: (includedMinutes && includedMinutes[0]) || "0", 
             finalExtraChargePerKm: parseFloat(finalExtraKm.toFixed(2)),
             finalExtraChargePerMinute: parseFloat(finalExtraMinute.toFixed(2))
           };
