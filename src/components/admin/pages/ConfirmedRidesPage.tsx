@@ -88,6 +88,11 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
     setCurrentPage(1);
   };
 
+  const applyFilters = () => {
+    setCurrentPage(1);
+    fetchRides();
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -202,6 +207,7 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
             dateRange={dateRange}
             handleDateRangeChange={handleDateRangeChange}
             clearFilters={clearFilters}
+            applyFilters={applyFilters}
             dateFilter={dateFilter}
             filterSubcategoriesForFilter={filterSubcategoriesForFilter}
           />

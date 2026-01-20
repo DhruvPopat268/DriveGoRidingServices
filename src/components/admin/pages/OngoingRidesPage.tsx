@@ -76,6 +76,7 @@ export const OngoingRidesPage = ({ onNavigateToDetail }: OngoingRidesPageProps) 
   const handleDateFilter = (filter: string) => {
     setDateFilter(filter === dateFilter ? '' : filter);
     setDateRange({ from: '', to: '' });
+    setAppliedDateRange({ from: '', to: '' });
     setCurrentPage(1);
   };
 

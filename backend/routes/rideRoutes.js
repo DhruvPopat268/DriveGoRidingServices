@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Ride = require('../models/Ride'); // Ensure this path is correct
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure this path is correct
 const router = express.Router();
@@ -39,6 +40,11 @@ const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 const AdminWalletLedger = require("../models/AdminWalletLedger");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// Helper function to escape regex metacharacters
+const escapeRegex = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
 
 // Helper function for pagination and date filtering
 const getPaginatedRides = async (status = null, req) => {
@@ -99,22 +105,24 @@ const getPaginatedRides = async (status = null, req) => {
 
   // City filtering
   if (city) {
-    query['rideInfo.fromLocation.address'] = { $regex: city, $options: 'i' };
+    const escapedCity = escapeRegex(city);
+    query['rideInfo.fromLocation.address'] = { $regex: escapedCity, $options: 'i' };
   }
 
   // Search filtering
   if (search) {
+    const escapedSearch = escapeRegex(search);
     const searchConditions = [
-      { 'riderInfo.riderName': { $regex: search, $options: 'i' } },
-      { 'riderInfo.riderMobile': { $regex: search, $options: 'i' } },
-      { 'driverInfo.driverName': { $regex: search, $options: 'i' } },
-      { 'driverInfo.driverMobile': { $regex: search, $options: 'i' } },
-      { 'staffInfo.staffName': { $regex: search, $options: 'i' } },
-      { 'staffInfo.staffMobile': { $regex: search, $options: 'i' } }
+      { 'riderInfo.riderName': { $regex: escapedSearch, $options: 'i' } },
+      { 'riderInfo.riderMobile': { $regex: escapedSearch, $options: 'i' } },
+      { 'driverInfo.driverName': { $regex: escapedSearch, $options: 'i' } },
+      { 'driverInfo.driverMobile': { $regex: escapedSearch, $options: 'i' } },
+      { 'staffInfo.staffName': { $regex: escapedSearch, $options: 'i' } },
+      { 'staffInfo.staffMobile': { $regex: escapedSearch, $options: 'i' } }
     ];
     
-    // Check if search term looks like a valid ObjectId (24 hex characters)
-    if (search.match(/^[0-9a-fA-F]{24}$/)) {
+    // Check if search term is a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(search)) {
       searchConditions.push({ _id: search });
     }
     
