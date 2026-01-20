@@ -390,6 +390,12 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                     </div>
                   )}
                 </div>
+                {rideDetails.rideInfo.selectedUsage && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Usage</label>
+                    <p className="text-lg font-medium">{rideDetails.rideInfo.selectedUsage}</p>
+                  </div>
+                )}
               </div>
 
               <Separator />

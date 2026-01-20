@@ -235,16 +235,17 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
             <table className="w-full table-fixed border-collapse">
               <colgroup>
                 <col style={{ width: '3%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '8%' }} />
                 <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '13%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '7%' }} />
+                <col style={{ width: '8%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '7%' }} />
-                <col style={{ width: '8%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
                 <col style={{ width: '8%' }} />
               </colgroup>
               <thead>
@@ -255,6 +256,7 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Driver Category</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Usage</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Payment Method</th>
@@ -345,6 +347,12 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
 
                         </div>
                       )}
+                    </td>
+
+                    <td className="p-3">
+                      <div className="text-sm text-gray-700">
+                        {ride.rideInfo.selectedUsage || 'N/A'}
+                      </div>
                     </td>
 
                     <td className="p-3">
