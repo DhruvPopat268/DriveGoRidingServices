@@ -19,21 +19,21 @@ const formatUsage = (usage, categoryName, subcategoryName, subSubcategoryName) =
   
   if (isDistanceBased) {
     // Distance-based: show Km first, then formatted Minutes
-    if (kmMatch) {
+    if (kmMatch && parseInt(kmMatch[1]) > 0) {
       result += `${kmMatch[1]} Km`;
     }
     
-    if (minsMatch) {
+    if (minsMatch && parseInt(minsMatch[1]) > 0) {
       const formattedTime = formatMinutes(parseInt(minsMatch[1]));
       result += result ? ` & ${formattedTime}` : formattedTime;
     }
   } else {
     // Time-based: show formatted Minutes first, then Km
-    if (minsMatch) {
+    if (minsMatch && parseInt(minsMatch[1]) > 0) {
       result += formatMinutes(parseInt(minsMatch[1]));
     }
     
-    if (kmMatch) {
+    if (kmMatch && parseInt(kmMatch[1]) > 0) {
       result += result ? ` & ${kmMatch[1]} Km` : `${kmMatch[1]} Km`;
     }
   }
