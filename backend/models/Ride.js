@@ -123,7 +123,7 @@ const rideSchema = new mongoose.Schema(
     paymentType: { type: String, enum: ["cash", "wallet"], required: true },
     bookedBy: { type: String, enum: ["USER", "STAFF", "AGENT"], default: "USER" },
     cancellationReason: { type: String },
-    whoCancel: { type: String, enum: ["Rider", "Driver"] },
+    whoCancel: { type: String, enum: ["Rider", "Driver", "Admin"] },
 
     status: {
       type: String,
