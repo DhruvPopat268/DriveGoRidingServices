@@ -2698,6 +2698,81 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
   }
 });
 
+// Admin cancel ride - Full cancellation only
+router.post("/admin/cancel", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId, reason } = req.body;
+
+    // Validate rideId
+    const currentRide = await Ride.findById(rideId);
+    if (!currentRide) {
+      return res.status(404).json({ success: false, message: "Ride not found" });
+    }
+
+    // Validate ride status - only allow CONFIRMED rides to be cancelled by admin
+    if (currentRide.status !== 'CONFIRMED') {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Cannot cancel ride with status ${currentRide.status}. Only CONFIRMED rides can be cancelled by admin.` 
+      });
+    }
+
+    // Validate that ride has a driver assigned
+    if (!currentRide.driverId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Cannot cancel ride without assigned driver" 
+      });
+    }
+
+    // Update original ride to CANCELLED
+    await Ride.findByIdAndUpdate(rideId, {
+      status: "CANCELLED",
+      whoCancel: "Admin",
+      cancellationReason: reason || "Driver removed by admin"
+    });
+
+    // Update driver status to WAITING
+    await Driver.findByIdAndUpdate(currentRide.driverId, { rideStatus: "WAITING" });
+
+    // Create new BOOKED ride with same data
+    const newRide = new Ride({
+      riderId: currentRide.riderId,
+      riderInfo: currentRide.riderInfo,
+      ...(currentRide.staffId && {
+        staffId: currentRide.staffId,
+        staffInfo: currentRide.staffInfo
+      }),
+      rideInfo: {
+        ...currentRide.rideInfo.toObject(),
+        remainingDates: currentRide.rideInfo.selectedDates
+      },
+      isReferralEarningUsed: currentRide.isReferralEarningUsed,
+      referralEarningUsedAmount: currentRide.referralEarningUsedAmount,
+      totalPayable: currentRide.totalPayable,
+      paymentType: currentRide.paymentType,
+      bookedBy: currentRide.bookedBy,
+      status: "BOOKED"
+    });
+
+    await newRide.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Driver removed and ride reassigned successfully",
+      newRideId: newRide._id
+    });
+
+  } catch (error) {
+    console.error("Admin cancel ride error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal Server Error", 
+      error: error.message 
+    });
+  }
+});
+
 // update status to extend 
 router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
   try {

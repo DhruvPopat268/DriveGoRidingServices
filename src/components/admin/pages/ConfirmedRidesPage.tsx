@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, Clock, User, Phone, Calendar, Eye, Loader, ChevronLeft, ChevronRight, UserMinus } from "lucide-react";
 import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AdminExtraChargesDialog } from "../AdminExtraChargesDialog";
 import { RideFilters } from "../shared/RideFilters";
 import { useState, useEffect } from "react";
@@ -33,6 +34,9 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
   const limit = recordsPerPage;
   const [showExtraChargesDialog, setShowExtraChargesDialog] = useState(false);
   const [selectedRideForCharges, setSelectedRideForCharges] = useState(null);
+  const [removingDriver, setRemovingDriver] = useState(false);
+  const [showRemoveDriverDialog, setShowRemoveDriverDialog] = useState(false);
+  const [selectedRideForRemoval, setSelectedRideForRemoval] = useState(null);
 
   // Filter states
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -143,6 +147,34 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
 
   const formatCurrency = (amount) => {
     return `₹${amount?.toFixed(2) || '0.00'}`;
+  };
+
+  const handleRemoveDriver = (ride) => {
+    if (!ride.driverInfo) {
+      alert('No driver assigned to this ride');
+      return;
+    }
+    setSelectedRideForRemoval(ride);
+    setShowRemoveDriverDialog(true);
+  };
+
+  const confirmDriverRemoval = async () => {
+    if (!selectedRideForRemoval) return;
+    setRemovingDriver(true);
+    try {
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/admin/cancel`, {
+        rideId: selectedRideForRemoval._id,
+        reason: 'Driver removed by admin'
+      });
+      setShowRemoveDriverDialog(false);
+      setSelectedRideForRemoval(null);
+      fetchRides();
+    } catch (error) {
+      console.error('Error removing driver:', error);
+      alert('Failed to remove driver. Please try again.');
+    } finally {
+      setRemovingDriver(false);
+    }
   };
 
   if (loading) {
@@ -407,6 +439,16 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
                         </Button>
                         <Button
                           size="sm"
+                          variant="destructive"
+                          className="h-8 px-3 text-xs"
+                          onClick={() => handleRemoveDriver(ride)}
+                          disabled={removingDriver}
+                          title={`Remove driver: ${ride.driverInfo.driverName}`}
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
                           variant="secondary"
                           className="h-8 px-3 text-xs"
                           onClick={() => {
@@ -498,6 +540,28 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
         rideId={selectedRideForCharges?._id || ''}
         onSuccess={fetchRides}
       />
+
+      <Dialog open={showRemoveDriverDialog} onOpenChange={setShowRemoveDriverDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Driver from Ride</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to remove driver <strong>{selectedRideForRemoval?.driverInfo?.driverName}</strong> from this ride?
+            </p>
+            <p className="text-xs text-gray-500">
+              This action will remove the assigned driver from the ride.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRemoveDriverDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDriverRemoval} disabled={removingDriver}>
+              {removingDriver ? 'Removing...' : 'Remove Driver'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
