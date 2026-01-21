@@ -111,19 +111,27 @@ const getPaginatedRides = async (status = null, req) => {
 
   // Search filtering
   if (search) {
-    const escapedSearch = escapeRegex(search);
-    const searchConditions = [
-      { 'riderInfo.riderName': { $regex: escapedSearch, $options: 'i' } },
-      { 'riderInfo.riderMobile': { $regex: escapedSearch, $options: 'i' } },
-      { 'driverInfo.driverName': { $regex: escapedSearch, $options: 'i' } },
-      { 'driverInfo.driverMobile': { $regex: escapedSearch, $options: 'i' } },
-      { 'staffInfo.staffName': { $regex: escapedSearch, $options: 'i' } },
-      { 'staffInfo.staffMobile': { $regex: escapedSearch, $options: 'i' } }
-    ];
+    const searchConditions = [];
     
-    // Check if search term is a valid ObjectId
-    if (mongoose.Types.ObjectId.isValid(search)) {
-      searchConditions.push({ _id: search });
+    // Check if search term is a number (for exact bookingId match only)
+    if (!isNaN(search) && search.trim() !== '') {
+      searchConditions.push({ bookingId: parseInt(search) });
+    } else {
+      // For non-numeric searches, search in text fields
+      const escapedSearch = escapeRegex(search);
+      searchConditions.push(
+        { 'riderInfo.riderName': { $regex: escapedSearch, $options: 'i' } },
+        { 'riderInfo.riderMobile': { $regex: escapedSearch, $options: 'i' } },
+        { 'driverInfo.driverName': { $regex: escapedSearch, $options: 'i' } },
+        { 'driverInfo.driverMobile': { $regex: escapedSearch, $options: 'i' } },
+        { 'staffInfo.staffName': { $regex: escapedSearch, $options: 'i' } },
+        { 'staffInfo.staffMobile': { $regex: escapedSearch, $options: 'i' } }
+      );
+      
+      // Also check if it's a valid ObjectId
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        searchConditions.push({ _id: search });
+      }
     }
     
     query.$or = searchConditions;
@@ -223,7 +231,17 @@ router.get("/booking/:id", adminAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Booking ID is required" });
     }
 
-    const booking = await Ride.findById(id);
+    let booking;
+    
+    // Try to find by bookingId first (if it's a number)
+    if (!isNaN(id) && id.trim() !== '') {
+      booking = await Ride.findOne({ bookingId: parseInt(id) });
+    }
+    
+    // If not found and it's a valid ObjectId, try finding by _id
+    if (!booking && mongoose.Types.ObjectId.isValid(id)) {
+      booking = await Ride.findById(id);
+    }
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });

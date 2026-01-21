@@ -267,7 +267,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
       riderAddress: rideDetails.rideInfo.fromLocation.address,
       tripType: `${rideDetails.rideInfo.categoryName} - ${rideDetails.rideInfo.subcategoryName}`,
       gstNumber: '29ABCDE1234F1Z5',
-      invoiceNumber: rideDetails._id.slice(-8),
+      invoiceNumber: rideDetails.bookingId || rideDetails._id.slice(-8),
       date: formatDateToDDMMYY(rideDetails.rideInfo.selectedDate),
       totalPayable: rideDetails.totalPayable,
       beforeTripPay: rideDetails.rideInfo.subtotal + (rideDetails.rideInfo.extraKmCharges || 0) + (rideDetails.rideInfo.extraMinutesCharges || 0),
@@ -300,29 +300,28 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
         const canvas = await html2canvas(invoiceElement, {
           scale: 2,
           useCORS: true,
-          allowTaint: true
+          allowTaint: true,
+          height: invoiceElement.scrollHeight,
+          windowHeight: invoiceElement.scrollHeight
         });
 
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
         const imgWidth = 210;
-        const pageHeight = 295;
+        const pageHeight = 297;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let heightLeft = imgHeight;
 
-        let position = 0;
-
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
+        // Force single page by scaling down if needed
+        if (imgHeight > pageHeight) {
+          const scaleFactor = pageHeight / imgHeight;
+          const scaledWidth = imgWidth * scaleFactor;
+          const scaledHeight = pageHeight;
+          pdf.addImage(imgData, 'PNG', (imgWidth - scaledWidth) / 2, 0, scaledWidth, scaledHeight);
+        } else {
+          pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
         }
 
-        pdf.save(`Hire4Drive-Invoice-${invoiceData.invoiceNumber}.pdf`);
+        pdf.save(`Hire4Drive-Invoice-${rideDetails.bookingId || rideDetails._id.slice(-8)}.pdf`);
       } catch (error) {
         console.error('Error generating PDF:', error);
       } finally {
@@ -376,7 +375,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
           <div>
             <h1 className="text-2xl font-bold">Ride Details</h1>
             <div className="flex items-center space-x-2">
-              <p className="text-gray-600">#{rideDetails._id.slice(-8).toUpperCase()}</p>
+              <p className="text-gray-600">#{rideDetails.bookingId}</p>
               <Badge className={getStatusColor(rideDetails.status)}>
                 {rideDetails.status}
               </Badge>

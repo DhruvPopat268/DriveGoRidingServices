@@ -329,25 +329,23 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <colgroup>
-                <col style={{ width: '3%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '6%' }} />
                 <col style={{ width: '5%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
                 <col style={{ width: '6%' }} />
+                <col style={{ width: '7%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 font-semibold text-gray-700">#</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
@@ -367,13 +365,9 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
               <tbody>
                 {rides.map((ride, index) => (
                   <tr key={ride._id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3 text-sm">
-                      {(currentPage - 1) * recordsPerPage + index + 1}
-                    </td>
-                    
                     <td className="p-3">
                       <div className="text-sm font-mono text-blue-600">
-                        {ride._id}
+                        {ride.bookingId || 'N/A'}
                       </div>
                     </td>
 

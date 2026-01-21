@@ -253,7 +253,7 @@ export const OngoingRidesPage = ({ onNavigateToDetail }: OngoingRidesPageProps) 
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <colgroup>
-                <col style={{ width: '3%' }} />
+                <col style={{ width: '5%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '12%' }} />
@@ -265,14 +265,13 @@ export const OngoingRidesPage = ({ onNavigateToDetail }: OngoingRidesPageProps) 
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '7%' }} />
-                <col style={{ width: '8%' }} />
+                <col style={{ width: '11%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 font-semibold text-gray-700">#</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
-                                    <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
-
+                  <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Driver Category</th>
@@ -289,8 +288,8 @@ export const OngoingRidesPage = ({ onNavigateToDetail }: OngoingRidesPageProps) 
                 {rides.map((ride, index) => (
                   <tr key={ride._id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3">
-                      <div className="font-mono text-sm ">
-                        {index + 1 + (currentPage - 1) * limit}
+                      <div className="font-mono text-sm text-blue-600">
+                        {ride.bookingId || 'N/A'}
                       </div>
                     </td>
 

@@ -69,7 +69,7 @@ export function generateInvoice(invoiceData: InvoiceData) {
           <div className="text-right min-w-[200px]">
             <div className="flex justify-between text-sm mb-1">
               <span className="font-semibold text-gray-700">Invoice #:</span>
-              <span className="text-gray-700">DDS00{invoiceData.invoiceNumber}</span>
+              <span className="text-gray-700">{invoiceData.invoiceNumber}</span>
             </div>
 
             <div className="flex justify-between text-sm mb-1">
