@@ -152,16 +152,6 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
   }
 });
 
-// Get all rides with all statuses
-router.get('/all', adminAuthMiddleware, async (req, res) => {
-  try {
-    const result = await getPaginatedRides(null, req);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
 router.get('/booked', adminAuthMiddleware, async (req, res) => {
   try {
     const result = await getPaginatedRides('BOOKED', req);

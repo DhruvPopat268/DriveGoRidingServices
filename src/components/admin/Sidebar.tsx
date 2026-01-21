@@ -46,6 +46,7 @@ const menuItems = [
     key: "rides-management",
     isDropdown: true,
     subItems: [
+      { icon: Bike, label: "All Rides", key: "all-rides" },
       { icon: Clock, label: "Booked Rides", key: "booked-rides" },
       { icon: CheckCircle, label: "Confirmed Rides", key: "confirmed-rides" },
       { icon: MapPin, label: "Reached Rides", key: "reached-rides" },
@@ -122,6 +123,7 @@ const menuItems = [
     key: "drivers-management",
     isDropdown: true,
     subItems: [
+      { icon: Users, label: "All Drivers", key: "drivers-all" },
       { icon: Users, label: "OnReview Registration Requests", key: "drivers-onreview" },
       { icon: Clock, label: "Pending Registration Requests", key: "drivers-pending" },
       { icon: CheckCircle, label: "Approved Registration Requests", key: "drivers-approved" },

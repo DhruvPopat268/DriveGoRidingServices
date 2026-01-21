@@ -15,6 +15,7 @@ import { LiveMap } from "@/components/admin/LiveMap";
 import { RidersPage } from "@/components/admin/pages/RidersPage";
 import { RidesPage } from "@/components/admin/pages/RidesPage";
 import { BookedRidesPage } from "@/components/admin/pages/BookedRidesPage";
+import { AllRidesPage } from "@/components/admin/pages/AllRidesPage";
 import { ConfirmedRidesPage } from "@/components/admin/pages/ConfirmedRidesPage";
 import { OngoingRidesPage } from "@/components/admin/pages/OngoingRidesPage";
 import { CompletedRidesPage } from "@/components/admin/pages/CompletedRidesPage";
@@ -51,6 +52,7 @@ import { DriverSubscriptionPage } from "@/components/admin/pages/DriverSubscript
 import { DriversOnReviewPage } from "@/components/admin/pages/DriversOnReviewPage";
 import { DriversPendingPage } from "@/components/admin/pages/DriversPendingPage";
 import { DriversApprovedPage } from "@/components/admin/pages/DriversApprovedPage";
+import { AllDriversPage } from "@/components/admin/pages/AllDriversPage";
 import { DriversPendingForPaymentPage } from "@/components/admin/pages/DriversPendingForPaymentPage";
 import { DriversRejectedPage } from "@/components/admin/pages/DriversRejectedPage";
 import { DriversDeletedPage } from "@/components/admin/pages/DriversDeletedPage";
@@ -228,6 +230,17 @@ const Index = () => {
             onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
           />
         );
+      case "all-rides":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : (
+          <AllRidesPage 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+          />
+        );
       case "booked-rides":
         return selectedRideId ? (
           <RideDetailsPage 
@@ -367,6 +380,23 @@ const Index = () => {
         return <RidersPage />;
       case "support":
         return <SupportPage />;
+      case "drivers-all":
+        return selectedRideId ? (
+          <RideDetailsPage 
+            rideId={selectedRideId} 
+            onBack={() => setSelectedRideId(null)} 
+          />
+        ) : selectedDriverId ? (
+          <DriverDetailPage 
+            driverId={selectedDriverId} 
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
+          />
+        ) : (
+          <AllDriversPage 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+          />
+        );
       case "drivers-onreview":
         return selectedRideId ? (
           <RideDetailsPage 
