@@ -580,7 +580,13 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                 <SelectContent>
                   {eligibleDrivers.map((driver) => (
                     <SelectItem key={driver._id} value={driver._id}>
-                      {driver.name} - {driver.mobile}
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full ${driver.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          <span>{driver.name} - {driver.mobile}</span>
+                        </div>
+                        <span className="text-xs text-gray-500 ml-2">- ₹{driver.currentBalance}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
