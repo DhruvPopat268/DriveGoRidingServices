@@ -125,6 +125,9 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
 
 router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
   try {
+    console.log("📝 /getInstructions - Request body:", JSON.stringify(req.body, null, 2));
+    console.log("📝 /getInstructions - User info:", req.rider ? 'Rider authenticated' : req.staff ? 'Staff authenticated' : 'No auth');
+    
     const {
       categoryId,
       subCategoryId,
@@ -137,8 +140,11 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
       selectedUsage
     } = req.body;
 
+    console.log("📝 Extracted fields:", { categoryId, subCategoryId, subSubCategoryId, driverCategoryId, carCategoryId, parcelCategoryId, vehicleTypeId, carId, selectedUsage });
+
     // categoryId & subCategoryId are minimum required
     if (!categoryId || !subCategoryId) {
+      console.log("❌ Missing required fields - categoryId:", categoryId, "subCategoryId:", subCategoryId);
       return res.status(400).json({
         success: false,
         message: "categoryId and subCategoryId are required",
@@ -155,22 +161,33 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
     if (parcelCategoryId) query.parcelCategoryId = parcelCategoryId;
     if (vehicleTypeId) query.vehicleTypeId = vehicleTypeId;
 
+    console.log("📝 Final query:", JSON.stringify(query, null, 2));
+
     // Fetch all instructions matching the given IDs
     const instructions = await Instruction.find(query);
+    console.log("📝 Found instructions count:", instructions.length);
+    console.log("📝 Instructions data:", instructions.map(i => ({ id: i._id, instructions: i.instructions })));
+    
     const instructionTexts = instructions.map((item) => item.instructions);
 
     // Get ride cost data if selectedUsage is provided
     let rideCostData = null;
     if (selectedUsage) {
+      console.log("📝 Processing ride cost data for selectedUsage:", selectedUsage);
       try {
         let fullData;
         if (driverCategoryId) {
+          console.log("📝 Using driver ride cost data");
           fullData = await getDriverRideIncludedData(categoryId, subCategoryId, subSubCategoryId, selectedUsage, driverCategoryId);
         } else if (carId) {
+          console.log("📝 Using cab ride cost data");
           fullData = await getCabRideIncludedData(categoryId, subCategoryId, subSubCategoryId, selectedUsage, carId);
         } else if (vehicleTypeId) {
+          console.log("📝 Using parcel ride cost data");
           fullData = await getParcelRideIncludedData(categoryId, subCategoryId, selectedUsage, vehicleTypeId);
         }
+        
+        console.log("📝 Full ride cost data:", fullData);
         
         // Filter out unwanted fields
         if (fullData) {
@@ -189,11 +206,14 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
             finalExtraChargePerKm: parseFloat(finalExtraKm.toFixed(2)),
             finalExtraChargePerMinute: parseFloat(finalExtraMinute.toFixed(2))
           };
+          console.log("📝 Processed ride cost data:", rideCostData);
         }
       } catch (error) {
-        console.error("Error fetching ride cost data:", error);
+        console.error("❌ Error fetching ride cost data:", error);
       }
     }
+
+    console.log("📝 Final response data:", { instructionTexts, rideCostData });
 
     return res.json({
       success: true,
@@ -201,7 +221,7 @@ router.post("/getInstructions", combinedAuthMiddleware, async (req, res) => {
       rideCostData
     });
   } catch (err) {
-    console.error("Error fetching instructions:", err);
+    console.error("❌ Error fetching instructions:", err);
     return res.status(500).json({
       success: false,
       message: "Server error: " + err.message,
