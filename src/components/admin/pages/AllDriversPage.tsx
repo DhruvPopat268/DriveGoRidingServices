@@ -31,14 +31,14 @@ interface Driver {
   ownership?: string;
   status: string;
   createdAt: string;
-  rejectedDate?: string;
+  approvedDate: string;
 }
 
-interface DriversRejectedPageProps {
+interface AllDriversPageProps {
   onNavigateToDetail?: (driverId: string) => void;
 }
 
-export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageProps) => {
+export const AllDriversPage = ({ onNavigateToDetail }: AllDriversPageProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -54,11 +54,11 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
 
   const fetchDrivers = async () => {
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/Rejected?page=${currentPage}&limit=${recordsPerPage}`);
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/all?page=${currentPage}&limit=${recordsPerPage}`);
       const data = response.data;
       setDrivers(Array.isArray(data.data) ? data.data : []);
-      setTotalPages(data.totalPages || 1);
-      setTotalRecords(data.totalRecords || 0);
+      setTotalPages(data.totalPages || Math.ceil((data.data?.length || 0) / recordsPerPage) || 1);
+      setTotalRecords(data.totalRecords || data.data?.length || 0);
     } catch (error) {
       console.error('Error fetching drivers:', error);
       setDrivers([]);
@@ -80,6 +80,19 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
     onNavigateToDetail?.(driverId);
   };
 
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'Approved': return 'default';
+      case 'Pending': return 'secondary';
+      case 'Onreview': return 'outline';
+      case 'Rejected': return 'destructive';
+      case 'PendingForPayment': return 'secondary';
+      case 'Suspended': return 'destructive';
+      case 'deleted': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -93,7 +106,7 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
     <div className="p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Driver Registration Requests - Rejected</CardTitle>
+          <CardTitle>All Drivers</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Records per page selector */}
@@ -128,7 +141,7 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
                 <TableHead>Permanent Address</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
-                <TableHead>Rejected Date</TableHead>
+                <TableHead>Approved Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -136,7 +149,7 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
               {drivers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={12} className="text-center py-8 text-gray-500">
-                    No drivers registration requests found
+                    No drivers found
                   </TableCell>
                 </TableRow>
               ) : (
@@ -155,13 +168,13 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
                     <TableCell>{driver.personalInformation.currentAddress}</TableCell>
                     <TableCell>{driver.personalInformation.permanentAddress}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{driver.status}</Badge>
+                      <Badge variant={getStatusBadgeVariant(driver.status)}>{driver.status}</Badge>
                     </TableCell>
                     <TableCell>
                       {new Date(driver.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      {driver.rejectedDate ? new Date(driver.rejectedDate).toLocaleDateString() : 'N/A'}
+                      {driver.approvedDate ? new Date(driver.approvedDate).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell>
                       <Button
@@ -180,58 +193,58 @@ export const DriversRejectedPage = ({ onNavigateToDetail }: DriversRejectedPageP
 
           {/* Pagination Controls */}
           <div className="flex items-center justify-between mt-4">
-            <div className="text-sm text-gray-600">
-              Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </Button>
-              
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNumber;
-                  if (totalPages <= 5) {
-                    pageNumber = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNumber = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNumber = totalPages - 4 + i;
-                  } else {
-                    pageNumber = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <Button
-                      key={pageNumber}
-                      variant={currentPage === pageNumber ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNumber)}
-                      className="w-8 h-8 p-0"
-                    >
-                      {pageNumber}
-                    </Button>
-                  );
-                })}
+              <div className="text-sm text-gray-600">
+                Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
               </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNumber;
+                    if (totalPages <= 5) {
+                      pageNumber = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNumber = totalPages - 4 + i;
+                    } else {
+                      pageNumber = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNumber}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-          </div>
         </CardContent>
       </Card>
     </div>

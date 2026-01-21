@@ -72,6 +72,7 @@ const permissionSections = [
     key: "drivers-management",
     label: "Drivers Registration Management",
     subItems: [
+      { key: "drivers-all", label: "All Drivers" },
       { key: "drivers-onreview", label: "OnReview Registration Requests" },
       { key: "drivers-pending", label: "Pending Registration Requests" },
       { key: "drivers-approved", label: "Approved Registration Requests" },
@@ -87,6 +88,7 @@ const permissionSections = [
     key: "rides-management",
     label: "Rides Management",
     subItems: [
+      { key: "all-rides", label: "All Rides" },
       { key: "booked-rides", label: "Booked Rides" },
       { key: "confirmed-rides", label: "Confirmed Rides" },
       { key: "ongoing-rides", label: "Ongoing Rides" },
@@ -654,7 +656,7 @@ export const RBACManagementPage = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
-          {/* <TabsTrigger value="permissions">Permissions</TabsTrigger> */}
+           <TabsTrigger value="permissions">Permissions</TabsTrigger> 
           <TabsTrigger value="roles">Roles</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>

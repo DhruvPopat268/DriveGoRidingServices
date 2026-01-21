@@ -16,6 +16,7 @@ import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
   _id: string;
+  mobile: string;
   personalInformation: {
     fullName: string;
     currentAddress: string;
@@ -119,6 +120,7 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
               <TableRow>
                 <TableHead>Index</TableHead>
                 <TableHead>Full Name</TableHead>
+                <TableHead>Mobile</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Subcategory</TableHead>
                 <TableHead>Ownership</TableHead>
@@ -133,7 +135,7 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
             <TableBody>
               {drivers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                     No drivers registration requests found
                   </TableCell>
                 </TableRow>
@@ -144,6 +146,7 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
                     <TableCell className="font-medium">
                       {driver.personalInformation.fullName}
                     </TableCell>
+                    <TableCell>{driver.mobile}</TableCell>
                     <TableCell>{driver.personalInformation.category?.name || "N/A"}</TableCell>
                     <TableCell>
                       {driver.personalInformation.subCategory?.map(sub => sub.name).join(", ") || "N/A"}

@@ -442,7 +442,7 @@ router.get("/Pending",adminAuthMiddleware, async (req, res) => {
           select: "name"
         }
       ])
-      .sort({ approvedDate: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -478,7 +478,7 @@ router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
           select: "name"
         }
       ])
-      .sort({ approvedDate: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -550,7 +550,7 @@ router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
           select: "name"
         }
       ])
-      .sort({ approvedDate: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -586,7 +586,7 @@ router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
           select: "name"
         }
       ])
-      .sort({ approvedDate: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -622,7 +622,7 @@ router.get("/deleted",adminAuthMiddleware, async (req, res) => {
           select: "name"
         }
       ])
-      .sort({ approvedDate: -1 })
+      .sort({ deletedDate: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -658,7 +658,7 @@ router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
           select: "name"
         }
       ])
-      .sort({ approvedDate: -1 })
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -681,6 +681,43 @@ router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
     res.status(200).json({ 
       success: true, 
       data: driversWithSuspendInfo,
+      totalRecords,
+      totalPages,
+      currentPage: page
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get all drivers with all statuses
+router.get("/all", adminAuthMiddleware, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const totalRecords = await Driver.countDocuments();
+    const totalPages = Math.ceil(totalRecords / limit);
+
+    const drivers = await Driver.find()
+      .populate([
+        {
+          path: "personalInformation.category",
+          select: "name"
+        },
+        {
+          path: "personalInformation.subCategory",
+          select: "name"
+        }
+      ])
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({ 
+      success: true, 
+      data: drivers,
       totalRecords,
       totalPages,
       currentPage: page

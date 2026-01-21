@@ -3596,10 +3596,11 @@ router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
     if (categoryNameLower === 'driver') {
       eligibleDrivers = await Driver.find({
         status: 'Approved',
+        rideStatus: 'WAITING',
         'personalInformation.category': categoryId,
         'personalInformation.subCategory': { $in: [subcategoryId] },
         driverCategory: selectedCategoryId
-      }).select('personalInformation.fullName mobile');
+      }).select('personalInformation.fullName mobile isOnline');
     } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
       const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
 
@@ -3615,17 +3616,27 @@ router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
         eligibleDrivers = await Driver.find({
           _id: { $in: assignedDriverIds },
           status: 'Approved',
+          rideStatus: 'WAITING',
           'personalInformation.category': categoryId,
           'personalInformation.subCategory': { $in: [subcategoryId] },
           ownership: { $ne: 'Owner' }
-        }).select('personalInformation.fullName mobile');
+        }).select('personalInformation.fullName mobile isOnline');
       }
     }
+
+    const driverIds = eligibleDrivers.map(driver => driver._id);
+    const wallets = await driverWallet.find({ driverId: { $in: driverIds } }).select('driverId balance');
+    const walletMap = wallets.reduce((map, wallet) => {
+      map[wallet.driverId.toString()] = wallet.balance || 0;
+      return map;
+    }, {});
 
     const drivers = eligibleDrivers.map(driver => ({
       _id: driver._id,
       name: driver.personalInformation?.fullName || 'N/A',
-      mobile: driver.mobile || 'N/A'
+      mobile: driver.mobile || 'N/A',
+      isOnline: driver.isOnline || false,
+      currentBalance: walletMap[driver._id.toString()] || 0
     }));
 
     res.json({
