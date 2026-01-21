@@ -299,6 +299,11 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
+    // Validate driverId
+    if (!driverId || !mongoose.Types.ObjectId.isValid(driverId)) {
+      return res.status(400).json({ message: "Valid driver ID is required" });
+    }
+
     // Get ride details for wallet balance check
     const ride = await Ride.findById(rideId);
     if (!ride) {
@@ -324,12 +329,12 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
       }
     }
 
-    // Check if driver already has a confirmed ride
-    if (driverInfo.rideStatus === 'CONFIRMED') {
+    // Check if driver is available for assignment
+    if (driverInfo.rideStatus !== 'WAITING') {
       return res.status(400).json({
         success: false,
-        message: "Driver already has an active ride. Please wait for current ride completion.",
-        errorCode: 'RIDE_ALREADY_ACTIVE'
+        message: "Driver is not available for assignment. Current status: " + driverInfo.rideStatus,
+        errorCode: 'RIDE_NOT_AVAILABLE'
       });
     }
 
