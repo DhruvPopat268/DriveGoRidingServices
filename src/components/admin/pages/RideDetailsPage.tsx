@@ -17,10 +17,14 @@ import {
   Route,
   Timer,
   Loader,
-  UserCheck
+  UserCheck,
+  Download
 } from 'lucide-react';
 import { RupeeIcon } from '@/components/ui/RupeeIcon';
 import apiClient from '../../../lib/axiosInterceptor';
+import { generateInvoice, InvoiceData } from '../../../utils/invoiceGenerator';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface RideDetails {
   _id: string;
@@ -218,6 +222,115 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
     return parts.length > 0 ? parts.join(' & ') : null;
   };
 
+  const downloadInvoice = async () => {
+    if (!rideDetails) return;
+
+    const formatDateToDDMMYY = (dateString: string) => {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = String(date.getFullYear()).slice(-2);
+      return `${day}/${month}/${year}`;
+    };
+
+    const formatTimeTo12Hour = (timeString: string) => {
+      if (!timeString || timeString === 'N/A') return 'N/A';
+      
+      // Handle HH:MM:SS format
+      const timeParts = timeString.split(':');
+      if (timeParts.length >= 2) {
+        let hours = parseInt(timeParts[0]);
+        const minutes = timeParts[1];
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${hours}:${minutes} ${ampm}`;
+      }
+      
+      // Handle HH:MM format
+      if (timeString.includes(':')) {
+        const [hour, minute] = timeString.split(':');
+        let hours = parseInt(hour);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${hours}:${minute} ${ampm}`;
+      }
+      
+      return timeString;
+    };
+
+    const invoiceData: InvoiceData = {
+      riderName: rideDetails.riderInfo.riderName,
+      riderPhone: rideDetails.riderInfo.riderMobile,
+      riderEmail: 'N/A',
+      riderAddress: rideDetails.rideInfo.fromLocation.address,
+      tripType: `${rideDetails.rideInfo.categoryName} - ${rideDetails.rideInfo.subcategoryName}`,
+      gstNumber: '29ABCDE1234F1Z5',
+      invoiceNumber: rideDetails._id.slice(-8),
+      date: formatDateToDDMMYY(rideDetails.rideInfo.selectedDate),
+      totalPayable: rideDetails.totalPayable,
+      beforeTripPay: rideDetails.rideInfo.subtotal + (rideDetails.rideInfo.extraKmCharges || 0) + (rideDetails.rideInfo.extraMinutesCharges || 0),
+      totalGst: rideDetails.rideInfo.gstCharges,
+      discountAmount: rideDetails.rideInfo.discount,
+      pickupDateTime: `${formatDateToDDMMYY(rideDetails.rideInfo.selectedDate)} ${formatTimeTo12Hour(rideDetails.rideInfo.selectedTime)}`,
+      driverAcceptedTime: 'N/A',
+      reachedTime: formatTimeTo12Hour(rideDetails.rideInfo.driverReachTime),
+      tripStarted: formatTimeTo12Hour(rideDetails.rideInfo.ridseStartTime),
+      tripEnd: formatTimeTo12Hour(rideDetails.rideInfo.rideEndTime)
+    };
+
+    const invoiceElement = document.createElement('div');
+    invoiceElement.style.position = 'absolute';
+    invoiceElement.style.left = '-9999px';
+    invoiceElement.style.width = '210mm';
+    invoiceElement.style.minHeight = '297mm';
+    document.body.appendChild(invoiceElement);
+
+    const root = document.createElement('div');
+    invoiceElement.appendChild(root);
+
+    const { createRoot } = await import('react-dom/client');
+    const reactRoot = createRoot(root);
+    
+    reactRoot.render(generateInvoice(invoiceData));
+
+    setTimeout(async () => {
+      try {
+        const canvas = await html2canvas(invoiceElement, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgWidth = 210;
+        const pageHeight = 295;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+
+        let position = 0;
+
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        pdf.save(`Hire4Drive-Invoice-${invoiceData.invoiceNumber}.pdf`);
+      } catch (error) {
+        console.error('Error generating PDF:', error);
+      } finally {
+        document.body.removeChild(invoiceElement);
+      }
+    }, 1000);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -262,12 +375,22 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Ride Details</h1>
-            <p className="text-gray-600">#{rideDetails._id.slice(-8).toUpperCase()}</p>
+            <div className="flex items-center space-x-2">
+              <p className="text-gray-600">#{rideDetails._id.slice(-8).toUpperCase()}</p>
+              <Badge className={getStatusColor(rideDetails.status)}>
+                {rideDetails.status}
+              </Badge>
+            </div>
           </div>
         </div>
-        <Badge className={getStatusColor(rideDetails.status)}>
-          {rideDetails.status}
-        </Badge>
+        <div className="flex items-center space-x-3">
+          {rideDetails.status.toLowerCase() === 'completed' && (
+            <Button onClick={downloadInvoice} className="bg-blue-600 hover:bg-blue-700">
+              <Download className="w-4 h-4 mr-2" />
+              Download Invoice
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
