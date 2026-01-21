@@ -38,7 +38,14 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
   const [showRemoveDriverDialog, setShowRemoveDriverDialog] = useState(false);
   const [selectedRideForRemoval, setSelectedRideForRemoval] = useState(null);
 
-  // Filter states
+  // Filter states (applied filters)
+  const [appliedFilterCategory, setAppliedFilterCategory] = useState<string>('all');
+  const [appliedFilterSubcategory, setAppliedFilterSubcategory] = useState<string>('all');
+  const [appliedFilterCity, setAppliedFilterCity] = useState<string>('all');
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState<string>('');
+  const [appliedDateRange, setAppliedDateRange] = useState({ from: '', to: '' });
+
+  // Filter states (UI states - not applied until Apply is clicked)
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
   const [filterCity, setFilterCity] = useState<string>('all');
@@ -56,7 +63,7 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
 
   useEffect(() => {
     fetchRides();
-  }, [currentPage, dateFilter, dateRange, recordsPerPage, filterCategory, filterSubcategory, filterCity, searchQuery]);
+  }, [currentPage, dateFilter, appliedDateRange, recordsPerPage, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedSearchQuery]);
 
   // Filter subcategories for filter dropdown
   useEffect(() => {
@@ -82,6 +89,15 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
     setCurrentPage(1);
   };
 
+  const applyFilters = () => {
+    setAppliedFilterCategory(filterCategory);
+    setAppliedFilterSubcategory(filterSubcategory);
+    setAppliedFilterCity(filterCity);
+    setAppliedSearchQuery(searchQuery);
+    setAppliedDateRange(dateRange);
+    setCurrentPage(1);
+  };
+
   const clearFilters = () => {
     setFilterCategory('all');
     setFilterSubcategory('all');
@@ -89,12 +105,12 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
     setSearchQuery('');
     setDateFilter('');
     setDateRange({ from: '', to: '' });
+    setAppliedFilterCategory('all');
+    setAppliedFilterSubcategory('all');
+    setAppliedFilterCity('all');
+    setAppliedSearchQuery('');
+    setAppliedDateRange({ from: '', to: '' });
     setCurrentPage(1);
-  };
-
-  const applyFilters = () => {
-    setCurrentPage(1);
-    fetchRides();
   };
 
   const handlePageChange = (page: number) => {
@@ -113,12 +129,12 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
         page: currentPage.toString(),
         limit: recordsPerPage.toString(),
         ...(dateFilter && { date: dateFilter }),
-        ...(dateRange.from && { fromDate: dateRange.from }),
-        ...(dateRange.to && { toDate: dateRange.to }),
-        ...(filterCategory && filterCategory !== 'all' && { categoryId: filterCategory }),
-        ...(filterSubcategory && filterSubcategory !== 'all' && { subCategoryId: filterSubcategory }),
-        ...(filterCity && filterCity !== 'all' && { city: filterCity }),
-        ...(searchQuery && { search: searchQuery })
+        ...(appliedDateRange.from && { fromDate: appliedDateRange.from }),
+        ...(appliedDateRange.to && { toDate: appliedDateRange.to }),
+        ...(appliedFilterCategory && appliedFilterCategory !== 'all' && { categoryId: appliedFilterCategory }),
+        ...(appliedFilterSubcategory && appliedFilterSubcategory !== 'all' && { subCategoryId: appliedFilterSubcategory }),
+        ...(appliedFilterCity && appliedFilterCity !== 'all' && { city: appliedFilterCity }),
+        ...(appliedSearchQuery && { search: appliedSearchQuery })
       });
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/confirmed?${params}`);
       const data = response.data;
@@ -266,10 +282,10 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <colgroup>
-                <col style={{ width: '3%' }} />
+                <col style={{ width: '5%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '8%' }} />
-                <col style={{ width: '12%' }} />
+                <col style={{ width: '16%' }} />
                 <col style={{ width: '8%' }} />
                 <col style={{ width: '9%' }} />
                 <col style={{ width: '8%' }} />
@@ -278,11 +294,11 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '7%' }} />
-                <col style={{ width: '8%' }} />
+                <col style={{ width: '11%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 font-semibold text-gray-700">#</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
@@ -301,8 +317,8 @@ export const ConfirmedRidesPage = ({ onNavigateToDetail }: ConfirmedRidesPagePro
                 {rides.map((ride, index) => (
                   <tr key={ride._id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3">
-                      <div className="font-mono text-sm ">
-                        {index + 1 + (currentPage - 1) * limit}
+                      <div className="font-mono text-sm text-blue-600">
+                        {ride.bookingId || 'N/A'}
                       </div>
                     </td>
 

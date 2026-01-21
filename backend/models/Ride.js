@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { type } = require("os");
+const Counter = require("./Counter");
 
 const locationSchema = new mongoose.Schema(
   {
@@ -22,6 +23,7 @@ const personSchema = new mongoose.Schema(
 
 const rideSchema = new mongoose.Schema(
   {
+    bookingId: { type: Number, unique: true },
     riderId: { type: mongoose.Schema.Types.ObjectId, ref: "Rider", required: true },
     riderInfo: {
       riderName: { type: String },
@@ -143,5 +145,21 @@ const rideSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+rideSchema.pre('save', async function(next) {
+  if (this.isNew) {
+    try {
+      const counter = await Counter.findOneAndUpdate(
+        { _id: 'bookingId' },
+        { $inc: { sequence_value: 1 } },
+        { new: true, upsert: true }
+      );
+      this.bookingId = counter.sequence_value;
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model("Ride", rideSchema);

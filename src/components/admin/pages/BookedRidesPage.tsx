@@ -308,10 +308,9 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
           <div className="overflow-x-auto">
             <table className="w-full table-fixed border-collapse">
               <colgroup>
-                <col style={{ width: '3%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '5%' }} />
                 <col style={{ width: '9%' }} />
-                <col style={{ width: '11%' }} />
+                <col style={{ width: '15%' }} />
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '8%' }} />
@@ -320,11 +319,10 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                 <col style={{ width: '6%' }} />
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '7%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '14%' }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 font-semibold text-gray-700">#</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
@@ -343,14 +341,8 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                 {rides.map((ride, index) => (
                   <tr key={ride._id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="p-3">
-                      <div className="font-mono text-sm ">
-                        {index + 1 + (currentPage - 1) * limit}
-                      </div>
-                    </td>
-
-                    <td className="p-3">
-                      <div className="font-mono text-xs text-gray-600">
-                        {ride._id}
+                      <div className="font-mono text-sm text-blue-600">
+                        {ride.bookingId || 'N/A'}
                       </div>
                     </td>
 
