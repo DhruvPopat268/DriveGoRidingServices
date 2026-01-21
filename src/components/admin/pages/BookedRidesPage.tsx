@@ -11,6 +11,7 @@ import { RideFilters } from "../shared/RideFilters";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../../lib/axiosInterceptor";
+import { toast, Toaster } from "react-hot-toast";
 
 interface SubCategory {
   _id: string;
@@ -194,13 +195,12 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
       });
       setShowAssignDialog(false);
       setSelectedDriver('');
-      setSuccess('Driver assigned successfully!');
-      setTimeout(() => setSuccess(null), 3000);
+      toast.success('Driver assigned successfully!');
       fetchRides();
     } catch (err) {
       console.error('Error assigning driver:', err);
-      setError('Failed to assign driver');
-      setTimeout(() => setError(null), 3000);
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to assign driver';
+      toast.error(errorMessage);
     } finally {
       setAssigningDriver(false);
     }
@@ -309,16 +309,17 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
             <table className="w-full table-fixed border-collapse">
               <colgroup>
                 <col style={{ width: '3%' }} />
-                <col style={{ width: '12%' }} />
                 <col style={{ width: '10%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '7%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '11%' }} />
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '7%' }} />
                 <col style={{ width: '8%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '7%' }} />
                 <col style={{ width: '10%' }} />
               </colgroup>
               <thead>
@@ -329,6 +330,7 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
                   <th className="text-left p-3 font-semibold text-gray-700">Route</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Driver Category</th>
+                  <th className="text-left p-3 font-semibold text-gray-700">Usage</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
                   <th className="text-left p-3 font-semibold text-gray-700">Payment Method</th>
@@ -412,6 +414,12 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
 
                         </div>
                       )}
+                    </td>
+
+                    <td className="p-3">
+                      <div className="text-sm text-gray-700">
+                        {ride.rideInfo.selectedUsage || 'N/A'}
+                      </div>
                     </td>
 
 
@@ -599,6 +607,23 @@ export const BookedRidesPage = ({ onNavigateToDetail }: BookedRidesPageProps) =>
         }}
         rideId={selectedRideForCharges?._id || ''}
         onSuccess={fetchRides}
+      />
+      
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+          },
+          error: {
+            duration: 5000,
+          },
+        }}
       />
     </div>
   );

@@ -20,7 +20,8 @@ const formatUsage = (usage, categoryName, subcategoryName, subSubcategoryName) =
   if (isDistanceBased) {
     // Distance-based: show Km first, then formatted Minutes
     if (kmMatch && parseInt(kmMatch[1]) > 0) {
-      result += `${kmMatch[1]} Km`;
+      const kmValue = parseInt(kmMatch[1]);
+      result += `${kmValue} ${kmValue > 1 ? 'Kms' : 'Km'}`;
     }
     
     if (minsMatch && parseInt(minsMatch[1]) > 0) {
@@ -34,7 +35,9 @@ const formatUsage = (usage, categoryName, subcategoryName, subSubcategoryName) =
     }
     
     if (kmMatch && parseInt(kmMatch[1]) > 0) {
-      result += result ? ` & ${kmMatch[1]} Km` : `${kmMatch[1]} Km`;
+      const kmValue = parseInt(kmMatch[1]);
+      const kmText = `${kmValue} ${kmValue > 1 ? 'Kms' : 'Km'}`;
+      result += result ? ` & ${kmText}` : kmText;
     }
   }
   

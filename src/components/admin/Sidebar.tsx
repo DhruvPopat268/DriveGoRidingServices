@@ -50,9 +50,9 @@ const menuItems = [
       { icon: CheckCircle, label: "Confirmed Rides", key: "confirmed-rides" },
       { icon: MapPin, label: "Reached Rides", key: "reached-rides" },
       { icon: Bike, label: "Ongoing Rides", key: "ongoing-rides" },
-      { icon: CheckCircle, label: "Completed Rides", key: "completed-rides" },
-      { icon: XCircle, label: "Cancelled Rides", key: "cancelled-rides" },
       { icon: Clock, label: "Extended Rides", key: "extended-rides" },
+      { icon: CheckCircle, label: "Completed Rides", key: "completed-rides" },
+      { icon: XCircle, label: "Cancelled Rides", key: "cancelled-rides" }
     ]
   },
   {

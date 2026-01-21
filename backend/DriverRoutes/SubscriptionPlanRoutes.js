@@ -97,6 +97,7 @@ router.get("/drivers/purchased-plans",adminAuthMiddleware, async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
+    const { startDate, endDate } = req.query;
 
     // Fetch all drivers who have purchased plans with pagination
     const drivers = await Driver.find(
@@ -111,7 +112,7 @@ router.get("/drivers/purchased-plans",adminAuthMiddleware, async (req, res) => {
       .sort({ 'purchasedPlans.purchasedAt': -1 }); // sort by purchasedAt descending
 
     // Transform response to include driver info and plan name
-    const allPlans = drivers.map(driver => {
+    let allPlans = drivers.map(driver => {
       return driver.purchasedPlans.map(plan => ({
         driverId: driver._id,
         driverName: driver.personalInformation.fullName,
@@ -123,6 +124,24 @@ router.get("/drivers/purchased-plans",adminAuthMiddleware, async (req, res) => {
         purchasedAt: plan.purchasedAt
       }));
     }).flat();
+
+    // Apply date range filter if provided
+    if (startDate || endDate) {
+      allPlans = allPlans.filter(plan => {
+        const planDate = new Date(plan.purchasedAt);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate + 'T23:59:59.999Z') : null;
+        
+        if (start && end) {
+          return planDate >= start && planDate <= end;
+        } else if (start) {
+          return planDate >= start;
+        } else if (end) {
+          return planDate <= end;
+        }
+        return true;
+      });
+    }
 
     // Sort all plans by purchasedAt descending
     allPlans.sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt));

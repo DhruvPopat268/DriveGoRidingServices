@@ -42,6 +42,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [profileFilter, setProfileFilter] = useState('complete');
   const [sortOrder, setSortOrder] = useState('newest');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,7 +52,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
 
   useEffect(() => {
     fetchUsers();
-  }, [profileFilter, currentPage, recordsPerPage, searchTerm, sortOrder]);
+  }, [profileFilter, currentPage, recordsPerPage, searchTerm, sortOrder, dateRange]);
 
   const fetchUsers = async () => {
     try {
@@ -68,7 +69,9 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
         page: currentPage.toString(),
         limit: recordsPerPage.toString(),
         search: searchTerm,
-        sort: sortOrder
+        sort: sortOrder,
+        ...(dateRange.from && { fromDate: dateRange.from }),
+        ...(dateRange.to && { toDate: dateRange.to })
       });
 
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}${endpoint}?${params}`);
@@ -107,6 +110,16 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
 
   const handleSortChange = (value: string) => {
     setSortOrder(value);
+    setCurrentPage(1);
+  };
+
+  const handleDateRangeChange = (field: 'from' | 'to', value: string) => {
+    setDateRange(prev => ({ ...prev, [field]: value }));
+    setCurrentPage(1);
+  };
+
+  const clearDateRange = () => {
+    setDateRange({ from: '', to: '' });
     setCurrentPage(1);
   };
 
@@ -150,7 +163,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -182,9 +195,30 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
               </SelectContent>
             </Select>
 
-            <Button onClick={fetchUsers} variant="outline">
-              Refresh
-            </Button>
+            <Input
+              type="date"
+              placeholder="From Date"
+              value={dateRange.from}
+              onChange={(e) => handleDateRangeChange('from', e.target.value)}
+            />
+
+            <Input
+              type="date"
+              placeholder="To Date"
+              value={dateRange.to}
+              onChange={(e) => handleDateRangeChange('to', e.target.value)}
+            />
+
+            <div className="flex gap-2">
+              <Button onClick={fetchUsers} variant="outline">
+                Refresh
+              </Button>
+              {(dateRange.from || dateRange.to) && (
+                <Button onClick={clearDateRange} variant="outline" size="sm">
+                  Clear Dates
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

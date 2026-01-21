@@ -234,12 +234,27 @@ router.get("/completeProfile",adminAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const sort = req.query.sort || 'newest';
+    const fromDate = req.query.fromDate;
+    const toDate = req.query.toDate;
 
     // Build search query
     let searchQuery = {
       name: { $ne: "" },
       gender: { $ne: "" }
     };
+
+    // Add date range filter
+    if (fromDate || toDate) {
+      searchQuery.createdAt = {};
+      if (fromDate) {
+        searchQuery.createdAt.$gte = new Date(fromDate);
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        searchQuery.createdAt.$lte = endDate;
+      }
+    }
 
     if (search) {
       searchQuery.$or = [
@@ -291,9 +306,24 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const sort = req.query.sort || 'newest';
+    const fromDate = req.query.fromDate;
+    const toDate = req.query.toDate;
 
     // Build search query
     let searchQuery = { name: "", gender: "" };
+
+    // Add date range filter
+    if (fromDate || toDate) {
+      searchQuery.createdAt = {};
+      if (fromDate) {
+        searchQuery.createdAt.$gte = new Date(fromDate);
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        searchQuery.createdAt.$lte = endDate;
+      }
+    }
 
     if (search) {
       searchQuery = {
@@ -352,9 +382,24 @@ router.get("/all", adminAuthMiddleware, async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const sort = req.query.sort || 'newest';
+    const fromDate = req.query.fromDate;
+    const toDate = req.query.toDate;
 
     // Build search query
     let searchQuery = {};
+
+    // Add date range filter
+    if (fromDate || toDate) {
+      searchQuery.createdAt = {};
+      if (fromDate) {
+        searchQuery.createdAt.$gte = new Date(fromDate);
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        searchQuery.createdAt.$lte = endDate;
+      }
+    }
 
     if (search) {
       searchQuery.$or = [
