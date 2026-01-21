@@ -267,7 +267,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
       riderAddress: rideDetails.rideInfo.fromLocation.address,
       tripType: `${rideDetails.rideInfo.categoryName} - ${rideDetails.rideInfo.subcategoryName}`,
       gstNumber: '29ABCDE1234F1Z5',
-      invoiceNumber: rideDetails.bookingId || rideDetails._id.slice(-8),
+      invoiceNumber: rideDetails.bookingId ?? rideDetails._id.slice(-8),
       date: formatDateToDDMMYY(rideDetails.rideInfo.selectedDate),
       totalPayable: rideDetails.totalPayable,
       beforeTripPay: rideDetails.rideInfo.subtotal + (rideDetails.rideInfo.extraKmCharges || 0) + (rideDetails.rideInfo.extraMinutesCharges || 0),
@@ -276,7 +276,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
       pickupDateTime: `${formatDateToDDMMYY(rideDetails.rideInfo.selectedDate)} ${formatTimeTo12Hour(rideDetails.rideInfo.selectedTime)}`,
       driverAcceptedTime: 'N/A',
       reachedTime: formatTimeTo12Hour(rideDetails.rideInfo.driverReachTime),
-      tripStarted: formatTimeTo12Hour(rideDetails.rideInfo.ridseStartTime),
+      tripStarted: formatTimeTo12Hour(rideDetails.rideInfo.rideStartTime),
       tripEnd: formatTimeTo12Hour(rideDetails.rideInfo.rideEndTime)
     };
 
