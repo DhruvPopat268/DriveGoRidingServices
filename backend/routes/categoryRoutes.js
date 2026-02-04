@@ -125,6 +125,22 @@ router.put('/:id', adminAuthMiddleware, upload.single('image'), async (req, res)
   }
 });
 
+// UPDATE CATEGORY STATUS
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const category = await Category.findByIdAndUpdate(
+      req.params.id, 
+      { status }, 
+      { new: true }
+    );
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found' });
+    res.json({ success: true, message: 'Category status updated successfully', data: category });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+});
+
 // DELETE CATEGORY
 router.delete('/:id', adminAuthMiddleware, async (req, res) => {
   try {
@@ -147,18 +163,18 @@ router.delete('/:id', adminAuthMiddleware, async (req, res) => {
 
 router.get("/all",driverAuthMiddleware, async (req, res) => {
   try {
-    const categories = await Category.find().sort({ createdAt: -1 });
+    const categories = await Category.find({ status: true }).sort({ createdAt: -1 });
     res.status(200).json({success:true,data:categories});
   } catch (error) {
     res.status(500).json({ success:false,message: "Error fetching categories", error: error.message });
   }
 });
 
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           Driver                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>           User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 router.get("/userApp", async (req, res) => {
   try {
-    const categories = await Category.find().sort({ createdAt: -1 });
+    const categories = await Category.find({ status: true }).sort({ createdAt: -1 });
     res.status(200).json({ success:true,data:categories });
   } catch (error) {
     res.status(500).json({ success:false, message: "Error fetching categories", error: error.message });

@@ -38,6 +38,33 @@ router.get("/",  async (req, res) => {
         subCategoryId: subSub.subCategoryId ? subSub.subCategoryId._id : null,
         subCategoryName: subSub.subCategoryId ? subSub.subCategoryId.name : "Unassigned",
         image: subSub.image || null,
+        status: subSub.status || false,
+        createdAt: subSub.createdAt
+      }))
+    );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Get all sub-subcategories for user web
+router.get("/userWeb",  async (req, res) => {
+  try {
+    const subSubCategories = await SubSubCategory.find({ status: true })
+      .populate("categoryId", "name")
+      .populate("subCategoryId", "name");
+
+    res.status(200).json(
+      subSubCategories.map((subSub) => ({
+        id: subSub._id,
+        name: subSub.name,
+        description: subSub.description,
+        categoryId: subSub.categoryId ? subSub.categoryId._id : null,
+        categoryName: subSub.categoryId ? subSub.categoryId.name : "Unassigned",
+        subCategoryId: subSub.subCategoryId ? subSub.subCategoryId._id : null,
+        subCategoryName: subSub.subCategoryId ? subSub.subCategoryId.name : "Unassigned",
+        image: subSub.image || null,
+        status: subSub.status || false,
       }))
     );
   } catch (err) {
@@ -140,6 +167,22 @@ router.put("/:id", upload.single("image"), async (req, res) => {
   }
 });
 
+// UPDATE SUBSUBCATEGORY STATUS
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const subSubCategory = await SubSubCategory.findByIdAndUpdate(
+      req.params.id, 
+      { status }, 
+      { new: true }
+    );
+    if (!subSubCategory) return res.status(404).json({ success: false, message: 'SubSubCategory not found' });
+    res.json({ success: true, message: 'SubSubCategory status updated successfully', data: subSubCategory });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+});
+
 // ✅ Delete sub-subcategory
 router.delete("/:id", async (req, res) => {
   try {
@@ -159,12 +202,39 @@ router.post("/userApp/by-subcategory", async (req, res) => {
     if (!subcategoryId) {
       return res.status(400).json({ error: "subcategoryId is required" });
     }
-    const subSubCategories = await SubSubCategory.find({ subCategoryId: subcategoryId })
+    const subSubCategories = await SubSubCategory.find({ subCategoryId: subcategoryId, status: true })
       .populate("categoryId", "name")
       .populate("subCategoryId", "name");
     res.json({ success: true, data: subSubCategories });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User app                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// ✅ Get all sub-subcategories
+router.get("/userWeb",  async (req, res) => {
+  try {
+    const subSubCategories = await SubSubCategory.find({ status: true })
+      .populate("categoryId", "name")
+      .populate("subCategoryId", "name");
+
+    res.status(200).json(
+      subSubCategories.map((subSub) => ({
+        id: subSub._id,
+        name: subSub.name,
+        description: subSub.description,
+        categoryId: subSub.categoryId ? subSub.categoryId._id : null,
+        categoryName: subSub.categoryId ? subSub.categoryId.name : "Unassigned",
+        subCategoryId: subSub.subCategoryId ? subSub.subCategoryId._id : null,
+        subCategoryName: subSub.subCategoryId ? subSub.subCategoryId.name : "Unassigned",
+        image: subSub.image || null,
+        status: subSub.status || false,
+      }))
+    );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Loader } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DeleteConfirmation } from '@/components/ui/delete-confirmation';
 import apiClient from '../../../lib/axiosInterceptor';
 
@@ -29,6 +32,8 @@ interface SubSubCategory {
   name: string;
   description?: string;
   image?: string;
+  status?: boolean;
+  createdAt?: string;
 }
 
 export const SubSubCategoryPage = () => {
@@ -52,6 +57,8 @@ export const SubSubCategoryPage = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Filter sub-subcategories based on selected filters
   useEffect(() => {
@@ -103,7 +110,12 @@ export const SubSubCategoryPage = () => {
       try {
         setLoading(true);
         const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
-        setSubSubCategories(response.data);
+        const mappedData = response.data.map((item: any) => ({
+          ...item,
+          _id: item.id || item._id,
+          status: item.status || false,
+        }));
+        setSubSubCategories(mappedData);
       } catch (error) {
         console.error("Failed to fetch sub-subcategories:", error);
         setSubSubCategories([]);
@@ -157,7 +169,12 @@ export const SubSubCategoryPage = () => {
 
         // Refresh the list
         const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
-        setSubSubCategories(response.data);
+        const mappedData = response.data.map((item: any) => ({
+          ...item,
+          _id: item.id || item._id,
+          status: item.status || false,
+        }));
+        setSubSubCategories(mappedData);
 
         // Reset form
         setSubSubCategoryForm({ categoryId: '', subCategoryId: '', name: '', description: '' });
@@ -201,7 +218,12 @@ export const SubSubCategoryPage = () => {
 
         // Refresh the list
         const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`);
-        setSubSubCategories(response.data);
+        const mappedData = response.data.map((item: any) => ({
+          ...item,
+          _id: item.id || item._id,
+          status: item.status || false,
+        }));
+        setSubSubCategories(mappedData);
 
         // Reset form
         setSubSubCategoryForm({ categoryId: '', subCategoryId: '', name: '', description: '' });
@@ -233,6 +255,28 @@ export const SubSubCategoryPage = () => {
     setEditDialogOpen(true);
   };
 
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const response = await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/subsubcategories/${id}/status`, {
+        status: !currentStatus
+      });
+
+      if (response.data.success) {
+        setSubSubCategories(subSubCategories.map(subSubCat => {
+          const currentSubSubCatId = subSubCat._id || subSubCat.id;
+          return currentSubSubCatId === id ? { ...subSubCat, status: !currentStatus } : subSubCat;
+        }));
+        setSuccess(`Sub-subcategory ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.data.message || 'Failed to update sub-subcategory status');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error('Toggle status error:', err);
+    }
+  };
+
   const handleDelete = async (subSubCategory: SubSubCategory) => {
     try {
       const deleteId = subSubCategory._id || subSubCategory.id;
@@ -249,6 +293,19 @@ export const SubSubCategoryPage = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Sub-Sub Category Management</h1>
       </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -447,14 +504,16 @@ export const SubSubCategoryPage = () => {
               <TableHead>Sub Category</TableHead>
               <TableHead>Sub-Sub Category Name</TableHead>
               <TableHead>Description</TableHead>
-          
+              <TableHead>Status</TableHead>
+              <TableHead>Created At</TableHead>
+            {/*   <TableHead>Actions</TableHead>*/}
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <Loader className="w-6 h-6 animate-spin mr-2" />
                     <span>Loading sub-sub categories...</span>
@@ -463,7 +522,7 @@ export const SubSubCategoryPage = () => {
               </TableRow>
             ) : filteredSubSubCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500 py-6">
+                <TableCell colSpan={8} className="text-center text-gray-500 py-6">
                   No sub-sub categories found. Please add first.
                 </TableCell>
               </TableRow>
@@ -484,7 +543,59 @@ export const SubSubCategoryPage = () => {
                   <TableCell>{subSubCategory.subCategoryName}</TableCell>
                   <TableCell>{subSubCategory.name}</TableCell>
                   <TableCell>{subSubCategory.description || 'N/A'}</TableCell>
-                 
+                  <TableCell>
+                    <Switch
+                      checked={subSubCategory.status ?? false}
+                      onCheckedChange={() => handleToggleStatus(subSubCategory._id, subSubCategory.status ?? false)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {subSubCategory.createdAt
+                      ? new Date(subSubCategory.createdAt).toLocaleDateString('en-GB')
+                      : 'N/A'
+                    }
+                  </TableCell>
+                   {/*
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(subSubCategory)}
+                        title="Edit sub-subcategory"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Delete sub-subcategory"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Sub-Subcategory</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{subSubCategory.name}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(subSubCategory)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                  */}
                 </TableRow>
               ))
             )}

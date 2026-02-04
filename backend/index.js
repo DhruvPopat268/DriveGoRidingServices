@@ -44,7 +44,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
      origin: [
-
+    "http://localhost:8080",
     "https://hire4drivedriverdeleteaccount.onrender.com",
     "https://drive-go-riding-services.vercel.app",
     "https://www.hire4drive.com",

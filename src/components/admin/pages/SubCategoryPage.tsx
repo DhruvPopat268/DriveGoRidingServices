@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Axis3DIcon, Loader } from 'lucide-react';
+import { Plus, Edit, Trash2, Axis3DIcon, Loader, Eye, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DeleteConfirmation } from '@/components/ui/delete-confirmation';
 import apiClient from '../../../lib/axiosInterceptor';
 
@@ -22,6 +25,8 @@ interface SubCategory {
   name: string;
   description?: string;
   image?: string;
+  status?: boolean;
+  createdAt?: string;
 }
 
 export const SubCategoryPage = () => {
@@ -33,6 +38,8 @@ export const SubCategoryPage = () => {
   const [editingSubCategory, setEditingSubCategory] = useState<SubCategory | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [subCategoryForm, setSubCategoryForm] = useState({
     categoryId: '',
@@ -101,6 +108,7 @@ export const SubCategoryPage = () => {
           id: subCat.id || subCat._id,
           _id: subCat._id || subCat.id,
           categoryName: category ? category.name : "Unknown",
+          status: subCat.status || false,
         };
       });
 
@@ -236,6 +244,28 @@ export const SubCategoryPage = () => {
     setEditDialogOpen(true);
   };
 
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const response = await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/subcategories/${id}/status`, {
+        status: !currentStatus
+      });
+
+      if (response.data.success) {
+        setSubCategories(subCategories.map(subCat => {
+          const currentSubCatId = subCat._id || subCat.id;
+          return currentSubCatId.toString() === id ? { ...subCat, status: !currentStatus } : subCat;
+        }));
+        setSuccess(`Subcategory ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.data.message || 'Failed to update subcategory status');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error('Toggle status error:', err);
+    }
+  };
+
   const handleDelete = async (subCategory: SubCategory) => {
     try {
       const deleteId = subCategory._id || subCategory.id;
@@ -258,6 +288,19 @@ export const SubCategoryPage = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Sub Category Management</h1>
       </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{success}</AlertDescription>
+        </Alert>
+      )}
+
+      {error && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
@@ -417,14 +460,16 @@ export const SubCategoryPage = () => {
               <TableHead>Category</TableHead>
               <TableHead>Sub Category Name</TableHead>
               <TableHead>Description</TableHead>
-              
+              <TableHead>Status</TableHead>
+              <TableHead>Created At</TableHead>
+         {/*      <TableHead>Actions</TableHead> */}
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={8} className="text-center py-8">
                   <div className="flex justify-center items-center">
                     <Loader className="w-6 h-6 animate-spin mr-2" />
                     <span>Loading subcategories...</span>
@@ -433,7 +478,7 @@ export const SubCategoryPage = () => {
               </TableRow>
             ) : filteredSubCategories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-gray-500 py-6">
+                <TableCell colSpan={8} className="text-center text-gray-500 py-6">
                   {selectedCategoryFilter === 'all' 
                     ? "No subcategories found. Please add first."
                     : "No subcategories found for the selected category."
@@ -456,6 +501,59 @@ export const SubCategoryPage = () => {
                   <TableCell>{subCategory.categoryName}</TableCell>
                   <TableCell>{subCategory.name}</TableCell>
                   <TableCell>{subCategory.description || 'N/A'}</TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={subCategory.status ?? false}
+                      onCheckedChange={() => handleToggleStatus(subCategory._id, subCategory.status ?? false)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {subCategory.createdAt
+                      ? new Date(subCategory.createdAt).toLocaleDateString('en-GB')
+                      : 'N/A'
+                    }
+                  </TableCell>
+                   {/*
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(subCategory)}
+                        title="Edit subcategory"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Delete subcategory"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{subCategory.name}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(subCategory)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                  */}
                 </TableRow>
               ))
             )}

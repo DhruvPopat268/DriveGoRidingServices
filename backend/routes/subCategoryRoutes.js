@@ -33,6 +33,28 @@ router.get("/",  async (req, res) => {
         categoryId: sub.categoryId ? sub.categoryId._id : null,
         categoryName: sub.categoryId ? sub.categoryId.name : "Unassigned",
         image: sub.image || null,
+        status: sub.status,
+        createdAt: sub.createdAt
+      }))
+    );
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ✅ Get all subcategories
+router.get("/userWeb",  async (req, res) => {
+  try {
+    const subcategories = await SubCategory.find({status: true}).populate("categoryId", "name");
+
+    res.status(200).json(
+      subcategories.map((sub) => ({
+        id: sub._id,
+        name: sub.name,
+        description: sub.description,
+        categoryId: sub.categoryId ? sub.categoryId._id : null,
+        categoryName: sub.categoryId ? sub.categoryId.name : "Unassigned",
+        image: sub.image || null,
       }))
     );
   } catch (err) {
@@ -119,6 +141,22 @@ router.put("/:id", adminAuthMiddleware, upload.single("image"), async (req, res)
   }
 });
 
+// UPDATE SUBCATEGORY STATUS
+router.patch('/:id/status', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const subCategory = await SubCategory.findByIdAndUpdate(
+      req.params.id, 
+      { status }, 
+      { new: true }
+    );
+    if (!subCategory) return res.status(404).json({ success: false, message: 'SubCategory not found' });
+    res.json({ success: true, message: 'SubCategory status updated successfully', data: subCategory });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+});
+
 // ✅ Delete subcategory
 router.delete("/:id", adminAuthMiddleware, async (req, res) => {
   try {
@@ -135,7 +173,7 @@ router.delete("/:id", adminAuthMiddleware, async (req, res) => {
 router.post("/by-category", driverAuthMiddleware, async (req, res) => {
   try {
     const { categoryId } = req.body;
-    const subcategories = await SubCategory.find({ categoryId }).populate("categoryId", "name");
+    const subcategories = await SubCategory.find({ categoryId, status: true }).populate("categoryId", "name");
     res.status(200).json({
       success: true,
       data:subcategories
@@ -157,7 +195,7 @@ module.exports = router;
 router.post("/userApp/by-category",  async (req, res) => {
   try {
     const { categoryId } = req.body;
-    const subcategories = await SubCategory.find({ categoryId }).populate("categoryId", "name");
+    const subcategories = await SubCategory.find({ categoryId, status: true }).populate("categoryId", "name");
     res.status(200).json({
       success: true,
       data:subcategories

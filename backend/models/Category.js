@@ -20,6 +20,10 @@ const categorySchema = new mongoose.Schema(
       public_id: { type: String },
       url: { type: String },
     },
+    status: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

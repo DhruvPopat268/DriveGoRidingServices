@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Loader, Upload, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -20,6 +21,7 @@ interface Category {
     public_id: string;
     url: string;
   };
+  status?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -73,6 +75,7 @@ export const CategoryPage = () => {
           name: item.name,
           description: item.description || '',
           image: item.image,
+          status: item.status || false,
           createdAt: item.createdAt,
           updatedAt: item.updatedAt
         }))
@@ -231,6 +234,30 @@ export const CategoryPage = () => {
   const handleView = (category: Category) => {
     setViewingCategory(category);
     setViewDialogOpen(true);
+  };
+
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const response = await apiClient.patch(`${API_BASE_URL}/api/categories/${id}/status`, {
+        status: !currentStatus
+      });
+
+      const result: ApiResponse = response.data;
+
+      if (result.success && result.data) {
+        setCategories(categories.map(cat => {
+          const currentCatId = cat._id || cat.id;
+          return currentCatId === id ? { ...result.data as Category, _id: id } : cat;
+        }));
+        setSuccess(`Category ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(result.message || 'Failed to update category status');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error('Toggle status error:', err);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -487,9 +514,9 @@ export const CategoryPage = () => {
                   )}
                 </div>
                 <div className="text-sm text-gray-500">
-                  <p>Created: {viewingCategory.createdAt ? new Date(viewingCategory.createdAt).toLocaleDateString() : 'N/A'}</p>
+                  <p>Created: {viewingCategory.createdAt ? new Date(viewingCategory.createdAt).toLocaleDateString('en-GB') : 'N/A'}</p>
                   {viewingCategory.updatedAt && (
-                    <p>Updated: {new Date(viewingCategory.updatedAt).toLocaleDateString()}</p>
+                    <p>Updated: {new Date(viewingCategory.updatedAt).toLocaleDateString('en-GB')}</p>
                   )}
                 </div>
               </div>
@@ -510,8 +537,9 @@ export const CategoryPage = () => {
                 <TableHead>Image</TableHead>
                 <TableHead>Category Name</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
-                <TableHead>Actions</TableHead>
+                {/* <TableHead>Actions</TableHead> */} 
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -559,11 +587,18 @@ export const CategoryPage = () => {
                         )}
                       </TableCell>
                       <TableCell>
+                        <Switch
+                          checked={category.status ?? false}
+                          onCheckedChange={() => handleToggleStatus(categoryId, category.status ?? false)}
+                        />
+                      </TableCell>
+                      <TableCell>
                         {category.createdAt
-                          ? new Date(category.createdAt).toLocaleDateString()
+                          ? new Date(category.createdAt).toLocaleDateString('en-GB')
                           : 'N/A'
                         }
                       </TableCell>
+                       {/*
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button
@@ -574,9 +609,54 @@ export const CategoryPage = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(category)}
+                            title="Edit category"
+                            disabled={actionLoading[`edit-${categoryId}`]}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                title="Delete category"
+                                disabled={actionLoading[`delete-${categoryId}`]}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{category.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(categoryId)}
+                                  disabled={actionLoading[`delete-${categoryId}`]}
+                                >
+                                  {actionLoading[`delete-${categoryId}`] ? (
+                                    <>
+                                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                                      Deleting...
+                                    </>
+                                  ) : (
+                                    'Delete'
+                                  )}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
+                      */}
                     </TableRow>
                   );
                 })
