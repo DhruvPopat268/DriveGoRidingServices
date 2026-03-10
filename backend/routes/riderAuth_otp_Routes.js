@@ -703,101 +703,101 @@ router.delete("/userApp/delete-rider", AuthMiddleware, async (req, res) => {
 });
 
 // dummy otp generation
-router.post("/send-otp", async (req, res) => {
-  try {
-    const { mobile } = req.body;
-    if (!mobile) {
-      return res.status(400).json({ message: "Mobile number is required" });
-    }
+// router.post("/send-otp", async (req, res) => {
+//   try {
+//     const { mobile } = req.body;
+//     if (!mobile) {
+//       return res.status(400).json({ message: "Mobile number is required" });
+//     }
 
-    // Use dummy OTP for testing
-    const otp = "123456";
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+//     // Use dummy OTP for testing
+//     const otp = "123456";
+//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile });
-    if (rider && rider.status === "deleted") {
-      return res.status(400).json({ success:false , message: "Rider is already deleted" });
-    }
-    if (!rider) {
-      rider = new Rider({ mobile });
-      await rider.save();
-    }
-    // Save OTP session
-    const otpSession = new OtpSession({
-      rider: rider._id,
-      mobile,
-      otp,
-      otpExpiresAt
-    });
-    await otpSession.save();
+//     // Ensure Rider exists
+//     let rider = await Rider.findOne({ mobile });
+//     if (rider && rider.status === "deleted") {
+//       return res.status(400).json({ success:false , message: "Rider is already deleted" });
+//     }
+//     if (!rider) {
+//       rider = new Rider({ mobile });
+//       await rider.save();
+//     }
+//     // Save OTP session
+//     const otpSession = new OtpSession({
+//       rider: rider._id,
+//       mobile,
+//       otp,
+//       otpExpiresAt
+//     });
+//     await otpSession.save();
 
-    res.json({
-      success: true,
-      message: "Dummy OTP generated successfully",
-      otp // ⚠️ expose only in dev/testing
-    });
-  } catch (error) {
-    console.error("Send OTP error:", error.message);
-    res.status(500).json({ success: false, message: "Failed to generate OTP" });
-  }
-});
+//     res.json({
+//       success: true,
+//       message: "Dummy OTP generated successfully",
+//       otp // ⚠️ expose only in dev/testing
+//     });
+//   } catch (error) {
+//     console.error("Send OTP error:", error.message);
+//     res.status(500).json({ success: false, message: "Failed to generate OTP" });
+//   }
+// });
 
-router.post("/verify-otp", async (req, res) => {
-  try {
-    const { mobile, otp, playerId } = req.body;
-    if (!mobile || !otp) {
-      return res.status(400).json({ message: "Mobile & OTP required" });
-    }
+// router.post("/verify-otp", async (req, res) => {
+//   try {
+//     const { mobile, otp, playerId } = req.body;
+//     if (!mobile || !otp) {
+//       return res.status(400).json({ message: "Mobile & OTP required" });
+//     }
 
-    // 🔒 Check against fixed dummy OTP
-    if (otp !== "123456") {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
+//     // 🔒 Check against fixed dummy OTP
+//     if (otp !== "123456") {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
 
-    // Mark last OTP as verified (optional but clean)
-    await OtpSession.findOneAndUpdate(
-      { mobile },
-      { isVerified: true },
-      { sort: { createdAt: -1 } }
-    );
+//     // Mark last OTP as verified (optional but clean)
+//     await OtpSession.findOneAndUpdate(
+//       { mobile },
+//       { isVerified: true },
+//       { sort: { createdAt: -1 } }
+//     );
 
-    // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
-    if (!rider) {
-      rider = new Rider({ mobile });
-      await rider.save();
-    }
+//     // Ensure Rider exists
+//     let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
+//     if (!rider) {
+//       rider = new Rider({ mobile });
+//       await rider.save();
+//     }
 
-    // Store OneSignal playerId if provided
-    if (playerId) {
-      rider.oneSignalPlayerId = playerId;
-      await rider.save();
-    }
+//     // Store OneSignal playerId if provided
+//     if (playerId) {
+//       rider.oneSignalPlayerId = playerId;
+//       await rider.save();
+//     }
 
-    const isNew = !rider.name;
+//     const isNew = !rider.name;
 
-    // Generate JWT
-    const token = jwt.sign(
-      { riderId: rider._id, mobile: rider.mobile },
-      process.env.JWT_SECRET_USER,
-      { expiresIn: "7d" }
-    );
+//     // Generate JWT
+//     const token = jwt.sign(
+//       { riderId: rider._id, mobile: rider.mobile },
+//       process.env.JWT_SECRET_USER,
+//       { expiresIn: "7d" }
+//     );
 
-    // Store session
-    await createSession(mobile, token);
+//     // Store session
+//     await createSession(mobile, token);
 
-    res.json({
-      success: true,
-      token,
-      isNew,
-      rider
-    });
-  } catch (error) {
-    console.error("Verify OTP error:", error);
-    res.status(500).json({ success: false, message: "OTP verification failed" });
-  }
-});
+//     res.json({
+//       success: true,
+//       token,
+//       isNew,
+//       rider
+//     });
+//   } catch (error) {
+//     console.error("Verify OTP error:", error);
+//     res.status(500).json({ success: false, message: "OTP verification failed" });
+//   }
+// });
 
 // Web version with cookie authentication
 router.post("/web/verify-otp", async (req, res) => {
@@ -875,32 +875,25 @@ router.post("/web/verify-otp", async (req, res) => {
   }
 });
 
-/*
-//kaleyra integration
 router.post("/send-otp", async (req, res) => {
   try {
     const { mobile } = req.body;
 
-    // ✅ Validate mobile number exists
     if (!mobile) {
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
-    // ✅ Convert mobile to string if it's a number
     const mobileStr = String(mobile).trim();
 
-    // ✅ Validate mobile number format
     if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
       return res.status(400).json({ message: "Invalid mobile number format" });
     }
 
-    // ✅ Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // ✅ Ensure rider exists
     let rider = await Rider.findOne({ mobile: mobileStr });
-        if(rider && rider.status === "deleted") {
+    if(rider && rider.status === "deleted") {
       return res.status(400).json({ success:false , message: "Rider is already deleted" });
     }
     if (!rider) {
@@ -908,7 +901,6 @@ router.post("/send-otp", async (req, res) => {
       await rider.save();
     }
 
-    // ✅ Save OTP session in DB
     await new OtpSession({
       rider: rider._id,
       mobile: mobileStr,
@@ -916,44 +908,47 @@ router.post("/send-otp", async (req, res) => {
       otpExpiresAt,
     }).save();
 
-    // ✅ Format phone number correctly
-    const toNumber = mobileStr.startsWith("+") ? mobileStr : `+91${mobileStr}`;
+    const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
+    const apiUrl = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
-    // ✅ Build Kaleyra API URL
-    const apiUrl = `https://api.kaleyra.io/v1/${process.env.KALEYRA_SID}/messages`;
-
-    // ✅ CORRECT PAYLOAD: body is mandatory, template_params as string
     const payload = {
+      messaging_product: "whatsapp",
       to: toNumber,
-      sender: process.env.KALEYRA_SENDER_ID,
-      type: "TXN",
-      template_id: process.env.KALEYRA_TEMPLATE_ID,
-      body: `DriveGo OTP is booking confirmation or registration: ${otp}`,
-      template_params: otp, // ✅ Just the string value, not object or array
+      type: "template",
+      template: {
+        name: "rider_otp_verification",
+        language: { code: "en" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              {
+                type: "text",
+                text: otp
+              }
+            ]
+          }
+        ]
+      }
     };
 
-    // console.log("Payload sent to Kaleyra =>", JSON.stringify(payload, null, 2));
-
-    // ✅ Send OTP via Kaleyra
-    const response = await axios.post(apiUrl, payload, {
+    await axios.post(apiUrl, payload, {
       headers: {
-        "api-key": process.env.KALEYRA_API_KEY,
-        "Content-Type": "application/json",
-      },
+        "Authorization": `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
+      }
     });
 
-    // ✅ Respond success
     res.json({
       success: true,
-      message: "OTP sent successfully",
-      // otp, // ⚠️ Remove this in production for security
+      message: "OTP sent successfully via WhatsApp"
     });
   } catch (error) {
     console.error("Send OTP error:", error.response?.data || error.message);
     res.status(500).json({
       success: false,
       message: "Failed to send OTP",
-      error: error.response?.data || error.message,
+      error: error.response?.data || error.message
     });
   }
 });
@@ -1052,7 +1047,6 @@ router.post("/verify-otp", async (req, res) => {
     });
   }
 });
-*/
 
 router.post("/save-profile", upload.single('profilePhoto'), authMiddleware, async (req, res) => {
   try {
