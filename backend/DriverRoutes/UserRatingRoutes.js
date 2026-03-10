@@ -36,15 +36,15 @@ router.post("/", authMiddleware, async (req, res) => {
 
     // Category-based feedback validation
     const categoryName = ride.rideInfo?.categoryName?.toLowerCase();
-    
+
     if (categoryName === 'driver' && (cabFeedback?.length > 0 || parcelFeedback?.parcelCondition?.length > 0 || parcelFeedback?.deliveryExperience?.length > 0)) {
       return res.status(400).json({ message: "Only driver feedback is allowed for driver category rides" });
     }
-    
+
     if (categoryName === 'cab' && (driverFeedback?.length > 0 || parcelFeedback?.parcelCondition?.length > 0 || parcelFeedback?.deliveryExperience?.length > 0)) {
       return res.status(400).json({ message: "Only cab feedback is allowed for cab category rides" });
     }
-    
+
     if (categoryName === 'parcel' && (driverFeedback?.length > 0 || cabFeedback?.length > 0)) {
       return res.status(400).json({ message: "Only parcel feedback is allowed for parcel category rides" });
     }
@@ -77,7 +77,7 @@ router.post("/", authMiddleware, async (req, res) => {
       const sumRatings = driver.ratings.ratingHistory.reduce((sum, r) => sum + r, 0);
       driver.ratings.avgRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
       await driver.save();
-      
+
       // Send rating notification to driver
       try {
         await NotificationService.sendAndStoreDriverNotification(
@@ -93,6 +93,56 @@ router.post("/", authMiddleware, async (req, res) => {
       } catch (notifError) {
         console.error('Rating notification error:', notifError);
       }
+
+      // 🟢 WhatsApp Notification to Driver (hire4drive_driver_new_rating)
+      try {
+
+        const driverMobile = driver.mobile;
+
+        if (driverMobile) {
+
+          const toNumber = driverMobile.startsWith("+")
+            ? driverMobile
+            : `91${driverMobile}`;
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_driver_new_rating",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    {
+                      type: "text",
+                      text: rating.toString()
+                    }
+                  ]
+                }
+              ]
+            }
+          };
+
+          await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+        }
+
+      } catch (whatsappError) {
+
+        console.error(
+          "WhatsApp driver rating notification error:",
+          whatsappError.response?.data || whatsappError.message
+        );
+
+      }
     }
 
     res.json({
@@ -105,7 +155,7 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/given-by-user",adminAuthMiddleware, async (req, res) => {
+router.post("/given-by-user", adminAuthMiddleware, async (req, res) => {
   try {
     const { userId } = req.body;
     const page = parseInt(req.query.page) || 1;
@@ -126,8 +176,8 @@ router.post("/given-by-user",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ratings,
       totalRecords,
       totalPages,
@@ -138,7 +188,7 @@ router.post("/given-by-user",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/all",adminAuthMiddleware, async (req, res) => {
+router.get("/all", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -154,8 +204,8 @@ router.get("/all",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ratings,
       totalRecords,
       totalPages,
@@ -166,7 +216,7 @@ router.get("/all",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/high-ratings",  async (req, res) => {
+router.get("/high-ratings", async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -180,8 +230,8 @@ router.get("/high-ratings",  async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ratings,
       pagination: {
         currentPage: page,
@@ -195,7 +245,7 @@ router.get("/high-ratings",  async (req, res) => {
   }
 });
 
-router.get("/:driverId",adminAuthMiddleware, async (req, res) => {
+router.get("/:driverId", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
     const ratings = await UserRating.find({ driverId })

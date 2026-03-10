@@ -112,7 +112,7 @@ const getPaginatedRides = async (status = null, req) => {
   // Search filtering
   if (search) {
     const searchConditions = [];
-    
+
     // Check if search term is a number (for exact bookingId match only)
     if (!isNaN(search) && search.trim() !== '') {
       searchConditions.push({ bookingId: parseInt(search) });
@@ -127,13 +127,13 @@ const getPaginatedRides = async (status = null, req) => {
         { 'staffInfo.staffName': { $regex: escapedSearch, $options: 'i' } },
         { 'staffInfo.staffMobile': { $regex: escapedSearch, $options: 'i' } }
       );
-      
+
       // Also check if it's a valid ObjectId
       if (mongoose.Types.ObjectId.isValid(search)) {
         searchConditions.push({ _id: search });
       }
     }
-    
+
     query.$or = searchConditions;
   }
 
@@ -150,6 +150,8 @@ const getPaginatedRides = async (status = null, req) => {
     data: rides
   };
 };
+
+const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
@@ -232,12 +234,12 @@ router.get("/booking/:id", adminAuthMiddleware, async (req, res) => {
     }
 
     let booking;
-    
+
     // Try to find by bookingId first (if it's a number)
     if (!isNaN(id) && id.trim() !== '') {
       booking = await Ride.findOne({ bookingId: parseInt(id) });
     }
-    
+
     // If not found and it's a valid ObjectId, try finding by _id
     if (!booking && mongoose.Types.ObjectId.isValid(id)) {
       booking = await Ride.findById(id);
@@ -257,6 +259,7 @@ router.get("/booking/:id", adminAuthMiddleware, async (req, res) => {
 // Add admin extra charges to ride
 router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
   try {
+
     const { rideId, charges, description } = req.body;
 
     if (!rideId || charges === undefined) {
@@ -264,6 +267,7 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
     }
 
     const ride = await Ride.findById(rideId);
+
     if (!ride) {
       return res.status(404).json({ message: "Ride not found" });
     }
@@ -280,21 +284,64 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
       { new: true }
     );
 
-    // Send notification to driver if ride has driverId
+    // Send notification to driver
     if (updatedRide.driverId) {
+
       try {
+
         const driver = await Driver.findById(updatedRide.driverId);
-        if (driver && driver.oneSignalPlayerId) {
-          await NotificationService.sendToUser(
-            driver.oneSignalPlayerId,
-            'Ride Extra Charges Added',
-            'Hey Driver! Admin just added ride extra charges. Tap to check.',
-            { type: 'admin_extra_charges', rideId: rideId }
-          );
+
+        if (driver) {
+
+          // 🔔 Push Notification
+          if (driver.oneSignalPlayerId) {
+            await NotificationService.sendToUser(
+              driver.oneSignalPlayerId,
+              "Ride Extra Charges Added",
+              "Hey Driver! Admin just added ride extra charges. Tap to check.",
+              { type: "admin_extra_charges", rideId: rideId }
+            );
+          }
+
+          // 🟢 WhatsApp Notification
+          try {
+
+            const mobileStr = driver.mobile;
+
+            const toNumber = mobileStr.startsWith("+")
+              ? mobileStr
+              : `91${mobileStr}`;
+
+            const payload = {
+              messaging_product: "whatsapp",
+              to: toNumber,
+              type: "template",
+              template: {
+                name: "hire4drive_extra_charges_added",
+                language: { code: "en" }
+              }
+            };
+
+            await axios.post(WHATSAPP_API_URL, payload, {
+              headers: {
+                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              }
+            });
+
+          } catch (whatsappError) {
+            console.error(
+              "WhatsApp extra charges message error:",
+              whatsappError.response?.data || whatsappError.message
+            );
+          }
+
         }
+
       } catch (notifError) {
-        console.error('Error sending notification to driver:', notifError);
+        console.error("Error sending notification to driver:", notifError);
       }
+
     }
 
     res.json({
@@ -302,9 +349,16 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
       message: "Admin extra charges added successfully",
       data: updatedRide
     });
+
   } catch (error) {
+
     console.error("Error adding admin extra charges:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+
   }
 });
 
@@ -412,16 +466,16 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
       if (rider && rider.oneSignalPlayerId) {
         const rideDate = new Date(updatedRide.rideInfo.selectedDate);
         const formattedDate = rideDate.toLocaleDateString('en-GB');
-        
+
         // Convert 24-hour time to 12-hour format with AM/PM
         const [hours, minutes] = updatedRide.rideInfo.selectedTime.split(':');
         const hour = parseInt(hours);
         const ampm = hour >= 12 ? 'PM' : 'AM';
         const hour12 = hour % 12 || 12;
         const formattedTime = `${hour12}:${minutes} ${ampm}`;
-        
+
         const message = `Your ride has been confirmed by ${driverName}. Ready at ${formattedDate} on ${formattedTime}`;
-        
+
         await NotificationService.sendAndStoreRiderNotification(
           updatedRide.riderId,
           rider.oneSignalPlayerId,
@@ -497,7 +551,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       // User authentication - riderId from middleware
       riderId = req.rider.riderId;
       const mobile = req.rider.mobile;
-      
+
       riderData = await Rider.findOne({ mobile });
       riderName = riderData.name;
     } else if (req.staff) {
@@ -507,14 +561,14 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       }
       riderId = bodyRiderId;
       staffId = req.staff.staffId;
-      
+
       // Get rider data
       riderData = await Rider.findById(riderId);
       if (!riderData) {
         return res.status(404).json({ success: false, message: 'Rider not found' });
       }
       riderName = riderData.name;
-      
+
       // Staff info from middleware
       staffInfo = {
         staffName: req.staff.name,
@@ -578,7 +632,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
         selectedCategoryId,
         isReferralEarningUsed,
         referralEarningUsedAmount,
-        rider:riderData
+        rider: riderData
       };
 
       if (categoryNameLower === 'driver') {
@@ -636,15 +690,15 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
     // Handle wallet deduction for wallet payments BEFORE saving ride
     if (paymentType === 'wallet') {
       const wallet = await Wallet.findOne({ riderId });
-      
+
       if (!wallet) {
         return res.status(404).json({ message: 'Wallet not found' });
       }
-      
+
       if (wallet.balance < adjustedTotalPayable) {
         return res.status(400).json({ message: 'Insufficient wallet balance' });
       }
-      
+
       // Add spend transaction to wallet
       const transaction = {
         amount: adjustedTotalPayable,
@@ -653,12 +707,12 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
         description: 'Ride booking payment',
         paidAt: new Date()
       };
-      
+
       wallet.transactions.push(transaction);
       wallet.balance -= adjustedTotalPayable;
       wallet.totalSpent += adjustedTotalPayable;
       wallet.lastTransactionAt = new Date();
-      
+
       await wallet.save();
 
       // Credit admin wallet ledger
@@ -666,7 +720,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       if (!adminWallet) {
         adminWallet = new AdminWalletLedger();
       }
-      
+
       adminWallet.addTransaction({
         transactionType: "CREDIT",
         amount: adjustedTotalPayable,
@@ -674,7 +728,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
         type: "RIDE_PAYMENT",
         category: categoryId
       });
-      
+
       await adminWallet.save();
     }
 
@@ -861,7 +915,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
           'personalInformation.subCategory': { $in: [subcategoryId] },
           driverCategory: { $in: [selectedCategoryId] } // Changed to $in for array search
         };
-        
+
         // Add vehicle type validations if carTypeId and transmissionTypeId exist
         if (carTypeId) {
           driverQuery['drivingDetails.canDrive'] = { $in: [carTypeId] };
@@ -869,7 +923,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
         if (transmissionTypeId) {
           driverQuery['drivingDetails.vehicleType'] = { $in: [transmissionTypeId] };
         }
-        
+
         waitingDrivers = await Driver.find(driverQuery).select('_id');
       } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
         // For cab and parcel, find vehicles with matching modelType and get assignedTo drivers
@@ -901,39 +955,42 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
-      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status and matching categories for ${categoryNameLower}`);
+      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
 
-      // Send to online drivers who have WAITING rideStatus
-      //console.log('ride data to send:', rideData);
       let sentCount = 0;
+
       Object.entries(onlineDrivers).forEach(([driverId, driverSocketData]) => {
-        // Only send to drivers with WAITING status
+
         if (waitingDriverIds.includes(driverId)) {
+
           io.to(driverSocketData.socketId).emit('new-ride', rideData);
+
           sentCount++;
+
         }
+
       });
 
-      console.log(`🚗 New ride ${newRide._id} sent to ${sentCount} available drivers (WAITING status + matching categories)`);
+      console.log(`🚗 Ride ${newRide._id} sent to ${sentCount} drivers via socket`);
 
-      // Send push notifications to eligible drivers only
+
+      // ============================
+      // 🔔 OneSignal Push Notification
+      // ============================
+
       try {
-        console.log(`🔍 Looking for eligible drivers from ${waitingDriverIds.length} waiting drivers`);
 
-        const eligibleDrivers = await Driver.find({
+        const drivers = await Driver.find({
           _id: { $in: waitingDriverIds },
           oneSignalPlayerId: { $ne: null, $exists: true }
-        }).select('oneSignalPlayerId');
+        }).select("oneSignalPlayerId mobile");
 
-        console.log(`📱 Found ${eligibleDrivers.length} eligible drivers with OneSignal player IDs`);
+        if (drivers.length > 0) {
 
-        if (eligibleDrivers.length > 0) {
-          const playerIds = eligibleDrivers.map(driver => driver.oneSignalPlayerId);
+          const playerIds = drivers
+            .map(driver => driver.oneSignalPlayerId)
+            .filter(Boolean);
 
-          console.log(`📤 Sending push notifications to player IDs:`, playerIds);
-
-
-          // Convert time to 12-hour format
           const formatTo12Hour = (time24) => {
             const [hours, minutes] = time24.split(':');
             const hour = parseInt(hours);
@@ -943,46 +1000,142 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
           };
 
           const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
-          const message = `${newRide.riderInfo.riderName} books a ${newRide.rideInfo.subcategoryName} ride  pick up on ${formattedSelectedDate.replace(/ /g, '/')} at ${formattedTime}.`;
+          const formattedDate = formattedSelectedDate.replace(/ /g, "/");
 
-          await NotificationService.sendToMultipleUsers(
-            playerIds,
-            'New Ride Available',
-            message,
-          );
+          const pushMessage =
+            `${newRide.riderInfo.riderName} booked a ${newRide.rideInfo.subcategoryName} ride. ` +
+            `Pickup on ${formattedDate} at ${formattedTime}.`;
 
-          console.log(`✅ Push notification sent successfully to ${playerIds.length} eligible drivers`);
-        } else {
-          console.log(`❌ No eligible drivers found with OneSignal player IDs`);
+          if (playerIds.length > 0) {
+
+            await NotificationService.sendToMultipleUsers(
+              playerIds,
+              "New Ride Available",
+              pushMessage,
+              {
+                type: "new_ride",
+                rideId: newRide._id
+              }
+            );
+
+            console.log(`📱 Push sent to ${playerIds.length} drivers`);
+
+          }
+
         }
-      } catch (notifError) {
-        console.error('❌ Push notification error:', notifError);
+
+      } catch (pushError) {
+
+        console.error("❌ OneSignal push error:", pushError);
+
       }
-    } else {
-      console.log('❌ Socket.io or onlineDrivers not available');
-    }
 
-    // ✅ Deduct referral balance if used
-    const rider = await Rider.findById(riderId);
-    if (rider && isReferralEarningUsed && referralEarningUsedAmount > 0) {
-      rider.referralEarning.currentBalance -= referralEarningUsedAmount;
-      if (rider.referralEarning.currentBalance < 0)
-        rider.referralEarning.currentBalance = 0;
 
-      // Add to history
-      rider.referralEarning.history.push({
-        rideId: newRide._id,
-        amount: -referralEarningUsedAmount,
-        type: "earning_used_for_book_ride"
+      // ============================
+      // 🟢 WhatsApp Notification
+      // ============================
+
+      try {
+
+        const drivers = await Driver.find({
+          _id: { $in: waitingDriverIds }
+        }).select("mobile");
+
+        const formatTo12Hour = (time24) => {
+
+          const [hours, minutes] = time24.split(':');
+
+          const hour = parseInt(hours);
+
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+
+          const hour12 = hour % 12 || 12;
+
+          return `${hour12}:${minutes} ${ampm}`;
+
+        };
+
+        const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
+
+        const formattedDate = formattedSelectedDate.replace(/ /g, "/");
+
+        for (const driver of drivers) {
+
+          try {
+
+            const mobileStr = driver.mobile;
+
+            const toNumber = mobileStr.startsWith("+")
+              ? mobileStr
+              : `91${mobileStr}`;
+
+            const payload = {
+              messaging_product: "whatsapp",
+              to: toNumber,
+              type: "template",
+              template: {
+                name: "hire4drive_new_ride_available",
+                language: { code: "en" },
+                components: [
+                  {
+                    type: "body",
+                    parameters: [
+                      { type: "text", text: riderName },
+                      { type: "text", text: subcategoryName },
+                      { type: "text", text: formattedDate },
+                      { type: "text", text: formattedTime }
+                    ]
+                  }
+                ]
+              }
+            };
+
+            await axios.post(WHATSAPP_API_URL, payload, {
+              headers: {
+                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              }
+            });
+
+          } catch (driverError) {
+
+            console.error(
+              `❌ WhatsApp failed for driver ${driver._id}`,
+              driverError.response?.data || driverError.message
+            );
+
+          }
+
+        }
+
+      } catch (whatsappError) {
+
+        console.error("❌ WhatsApp bulk error:", whatsappError);
+
+      }
+
+      // ✅ Deduct referral balance if used
+      const rider = await Rider.findById(riderId);
+      if (rider && isReferralEarningUsed && referralEarningUsedAmount > 0) {
+        rider.referralEarning.currentBalance -= referralEarningUsedAmount;
+        if (rider.referralEarning.currentBalance < 0)
+          rider.referralEarning.currentBalance = 0;
+
+        // Add to history
+        rider.referralEarning.history.push({
+          rideId: newRide._id,
+          amount: -referralEarningUsedAmount,
+          type: "earning_used_for_book_ride"
+        });
+
+        await rider.save();
+      }
+
+      res.status(201).json({
+        message: "Ride booked successfully",
+        ride: newRide,
       });
-
-      await rider.save();
     }
-
-    res.status(201).json({
-      message: "Ride booked successfully",
-      ride: newRide,
-    });
   } catch (error) {
     console.error("Book ride error:", error);
     res.status(500).json({ message: "Server error", error });
@@ -996,7 +1149,7 @@ router.get("/current/my-rides", authMiddleware, async (req, res) => {
     const { riderId } = req.rider;
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
-    const rides = await Ride.find({ riderId, status: { $in: ["BOOKED", "CONFIRMED"]} }).sort({ createdAt: -1 });
+    const rides = await Ride.find({ riderId, status: { $in: ["BOOKED", "CONFIRMED"] } }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
       return res.status(200).json({ success: false, message: "No booked rides found" });
@@ -1020,7 +1173,7 @@ router.get("/ongoing/my-rides", authMiddleware, async (req, res) => {
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
     const rides = await Ride.find({
-      riderId, status: { $in: ["ONGOING", "EXTENDED" , "REACHED"] }
+      riderId, status: { $in: ["ONGOING", "EXTENDED", "REACHED"] }
     }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
@@ -1045,7 +1198,7 @@ router.get("/past/my-rides", authMiddleware, async (req, res) => {
     const { riderId } = req.rider;
 
     // Find all rides for this rider sorted by createdAt desc
-    const rides = await Ride.find({ riderId , status: { $in: ["COMPLETED", "CANCELLED"] } }).sort({ createdAt: -1 });
+    const rides = await Ride.find({ riderId, status: { $in: ["COMPLETED", "CANCELLED"] } }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
       return res.status(200).json({ success: false, message: "No rides found" });
@@ -1077,10 +1230,10 @@ router.post("/bookingDetail", combinedAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    res.json({ success:true , data:ride });
+    res.json({ success: true, data: ride });
   } catch (error) {
     console.error("Error fetching booking:", error);
-    res.status(500).json({ success:false , message: "Server error", error: error.message });
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
 
@@ -1109,7 +1262,7 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
     const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime, selectedCategoryId } = ride.rideInfo;
     const bookingDriverId = ride.driverId;
     const categoryNameLower = categoryName.toLowerCase();
-    
+
     let cancellationDetails = null;
 
     if (categoryNameLower === 'driver') {
@@ -1171,11 +1324,11 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
 
   } catch (error) {
     console.error("Error checking cancellation charges:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error", 
+    res.status(500).json({
+      success: false,
+      message: "Server error",
       cancellationCharges: 0,
-      error: error.message 
+      error: error.message
     });
   }
 });
@@ -1183,7 +1336,7 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
 //for cancel ride using ride id
 router.post("/booking/cancel", authMiddleware, async (req, res) => {
   try {
-    const { rideId , Reason } = req.body;
+    const { rideId, Reason } = req.body;
     const riderId = req.rider?.riderId;
 
     if (!rideId) {
@@ -1239,14 +1392,14 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
         if (rideToCancel.paymentType === 'wallet') {
           const wallet = await Wallet.findOne({ riderId: riderId.toString() });
           const rider = await Rider.findById(riderId);
-          
+
           if (wallet && rider) {
             const totalPayable = rideToCancel.totalPayable;
             const totalUnclearedCharges = rider.unclearedCancellationCharges || 0;
             const currentCancellationCharges = cancellationFee;
             const totalDeductions = totalUnclearedCharges + currentCancellationCharges;
             const refundAmount = Math.max(0, totalPayable - totalDeductions);
-            
+
             if (refundAmount > 0) {
               // Add refund transaction
               wallet.transactions.push({
@@ -1257,12 +1410,12 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
                 rideId: rideId,
                 paidAt: new Date()
               });
-              
+
               wallet.balance += refundAmount;
               wallet.lastTransactionAt = new Date();
               await wallet.save();
             }
-            
+
             // Clear uncleared charges since they're now accounted for
             rider.unclearedCancellationCharges = 0;
             await rider.save();
@@ -1396,7 +1549,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
     // ✅ Now update the ride status to CANCELLED after successful processing
     const updatedBooking = await Ride.findByIdAndUpdate(
       rideId,
-      { status: "CANCELLED", whoCancel: "Rider" , cancellationReason : Reason},
+      { status: "CANCELLED", whoCancel: "Rider", cancellationReason: Reason },
       { new: true }
     );
 
@@ -1424,7 +1577,10 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       // Send cancellation notification to the assigned driver
       try {
         const driver = await Driver.findById(bookingDriverId);
+
         if (driver) {
+
+          // 🔵 OneSignal Notification
           await NotificationService.sendAndStoreDriverNotification(
             bookingDriverId,
             driver.oneSignalPlayerId,
@@ -1435,7 +1591,61 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             null,
             rideId
           );
+
+          // 🟢 WhatsApp Notification
+          try {
+
+            const riderName = rideToCancel.riderInfo?.riderName || "Rider";
+            const subcategoryName = rideToCancel.rideInfo?.subcategoryName || "ride";
+
+            const mobileStr = driver.mobile;
+            const toNumber = mobileStr.startsWith("+")
+              ? mobileStr
+              : `91${mobileStr}`;
+
+            const apiUrl = WHATSAPP_API_URL;
+
+            const payload = {
+              messaging_product: "whatsapp",
+              to: toNumber,
+              type: "template",
+              template: {
+                name: "hire4drive_ride_cancelled_by_rider",
+                language: { code: "en" },
+                components: [
+                  {
+                    type: "body",
+                    parameters: [
+                      {
+                        type: "text",
+                        text: riderName
+                      },
+                      {
+                        type: "text",
+                        text: subcategoryName
+                      }
+                    ]
+                  }
+                ]
+              }
+            };
+
+            await axios.post(apiUrl, payload, {
+              headers: {
+                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              }
+            });
+
+          } catch (whatsappError) {
+            console.error(
+              "WhatsApp ride cancelled message error:",
+              whatsappError.response?.data || whatsappError.message
+            );
+          }
+
         }
+
       } catch (notifError) {
         console.error('Cancellation notification error:', notifError);
       }
@@ -1683,18 +1893,21 @@ router.get("/driver/rides/cancelled", driverAuthMiddleware, async (req, res) => 
 // update status to confirm and assign driver ride by driver
 router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
   try {
+
     const { rideId } = req.body;
     const driverId = req.driver?.driverId;
     const driverMobile = req.driver?.mobile;
 
-    // Check current plan and expiry
     const driverInfo = await Driver.findById(driverId);
+
     if (!driverInfo) {
       return res.status(404).json({ message: "Driver not found" });
     }
 
     const currentPlan = driverInfo.currentPlan || {};
+
     if (currentPlan.expiryDate) {
+
       const now = new Date();
       const expiry = new Date(currentPlan.expiryDate);
 
@@ -1704,22 +1917,21 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
           message: "Subscription plan expired. Please renew to continue."
         });
       }
+
     }
-
-
 
     if (!rideId) {
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
-    // Get ride details for wallet balance check
     const ride = await Ride.findById(rideId);
+
     if (!ride) {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    // Check wallet balance before confirming ride
     try {
+
       const balanceCheck = await checkDriverWalletBalance(
         driverId,
         ride.rideInfo.categoryId,
@@ -1728,6 +1940,7 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
       );
 
       if (!balanceCheck.success) {
+
         return res.status(402).json({
           success: false,
           message: balanceCheck.message,
@@ -1735,31 +1948,34 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
           currentBalance: balanceCheck.currentBalance,
           errorCode: 'INSUFFICIENT_WALLET_BALANCE'
         });
+
       }
+
     } catch (walletError) {
+
       console.error('Wallet balance check error:', walletError);
+
       return res.status(500).json({
         success: false,
         message: 'Failed to validate wallet balance'
       });
+
     }
 
-    // Check if driver already has a confirmed ride
     if (driverInfo.rideStatus === 'CONFIRMED') {
+
       return res.status(400).json({
         success: false,
-        message: "You already have an active ride. Please complete your current ride before accepting a new one.",
+        message: "You already have an active ride.",
         errorCode: 'RIDE_ALREADY_ACTIVE'
       });
+
     }
 
-    const driverName = driverInfo.personalInformation?.fullName
+    const driverName = driverInfo.personalInformation?.fullName;
 
-
-
-    // Find and update the ride only if status is BOOKED
     const updatedRide = await Ride.findOneAndUpdate(
-      { _id: rideId, status: "BOOKED" }, // only if ride is BOOKED
+      { _id: rideId, status: "BOOKED" },
       {
         status: "CONFIRMED",
         driverId: driverId,
@@ -1775,119 +1991,219 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Ride is already confirmed or not found" });
     }
 
-    // Update driver rideStatus to CONFIRMED
     await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
 
-    // Send notification to rider
+    // =========================
+    // Rider Notification
+    // =========================
+
     try {
+
       const rider = await Rider.findById(updatedRide.riderId);
-      if (rider && rider.oneSignalPlayerId) {
+
+      if (rider) {
+
         const rideDate = new Date(updatedRide.rideInfo.selectedDate);
-        const formattedDate = rideDate.toLocaleDateString('en-GB');
-        
-        // Convert 24-hour time to 12-hour format with AM/PM
-        const [hours, minutes] = updatedRide.rideInfo.selectedTime.split(':');
+
+        const formattedDate = rideDate.toLocaleDateString("en-GB");
+
+        const [hours, minutes] = updatedRide.rideInfo.selectedTime.split(":");
+
         const hour = parseInt(hours);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
+
+        const ampm = hour >= 12 ? "PM" : "AM";
+
         const hour12 = hour % 12 || 12;
+
         const formattedTime = `${hour12}:${minutes} ${ampm}`;
-        
-        const message = `Your ride has been confirmed by ${driverName}. Ready at ${formattedDate} on ${formattedTime}`;
-        
-        await NotificationService.sendAndStoreRiderNotification(
-          updatedRide.riderId,
-          rider.oneSignalPlayerId,
-          'Ride Confirmed',
-          message,
-          'ride_confirmed',
-          {},
-          updatedRide.rideInfo?.categoryId || null,
-          rideId
-        );
-        console.log('Rider notification sent for ride confirmation',rider.oneSignalPlayerId);
+
+        const message =
+          `Your ride has been confirmed by ${driverName}. ` +
+          `Ready at ${formattedDate} on ${formattedTime}`;
+
+        // 🔔 OneSignal Push
+        if (rider.oneSignalPlayerId) {
+
+          await NotificationService.sendAndStoreRiderNotification(
+            updatedRide.riderId,
+            rider.oneSignalPlayerId,
+            "Ride Confirmed",
+            message,
+            "ride_confirmed",
+            {},
+            updatedRide.rideInfo?.categoryId || null,
+            rideId
+          );
+
+        }
+
+        // =========================
+        // 🟢 WhatsApp Notification
+        // =========================
+
+        try {
+
+          const mobileStr = rider.mobile;
+
+          const toNumber = mobileStr.startsWith("+")
+            ? mobileStr
+            : `91${mobileStr}`;
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_ride_confirmed_rider",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: driverName },
+                    { type: "text", text: formattedDate },
+                    { type: "text", text: formattedTime }
+                  ]
+                }
+              ]
+            }
+          };
+
+          await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+        } catch (whatsappError) {
+
+          console.error(
+            "WhatsApp ride confirmation error:",
+            whatsappError.response?.data || whatsappError.message
+          );
+
+        }
+
       }
+
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
+
+      console.error("Error sending rider notification:", notifError);
+
     }
 
-    // Emit socket event to remove ride from all drivers
-    const io = req.app.get('io');
+    // =========================
+    // Socket Event
+    // =========================
+
+    const io = req.app.get("io");
+
     if (io) {
-      io.to('drivers').emit('ride-assigned', {
+
+      io.to("drivers").emit("ride-assigned", {
         rideId: rideId,
         driverId: driverId
       });
-      //console.log('🚗 Ride assigned event emitted:', rideId);
+
     }
 
     res.json({
       message: "Ride confirmed successfully",
-      ride: updatedRide,
+      ride: updatedRide
     });
+
   } catch (error) {
+
     console.error("Error confirming ride:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+
+    res.status(500).json({
+      message: "Server error",
+      error: error.message
+    });
+
   }
 });
 
 // update driver ride status to reached
 router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
   try {
+
     const driverId = req.driver?.driverId;
     const { rideId } = req.body;
 
     const ride = await Ride.findById(rideId);
+
     if (!ride) {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    // ✅ Get current date and validate ride day
     const currentDate = new Date().toISOString().split('T')[0];
+
     const subcategoryName = ride.rideInfo.subcategoryName?.toLowerCase() || '';
 
-    // ✅ Date validation
     if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+
       const remainingDates = ride.rideInfo.remainingDates || [];
+
       if (!remainingDates.includes(currentDate)) {
         return res.status(400).json({
           success: false,
           message: "You can only update status to REACHED on scheduled ride days"
         });
       }
+
     } else {
+
       const selectedDate = new Date(ride.rideInfo.selectedDate).toISOString().split('T')[0];
+
       if (selectedDate !== currentDate) {
         return res.status(400).json({
           success: false,
           message: "You can only update status to REACHED on the scheduled ride date"
         });
       }
+
     }
 
-    // ✅ Get current time in HH:MM:SS format
     const driverReachTime = new Date().toLocaleTimeString("en-GB", {
       timeZone: "Asia/Kolkata",
     });
+
     let updateData = {
       status: "REACHED",
       driverId: driverId,
     };
 
     if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+
       const weeklyMonthlyRideTimings = ride.rideInfo.weeklyMonthlyRideTimings || [];
-      const existingIndex = weeklyMonthlyRideTimings.findIndex(timing => timing.date === currentDate);
+
+      const existingIndex = weeklyMonthlyRideTimings.findIndex(
+        timing => timing.date === currentDate
+      );
 
       if (existingIndex >= 0) {
+
         weeklyMonthlyRideTimings[existingIndex].driverReachTime = driverReachTime;
+
       } else {
-        weeklyMonthlyRideTimings.push({ date: currentDate, driverReachTime });
+
+        weeklyMonthlyRideTimings.push({
+          date: currentDate,
+          driverReachTime
+        });
+
       }
+
       updateData["rideInfo.weeklyMonthlyRideTimings"] = weeklyMonthlyRideTimings;
+
     } else {
+
       updateData["rideInfo.driverReachTime"] = driverReachTime;
+
     }
 
-    // ✅ Update the ride only if status is CONFIRMED
     const updatedRide = await Ride.findOneAndUpdate(
       { _id: rideId, status: "CONFIRMED" },
       updateData,
@@ -1901,7 +2217,6 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // ✅ Update driver status only if it was CONFIRMED
     const driver = await Driver.findOneAndUpdate(
       { _id: driverId, rideStatus: "CONFIRMED" },
       { rideStatus: "REACHED" },
@@ -1915,26 +2230,89 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Send notification to rider
+    // =========================
+    // Rider Notification
+    // =========================
+
     try {
+
       const rider = await Rider.findById(updatedRide.riderId);
-      if (rider && rider.oneSignalPlayerId) {
-        const driverName = driver.personalInformation?.fullName || 'Your driver';
-        const message = `${driverName} has reached your pickup location. Please come out!`;
-        
-        await NotificationService.sendAndStoreRiderNotification(
-          updatedRide.riderId,
-          rider.oneSignalPlayerId,
-          'Driver Reached',
-          message,
-          'driver_reached',
-          {},
-          updatedRide.rideInfo?.categoryId || null,
-          rideId
-        );
+
+      if (rider) {
+
+        const driverName = driver.personalInformation?.fullName || "Your driver";
+
+        const message =
+          `${driverName} has reached your pickup location. Please come out!`;
+
+        // 🔔 OneSignal Push
+        if (rider.oneSignalPlayerId) {
+
+          await NotificationService.sendAndStoreRiderNotification(
+            updatedRide.riderId,
+            rider.oneSignalPlayerId,
+            "Driver Reached",
+            message,
+            "driver_reached",
+            {},
+            updatedRide.rideInfo?.categoryId || null,
+            rideId
+          );
+
+        }
+
+        // =========================
+        // 🟢 WhatsApp Notification
+        // =========================
+
+        try {
+
+          const mobileStr = rider.mobile;
+
+          const toNumber = mobileStr.startsWith("+")
+            ? mobileStr
+            : `91${mobileStr}`;
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_driver_reached",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: driverName }
+                  ]
+                }
+              ]
+            }
+          };
+
+          await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+        } catch (whatsappError) {
+
+          console.error(
+            "WhatsApp driver reached error:",
+            whatsappError.response?.data || whatsappError.message
+          );
+
+        }
+
       }
+
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
+
+      console.error("Error sending rider notification:", notifError);
+
     }
 
     res.json({
@@ -1943,13 +2321,17 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
       rideStatus: driver.rideStatus,
       driverReachTime: updatedRide.rideInfo.driverReachTime,
     });
+
   } catch (error) {
+
     console.error("Update ride status error:", error);
+
     res.status(500).json({
       success: false,
       message: "Failed to update ride status",
       error: error.message,
     });
+
   }
 });
 
@@ -2210,7 +2592,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         "rideInfo.remainingDates": [],
         "rideInfo.selectedDates": [],
         "rideInfo.SelectedDays": 0,
-        cancellationReason:reason
+        cancellationReason: reason
       });
 
       // Also update driver status to WAITING again
@@ -2353,7 +2735,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
             driverCategory: currentRide.rideInfo.selectedCategoryId
           };
-          
+
           // Add vehicle type validations if carTypeId and transmissionTypeId exist
           if (currentRide.rideInfo.carTypeId) {
             driverQuery['drivingDetails.canDrive'] = { $in: [currentRide.rideInfo.carTypeId] };
@@ -2361,7 +2743,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           if (currentRide.rideInfo.transmissionTypeId) {
             driverQuery['drivingDetails.vehicleType'] = { $in: [currentRide.rideInfo.transmissionTypeId] };
           }
-          
+
           waitingDrivers = await Driver.find(driverQuery).select('_id');
         } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
           const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
@@ -2406,7 +2788,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         if (rider && rider.oneSignalPlayerId) {
           const driverName = driver.personalInformation?.fullName || 'Your driver';
           const isWeeklyMonthly = subcategoryName.includes('weekly') || subcategoryName.includes('monthly');
-          
+
           let message;
           if (isWeeklyMonthly) {
             const formattedDates = currentRide.rideInfo.selectedDates.map(date => {
@@ -2419,13 +2801,13 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             const formattedDate = rideDate.toLocaleDateString('en-GB');
             message = `${driverName} cancelled your ride scheduled for ${formattedDate}. Don't worry, a new driver will be assigned shortly.`;
           }
-          
+
           await NotificationService.sendToUser(
             rider.oneSignalPlayerId,
             'Ride Cancelled',
             message
           );
-          
+
           await RiderNotification.create({
             riderId: currentRide.riderId,
             rideId: currentRide._id,
@@ -2435,8 +2817,59 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             type: 'ride_cancelled'
           });
         }
+
       } catch (notifError) {
         console.error('Error sending rider notification:', notifError);
+      }
+
+      // 🟢 WhatsApp Notification for FULL ride cancellation
+      try {
+
+        const riderMobile = currentRide.riderInfo?.riderMobile;
+        const driverName = driver.personalInformation?.fullName || "Driver";
+
+        if (riderMobile) {
+
+          const toNumber = riderMobile.startsWith("+")
+            ? riderMobile
+            : `91${riderMobile}`;
+
+          const rideDate = new Date(currentRide.rideInfo.selectedDate)
+            .toLocaleDateString("en-GB");
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_ride_cancelled_full",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: driverName },
+                    { type: "text", text: rideDate }
+                  ]
+                }
+              ]
+            }
+          };
+
+          await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+        }
+
+      } catch (whatsappError) {
+        console.error(
+          "WhatsApp full cancellation error:",
+          whatsappError.response?.data || whatsappError.message
+        );
       }
 
       return res.status(200).json({
@@ -2608,7 +3041,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           'personalInformation.subCategory': { $in: [currentRide.rideInfo.subcategoryId] },
           driverCategory: { $in: [currentRide.rideInfo.selectedCategoryId] } // Changed to $in for array search
         };
-        
+
         // Add vehicle type validations if carTypeId and transmissionTypeId exist
         if (currentRide.rideInfo.carTypeId) {
           driverQuery['drivingDetails.canDrive'] = { $in: [currentRide.rideInfo.carTypeId] };
@@ -2616,7 +3049,7 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         if (currentRide.rideInfo.transmissionTypeId) {
           driverQuery['drivingDetails.vehicleType'] = { $in: [currentRide.rideInfo.transmissionTypeId] };
         }
-        
+
         waitingDrivers = await Driver.find(driverQuery).select('_id');
       } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
         const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
@@ -2681,26 +3114,78 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           const dateObj = new Date(date);
           return dateObj.toLocaleDateString('en-GB');
         }).join(', ');
-        
+
         const message = `${driverName} cancelled your ride for these dates: ${formattedDates}. Don't worry, a new driver will be assigned for those dates shortly.`;
-        
+
         await NotificationService.sendToUser(
           rider.oneSignalPlayerId,
           'Partial Ride Cancelled',
           message
         );
-        
+
         await RiderNotification.create({
           riderId: currentRide.riderId,
           rideId: currentRide._id,
           title: 'Partial Ride Cancelled',
           message: message,
           type: 'partial_ride_cancelled',
-          
+
         });
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);
+    }
+
+    // 🟢 WhatsApp Notification for PARTIAL ride cancellation
+    try {
+
+      const riderMobile = currentRide.riderInfo?.riderMobile;
+      const driverName = driver.personalInformation?.fullName || "Driver";
+
+      if (riderMobile) {
+
+        const toNumber = riderMobile.startsWith("+")
+          ? riderMobile
+          : `91${riderMobile}`;
+
+        const formattedDates = selectedDates.map(date => {
+          const dateObj = new Date(date);
+          return dateObj.toLocaleDateString("en-GB");
+        }).join(", ");
+
+        const payload = {
+          messaging_product: "whatsapp",
+          to: toNumber,
+          type: "template",
+          template: {
+            name: "hire4drive_partial_ride_cancelled",
+            language: { code: "en" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: driverName },
+                  { type: "text", text: formattedDates }
+                ]
+              }
+            ]
+          }
+        };
+
+        await axios.post(WHATSAPP_API_URL, payload, {
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+      }
+
+    } catch (whatsappError) {
+      console.error(
+        "WhatsApp partial cancellation error:",
+        whatsappError.response?.data || whatsappError.message
+      );
     }
 
     return res.status(200).json({
@@ -2729,17 +3214,17 @@ router.post("/admin/cancel", adminAuthMiddleware, async (req, res) => {
 
     // Validate ride status - only allow CONFIRMED rides to be cancelled by admin
     if (currentRide.status !== 'CONFIRMED') {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Cannot cancel ride with status ${currentRide.status}. Only CONFIRMED rides can be cancelled by admin.` 
+      return res.status(400).json({
+        success: false,
+        message: `Cannot cancel ride with status ${currentRide.status}. Only CONFIRMED rides can be cancelled by admin.`
       });
     }
 
     // Validate that ride has a driver assigned
     if (!currentRide.driverId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Cannot cancel ride without assigned driver" 
+      return res.status(400).json({
+        success: false,
+        message: "Cannot cancel ride without assigned driver"
       });
     }
 
@@ -2783,10 +3268,10 @@ router.post("/admin/cancel", adminAuthMiddleware, async (req, res) => {
 
   } catch (error) {
     console.error("Admin cancel ride error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Internal Server Error", 
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
     });
   }
 });
@@ -2865,7 +3350,7 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       const rider = await Rider.findById(updatedRide.riderId);
       if (rider && rider.oneSignalPlayerId) {
         const message = `${driverName} has extended your ride. You may experience additional charges based on extra time or distance.`;
-        
+
         await NotificationService.sendAndStoreRiderNotification(
           updatedRide.riderId,
           rider.oneSignalPlayerId,
@@ -2879,6 +3364,78 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);
+    }
+
+    // Send notification to rider
+    try {
+      const rider = await Rider.findById(updatedRide.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        const message = `${driverName} has extended your ride. You may experience additional charges based on extra time or distance.`;
+
+        await NotificationService.sendAndStoreRiderNotification(
+          updatedRide.riderId,
+          rider.oneSignalPlayerId,
+          'Ride Extended',
+          message,
+          'ride_extended',
+          {},
+          updatedRide.rideInfo?.categoryId,
+          updatedRide._id
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
+
+
+    // 🟢 WhatsApp Notification (hire4drive_ride_extended)
+    try {
+
+      const riderMobile = ride.riderInfo?.riderMobile;
+
+      if (riderMobile) {
+
+        const toNumber = riderMobile.startsWith("+")
+          ? riderMobile
+          : `91${riderMobile}`;
+
+        const payload = {
+          messaging_product: "whatsapp",
+          to: toNumber,
+          type: "template",
+          template: {
+            name: "hire4drive_ride_extended",
+            language: { code: "en" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  {
+                    type: "text",
+                    text: driverName
+                  }
+                ]
+              }
+            ]
+          }
+        };
+
+        await axios.post(WHATSAPP_API_URL, payload, {
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+      }
+
+    } catch (whatsappError) {
+
+      console.error(
+        "WhatsApp ride extended message error:",
+        whatsappError.response?.data || whatsappError.message
+      );
+
     }
 
     res.json({
@@ -3051,7 +3608,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       (rideInfo.cancellationCharges || 0) +
       (rideInfo.adminAddedRideExtraCharges?.Charges || 0);
 
-    const adminPayable = 
+    const adminPayable =
       (rideInfo.adminCharges || 0) +
       (rideInfo.gstCharges || 0) +
       (rideInfo.insuranceCharges || 0);
@@ -3079,7 +3636,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         if (!adminWallet) {
           adminWallet = new AdminWalletLedger();
         }
-        
+
         adminWallet.addTransaction({
           transactionType: "CREDIT",
           amount: adminPayable,
@@ -3087,7 +3644,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           type: "RIDE_COMMISSION",
           category: updatedRide.rideInfo.categoryId
         });
-        
+
         await adminWallet.save();
       }
     }
@@ -3126,7 +3683,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     } else if (paymentType === "wallet") {
       // For wallet payments: Calculate what driver should get from total paid
       const driverPaymentFromWallet = payableAmount - (rideInfo.extraKmCharges || 0) - (rideInfo.extraMinutesCharges || 0);
-      
+
       if (driverPaymentFromWallet > 0) {
         wallet.transactions.push({
           type: "ride_payment",
@@ -3146,7 +3703,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         if (!adminWallet) {
           adminWallet = new AdminWalletLedger();
         }
-        
+
         adminWallet.addTransaction({
           transactionType: "DEBIT",
           amount: driverEarning,
@@ -3154,7 +3711,7 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
           type: "DRIVER_PAYOUT",
           category: updatedRide.rideInfo.categoryId
         });
-        
+
         await adminWallet.save();
       }
     }
@@ -3167,63 +3724,63 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       if (!adminWallet) {
         adminWallet = new AdminWalletLedger();
       }
-      
+
       adminWallet.addTransaction({
         transactionType: "DEBIT",
         amount: updatedRide.referralEarningUsedAmount,
         description: `Referral bonus payout for ride completion`,
         type: "REFERRAL_BONUS"
       });
-      
+
       await adminWallet.save();
     }
 
-      const driver = await Driver.findById(driverId);
-      const unclearedCharges = driver?.unclearedCancellationCharges || 0;
+    const driver = await Driver.findById(driverId);
+    const unclearedCharges = driver?.unclearedCancellationCharges || 0;
 
-      if (unclearedCharges > 0) {
-        const currentBalance = wallet.balance;
+    if (unclearedCharges > 0) {
+      const currentBalance = wallet.balance;
 
-        if (currentBalance >= unclearedCharges) {
-          wallet.balance -= unclearedCharges;
-          wallet.totalDeductions += unclearedCharges;
+      if (currentBalance >= unclearedCharges) {
+        wallet.balance -= unclearedCharges;
+        wallet.totalDeductions += unclearedCharges;
+        wallet.transactions.push({
+          type: "cancellation_charge",
+          amount: -unclearedCharges,
+          rideId: updatedRide._id,
+          description: "Uncleared cancellation charges deducted",
+          status: "completed"
+        });
+        await wallet.save();
+
+        driver.unclearedCancellationCharges = 0;
+        await driver.save();
+      } else {
+        const remainingCharges = unclearedCharges - currentBalance;
+
+        if (currentBalance > 0) {
+          wallet.totalDeductions += currentBalance;
+          wallet.balance = 0;
           wallet.transactions.push({
             type: "cancellation_charge",
-            amount: -unclearedCharges,
+            amount: -currentBalance,
             rideId: updatedRide._id,
-            description: "Uncleared cancellation charges deducted",
+            description: "Partial uncleared cancellation charge deducted",
             status: "completed"
           });
           await wallet.save();
-
-          driver.unclearedCancellationCharges = 0;
-          await driver.save();
-        } else {
-          const remainingCharges = unclearedCharges - currentBalance;
-
-          if (currentBalance > 0) {
-            wallet.totalDeductions += currentBalance;
-            wallet.balance = 0;
-            wallet.transactions.push({
-              type: "cancellation_charge",
-              amount: -currentBalance,
-              rideId: updatedRide._id,
-              description: "Partial uncleared cancellation charge deducted",
-              status: "completed"
-            });
-            await wallet.save();
-          }
-
-          driver.unclearedCancellationCharges = remainingCharges;
-          await driver.save();
         }
+
+        driver.unclearedCancellationCharges = remainingCharges;
+        await driver.save();
       }
+    }
 
     // Send notification to rider
     try {
       if (rider && rider.oneSignalPlayerId) {
         const message = `Your ride with ${driverName} has been completed successfully. Thank you for choosing our service!`;
-        
+
         await NotificationService.sendAndStoreRiderNotification(
           updatedRide.riderId,
           rider.oneSignalPlayerId,
@@ -3237,6 +3794,56 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       }
     } catch (notifError) {
       console.error('Error sending rider notification:', notifError);
+    }
+
+    // 🟢 WhatsApp Notification (hire4drive_ride_completed)
+    try {
+
+      const riderMobile = updatedRide.riderInfo?.riderMobile;
+
+      if (riderMobile) {
+
+        const toNumber = riderMobile.startsWith("+")
+          ? riderMobile
+          : `91${riderMobile}`;
+
+        const payload = {
+          messaging_product: "whatsapp",
+          to: toNumber,
+          type: "template",
+          template: {
+            name: "hire4drive_ride_completed",
+            language: { code: "en" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  {
+                    type: "text",
+                    text: driverName
+                  }
+                ]
+              }
+            ]
+          }
+        };
+
+        await axios.post(WHATSAPP_API_URL, payload, {
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+      }
+
+    } catch (whatsappError) {
+
+      console.error(
+        "WhatsApp ride completed message error:",
+        whatsappError.response?.data || whatsappError.message
+      );
+
     }
 
     res.json({
@@ -3476,7 +4083,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 });
 
 // 1️⃣ Get all PENDING withdrawal requests
-router.get("/withdrawals/pending",adminAuthMiddleware, async (req, res) => {
+router.get("/withdrawals/pending", adminAuthMiddleware, async (req, res) => {
   try {
     const pendingRequests = await withdrawalRequest
       .find({ status: "pending" })

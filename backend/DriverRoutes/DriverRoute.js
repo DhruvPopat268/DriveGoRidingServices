@@ -35,6 +35,9 @@ const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 const Ride = require('../models/Ride');
 const mongoose = require('mongoose');
 
+// WhatsApp API URL constant
+const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
 // Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -728,20 +731,19 @@ router.get("/all", adminAuthMiddleware, async (req, res) => {
 });
 
 // Approve driver
-router.post("/approve/:driverId",adminAuthMiddleware, async (req, res) => {
+router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
 
-    // Find driver
     const driver = await Driver.findById(driverId);
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
 
-    // Generate unique ID with collision handling
     const driverName = driver.personalInformation?.fullName || "DRIVER";
     const mobile = driver.mobile || "0000";
-    const namePrefix = driverName.substring(0, 5).toUpperCase().replace(/[^A-Z]/g, 'X');
+
+    const namePrefix = driverName.substring(0, 5).toUpperCase().replace(/[^A-Z]/g, "X");
     const mobileSuffix = mobile.slice(-4);
 
     let uniqueId;
@@ -750,10 +752,19 @@ router.post("/approve/:driverId",adminAuthMiddleware, async (req, res) => {
 
     do {
       const randomDigits = Math.floor(10 + Math.random() * 90);
-      const extraChars = attempts > 0 ? String.fromCharCode(65 + Math.floor(Math.random() * 26)) + Math.floor(Math.random() * 10) : '';
+      const extraChars =
+        attempts > 0
+          ? String.fromCharCode(65 + Math.floor(Math.random() * 26)) +
+            Math.floor(Math.random() * 10)
+          : "";
+
       uniqueId = `${namePrefix}${mobileSuffix}${randomDigits}${extraChars}`;
 
-      const existingDriver = await Driver.findOne({ uniqueId, _id: { $ne: driverId } });
+      const existingDriver = await Driver.findOne({
+        uniqueId,
+        _id: { $ne: driverId },
+      });
+
       if (!existingDriver) break;
 
       attempts++;
@@ -765,33 +776,35 @@ router.post("/approve/:driverId",adminAuthMiddleware, async (req, res) => {
 
     let currentPlanUpdate = {};
 
-    // Check if driver has subscriptionPlan in paymentAndSubscription
     if (driver.paymentAndSubscription?.subscriptionPlan) {
-      const subscriptionPlan = await DriverSubscriptionPlan.findById(driver.paymentAndSubscription.subscriptionPlan);
+      const subscriptionPlan = await DriverSubscriptionPlan.findById(
+        driver.paymentAndSubscription.subscriptionPlan
+      );
+
       if (subscriptionPlan) {
         const now = new Date();
         let expiryDate;
+
         if (driver.currentPlan?.expiryDate && driver.currentPlan.expiryDate > now) {
           expiryDate = new Date(driver.currentPlan.expiryDate);
-          expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days); // extend from current expiry
+          expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days);
         } else {
           expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days); // start from today
+          expiryDate.setDate(expiryDate.getDate() + subscriptionPlan.days);
         }
+
         currentPlanUpdate = {
           currentPlan: {
             planId: subscriptionPlan._id,
-            expiryDate
-          }
+            expiryDate,
+          },
         };
       }
     }
 
-    // Get latest cancellation credit configuration
     const latestCredit = await CancellationCredit.findOne().sort({ createdAt: -1 });
     const cancellationCredits = latestCredit ? latestCredit.credits : 0;
 
-    // Update driver status to Approved and set currentPlan, cancellation credits, uniqueId, and approvedDate
     const updatedDriver = await Driver.findByIdAndUpdate(
       driverId,
       {
@@ -799,40 +812,78 @@ router.post("/approve/:driverId",adminAuthMiddleware, async (req, res) => {
         uniqueId,
         cancellationRideCredits: cancellationCredits,
         approvedDate: new Date(),
-        ...currentPlanUpdate
+        ...currentPlanUpdate,
       },
       { new: true }
     );
 
-    // Update all vehicles owned by this driver to adminStatus: 'approved'
     await Vehicle.updateMany(
       { owner: driverId },
-      { 
-        adminStatus: 'approved',
-        approvedDate: new Date()
+      {
+        adminStatus: "approved",
+        approvedDate: new Date(),
       }
     );
 
-    // Send approval notification to driver
+    // 🔵 Send OneSignal Notification
     try {
       await NotificationService.sendAndStoreDriverNotification(
         driverId,
         driver.oneSignalPlayerId,
-        'Registration Approved',
-        'Your driver registration has been approved. Welcome aboard!',
-        'registration_approved',
+        "Registration Approved",
+        "Your driver registration has been approved. Welcome aboard!",
+        "registration_approved",
         { driverId },
         driver.personalInformation?.category || null,
         null
       );
     } catch (notifError) {
-      console.error('Driver approval notification error:', notifError);
+      console.error("Driver approval notification error:", notifError);
     }
 
-    res.json({ success: true, message: "Driver approved successfully", driver: updatedDriver });
+    // 🟢 Send WhatsApp Notification
+    try {
+      const mobileStr = driver.mobile;
+      const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
+
+      const apiUrl = WHATSAPP_API_URL;
+
+      const payload = {
+        messaging_product: "whatsapp",
+        to: toNumber,
+        type: "template",
+        template: {
+          name: "hire4drive_driver_registration_approved",
+          language: {
+            code: "en",
+          },
+        },
+      };
+
+      await axios.post(apiUrl, payload, {
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      });
+    } catch (whatsappError) {
+      console.error(
+        "WhatsApp approval message error:",
+        whatsappError.response?.data || whatsappError.message
+      );
+    }
+
+    res.json({
+      success: true,
+      message: "Driver approved successfully",
+      driver: updatedDriver,
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Failed to approve driver" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to approve driver",
+    });
   }
 });
 
@@ -842,26 +893,25 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
     const { driverId } = req.params;
     const { steps = [] } = req.body;
 
-    // Get driver's category first
-    const driverData = await Driver.findById(driverId).select("selectedCategory").lean();
+    const driverData = await Driver.findById(driverId)
+      .select("selectedCategory")
+      .lean();
+
     if (!driverData) {
       return res.status(404).json({ message: "Driver not found" });
     }
 
     const category = driverData.selectedCategory?.name || "Driver";
 
-    // Check if step 2 (ownership) is being rejected for Cab/Parcel drivers
+    // If Cab/Parcel and step 2 rejected → delete vehicles
     if ((category === "Cab" || category === "Parcel") && steps.includes(2)) {
-      // Delete all vehicles owned by this driver
       await Vehicle.deleteMany({ owner: driverId });
 
-      // Remove vehicle references from driver
       await Driver.findByIdAndUpdate(driverId, {
         $unset: { vehiclesOwned: 1, vehiclesAssigned: 1, assignedDrivers: 1 }
       });
     }
 
-    // Build unset object for specified steps based on category
     const unsetFields = {};
     steps.forEach(step => {
       const fieldName = getFieldByStep(step, category);
@@ -870,7 +920,11 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
       }
     });
 
-    const updateQuery = { status: "Rejected", rejectedDate: new Date() };
+    const updateQuery = {
+      status: "Rejected",
+      rejectedDate: new Date()
+    };
+
     if (Object.keys(unsetFields).length > 0) {
       updateQuery.$unset = unsetFields;
     }
@@ -885,29 +939,69 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Driver not found" });
     }
 
-    // Send rejection notification to driver
+    // 🔵 OneSignal Notification
     try {
       await NotificationService.sendAndStoreDriverNotification(
         driverId,
         driver.oneSignalPlayerId,
-        'Registration Rejected',
-        'Your driver registration has been rejected.',
-        'registration_rejected',
+        "Registration Rejected",
+        "Your driver registration has been rejected.",
+        "registration_rejected",
         { driverId },
         driver.personalInformation?.category || null,
         null
       );
     } catch (notifError) {
-      console.error('Driver rejection notification error:', notifError);
+      console.error("Driver rejection notification error:", notifError);
+    }
+
+    // 🟢 WhatsApp Notification
+    try {
+      const mobileStr = driver.mobile;
+      const toNumber = mobileStr.startsWith("+")
+        ? mobileStr
+        : `91${mobileStr}`;
+
+      const apiUrl = WHATSAPP_API_URL;
+
+      const payload = {
+        messaging_product: "whatsapp",
+        to: toNumber,
+        type: "template",
+        template: {
+          name: "hire4drive_driver_registration_rejected",
+          language: {
+            code: "en"
+          }
+        }
+      };
+
+      await axios.post(apiUrl, payload, {
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+    } catch (whatsappError) {
+      console.error(
+        "WhatsApp rejection message error:",
+        whatsappError.response?.data || whatsappError.message
+      );
     }
 
     res.json({
       success: true,
-      message: `Driver rejected successfully${steps.length ? ` and ${steps.length} step(s) cleared` : ''}`,
+      message: `Driver rejected successfully${steps.length ? ` and ${steps.length} step(s) cleared` : ""}`,
       driver
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to reject driver" });
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to reject driver"
+    });
   }
 });
 
@@ -1258,7 +1352,7 @@ router.post("/send-otp", async (req, res) => {
 
     const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
 
-    const apiUrl = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const apiUrl = WHATSAPP_API_URL;
 
     const payload = {
       messaging_product: "whatsapp",
@@ -2053,7 +2147,7 @@ router.get("/admin/withdrawals/rejected", adminAuthMiddleware, async (req, res) 
   }
 });
 
-router.post("/admin/withdrawal/complete",adminAuthMiddleware, async (req, res) => {
+router.post("/admin/withdrawal/complete", adminAuthMiddleware, async (req, res) => {
   try {
     const { requestId } = req.body;
 
@@ -2061,7 +2155,6 @@ router.post("/admin/withdrawal/complete",adminAuthMiddleware, async (req, res) =
       return res.status(400).json({ message: "Withdrawal request ID is required" });
     }
 
-    // Find withdrawal request
     const withdrawal = await withdrawalRequest.findById(requestId);
     if (!withdrawal) {
       return res.status(404).json({ message: "Withdrawal request not found" });
@@ -2071,54 +2164,103 @@ router.post("/admin/withdrawal/complete",adminAuthMiddleware, async (req, res) =
       return res.status(400).json({ message: "Withdrawal request already processed" });
     }
 
-    // Update withdrawal request status to completed
     withdrawal.status = "completed";
     await withdrawal.save();
 
-    // Update driver wallet
     const wallet = await driverWallet.findOne({ driverId: withdrawal.driverId });
+
     if (wallet) {
-      // Update the corresponding transaction
       const txnIndex = wallet.transactions.findIndex(
         (t) => t.withdrawalRequestId?.toString() === requestId
       );
+
       if (txnIndex !== -1) {
-        wallet.transactions[txnIndex].status = "completed"; // ← now it will update correctly
+        wallet.transactions[txnIndex].status = "completed";
       }
 
-      // Increment totalWithdrawn
       wallet.totalWithdrawn += withdrawal.amount;
       await wallet.save();
-
     }
 
-    // Send approval notification to driver
+    // 🔵 OneSignal Notification
     try {
       const driver = await Driver.findById(withdrawal.driverId);
+
       if (driver) {
         await NotificationService.sendAndStoreDriverNotification(
           withdrawal.driverId,
           driver.oneSignalPlayerId,
-          'Withdrawal Approved',
+          "Withdrawal Approved",
           `Your withdrawal request of ₹${withdrawal.amount} has been approved.`,
-          'withdrawal_approved',
+          "withdrawal_approved",
           { amount: withdrawal.amount, requestId },
           driver.personalInformation?.category || null,
           null
         );
+
+        // 🟢 WhatsApp Notification
+        try {
+          const mobileStr = driver.mobile;
+          const toNumber = mobileStr.startsWith("+")
+            ? mobileStr
+            : `91${mobileStr}`;
+
+          const apiUrl = WHATSAPP_API_URL;
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_withdrawal_approved",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    {
+                      type: "text",
+                      text: withdrawal.amount.toString()
+                    }
+                  ]
+                }
+              ]
+            }
+          };
+
+          await axios.post(apiUrl, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+        } catch (whatsappError) {
+          console.error(
+            "WhatsApp withdrawal message error:",
+            whatsappError.response?.data || whatsappError.message
+          );
+        }
       }
+
     } catch (notifError) {
-      console.error('Withdrawal approval notification error:', notifError);
+      console.error("Withdrawal approval notification error:", notifError);
     }
 
     res.json({
       success: true,
       message: "Withdrawal completed successfully",
-      withdrawal,
+      withdrawal
     });
+
   } catch (error) {
     console.error("Complete withdrawal error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
   }
 });
 
@@ -2141,18 +2283,19 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
 
     // Refund wallet
     const wallet = await driverWallet.findOne({ driverId: withdrawal.driverId });
+
     if (wallet) {
       wallet.balance += withdrawal.amount;
-      
-      // Update the corresponding transaction
+
       const txnIndex = wallet.transactions.findIndex(
         (t) => t.withdrawalRequestId?.toString() === requestId
       );
+
       if (txnIndex !== -1) {
         wallet.transactions[txnIndex].status = "failed";
         wallet.transactions[txnIndex].adminRemarks = adminRemarks;
       }
-      
+
       await wallet.save();
     }
 
@@ -2161,33 +2304,85 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
     withdrawal.adminRemarks = adminRemarks;
     await withdrawal.save();
 
-    // Send rejection notification to driver
     try {
       const driver = await Driver.findById(withdrawal.driverId);
+
       if (driver) {
+        // 🔵 OneSignal Notification
         await NotificationService.sendAndStoreDriverNotification(
           withdrawal.driverId,
           driver.oneSignalPlayerId,
-          'Withdrawal Rejected',
+          "Withdrawal Rejected",
           `Your withdrawal request of ₹${withdrawal.amount} has been rejected.`,
-          'withdrawal_rejected',
+          "withdrawal_rejected",
           { amount: withdrawal.amount, requestId, reason: adminRemarks },
           driver.personalInformation?.category || null,
           null
         );
+
+        // 🟢 WhatsApp Notification
+        try {
+          const mobileStr = driver.mobile;
+          const toNumber = mobileStr.startsWith("+")
+            ? mobileStr
+            : `91${mobileStr}`;
+
+          const apiUrl = WHATSAPP_API_URL;
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_withdrawal_rejected",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    {
+                      type: "text",
+                      text: withdrawal.amount.toString()
+                    }
+                  ]
+                }
+              ]
+            }
+          };
+
+          await axios.post(apiUrl, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+        } catch (whatsappError) {
+          console.error(
+            "WhatsApp withdrawal rejected message error:",
+            whatsappError.response?.data || whatsappError.message
+          );
+        }
       }
+
     } catch (notifError) {
-      console.error('Withdrawal rejection notification error:', notifError);
+      console.error("Withdrawal rejection notification error:", notifError);
     }
 
     res.json({
       success: true,
       message: "Withdrawal request rejected successfully",
-      withdrawal,
+      withdrawal
     });
+
   } catch (error) {
     console.error("Reject withdrawal error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
   }
 });
 
@@ -2553,7 +2748,7 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
       ? mobileStr
       : `91${mobileStr}`;
 
-    const apiUrl = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const apiUrl = WHATSAPP_API_URL;
 
     const payload = {
       messaging_product: "whatsapp",
@@ -2798,6 +2993,7 @@ router.get("/admin/incentive-history", adminAuthMiddleware, async (req, res) => 
 // Admin: Suspend drivers
 router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
   try {
+
     const { driverIds, suspendFrom, suspendTo, description } = req.body;
 
     if (!driverIds || !Array.isArray(driverIds) || driverIds.length === 0) {
@@ -2819,7 +3015,6 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Suspend To date must be after Suspend From date" });
     }
 
-    // Create suspend record
     const suspend = await DriverSuspend.create({
       drivers: driverIds,
       suspendFrom: fromDate,
@@ -2830,38 +3025,95 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
     const results = [];
 
     for (const driverId of driverIds) {
+
       try {
+
         const driver = await Driver.findById(driverId);
+
         if (!driver) {
           results.push({ driverId, success: false, error: "Driver not found" });
           continue;
         }
 
-        // Update driver status to Suspended
         driver.status = "Suspended";
         await driver.save();
 
-        // Send suspension notification
+        const formattedFrom = fromDate.toLocaleDateString("en-IN");
+        const formattedTo = toDate.toLocaleDateString("en-IN");
+
+        // 🔔 OneSignal Notification
         try {
           await NotificationService.sendAndStoreDriverNotification(
             driverId,
             driver.oneSignalPlayerId,
-            'Account Suspended',
-            `Your account has been suspended from ${fromDate.toLocaleDateString()} to ${toDate.toLocaleDateString()}. Reason: ${description.trim()}`,
-            'account_suspended',
+            "Account Suspended",
+            `Your account has been suspended from ${formattedFrom} to ${formattedTo}. Reason: ${description.trim()}`,
+            "account_suspended",
             { suspendFrom: fromDate, suspendTo: toDate, description: description.trim() },
             driver.personalInformation?.category || null,
             null
           );
         } catch (notifError) {
-          console.error('Suspension notification error:', notifError);
+          console.error("Suspension notification error:", notifError);
+        }
+
+        // 🟢 WhatsApp Notification
+        try {
+
+          const mobileStr = driver.mobile;
+
+          const toNumber = mobileStr.startsWith("+")
+            ? mobileStr
+            : `91${mobileStr}`;
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_account_suspended",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: formattedFrom },
+                    { type: "text", text: formattedTo },
+                    { type: "text", text: description.trim() }
+                  ]
+                }
+              ]
+            }
+          };
+
+          await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+        } catch (whatsappError) {
+          console.error(
+            "WhatsApp suspension message error:",
+            whatsappError.response?.data || whatsappError.message
+          );
         }
 
         results.push({ driverId, success: true });
+
       } catch (error) {
+
         console.error(`Error suspending driver ${driverId}:`, error);
-        results.push({ driverId, success: false, error: error.message });
+
+        results.push({
+          driverId,
+          success: false,
+          error: error.message
+        });
+
       }
+
     }
 
     const successCount = results.filter(r => r.success).length;
@@ -2881,9 +3133,17 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
         description
       }
     });
+
   } catch (error) {
+
     console.error("Suspend drivers error:", error);
-    res.status(500).json({ success: false, message: "Server error", error: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message
+    });
+
   }
 });
 

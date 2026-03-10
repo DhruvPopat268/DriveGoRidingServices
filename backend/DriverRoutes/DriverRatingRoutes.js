@@ -9,10 +9,11 @@ const RiderNotification = require("../models/RiderNotification");
 const Driver = require("../DriverModel/DriverModel");
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 
+const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
 router.post("/", DriverAuthMiddleware, async (req, res) => {
   try {
     const { rideId, rating, comment } = req.body;
-
 
     if (!rideId || !rating) {
       return res.status(400).json({ message: "rideId and rating are required" });
@@ -42,37 +43,98 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
 
     await driverRating.save();
 
-    // Update rider's rating history and average
+    // Update rider rating history
     const rider = await Rider.findById(ride.riderId);
     if (rider) {
       rider.ratings.ratingHistory.push(rating);
+
       const totalRatings = rider.ratings.ratingHistory.length;
       const sumRatings = rider.ratings.ratingHistory.reduce((sum, r) => sum + r, 0);
+
       rider.ratings.avgRating = totalRatings > 0 ? sumRatings / totalRatings : 0;
+
       await rider.save();
     }
 
-    // Send notification to rider
     try {
       const driver = await Driver.findById(ride.driverId);
+
       if (rider && driver) {
-        const driverName = driver.personalInformation?.fullName || 'Your driver';
-        const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
-        const message = `${driverName} rated you ${rating}/5 stars (${stars}). ${comment ? `Comment: "${comment}"` : 'Keep up the great work!'}`;
-        
+        const driverName = driver.personalInformation?.fullName || "Your driver";
+        const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+
+        const message = `${driverName} rated you ${rating}/5 stars (${stars}). ${comment ? `Comment: "${comment}"` : "Keep up the great work!"
+          }`;
+
+        // 🔵 Push Notification to Rider
         await NotificationService.sendAndStoreRiderNotification(
           ride.riderId,
           rider.oneSignalPlayerId,
-          'Driver Rating Received',
+          "Driver Rating Received",
           message,
-          'driver_rating_received',
+          "driver_rating_received",
           { rating, comment },
           ride.rideInfo?.categoryId || null,
           rideId
         );
+
+        // 🟢 WhatsApp Notification to Rider (hire4drive_driver_rating_received_rider)
+        try {
+
+          const riderMobile = rider.mobile;
+
+          if (riderMobile) {
+
+            const toNumber = riderMobile.startsWith("+")
+              ? riderMobile
+              : `91${riderMobile}`;
+
+            const payload = {
+              messaging_product: "whatsapp",
+              to: toNumber,
+              type: "template",
+              template: {
+                name: "hire4drive_driver_rating_received_rider",
+                language: { code: "en" },
+                components: [
+                  {
+                    type: "body",
+                    parameters: [
+                      {
+                        type: "text",
+                        text: driverName
+                      },
+                      {
+                        type: "text",
+                        text: rating.toString()
+                      }
+                    ]
+                  }
+                ]
+              }
+            };
+
+            await axios.post(WHATSAPP_API_URL, payload, {
+              headers: {
+                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              }
+            });
+
+          }
+
+        } catch (whatsappError) {
+
+          console.error(
+            "WhatsApp rider rating message error:",
+            whatsappError.response?.data || whatsappError.message
+          );
+
+        }
       }
+
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
+      console.error("Error sending rider notification:", notifError);
     }
 
     res.json({
@@ -80,12 +142,16 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
       message: "Driver rating submitted successfully",
       data: driverRating
     });
+
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 });
 
-router.post("/given-by-driver",adminAuthMiddleware, async (req, res) => {
+router.post("/given-by-driver", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.body;
     const page = parseInt(req.query.page) || 1;
@@ -106,8 +172,8 @@ router.post("/given-by-driver",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ratings,
       totalRecords,
       totalPages,
@@ -118,7 +184,7 @@ router.post("/given-by-driver",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/all",adminAuthMiddleware, async (req, res) => {
+router.get("/all", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -134,8 +200,8 @@ router.get("/all",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ratings,
       totalRecords,
       totalPages,

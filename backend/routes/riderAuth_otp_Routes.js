@@ -14,6 +14,10 @@ const path = require('path');
 const fs = require('fs');
 const AuthMiddleware = require("../middleware/authMiddleware");
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
+const axios = require("axios");
+
+// WhatsApp API URL constant
+const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
 // Configure multer for memory storage with file size limit
 const storage = multer.memoryStorage();
@@ -909,7 +913,7 @@ router.post("/send-otp", async (req, res) => {
     }).save();
 
     const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
-    const apiUrl = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const apiUrl = WHATSAPP_API_URL;
 
     const payload = {
       messaging_product: "whatsapp",
