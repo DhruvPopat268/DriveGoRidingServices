@@ -1036,83 +1036,90 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       // ============================
 
       try {
+  console.log("🚀 Starting WhatsApp notifications...");
 
-        const drivers = await Driver.find({
-          _id: { $in: waitingDriverIds }
-        }).select("mobile");
+  const drivers = await Driver.find({
+    _id: { $in: waitingDriverIds }
+  }).select("mobile");
 
-        const formatTo12Hour = (time24) => {
+  console.log("👥 Drivers fetched:", drivers.length);
 
-          const [hours, minutes] = time24.split(':');
+  const formatTo12Hour = (time24) => {
+    const [hours, minutes] = time24.split(":");
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  };
 
-          const hour = parseInt(hours);
+  const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
+  const formattedDate = formattedSelectedDate.replace(/ /g, "/");
 
-          const ampm = hour >= 12 ? 'PM' : 'AM';
+  console.log("📅 Date:", formattedDate);
+  console.log("⏰ Time:", formattedTime);
 
-          const hour12 = hour % 12 || 12;
+  for (const driver of drivers) {
+    try {
+      console.log("--------------------------------------------------");
+      console.log("🚗 Processing driver:", driver._id);
 
-          return `${hour12}:${minutes} ${ampm}`;
+      const mobileStr = driver.mobile;
 
-        };
+      const toNumber = mobileStr.startsWith("+")
+        ? mobileStr.replace("+", "")
+        : `91${mobileStr}`;
 
-        const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
+      console.log("📱 Raw Mobile:", mobileStr);
+      console.log("📤 Sending To:", toNumber);
 
-        const formattedDate = formattedSelectedDate.replace(/ /g, "/");
-
-        for (const driver of drivers) {
-
-          try {
-
-            const mobileStr = driver.mobile;
-
-            const toNumber = mobileStr.startsWith("+")
-              ? mobileStr
-              : `91${mobileStr}`;
-
-            const payload = {
-              messaging_product: "whatsapp",
-              to: toNumber,
-              type: "template",
-              template: {
-                name: "hire4drive_new_ride_available",
-                language: { code: "en" },
-                components: [
-                  {
-                    type: "body",
-                    parameters: [
-                      { type: "text", text: riderName },
-                      { type: "text", text: subcategoryName },
-                      { type: "text", text: formattedDate },
-                      { type: "text", text: formattedTime }
-                    ]
-                  }
-                ]
-              }
-            };
-
-            await axios.post(WHATSAPP_API_URL, payload, {
-              headers: {
-                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                "Content-Type": "application/json"
-              }
-            });
-
-          } catch (driverError) {
-
-            console.error(
-              `❌ WhatsApp failed for driver ${driver._id}`,
-              driverError.response?.data || driverError.message
-            );
-
-          }
-
+      const payload = {
+        messaging_product: "whatsapp",
+        to: toNumber,
+        type: "template",
+        template: {
+          name: "hire4drive_new_ride_available",
+          language: { code: "en" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: riderName },
+                { type: "text", text: subcategoryName },
+                { type: "text", text: formattedDate },
+                { type: "text", text: formattedTime }
+              ]
+            }
+          ]
         }
+      };
 
-      } catch (whatsappError) {
+      console.log("📦 Payload:", JSON.stringify(payload, null, 2));
 
-        console.error("❌ WhatsApp bulk error:", whatsappError);
+      const response = await axios.post(WHATSAPP_API_URL, payload, {
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      });
 
+      console.log("✅ Message sent successfully:", response.data);
+
+    } catch (driverError) {
+      console.error("❌ FAILED for driver:", driver._id);
+
+      if (driverError.response) {
+        console.error("📛 Meta Error Response:", driverError.response.data);
+      } else {
+        console.error("⚠️ Error Message:", driverError.message);
       }
+    }
+  }
+
+  console.log("🎯 All drivers processed");
+
+} catch (whatsappError) {
+  console.error("❌ WhatsApp bulk error:", whatsappError);
+}
 
       // ✅ Deduct referral balance if used
       const rider = await Rider.findById(riderId);
