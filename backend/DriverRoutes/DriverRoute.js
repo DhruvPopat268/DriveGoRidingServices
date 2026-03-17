@@ -76,213 +76,213 @@ function getFieldByStep(step, category = "Driver") {
 // Get wallet configuration (minimum amounts)
 
 //dummy otp
-// router.post("/send-otp", async (req, res) => {
-//   try {
-//     const { mobile } = req.body;
-//     if (!mobile) return res.status(400).json({ message: "Mobile number is required" });
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { mobile } = req.body;
+    if (!mobile) return res.status(400).json({ message: "Mobile number is required" });
 
-//     // 🔥 Use dummy OTP for testing
-//     const otp = "123456";
-//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    // 🔥 Use dummy OTP for testing
+    const otp = "123456";
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-//     // Ensure Driver exists
-//     let driver = await Driver.findOne({ mobile });
-//     if (!driver) {
-//       driver = new Driver({ mobile });
-//       await driver.save();
-//     }
+    // Ensure Driver exists
+    let driver = await Driver.findOne({ mobile });
+    if (!driver) {
+      driver = new Driver({ mobile });
+      await driver.save();
+    }
 
-//     // Check if driver account is deleted
-//     if (driver.status === "deleted") {
-//       return res.status(403).json({ 
-//         success: false, 
-//         message: "Your account has been deleted. Please contact support for assistance." 
-//       });
-//     }
+    // Check if driver account is deleted
+    if (driver.status === "deleted") {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Your account has been deleted. Please contact support for assistance." 
+      });
+    }
 
-//     // Check if driver is suspended
-//     if (driver.status === "Suspended") {
-//       const suspendRecord = await DriverSuspend.findOne({
-//         drivers: driver._id
-//       }).sort({ createdAt: -1 });
+    // Check if driver is suspended
+    if (driver.status === "Suspended") {
+      const suspendRecord = await DriverSuspend.findOne({
+        drivers: driver._id
+      }).sort({ createdAt: -1 });
 
-//       if (suspendRecord) {
-//         const now = new Date();
-//         const suspendFrom = new Date(suspendRecord.suspendFrom);
-//         const suspendTo = new Date(suspendRecord.suspendTo);
+      if (suspendRecord) {
+        const now = new Date();
+        const suspendFrom = new Date(suspendRecord.suspendFrom);
+        const suspendTo = new Date(suspendRecord.suspendTo);
 
-//         if (now >= suspendFrom && now <= suspendTo) {
-//           return res.status(403).json({
-//             success: false,
-//             message: `Your account is suspended from ${suspendFrom.toLocaleDateString('en-IN')} to ${suspendTo.toLocaleDateString('en-IN')}. Reason: ${suspendRecord.description}`,
-//             suspendFrom: suspendFrom,
-//             suspendTo: suspendTo,
-//             reason: suspendRecord.description
-//           });
-//         } else if (now > suspendTo) {
-//           driver.status = "Approved";
-//           await driver.save();
-//         } else if (now < suspendFrom) {
-//           driver.status = "Approved";
-//           await driver.save();
-//         }
-//       } else {
-//         driver.status = "Approved";
-//         await driver.save();
-//       }
-//     }
+        if (now >= suspendFrom && now <= suspendTo) {
+          return res.status(403).json({
+            success: false,
+            message: `Your account is suspended from ${suspendFrom.toLocaleDateString('en-IN')} to ${suspendTo.toLocaleDateString('en-IN')}. Reason: ${suspendRecord.description}`,
+            suspendFrom: suspendFrom,
+            suspendTo: suspendTo,
+            reason: suspendRecord.description
+          });
+        } else if (now > suspendTo) {
+          driver.status = "Approved";
+          await driver.save();
+        } else if (now < suspendFrom) {
+          driver.status = "Approved";
+          await driver.save();
+        }
+      } else {
+        driver.status = "Approved";
+        await driver.save();
+      }
+    }
 
-//     // Save OTP session
-//     const otpSession = new DriverOtpSession({
-//       driver: driver._id,
-//       mobile,
-//       otp,
-//       otpExpiresAt
-//     });
-//     await otpSession.save();
+    // Save OTP session
+    const otpSession = new DriverOtpSession({
+      driver: driver._id,
+      mobile,
+      otp,
+      otpExpiresAt
+    });
+    await otpSession.save();
 
-//     // ❌ No Twilio SMS — dummy mode
-//     res.json({
-//       success: true,
-//       message: "Dummy OTP generated successfully",
-//       otp // ⚠ only show in development/testing
-//     });
+    // ❌ No Twilio SMS — dummy mode
+    res.json({
+      success: true,
+      message: "Dummy OTP generated successfully",
+      otp // ⚠ only show in development/testing
+    });
 
-//   } catch (error) {
-//     console.error("Send OTP error:", error.message);
-//     res.status(500).json({ success: false, message: "Failed to generate OTP" });
-//   }
-// });
+  } catch (error) {
+    console.error("Send OTP error:", error.message);
+    res.status(500).json({ success: false, message: "Failed to generate OTP" });
+  }
+});
 
-// router.post("/verify-otp", async (req, res) => {
-//   try {
-//     const { mobile, otp, playerId } = req.body;   // ⬅️ Added playerId
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { mobile, otp, playerId } = req.body;   // ⬅️ Added playerId
 
-//     // ✅ Validate input
-//     if (!mobile || !otp) {
-//       return res.status(400).json({ message: "Mobile & OTP required" });
-//     }
-//   // Convert mobile to string
-//     const mobileStr = String(mobile).trim();
+    // ✅ Validate input
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
+  // Convert mobile to string
+    const mobileStr = String(mobile).trim();
 
-//     // Find latest OTP session
-//     const otpSession = await DriverOtpSession.findOne({
-//       mobile: mobileStr,
-//       isVerified: false
-//     }).sort({ createdAt: -1 });
+    // Find latest OTP session
+    const otpSession = await DriverOtpSession.findOne({
+      mobile: mobileStr,
+      isVerified: false
+    }).sort({ createdAt: -1 });
 
-//     if (!otpSession) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "No OTP found. Please request a new OTP."
-//       });
-//     }
+    if (!otpSession) {
+      return res.status(400).json({
+        success: false,
+        message: "No OTP found. Please request a new OTP."
+      });
+    }
 
-//     // Check expiry
-//     if (new Date() > otpSession.otpExpiresAt) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "OTP has expired. Please request a new OTP."
-//       });
-//     }
+    // Check expiry
+    if (new Date() > otpSession.otpExpiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new OTP."
+      });
+    }
 
-//     // ================================
-//     // 🔥 DUMMY OTP SUPPORT (123456)
-//     // ================================
-//     if (otp == "123456" || otp == 123456) {
-//       otpSession.isVerified = true;
-//       await otpSession.save();
-//     } else {
-//       if (otpSession.otp != otp) {
-//         return res.status(400).json({
-//           success: false,
-//           message: "Invalid OTP"
-//         });
-//       }
-//       otpSession.isVerified = true;
-//       await otpSession.save();
-//     }
+    // ================================
+    // 🔥 DUMMY OTP SUPPORT (123456)
+    // ================================
+    if (otp == "123456" || otp == 123456) {
+      otpSession.isVerified = true;
+      await otpSession.save();
+    } else {
+      if (otpSession.otp != otp) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP"
+        });
+      }
+      otpSession.isVerified = true;
+      await otpSession.save();
+    }
 
-//     // Get driver
-//     const driver = await Driver.findOne({ mobile: mobileStr });
-//     if (!driver) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Driver not found"
-//       });
-//     }
+    // Get driver
+    const driver = await Driver.findOne({ mobile: mobileStr });
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
+      });
+    }
 
-//     const driverId = driver._id.toString();
+    const driverId = driver._id.toString();
 
-//     // ⬅️🔥 SAVE PLAYER ID HERE
-//     await Driver.findByIdAndUpdate(driverId, {
-//       oneSignalPlayerId: playerId
-//     });
+    // ⬅️🔥 SAVE PLAYER ID HERE
+    await Driver.findByIdAndUpdate(driverId, {
+      oneSignalPlayerId: playerId
+    });
 
-//     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
+    const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
-//     // Generate JWT
-//     const token = jwt.sign(
-//       { driverId: driver._id, mobile: driver.mobile },
-//       process.env.JWT_SECRET_DRIVER,
-//       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-//     );
+    // Generate JWT
+    const token = jwt.sign(
+      { driverId: driver._id, mobile: driver.mobile },
+      process.env.JWT_SECRET_DRIVER,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
 
-//     // Create session
-//     await createSession(mobileStr, token);
+    // Create session
+    await createSession(mobileStr, token);
 
-//     // Evaluate profile progress
-//     const { step, status: progressStatus } = evaluateDriverProgress(driver);
+    // Evaluate profile progress
+    const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
-//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
-//       driver.status = progressStatus;
-//       await driver.save({ validateBeforeSave: false });
-//     }
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      driver.status = progressStatus;
+      await driver.save({ validateBeforeSave: false });
+    }
 
-//     // Wallet check
-//     let wallet = await driverWallet.findOne({ driverId });
-//     if (!wallet) {
-//       await driverWallet.create({
-//         driverId,
-//         balance: 0,
-//         totalEarnings: 0,
-//         totalWithdrawn: 0,
-//         totalDeductions: 0,
-//         transactions: [],
-//       });
-//     }
+    // Wallet check
+    let wallet = await driverWallet.findOne({ driverId });
+    if (!wallet) {
+      await driverWallet.create({
+        driverId,
+        balance: 0,
+        totalEarnings: 0,
+        totalWithdrawn: 0,
+        totalDeductions: 0,
+        transactions: [],
+      });
+    }
 
-//     // Prepare response
-//     const response = {
-//       success: true,
-//       driverId,
-//       token,
-//       isNew,
-//       status: driver.status,
-//       step,
-//       selectedCategory: driver.selectedCategory,
-//       uniqueId: driver.uniqueId
-//     };
+    // Prepare response
+    const response = {
+      success: true,
+      driverId,
+      token,
+      isNew,
+      status: driver.status,
+      step,
+      selectedCategory: driver.selectedCategory,
+      uniqueId: driver.uniqueId
+    };
 
-//     if (driver.ownership) {
-//       response.ownership = driver.ownership;
-//     }
+    if (driver.ownership) {
+      response.ownership = driver.ownership;
+    }
 
-//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
-//       response.step = step;
-//     }
+    if (["Pending", "PendingForPayment"].includes(driver.status)) {
+      response.step = step;
+    }
 
-//     res.json(response);
+    res.json(response);
 
-//   } catch (error) {
-//     console.error("Verify OTP error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "OTP verification failed",
-//       error: error.message
-//     });
-//   }
-// });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "OTP verification failed",
+      error: error.message
+    });
+  }
+});
 
 router.post("/deleteAccount", async (req, res) => {
   try {
@@ -312,8 +312,7 @@ router.post("/deleteAccount", async (req, res) => {
   }
 });
 
-
-router.get("/",adminAuthMiddleware, async (req, res) => {
+router.get("/", adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({ status: "Approved" })
       .populate('driverCategory')
@@ -326,14 +325,14 @@ router.get("/",adminAuthMiddleware, async (req, res) => {
 });
 
 // Get approved drivers with selectedCategory.name as 'Driver'
-router.get("/approved-driver-category",adminAuthMiddleware, async (req, res) => {
+router.get("/approved-driver-category", adminAuthMiddleware, async (req, res) => {
   try {
     const drivers = await Driver.find({
       status: "Approved",
       "selectedCategory.name": "Driver"
     })
       .populate('driverCategory')
-      
+
       .sort({ createdAt: -1 });
 
     res.json({ success: true, data: drivers });
@@ -387,7 +386,7 @@ router.get("/profile", DriverAuthMiddleware, async (req, res) => {
 });
 
 // Assign drivers to price category
-router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
+router.put("/assign-category", adminAuthMiddleware, async (req, res) => {
   try {
     const { categoryId, driverIds } = req.body;
 
@@ -397,7 +396,7 @@ router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
 
     // Add category to selected drivers (push to array if not already present)
     await Driver.updateMany(
-      { 
+      {
         _id: { $in: driverIds },
         driverCategory: { $ne: categoryId } // Only update if category not already assigned
       },
@@ -425,7 +424,7 @@ router.put("/assign-category",adminAuthMiddleware, async (req, res) => {
 });
 
 //Onreview drivers
-router.get("/Pending",adminAuthMiddleware, async (req, res) => {
+router.get("/Pending", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -449,8 +448,8 @@ router.get("/Pending",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: drivers,
       totalRecords,
       totalPages,
@@ -461,7 +460,7 @@ router.get("/Pending",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
+router.get("/Onreview", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -485,8 +484,8 @@ router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: drivers,
       totalRecords,
       totalPages,
@@ -497,7 +496,7 @@ router.get("/Onreview",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/Approved",adminAuthMiddleware, async (req, res) => {
+router.get("/Approved", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -521,8 +520,8 @@ router.get("/Approved",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: drivers,
       totalRecords,
       totalPages,
@@ -533,7 +532,7 @@ router.get("/Approved",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
+router.get("/Rejected", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -557,8 +556,8 @@ router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: drivers,
       totalRecords,
       totalPages,
@@ -569,7 +568,7 @@ router.get("/Rejected",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
+router.get("/PendingForPayment", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -593,8 +592,8 @@ router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: drivers,
       totalRecords,
       totalPages,
@@ -605,7 +604,7 @@ router.get("/PendingForPayment",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/deleted",adminAuthMiddleware, async (req, res) => {
+router.get("/deleted", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -629,8 +628,8 @@ router.get("/deleted",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: drivers,
       totalRecords,
       totalPages,
@@ -641,7 +640,7 @@ router.get("/deleted",adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
+router.get("/Suspended", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -681,8 +680,8 @@ router.get("/Suspended",adminAuthMiddleware, async (req, res) => {
       })
     );
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: driversWithSuspendInfo,
       totalRecords,
       totalPages,
@@ -718,8 +717,8 @@ router.get("/all", adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: drivers,
       totalRecords,
       totalPages,
@@ -755,7 +754,7 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
       const extraChars =
         attempts > 0
           ? String.fromCharCode(65 + Math.floor(Math.random() * 26)) +
-            Math.floor(Math.random() * 10)
+          Math.floor(Math.random() * 10)
           : "";
 
       uniqueId = `${namePrefix}${mobileSuffix}${randomDigits}${extraChars}`;
@@ -1006,7 +1005,7 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
 });
 
 // Get driver cancellation credits info
-router.get("/cancellation-credits",adminAuthMiddleware, async (req, res) => {
+router.get("/cancellation-credits", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -1029,8 +1028,8 @@ router.get("/cancellation-credits",adminAuthMiddleware, async (req, res) => {
       createdAt: driver.createdAt
     }));
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: driversData,
       totalRecords,
       totalPages,
@@ -1043,7 +1042,7 @@ router.get("/cancellation-credits",adminAuthMiddleware, async (req, res) => {
 });
 
 // Get all cancellation credit configurations
-router.get("/manage-credits",adminAuthMiddleware, async (req, res) => {
+router.get("/manage-credits", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -1057,8 +1056,8 @@ router.get("/manage-credits",adminAuthMiddleware, async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: credits,
       totalRecords,
       totalPages,
@@ -1070,7 +1069,7 @@ router.get("/manage-credits",adminAuthMiddleware, async (req, res) => {
 });
 
 // Update cancellation credits for all drivers
-router.post("/manage-credits",adminAuthMiddleware, async (req, res) => {
+router.post("/manage-credits", adminAuthMiddleware, async (req, res) => {
   try {
     const { credits } = req.body;
 
@@ -1159,7 +1158,7 @@ router.get("/filter-for-incentive", adminAuthMiddleware, async (req, res) => {
 
     const pipeline = [];
     const matchStage = { status: "Approved" };
-    
+
     if (category) matchStage["personalInformation.category"] = new mongoose.Types.ObjectId(category);
     if (subcategory) matchStage["personalInformation.subCategory"] = new mongoose.Types.ObjectId(subcategory);
     if (minRating || maxRating) {
@@ -1209,11 +1208,11 @@ router.get("/filter-for-incentive", adminAuthMiddleware, async (req, res) => {
     res.json({ success: true, count: formattedDrivers.length, drivers: formattedDrivers });
   } catch (error) {
     console.error("Filter drivers error:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to filter drivers", 
+    res.status(500).json({
+      success: false,
+      message: "Failed to filter drivers",
       error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
@@ -1266,40 +1265,40 @@ router.get("/:driverId", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverId } = req.params;
     const driver = await Driver.findById(driverId).populate([
-        {
-          path: "personalInformation.category",
-          select: "name"
-        },
-        {
-          path: "personalInformation.subCategory",
-          select: "name"
-        },
-        {
-          path: "drivingDetails.canDrive",
-          select: "vehicleName"
-        },
-        {
-          path: "drivingDetails.vehicleType",
-          select: "name"
-        }
-      ]).sort({ approvedDate: -1 });
+      {
+        path: "personalInformation.category",
+        select: "name"
+      },
+      {
+        path: "personalInformation.subCategory",
+        select: "name"
+      },
+      {
+        path: "drivingDetails.canDrive",
+        select: "vehicleName"
+      },
+      {
+        path: "drivingDetails.vehicleType",
+        select: "name"
+      }
+    ]).sort({ approvedDate: -1 });
     if (!driver) {
       return res.status(404).json({ message: "Driver not found" });
     }
-    
+
     // Get rides for this driver
     const Ride = require('../models/Ride');
     const rides = await Ride.find({ driverId })
       .select('_id rideInfo.categoryName rideInfo.selectedDate status')
       .sort({ createdAt: -1 });
-    
+
     const formattedRides = rides.map(ride => ({
       rideId: ride._id,
       category: ride.rideInfo.categoryName,
       selectedDate: ride.rideInfo.selectedDate,
       status: ride.status
     }));
-    
+
     res.json({
       success: true,
       driver,
@@ -1310,221 +1309,236 @@ router.get("/:driverId", adminAuthMiddleware, async (req, res) => {
   }
 });
 
-// WhatsApp Business API integration
+// router.post("/send-otp", async (req, res) => {
+//   try {
+//     console.log("==== SEND OTP API HIT ====");
 
-router.post("/send-otp", async (req, res) => {
-  try {
-    const { mobile } = req.body;
+//     const { mobile } = req.body;
+//     console.log("📱 Incoming mobile:", mobile);
 
-    if (!mobile) {
-      return res.status(400).json({ message: "Mobile number is required" });
-    }
+//     if (!mobile) {
+//       console.log("❌ Mobile missing");
+//       return res.status(400).json({ message: "Mobile number is required" });
+//     }
 
-    const mobileStr = String(mobile).trim();
+//     const mobileStr = String(mobile).trim();
+//     console.log("📱 Formatted mobile:", mobileStr);
 
-    if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
-      return res.status(400).json({ message: "Invalid mobile number format" });
-    }
+//     if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
+//       console.log("❌ Invalid mobile format");
+//       return res.status(400).json({ message: "Invalid mobile number format" });
+//     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+//     console.log("🔐 Generated OTP:", otp);
 
-    let driver = await Driver.findOne({ mobile: mobileStr });
+//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    if (!driver) {
-      driver = new Driver({
-        mobile: mobileStr,
-        name: "Driver" // default name if not registered yet
-      });
-      await driver.save();
-    }
+//     let driver = await Driver.findOne({ mobile: mobileStr });
 
-    const driverName = driver.name || "Driver";
+//     if (!driver) {
+//       console.log("👤 Creating new driver");
+//       driver = new Driver({
+//         mobile: mobileStr,
+//         name: "Driver"
+//       });
+//       await driver.save();
+//     } else {
+//       console.log("👤 Existing driver found:", driver._id);
+//     }
 
-    const otpSession = new DriverOtpSession({
-      driver: driver._id,
-      mobile: mobileStr,
-      otp,
-      otpExpiresAt
-    });
+//     const driverName = driver.name || "Driver";
 
-    await otpSession.save();
+//     const otpSession = new DriverOtpSession({
+//       driver: driver._id,
+//       mobile: mobileStr,
+//       otp,
+//       otpExpiresAt
+//     });
 
-    const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
+//     await otpSession.save();
+//     console.log("💾 OTP session saved");
 
-    const apiUrl = WHATSAPP_API_URL;
+//     const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
+//     console.log("📤 Sending to:", toNumber);
 
-    const payload = {
-      messaging_product: "whatsapp",
-      to: toNumber,
-      type: "template",
-      template: {
-        name: "drivers_otp_verification",
-        language: {
-          code: "en"
-        },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              {
-                type: "text",
-                text: driverName
-              },
-              {
-                type: "text",
-                text: otp
-              }
-            ]
-          }
-        ]
-      }
-    };
+//     const apiUrl = WHATSAPP_API_URL;
+//     console.log("🌐 API URL:", apiUrl);
+//     console.log("🔑 Token (first 20 chars):", process.env.WHATSAPP_ACCESS_TOKEN?.slice(0, 20));
 
-    await axios.post(apiUrl, payload, {
-      headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-        "Content-Type": "application/json"
-      }
-    });
+//     const payload = {
+//       messaging_product: "whatsapp",
+//       to: toNumber,
+//       type: "template",
+//       template: {
+//         name: "riders_otp_verification", // ⚠️ exact name (check spelling)
+//         language: {
+//           code: "en" // ✅ FIXED
+//         },
+//         components: [
+//           {
+//             type: "body",
+//             parameters: [
+//               {
+//                 type: "text",
+//                 text: otp
+//               }
+//             ]
+//           }
+//         ]
+//       }
+//     };
 
-    res.json({
-      success: true,
-      message: "OTP sent successfully via WhatsApp"
-    });
+//     console.log("📦 Payload:", JSON.stringify(payload, null, 2));
 
-  } catch (error) {
+//     const response = await axios.post(apiUrl, payload, {
+//       headers: {
+//         Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+//         "Content-Type": "application/json"
+//       }
+//     });
 
-    console.error("Send OTP error:", error.response?.data || error.message);
+//     console.log("✅ WhatsApp API Response:", response.data);
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to send OTP",
-      error: error.response?.data || error.message
-    });
+//     res.json({
+//       success: true,
+//       message: "OTP sent successfully via WhatsApp"
+//     });
 
-  }
-});
+//   } catch (error) {
 
-router.post("/verify-otp", async (req, res) => {
-  try {
-    const { mobile, otp, playerId } = req.body;
+//     console.log("❌ ERROR STATUS:", error.response?.status);
+//     console.log("❌ ERROR DATA:", JSON.stringify(error.response?.data, null, 2));
+//     console.log("❌ ERROR MESSAGE:", error.message);
 
-    if (!mobile || !otp) {
-      return res.status(400).json({ message: "Mobile & OTP required" });
-    }
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to send OTP",
+//       error: error.response?.data || error.message
+//     });
 
-    if (!playerId) {
-      return res.status(400).json({ success: false, message: "Player ID is required" });
-    }
+//   }
+// });
 
-    const mobileStr = String(mobile).trim();
+// router.post("/verify-otp", async (req, res) => {
+//   try {
+//     const { mobile, otp, playerId } = req.body;
 
-    const otpSession = await DriverOtpSession.findOne({
-      mobile: mobileStr,
-      isVerified: false
-    }).sort({ createdAt: -1 });
+//     if (!mobile || !otp) {
+//       return res.status(400).json({ message: "Mobile & OTP required" });
+//     }
 
-    if (!otpSession) {
-      return res.status(400).json({
-        success: false,
-        message: "No OTP found. Please request a new OTP."
-      });
-    }
+//     if (!playerId) {
+//       return res.status(400).json({ success: false, message: "Player ID is required" });
+//     }
 
-    if (new Date() > otpSession.otpExpiresAt) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP has expired. Please request a new OTP."
-      });
-    }
+//     const mobileStr = String(mobile).trim();
 
-    if (otpSession.otp != otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP"
-      });
-    }
+//     const otpSession = await DriverOtpSession.findOne({
+//       mobile: mobileStr,
+//       isVerified: false
+//     }).sort({ createdAt: -1 });
 
-    otpSession.isVerified = true;
-    await otpSession.save();
+//     if (!otpSession) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "No OTP found. Please request a new OTP."
+//       });
+//     }
 
-    const driver = await Driver.findOne({ mobile: mobileStr });
-    if (!driver) {
-      return res.status(404).json({
-        success: false,
-        message: "Driver not found"
-      });
-    }
+//     if (new Date() > otpSession.otpExpiresAt) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "OTP has expired. Please request a new OTP."
+//       });
+//     }
 
-    const driverId = driver._id.toString();
+//     if (otpSession.otp != otp) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid OTP"
+//       });
+//     }
 
-    await Driver.findByIdAndUpdate(driverId, {
-      oneSignalPlayerId: playerId
-    });
+//     otpSession.isVerified = true;
+//     await otpSession.save();
 
-    const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
+//     const driver = await Driver.findOne({ mobile: mobileStr });
+//     if (!driver) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Driver not found"
+//       });
+//     }
 
-    const token = jwt.sign(
-      { driverId: driver._id, mobile: driver.mobile },
-      process.env.JWT_SECRET_DRIVER,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-    );
+//     const driverId = driver._id.toString();
 
-    await createSession(mobileStr, token);
+//     await Driver.findByIdAndUpdate(driverId, {
+//       oneSignalPlayerId: playerId
+//     });
 
-    const { step, status: progressStatus } = evaluateDriverProgress(driver);
+//     const isNew = ["Pending", "Rejected", "Onreview", "PendingForPayment"].includes(driver.status);
 
-    if (["Pending", "PendingForPayment"].includes(driver.status)) {
-      driver.status = progressStatus;
-      await driver.save();
-    }
+//     const token = jwt.sign(
+//       { driverId: driver._id, mobile: driver.mobile },
+//       process.env.JWT_SECRET_DRIVER,
+//       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+//     );
 
-    let wallet = await driverWallet.findOne({ driverId });
-    if (!wallet) {
-      await driverWallet.create({
-        driverId,
-        balance: 0,
-        totalEarnings: 0,
-        totalWithdrawn: 0,
-        totalDeductions: 0,
-        transactions: []
-      });
-    }
+//     await createSession(mobileStr, token);
 
-    const response = {
-      success: true,
-      driverId,
-      token,
-      isNew,
-      step,
-      status: driver.status,
-      selectedCategory: driver.selectedCategory,
-      uniqueId: driver.uniqueId
-    };
+//     const { step, status: progressStatus } = evaluateDriverProgress(driver);
 
-    if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
-      response.ownership = driver.cabVehicleDetails.ownership;
-    } 
-    else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
-      response.ownership = driver.parcelVehicleDetails.ownership;
-    }
+//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
+//       driver.status = progressStatus;
+//       await driver.save();
+//     }
 
-    if (["Pending", "PendingForPayment"].includes(driver.status)) {
-      response.step = step;
-    }
+//     let wallet = await driverWallet.findOne({ driverId });
+//     if (!wallet) {
+//       await driverWallet.create({
+//         driverId,
+//         balance: 0,
+//         totalEarnings: 0,
+//         totalWithdrawn: 0,
+//         totalDeductions: 0,
+//         transactions: []
+//       });
+//     }
 
-    res.json(response);
+//     const response = {
+//       success: true,
+//       driverId,
+//       token,
+//       isNew,
+//       step,
+//       status: driver.status,
+//       selectedCategory: driver.selectedCategory,
+//       uniqueId: driver.uniqueId
+//     };
 
-  } catch (error) {
-    console.error("Verify OTP error:", error);
-    res.status(500).json({
-      success: false,
-      message: "OTP verification failed",
-      error: error.message
-    });
-  }
-});
+//     if (driver.selectedCategory?.name === "Cab" && driver.cabVehicleDetails?.ownership) {
+//       response.ownership = driver.cabVehicleDetails.ownership;
+//     }
+//     else if (driver.selectedCategory?.name === "Parcel" && driver.parcelVehicleDetails?.ownership) {
+//       response.ownership = driver.parcelVehicleDetails.ownership;
+//     }
+
+//     if (["Pending", "PendingForPayment"].includes(driver.status)) {
+//       response.step = step;
+//     }
+
+//     res.json(response);
+
+//   } catch (error) {
+//     console.error("Verify OTP error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "OTP verification failed",
+//       error: error.message
+//     });
+//   }
+// });
 
 router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) => {
   try {
@@ -1835,7 +1849,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // 🚗 Create Vehicle record for Owner/Owner_With_Vehicle with vehicle details
     if ((category === "Cab" || category === "Parcel") && step === 2 && data.ownership && data.rcNumber) {
       const ownership = data.ownership;
-      
+
       if (ownership === "Owner" || ownership === "Owner_With_Vehicle") {
         // Prepare vehicle details based on category
         const vehicleDetailsField = category === "Cab" ? "cabVehicleDetails" : "parcelVehicleDetails";
@@ -1857,7 +1871,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
           permit: data.permit,
           vehiclePhotos: data.vehiclePhotos || []
         };
-        
+
         // Add category-specific fields
         if (category === "Cab") {
           vehicleDetails.seatCapacity = data.seatCapacity;
@@ -1867,7 +1881,7 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
           vehicleDetails.height = data.height;
           vehicleDetails.weightCapacity = data.weightCapacity;
         }
-        
+
         const newVehicle = new Vehicle({
           owner: updatedDriver._id,
           category: categoryId,
@@ -1877,26 +1891,26 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
           assignedTo: ownership === "Owner_With_Vehicle" ? updatedDriver._id : null,
           [vehicleDetailsField]: vehicleDetails
         });
-        
+
         const savedVehicle = await newVehicle.save();
-        
+
         // Prepare driver updates based on ownership
         const driverUpdates = { $push: { vehiclesOwned: savedVehicle._id } };
-        
+
         // For Owner_With_Vehicle, also add to vehiclesAssigned
         if (ownership === "Owner_With_Vehicle") {
           driverUpdates.$push.vehiclesAssigned = savedVehicle._id;
         }
-        
+
         await Driver.findByIdAndUpdate(updatedDriver._id, driverUpdates);
-        
+
         //console.log(`✅ Vehicle created for ${ownership} driver: ${savedVehicle._id}`);
       }
     }
-    
+
     // Evaluate progress after update
     const progressResult = evaluateDriverProgress(updatedDriver);
-    
+
     // Update status if needed
     if (shouldUpdateStatus || progressResult.step === 0) {
       await Driver.findOneAndUpdate(
@@ -2076,8 +2090,8 @@ router.get("/admin/withdrawals/pending", adminAuthMiddleware, async (req, res) =
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: withdrawals,
       totalRecords,
       totalPages,
@@ -2105,8 +2119,8 @@ router.get("/admin/withdrawals/completed", adminAuthMiddleware, async (req, res)
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: withdrawals,
       totalRecords,
       totalPages,
@@ -2134,8 +2148,8 @@ router.get("/admin/withdrawals/rejected", adminAuthMiddleware, async (req, res) 
       .skip(skip)
       .limit(limit);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: withdrawals,
       totalRecords,
       totalPages,
@@ -2403,10 +2417,10 @@ router.delete("/delete-account", DriverAuthMiddleware, async (req, res) => {
     // Find wallet and store current balance for response
     const wallet = await driverWallet.findOne({ driverId });
     let withdrawnAmount = 0;
-    
+
     if (wallet && wallet.balance > 0) {
       withdrawnAmount = wallet.balance;
-      
+
       // Auto-withdraw remaining balance
       wallet.transactions.push({
         type: "withdrawal",
@@ -2415,7 +2429,7 @@ router.delete("/delete-account", DriverAuthMiddleware, async (req, res) => {
         paymentMethod: "bank_transfer",
         description: "Auto-Withdraw on Account Deletion",
       });
-      
+
       wallet.totalWithdrawn += wallet.balance;
       wallet.balance = 0;
       await wallet.save();
@@ -2438,7 +2452,7 @@ router.delete("/delete-account", DriverAuthMiddleware, async (req, res) => {
 });
 
 // Get all minimum hold balance entries
-router.get("/admin/min-withdraw-balance/all",adminAuthMiddleware, async (req, res) => {
+router.get("/admin/min-withdraw-balance/all", adminAuthMiddleware, async (req, res) => {
   try {
     const entries = await MinHoldBalance.find().sort({ createdAt: -1 });
     res.json({
@@ -2551,7 +2565,7 @@ router.get("/transactions/failed", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/transactions/all",adminAuthMiddleware, async (req, res) => {
+router.get("/transactions/all", adminAuthMiddleware, async (req, res) => {
   try {
     const wallets = await driverWallet.find()
       .populate("driverId", "personalInformation.fullName mobile")
@@ -2805,7 +2819,7 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post("/reference/verify-otp",DriverAuthMiddleware, async (req, res) => {
+router.post("/reference/verify-otp", DriverAuthMiddleware, async (req, res) => {
   try {
     const { mobile, otp } = req.body;
 
@@ -2860,7 +2874,7 @@ router.post("/reference/verify-otp",DriverAuthMiddleware, async (req, res) => {
 });
 
 // Admin: Create driver incentive
-router.post("/admin/create-incentive",adminAuthMiddleware, async (req, res) => {
+router.post("/admin/create-incentive", adminAuthMiddleware, async (req, res) => {
   try {
     const { driverIds, amount, description } = req.body;
 
@@ -2931,7 +2945,7 @@ router.post("/admin/create-incentive",adminAuthMiddleware, async (req, res) => {
       if (!adminWallet) {
         adminWallet = new AdminWalletLedger();
       }
-      
+
       const actualIncentiveAmount = amount * successCount;
       adminWallet.addTransaction({
         transactionType: "DEBIT",
@@ -2939,7 +2953,7 @@ router.post("/admin/create-incentive",adminAuthMiddleware, async (req, res) => {
         description: `Driver incentive payout to ${successCount} drivers`,
         type: "DRIVER_INCENTIVE"
       });
-      
+
       await adminWallet.save();
     }
 
@@ -2978,8 +2992,8 @@ router.get("/admin/incentive-history", adminAuthMiddleware, async (req, res) => 
       .skip(skip)
       .limit(limit);
 
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       data: incentives,
       totalRecords,
       totalPages,
@@ -3160,7 +3174,7 @@ router.get("/admin/suspend-history", adminAuthMiddleware, async (req, res) => {
   }
 });
 
-router.post("/create-order",DriverAuthMiddleware, async (req, res) => {
+router.post("/create-order", DriverAuthMiddleware, async (req, res) => {
   try {
     const { amount, currency, receipt, notes } = req.body;
 
@@ -3226,10 +3240,10 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
     const config = await MinHoldBalance.findOne().sort({ createdAt: -1 });
     //const minDepositAmount = config?.minDepositAmount || 0;
     const minDepositAmount = 1; // Set to 1 for testing purposes
-    
+
     if (amount < minDepositAmount) {
-      return res.status(400).json({ 
-        message: `Minimum deposit amount is ₹${minDepositAmount}` 
+      return res.status(400).json({
+        message: `Minimum deposit amount is ₹${minDepositAmount}`
       });
     }
 
@@ -3251,10 +3265,10 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
     const existingTransaction = wallet.transactions.find(
       t => t.razorpayPaymentId === paymentId
     );
-    
+
     if (existingTransaction) {
-      return res.status(400).json({ 
-        message: "This payment has already been processed" 
+      return res.status(400).json({
+        message: "This payment has already been processed"
       });
     }
 
@@ -3289,7 +3303,7 @@ router.post("/webhook", async (req, res) => {
     const webhookPayload = req.body;
     console.log("Razorpay Webhook received:", webhookPayload);
     const receivedSignature = req.headers['x-razorpay-signature'];
-    
+
     // Verify webhook signature
     if (!receivedSignature) {
       return res.status(400).json({ error: "Missing webhook signature" });
@@ -3297,7 +3311,7 @@ router.post("/webhook", async (req, res) => {
 
     const crypto = require('crypto');
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    
+
     if (!webhookSecret) {
       console.error('⚠️ RAZORPAY_WEBHOOK_SECRET not configured');
       return res.status(500).json({ error: "Webhook secret not configured" });
@@ -3314,12 +3328,12 @@ router.post("/webhook", async (req, res) => {
     }
 
 
-    
+
     // Extract payment info from Razorpay webhook payload
     const event = webhookPayload.event;
     const paymentEntity = webhookPayload.payload?.payment?.entity;
     const orderEntity = webhookPayload.payload?.order?.entity;
-    
+
     if (!paymentEntity || !paymentEntity.id) {
       return res.status(400).json({ error: "Invalid webhook payload" });
     }
@@ -3327,10 +3341,10 @@ router.post("/webhook", async (req, res) => {
     const payment_id = paymentEntity.id;
     const status = paymentEntity.status;
     const webhookAmount = paymentEntity.amount ? paymentEntity.amount / 100 : null; // Convert paise to rupees
-    
+
     // Get payment notes from order or payment entity
     const notes = orderEntity?.notes || paymentEntity.notes || {};
-    
+
 
 
     // Only process final payment events
@@ -3340,7 +3354,7 @@ router.post("/webhook", async (req, res) => {
     }
 
     const result = await processDeposit(payment_id, status, webhookAmount, notes);
-    
+
     if (result.success) {
       return res.json({ status: 'ok', event, verified: true, result: result.details });
     } else {
