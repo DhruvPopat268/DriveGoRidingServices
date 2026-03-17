@@ -920,7 +920,7 @@ router.post("/send-otp", async (req, res) => {
       to: toNumber,
       type: "template",
       template: {
-        name: "rider_otp_verification",
+        name: "riders_otp_verification",
         language: { code: "en" },
         components: [
           {

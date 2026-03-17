@@ -1359,7 +1359,7 @@ router.post("/send-otp", async (req, res) => {
       to: toNumber,
       type: "template",
       template: {
-        name: "driver_otp_verification",
+        name: "drivers_otp_verification",
         language: {
           code: "en"
         },
