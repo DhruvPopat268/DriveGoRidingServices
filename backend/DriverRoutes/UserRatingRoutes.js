@@ -96,51 +96,70 @@ router.post("/", authMiddleware, async (req, res) => {
 
       // 🟢 WhatsApp Notification to Driver (hire4drive_driver_new_rating)
       try {
-
         const driverMobile = driver.mobile;
 
-        if (driverMobile) {
-
-          const toNumber = driverMobile.startsWith("+")
-            ? driverMobile
-            : `91${driverMobile}`;
-
-          const payload = {
-            messaging_product: "whatsapp",
-            to: toNumber,
-            type: "template",
-            template: {
-              name: "hire4drive_driver_new_rating",
-              language: { code: "en" },
-              components: [
-                {
-                  type: "body",
-                  parameters: [
-                    {
-                      type: "text",
-                      text: rating.toString()
-                    }
-                  ]
-                }
-              ]
-            }
-          };
-
-          await axios.post(WHATSAPP_API_URL, payload, {
-            headers: {
-              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-              "Content-Type": "application/json"
-            }
-          });
-
+        if (!driverMobile) {
+          console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
+          return;
         }
+
+        const toNumber = driverMobile.startsWith("+")
+          ? driverMobile
+          : `91${driverMobile}`;
+
+        console.log("📤 Sending DRIVER NEW RATING WhatsApp");
+        console.log("📄 Template:", "hire4drive_driver_new_rating");
+        console.log("⭐ Rating:", rating);
+        console.log("📱 To:", toNumber);
+
+        const payload = {
+          messaging_product: "whatsapp",
+          to: toNumber,
+          type: "template",
+          template: {
+            name: "hire4drive_driver_new_rating",
+            language: { code: "en" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  {
+                    type: "text",
+                    text: rating.toString()
+                  }
+                ]
+              }
+            ]
+          }
+        };
+
+        const response = await axios.post(WHATSAPP_API_URL, payload, {
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        // ✅ SUCCESS
+        console.log("✅ WhatsApp DRIVER NEW RATING SENT");
+        console.log("📨 Response:", response.data);
 
       } catch (whatsappError) {
 
-        console.error(
-          "WhatsApp driver rating notification error:",
-          whatsappError.response?.data || whatsappError.message
-        );
+        console.log("❌ WhatsApp DRIVER NEW RATING FAILED");
+
+        if (whatsappError.response) {
+          console.log("🔴 Status:", whatsappError.response.status);
+          console.log("🔴 Error Data:", whatsappError.response.data);
+          console.log(
+            "🔴 Error Message:",
+            whatsappError.response?.data?.error?.message
+          );
+        } else if (whatsappError.request) {
+          console.log("🟠 No response from WhatsApp API");
+        } else {
+          console.log("⚠️ Error:", whatsappError.message);
+        }
 
       }
     }

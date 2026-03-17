@@ -94,9 +94,9 @@ router.post("/send-otp", async (req, res) => {
 
     // Check if driver account is deleted
     if (driver.status === "deleted") {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Your account has been deleted. Please contact support for assistance." 
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been deleted. Please contact support for assistance."
       });
     }
 
@@ -162,7 +162,7 @@ router.post("/verify-otp", async (req, res) => {
     if (!mobile || !otp) {
       return res.status(400).json({ message: "Mobile & OTP required" });
     }
-  // Convert mobile to string
+    // Convert mobile to string
     const mobileStr = String(mobile).trim();
 
     // Find latest OTP session
@@ -843,9 +843,21 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
     // 🟢 Send WhatsApp Notification
     try {
       const mobileStr = driver.mobile;
-      const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
+
+      if (!mobileStr) {
+        console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
+        return;
+      }
+
+      const toNumber = mobileStr.startsWith("+")
+        ? mobileStr
+        : `91${mobileStr}`;
 
       const apiUrl = WHATSAPP_API_URL;
+
+      console.log("📤 Sending DRIVER APPROVAL WhatsApp");
+      console.log("📄 Template:", "hire4drive_driver_registration_approved");
+      console.log("📱 To:", toNumber);
 
       const payload = {
         messaging_product: "whatsapp",
@@ -859,17 +871,34 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
         },
       };
 
-      await axios.post(apiUrl, payload, {
+      const response = await axios.post(apiUrl, payload, {
         headers: {
           Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
           "Content-Type": "application/json",
         },
       });
+
+      // ✅ SUCCESS
+      console.log("✅ WhatsApp DRIVER APPROVAL SENT");
+      console.log("📨 Response:", response.data);
+
     } catch (whatsappError) {
-      console.error(
-        "WhatsApp approval message error:",
-        whatsappError.response?.data || whatsappError.message
-      );
+
+      console.log("❌ WhatsApp DRIVER APPROVAL FAILED");
+
+      if (whatsappError.response) {
+        console.log("🔴 Status:", whatsappError.response.status);
+        console.log("🔴 Error Data:", whatsappError.response.data);
+        console.log(
+          "🔴 Error Message:",
+          whatsappError.response?.data?.error?.message
+        );
+      } else if (whatsappError.request) {
+        console.log("🟠 No response from WhatsApp API");
+      } else {
+        console.log("⚠️ Error:", whatsappError.message);
+      }
+
     }
 
     res.json({
@@ -957,11 +986,21 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
     // 🟢 WhatsApp Notification
     try {
       const mobileStr = driver.mobile;
+
+      if (!mobileStr) {
+        console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
+        return;
+      }
+
       const toNumber = mobileStr.startsWith("+")
         ? mobileStr
         : `91${mobileStr}`;
 
       const apiUrl = WHATSAPP_API_URL;
+
+      console.log("📤 Sending DRIVER REJECTION WhatsApp");
+      console.log("📄 Template:", "hire4drive_driver_registration_rejected");
+      console.log("📱 To:", toNumber);
 
       const payload = {
         messaging_product: "whatsapp",
@@ -975,18 +1014,34 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
         }
       };
 
-      await axios.post(apiUrl, payload, {
+      const response = await axios.post(apiUrl, payload, {
         headers: {
           Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
           "Content-Type": "application/json"
         }
       });
 
+      // ✅ SUCCESS
+      console.log("✅ WhatsApp DRIVER REJECTION SENT");
+      console.log("📨 Response:", response.data);
+
     } catch (whatsappError) {
-      console.error(
-        "WhatsApp rejection message error:",
-        whatsappError.response?.data || whatsappError.message
-      );
+
+      console.log("❌ WhatsApp DRIVER REJECTION FAILED");
+
+      if (whatsappError.response) {
+        console.log("🔴 Status:", whatsappError.response.status);
+        console.log("🔴 Error Data:", whatsappError.response.data);
+        console.log(
+          "🔴 Error Message:",
+          whatsappError.response?.data?.error?.message
+        );
+      } else if (whatsappError.request) {
+        console.log("🟠 No response from WhatsApp API");
+      } else {
+        console.log("⚠️ Error:", whatsappError.message);
+      }
+
     }
 
     res.json({
@@ -2215,11 +2270,22 @@ router.post("/admin/withdrawal/complete", adminAuthMiddleware, async (req, res) 
         // 🟢 WhatsApp Notification
         try {
           const mobileStr = driver.mobile;
+
+          if (!mobileStr) {
+            console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
+            return;
+          }
+
           const toNumber = mobileStr.startsWith("+")
             ? mobileStr
             : `91${mobileStr}`;
 
           const apiUrl = WHATSAPP_API_URL;
+
+          console.log("📤 Sending WITHDRAWAL APPROVED WhatsApp");
+          console.log("📄 Template:", "hire4drive_withdrawal_approved");
+          console.log("💰 Amount:", withdrawal.amount);
+          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2242,18 +2308,34 @@ router.post("/admin/withdrawal/complete", adminAuthMiddleware, async (req, res) 
             }
           };
 
-          await axios.post(apiUrl, payload, {
+          const response = await axios.post(apiUrl, payload, {
             headers: {
               Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
               "Content-Type": "application/json"
             }
           });
 
+          // ✅ SUCCESS
+          console.log("✅ WhatsApp WITHDRAWAL APPROVED SENT");
+          console.log("📨 Response:", response.data);
+
         } catch (whatsappError) {
-          console.error(
-            "WhatsApp withdrawal message error:",
-            whatsappError.response?.data || whatsappError.message
-          );
+
+          console.log("❌ WhatsApp WITHDRAWAL APPROVED FAILED");
+
+          if (whatsappError.response) {
+            console.log("🔴 Status:", whatsappError.response.status);
+            console.log("🔴 Error Data:", whatsappError.response.data);
+            console.log(
+              "🔴 Error Message:",
+              whatsappError.response?.data?.error?.message
+            );
+          } else if (whatsappError.request) {
+            console.log("🟠 No response from WhatsApp API");
+          } else {
+            console.log("⚠️ Error:", whatsappError.message);
+          }
+
         }
       }
 
@@ -2337,11 +2419,22 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
         // 🟢 WhatsApp Notification
         try {
           const mobileStr = driver.mobile;
+
+          if (!mobileStr) {
+            console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
+            return;
+          }
+
           const toNumber = mobileStr.startsWith("+")
             ? mobileStr
             : `91${mobileStr}`;
 
           const apiUrl = WHATSAPP_API_URL;
+
+          console.log("📤 Sending WITHDRAWAL REJECTED WhatsApp");
+          console.log("📄 Template:", "hire4drive_withdrawal_rejected");
+          console.log("💰 Amount:", withdrawal.amount);
+          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2364,18 +2457,34 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
             }
           };
 
-          await axios.post(apiUrl, payload, {
+          const response = await axios.post(apiUrl, payload, {
             headers: {
               Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
               "Content-Type": "application/json"
             }
           });
 
+          // ✅ SUCCESS
+          console.log("✅ WhatsApp WITHDRAWAL REJECTED SENT");
+          console.log("📨 Response:", response.data);
+
         } catch (whatsappError) {
-          console.error(
-            "WhatsApp withdrawal rejected message error:",
-            whatsappError.response?.data || whatsappError.message
-          );
+
+          console.log("❌ WhatsApp WITHDRAWAL REJECTED FAILED");
+
+          if (whatsappError.response) {
+            console.log("🔴 Status:", whatsappError.response.status);
+            console.log("🔴 Error Data:", whatsappError.response.data);
+            console.log(
+              "🔴 Error Message:",
+              whatsappError.response?.data?.error?.message
+            );
+          } else if (whatsappError.request) {
+            console.log("🟠 No response from WhatsApp API");
+          } else {
+            console.log("⚠️ Error:", whatsappError.message);
+          }
+
         }
       }
 
@@ -2728,21 +2837,29 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
   try {
     const { mobile } = req.body;
 
+    console.log("📥 /reference/send-otp API HIT");
+    console.log("📱 Incoming Mobile:", mobile);
+
     if (!mobile) {
+      console.log("❌ Mobile missing");
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
     const mobileStr = String(mobile).trim();
 
     if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
+      console.log("❌ Invalid mobile format:", mobileStr);
       return res.status(400).json({ message: "Invalid mobile number format" });
     }
 
-    // Generate OTP
+    // 🔐 Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Save OTP session
+    console.log("🔐 OTP Generated (masked):", `****${otp.slice(-2)}`);
+    console.log("⏳ OTP Expiry:", otpExpiresAt);
+
+    // 💾 Save OTP session
     const otpSession = new DriverReferanceOtpSession({
       mobile: mobileStr,
       otp,
@@ -2750,19 +2867,22 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
     });
 
     await otpSession.save();
+    console.log("💾 OTP session saved");
 
-    // Get logged-in driver
+    // 👤 Get driver
     const driver = await Driver.findById(req.driver.id);
 
     const driverName =
       driver?.personalInformation?.fullName || "Driver";
 
-    // WhatsApp number format
+    console.log("👤 Driver Name:", driverName);
+
+    // 📱 Format number
     const toNumber = mobileStr.startsWith("+")
       ? mobileStr
       : `91${mobileStr}`;
 
-    const apiUrl = WHATSAPP_API_URL;
+    console.log("📤 Sending OTP WhatsApp to:", toNumber);
 
     const payload = {
       messaging_product: "whatsapp",
@@ -2770,52 +2890,54 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
       type: "template",
       template: {
         name: "reference_verification_otp",
-        language: {
-          code: "en"
-        },
+        language: { code: "en" },
         components: [
           {
             type: "body",
             parameters: [
-              {
-                type: "text",
-                text: driverName
-              },
-              {
-                type: "text",
-                text: otp
-              }
+              { type: "text", text: driverName },
+              { type: "text", text: otp }
             ]
           }
         ]
       }
     };
 
-    await axios.post(apiUrl, payload, {
+    const response = await axios.post(WHATSAPP_API_URL, payload, {
       headers: {
         Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
         "Content-Type": "application/json"
       }
     });
 
-    res.json({
+    // ✅ SUCCESS
+    console.log("✅ WhatsApp OTP SENT");
+    console.log("📨 Response:", response.data);
+
+    return res.json({
       success: true,
       message: "Reference OTP sent successfully via WhatsApp"
     });
 
   } catch (error) {
 
-    console.error(
-      "Reference send OTP error:",
-      error.response?.data || error.message
-    );
+    console.log("❌ Reference OTP API FAILED");
 
-    res.status(500).json({
+    if (error.response) {
+      console.log("🔴 Status:", error.response.status);
+      console.log("🔴 Error Data:", error.response.data);
+      console.log("🔴 Error Message:", error.response?.data?.error?.message);
+    } else if (error.request) {
+      console.log("🟠 No response from WhatsApp API");
+    } else {
+      console.log("⚠️ Error:", error.message);
+    }
+
+    return res.status(500).json({
       success: false,
       message: "Failed to send OTP",
       error: error.response?.data || error.message
     });
-
   }
 });
 
@@ -3073,12 +3195,23 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
 
         // 🟢 WhatsApp Notification
         try {
-
           const mobileStr = driver.mobile;
+
+          if (!mobileStr) {
+            console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
+            return;
+          }
 
           const toNumber = mobileStr.startsWith("+")
             ? mobileStr
             : `91${mobileStr}`;
+
+          console.log("📤 Sending ACCOUNT SUSPENDED WhatsApp");
+          console.log("📄 Template:", "hire4drive_account_suspended");
+          console.log("📅 From:", formattedFrom);
+          console.log("📅 To:", formattedTo);
+          console.log("📝 Description:", description?.trim());
+          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -3100,18 +3233,34 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
             }
           };
 
-          await axios.post(WHATSAPP_API_URL, payload, {
+          const response = await axios.post(WHATSAPP_API_URL, payload, {
             headers: {
               Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
               "Content-Type": "application/json"
             }
           });
 
+          // ✅ SUCCESS
+          console.log("✅ WhatsApp ACCOUNT SUSPENDED SENT");
+          console.log("📨 Response:", response.data);
+
         } catch (whatsappError) {
-          console.error(
-            "WhatsApp suspension message error:",
-            whatsappError.response?.data || whatsappError.message
-          );
+
+          console.log("❌ WhatsApp ACCOUNT SUSPENDED FAILED");
+
+          if (whatsappError.response) {
+            console.log("🔴 Status:", whatsappError.response.status);
+            console.log("🔴 Error Data:", whatsappError.response.data);
+            console.log(
+              "🔴 Error Message:",
+              whatsappError.response?.data?.error?.message
+            );
+          } else if (whatsappError.request) {
+            console.log("🟠 No response from WhatsApp API");
+          } else {
+            console.log("⚠️ Error:", whatsappError.message);
+          }
+
         }
 
         results.push({ driverId, success: true });

@@ -100,64 +100,82 @@ router.put('/reschedule', authMiddleware, async (req, res) => {
 
       // 🔔 Send WhatsApp to driver if assigned
       if (ride.driverId) {
-
         try {
-
           const Driver = require('../models/Driver');
           const driver = await Driver.findById(ride.driverId);
 
-          if (driver) {
-
-            const mobileStr = driver.mobile;
-            const toNumber = mobileStr.startsWith('+')
-              ? mobileStr
-              : `91${mobileStr}`;
-
-            const formattedDate = new Date(selectedDate).toLocaleDateString('en-IN');
-
-            const apiUrl = WHATSAPP_API_URL;
-
-            const payload = {
-              messaging_product: "whatsapp",
-              to: toNumber,
-              type: "template",
-              template: {
-                name: "hire4drive_reschedule_request_driver",
-                language: { code: "en" },
-                components: [
-                  {
-                    type: "body",
-                    parameters: [
-                      {
-                        type: "text",
-                        text: formattedDate
-                      },
-                      {
-                        type: "text",
-                        text: selectedTime
-                      }
-                    ]
-                  }
-                ]
-              }
-            };
-
-            await axios.post(apiUrl, payload, {
-              headers: {
-                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                "Content-Type": "application/json"
-              }
-            });
-
+          if (!driver) {
+            console.log("⚠️ WhatsApp SKIPPED - Driver not found:", ride.driverId);
+            return;
           }
 
-        } catch (whatsappError) {
-          console.error(
-            "Reschedule WhatsApp error:",
-            whatsappError.response?.data || whatsappError.message
-          );
-        }
+          const mobileStr = driver.mobile;
 
+          if (!mobileStr) {
+            console.log("⚠️ WhatsApp SKIPPED - Driver mobile missing");
+            return;
+          }
+
+          const toNumber = mobileStr.startsWith('+')
+            ? mobileStr
+            : `91${mobileStr}`;
+
+          const formattedDate = new Date(selectedDate).toLocaleDateString('en-IN');
+
+          console.log("📤 Sending RESCHEDULE REQUEST WhatsApp");
+          console.log("📄 Template:", "hire4drive_reschedule_request_driver");
+          console.log("📅 Date:", formattedDate);
+          console.log("⏰ Time:", selectedTime);
+          console.log("📱 To:", toNumber);
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_reschedule_request_driver",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: formattedDate },
+                    { type: "text", text: selectedTime }
+                  ]
+                }
+              ]
+            }
+          };
+
+          const response = await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+          // ✅ SUCCESS
+          console.log("✅ WhatsApp RESCHEDULE REQUEST SENT");
+          console.log("📨 Response:", response.data);
+
+        } catch (whatsappError) {
+
+          console.log("❌ WhatsApp RESCHEDULE REQUEST FAILED");
+
+          if (whatsappError.response) {
+            console.log("🔴 Status:", whatsappError.response.status);
+            console.log("🔴 Error Data:", whatsappError.response.data);
+            console.log(
+              "🔴 Error Message:",
+              whatsappError.response?.data?.error?.message
+            );
+          } else if (whatsappError.request) {
+            console.log("🟠 No response from WhatsApp API");
+          } else {
+            console.log("⚠️ Error:", whatsappError.message);
+          }
+
+        }
       }
 
     }
@@ -182,71 +200,86 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
 
     // 🟢 Send WhatsApp if reschedule accepted
     if (action === "ACCEPTED") {
-
       try {
-
         const ride = await Ride.findById(rideId);
 
-        if (ride) {
+        if (!ride) {
+          console.log("⚠️ WhatsApp SKIPPED - Ride not found:", rideId);
+          return;
+        }
 
-          const riderMobile = ride.riderInfo?.riderMobile;
+        const riderMobile = ride.riderInfo?.riderMobile;
 
-          if (riderMobile) {
+        if (!riderMobile) {
+          console.log("⚠️ WhatsApp SKIPPED - Rider mobile missing");
+          return;
+        }
 
-            const toNumber = riderMobile.startsWith("+")
-              ? riderMobile
-              : `91${riderMobile}`;
+        const toNumber = riderMobile.startsWith("+")
+          ? riderMobile
+          : `91${riderMobile}`;
 
-            const selectedDate = new Date(ride.rescheduleRequest?.requestedDate)
-              .toLocaleDateString("en-GB");
+        const selectedDateRaw = ride.rescheduleRequest?.requestedDate;
+        const selectedTime = ride.rescheduleRequest?.requestedTime;
 
-            const selectedTime = ride.rescheduleRequest?.requestedTime;
+        const selectedDate = selectedDateRaw
+          ? new Date(selectedDateRaw).toLocaleDateString("en-GB")
+          : "N/A";
 
-            const payload = {
-              messaging_product: "whatsapp",
-              to: toNumber,
-              type: "template",
-              template: {
-                name: "hire4drive_reschedule_accepted_rider",
-                language: { code: "en" },
-                components: [
-                  {
-                    type: "body",
-                    parameters: [
-                      {
-                        type: "text",
-                        text: selectedDate
-                      },
-                      {
-                        type: "text",
-                        text: selectedTime
-                      }
-                    ]
-                  }
+        console.log("📤 Sending RESCHEDULE ACCEPTED WhatsApp");
+        console.log("📄 Template:", "hire4drive_reschedule_accepted_rider");
+        console.log("📅 Date:", selectedDate);
+        console.log("⏰ Time:", selectedTime);
+        console.log("📱 To:", toNumber);
+
+        const payload = {
+          messaging_product: "whatsapp",
+          to: toNumber,
+          type: "template",
+          template: {
+            name: "hire4drive_reschedule_accepted_rider",
+            language: { code: "en" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: selectedDate },
+                  { type: "text", text: selectedTime || "N/A" }
                 ]
               }
-            };
-
-            await axios.post(WHATSAPP_API_URL, payload, {
-              headers: {
-                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                "Content-Type": "application/json"
-              }
-            });
-
+            ]
           }
+        };
 
-        }
+        const response = await axios.post(WHATSAPP_API_URL, payload, {
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        // ✅ SUCCESS
+        console.log("✅ WhatsApp RESCHEDULE ACCEPTED SENT");
+        console.log("📨 Response:", response.data);
 
       } catch (whatsappError) {
 
-        console.error(
-          "WhatsApp reschedule accepted message error:",
-          whatsappError.response?.data || whatsappError.message
-        );
+        console.log("❌ WhatsApp RESCHEDULE ACCEPTED FAILED");
+
+        if (whatsappError.response) {
+          console.log("🔴 Status:", whatsappError.response.status);
+          console.log("🔴 Error Data:", whatsappError.response.data);
+          console.log(
+            "🔴 Error Message:",
+            whatsappError.response?.data?.error?.message
+          );
+        } else if (whatsappError.request) {
+          console.log("🟠 No response from WhatsApp API");
+        } else {
+          console.log("⚠️ Error:", whatsappError.message);
+        }
 
       }
-
     }
 
     return res.json(result);

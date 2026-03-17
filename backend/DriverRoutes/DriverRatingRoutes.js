@@ -80,55 +80,69 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
 
         // 🟢 WhatsApp Notification to Rider (hire4drive_driver_rating_received_rider)
         try {
-
           const riderMobile = rider.mobile;
 
-          if (riderMobile) {
-
-            const toNumber = riderMobile.startsWith("+")
-              ? riderMobile
-              : `91${riderMobile}`;
-
-            const payload = {
-              messaging_product: "whatsapp",
-              to: toNumber,
-              type: "template",
-              template: {
-                name: "hire4drive_driver_rating_received_rider",
-                language: { code: "en" },
-                components: [
-                  {
-                    type: "body",
-                    parameters: [
-                      {
-                        type: "text",
-                        text: driverName
-                      },
-                      {
-                        type: "text",
-                        text: rating.toString()
-                      }
-                    ]
-                  }
-                ]
-              }
-            };
-
-            await axios.post(WHATSAPP_API_URL, payload, {
-              headers: {
-                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                "Content-Type": "application/json"
-              }
-            });
-
+          if (!riderMobile) {
+            console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
+            return;
           }
+
+          const toNumber = riderMobile.startsWith("+")
+            ? riderMobile
+            : `91${riderMobile}`;
+
+          console.log("📤 Sending DRIVER RATING WhatsApp");
+          console.log("📄 Template:", "hire4drive_driver_rating_received_rider");
+          console.log("👤 Driver:", driverName);
+          console.log("⭐ Rating:", rating);
+          console.log("📱 To:", toNumber);
+
+          const payload = {
+            messaging_product: "whatsapp",
+            to: toNumber,
+            type: "template",
+            template: {
+              name: "hire4drive_driver_rating_received_rider",
+              language: { code: "en" },
+              components: [
+                {
+                  type: "body",
+                  parameters: [
+                    { type: "text", text: driverName },
+                    { type: "text", text: rating.toString() }
+                  ]
+                }
+              ]
+            }
+          };
+
+          const response = await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+          // ✅ SUCCESS
+          console.log("✅ WhatsApp DRIVER RATING SENT");
+          console.log("📨 Response:", response.data);
 
         } catch (whatsappError) {
 
-          console.error(
-            "WhatsApp rider rating message error:",
-            whatsappError.response?.data || whatsappError.message
-          );
+          console.log("❌ WhatsApp DRIVER RATING FAILED");
+
+          if (whatsappError.response) {
+            console.log("🔴 Status:", whatsappError.response.status);
+            console.log("🔴 Error Data:", whatsappError.response.data);
+            console.log(
+              "🔴 Error Message:",
+              whatsappError.response?.data?.error?.message
+            );
+          } else if (whatsappError.request) {
+            console.log("🟠 No response from WhatsApp API");
+          } else {
+            console.log("⚠️ Error:", whatsappError.message);
+          }
 
         }
       }

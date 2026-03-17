@@ -305,12 +305,20 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
 
           // 🟢 WhatsApp Notification
           try {
-
             const mobileStr = driver.mobile;
+
+            if (!mobileStr) {
+              console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
+              return;
+            }
 
             const toNumber = mobileStr.startsWith("+")
               ? mobileStr
               : `91${mobileStr}`;
+
+            console.log("📤 Sending EXTRA CHARGES WhatsApp");
+            console.log("📄 Template:", "hire4drive_extra_charges_added");
+            console.log("📱 To:", toNumber);
 
             const payload = {
               messaging_product: "whatsapp",
@@ -322,18 +330,34 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
               }
             };
 
-            await axios.post(WHATSAPP_API_URL, payload, {
+            const response = await axios.post(WHATSAPP_API_URL, payload, {
               headers: {
                 Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
                 "Content-Type": "application/json"
               }
             });
 
+            // ✅ SUCCESS
+            console.log("✅ WhatsApp EXTRA CHARGES SENT");
+            console.log("📨 Response:", response.data);
+
           } catch (whatsappError) {
-            console.error(
-              "WhatsApp extra charges message error:",
-              whatsappError.response?.data || whatsappError.message
-            );
+
+            console.log("❌ WhatsApp EXTRA CHARGES FAILED");
+
+            if (whatsappError.response) {
+              console.log("🔴 Status:", whatsappError.response.status);
+              console.log("🔴 Error Data:", whatsappError.response.data);
+              console.log(
+                "🔴 Error Message:",
+                whatsappError.response?.data?.error?.message
+              );
+            } else if (whatsappError.request) {
+              console.log("🟠 No response from WhatsApp API");
+            } else {
+              console.log("⚠️ Error:", whatsappError.message);
+            }
+
           }
 
         }
@@ -1036,90 +1060,98 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       // ============================
 
       try {
-  console.log("🚀 Starting WhatsApp notifications...");
 
-  const drivers = await Driver.find({
-    _id: { $in: waitingDriverIds }
-  }).select("mobile");
+        const drivers = await Driver.find({
+          _id: { $in: waitingDriverIds }
+        }).select("mobile");
 
-  console.log("👥 Drivers fetched:", drivers.length);
+        const formatTo12Hour = (time24) => {
 
-  const formatTo12Hour = (time24) => {
-    const [hours, minutes] = time24.split(":");
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
+          const [hours, minutes] = time24.split(':');
 
-  const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
-  const formattedDate = formattedSelectedDate.replace(/ /g, "/");
+          const hour = parseInt(hours);
 
-  console.log("📅 Date:", formattedDate);
-  console.log("⏰ Time:", formattedTime);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
 
-  for (const driver of drivers) {
-    try {
-      console.log("--------------------------------------------------");
-      console.log("🚗 Processing driver:", driver._id);
+          const hour12 = hour % 12 || 12;
 
-      const mobileStr = driver.mobile;
+          return `${hour12}:${minutes} ${ampm}`;
 
-      const toNumber = mobileStr.startsWith("+")
-        ? mobileStr.replace("+", "")
-        : `91${mobileStr}`;
+        };
 
-      console.log("📱 Raw Mobile:", mobileStr);
-      console.log("📤 Sending To:", toNumber);
+        const formattedTime = formatTo12Hour(newRide.rideInfo.selectedTime);
 
-      const payload = {
-        messaging_product: "whatsapp",
-        to: toNumber,
-        type: "template",
-        template: {
-          name: "hire4drive_new_ride_available",
-          language: { code: "en" },
-          components: [
-            {
-              type: "body",
-              parameters: [
-                { type: "text", text: riderName },
-                { type: "text", text: subcategoryName },
-                { type: "text", text: formattedDate },
-                { type: "text", text: formattedTime }
-              ]
+        const formattedDate = formattedSelectedDate.replace(/ /g, "/");
+
+        for (const driver of drivers) {
+
+          try {
+            const mobileStr = driver.mobile;
+
+            const toNumber = mobileStr.startsWith("+")
+              ? mobileStr
+              : `91${mobileStr}`;
+
+            console.log("📤 Sending WhatsApp to:", toNumber);
+
+            const payload = {
+              messaging_product: "whatsapp",
+              to: toNumber,
+              type: "template",
+              template: {
+                name: "hire4drive_new_ride_available",
+                language: { code: "en" },
+                components: [
+                  {
+                    type: "body",
+                    parameters: [
+                      { type: "text", text: riderName },
+                      { type: "text", text: subcategoryName },
+                      { type: "text", text: formattedDate },
+                      { type: "text", text: formattedTime }
+                    ]
+                  }
+                ]
+              }
+            };
+
+            const response = await axios.post(WHATSAPP_API_URL, payload, {
+              headers: {
+                Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+              }
+            });
+
+            // ✅ SUCCESS LOG
+            console.log("✅ WhatsApp API SUCCESS");
+            console.log("📨 Response:", response.data);
+
+          } catch (error) {
+
+            // ❌ FAILURE LOG
+            console.log("❌ WhatsApp API FAILED");
+
+            if (error.response) {
+              // API responded with error
+              console.log("🔴 Status:", error.response.status);
+              console.log("🔴 Error Data:", error.response.data);
+            } else if (error.request) {
+              // No response received
+              console.log("🟠 No response from WhatsApp API");
+              console.log("🟠 Request:", error.request);
+            } else {
+              // Other error
+              console.log("⚠️ Error:", error.message);
             }
-          ]
+          }
+
         }
-      };
 
-      console.log("📦 Payload:", JSON.stringify(payload, null, 2));
+      } catch (whatsappError) {
 
-      const response = await axios.post(WHATSAPP_API_URL, payload, {
-        headers: {
-          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-          "Content-Type": "application/json"
-        }
-      });
+        console.error("❌ WhatsApp bulk error:", whatsappError);
 
-      console.log("✅ Message sent successfully:", response.data);
-
-    } catch (driverError) {
-      console.error("❌ FAILED for driver:", driver._id);
-
-      if (driverError.response) {
-        console.error("📛 Meta Error Response:", driverError.response.data);
-      } else {
-        console.error("⚠️ Error Message:", driverError.message);
       }
-    }
-  }
-
-  console.log("🎯 All drivers processed");
-
-} catch (whatsappError) {
-  console.error("❌ WhatsApp bulk error:", whatsappError);
-}
 
       // ✅ Deduct referral balance if used
       const rider = await Rider.findById(riderId);
@@ -1601,7 +1633,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
           // 🟢 WhatsApp Notification
           try {
-
             const riderName = rideToCancel.riderInfo?.riderName || "Rider";
             const subcategoryName = rideToCancel.rideInfo?.subcategoryName || "ride";
 
@@ -1611,6 +1642,11 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               : `91${mobileStr}`;
 
             const apiUrl = WHATSAPP_API_URL;
+
+            console.log("📤 Sending CANCEL WhatsApp");
+            console.log("👤 Rider:", riderName);
+            console.log("🚗 Ride:", subcategoryName);
+            console.log("📱 To:", toNumber);
 
             const payload = {
               messaging_product: "whatsapp",
@@ -1623,32 +1659,42 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
                   {
                     type: "body",
                     parameters: [
-                      {
-                        type: "text",
-                        text: riderName
-                      },
-                      {
-                        type: "text",
-                        text: subcategoryName
-                      }
+                      { type: "text", text: riderName },
+                      { type: "text", text: subcategoryName }
                     ]
                   }
                 ]
               }
             };
 
-            await axios.post(apiUrl, payload, {
+            const response = await axios.post(apiUrl, payload, {
               headers: {
                 Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
                 "Content-Type": "application/json"
               }
             });
 
+            // ✅ SUCCESS LOG
+            console.log("✅ WhatsApp CANCEL MESSAGE SENT");
+            console.log("📨 Response:", response.data);
+
           } catch (whatsappError) {
-            console.error(
-              "WhatsApp ride cancelled message error:",
-              whatsappError.response?.data || whatsappError.message
-            );
+
+            console.log("❌ WhatsApp CANCEL MESSAGE FAILED");
+
+            if (whatsappError.response) {
+              console.log("🔴 Status:", whatsappError.response.status);
+              console.log("🔴 Error Data:", whatsappError.response.data);
+              console.log(
+                "🔴 Error Message:",
+                whatsappError.response?.data?.error?.message
+              );
+            } else if (whatsappError.request) {
+              console.log("🟠 No response received from WhatsApp API");
+            } else {
+              console.log("⚠️ Error:", whatsappError.message);
+            }
+
           }
 
         }
@@ -2049,12 +2095,17 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
         // =========================
 
         try {
-
           const mobileStr = rider.mobile;
 
           const toNumber = mobileStr.startsWith("+")
             ? mobileStr
             : `91${mobileStr}`;
+
+          console.log("📤 Sending CONFIRMATION WhatsApp");
+          console.log("👤 Driver:", driverName);
+          console.log("📅 Date:", formattedDate);
+          console.log("⏰ Time:", formattedTime);
+          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2076,19 +2127,33 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
             }
           };
 
-          await axios.post(WHATSAPP_API_URL, payload, {
+          const response = await axios.post(WHATSAPP_API_URL, payload, {
             headers: {
               Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
               "Content-Type": "application/json"
             }
           });
 
+          // ✅ SUCCESS LOG
+          console.log("✅ WhatsApp CONFIRMATION SENT");
+          console.log("📨 Response:", response.data);
+
         } catch (whatsappError) {
 
-          console.error(
-            "WhatsApp ride confirmation error:",
-            whatsappError.response?.data || whatsappError.message
-          );
+          console.log("❌ WhatsApp CONFIRMATION FAILED");
+
+          if (whatsappError.response) {
+            console.log("🔴 Status:", whatsappError.response.status);
+            console.log("🔴 Error Data:", whatsappError.response.data);
+            console.log(
+              "🔴 Error Message:",
+              whatsappError.response?.data?.error?.message
+            );
+          } else if (whatsappError.request) {
+            console.log("🟠 No response from WhatsApp API");
+          } else {
+            console.log("⚠️ Error:", whatsappError.message);
+          }
 
         }
 
@@ -2273,12 +2338,15 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
         // =========================
 
         try {
-
           const mobileStr = rider.mobile;
 
           const toNumber = mobileStr.startsWith("+")
             ? mobileStr
             : `91${mobileStr}`;
+
+          console.log("📤 Sending DRIVER REACHED WhatsApp");
+          console.log("👤 Driver:", driverName);
+          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2298,19 +2366,33 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
             }
           };
 
-          await axios.post(WHATSAPP_API_URL, payload, {
+          const response = await axios.post(WHATSAPP_API_URL, payload, {
             headers: {
               Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
               "Content-Type": "application/json"
             }
           });
 
+          // ✅ SUCCESS
+          console.log("✅ WhatsApp DRIVER REACHED SENT");
+          console.log("📨 Response:", response.data);
+
         } catch (whatsappError) {
 
-          console.error(
-            "WhatsApp driver reached error:",
-            whatsappError.response?.data || whatsappError.message
-          );
+          console.log("❌ WhatsApp DRIVER REACHED FAILED");
+
+          if (whatsappError.response) {
+            console.log("🔴 Status:", whatsappError.response.status);
+            console.log("🔴 Error Data:", whatsappError.response.data);
+            console.log(
+              "🔴 Error Message:",
+              whatsappError.response?.data?.error?.message
+            );
+          } else if (whatsappError.request) {
+            console.log("🟠 No response from WhatsApp API");
+          } else {
+            console.log("⚠️ Error:", whatsappError.message);
+          }
 
         }
 
@@ -2831,52 +2913,74 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
       // 🟢 WhatsApp Notification for FULL ride cancellation
       try {
-
         const riderMobile = currentRide.riderInfo?.riderMobile;
         const driverName = driver.personalInformation?.fullName || "Driver";
 
-        if (riderMobile) {
-
-          const toNumber = riderMobile.startsWith("+")
-            ? riderMobile
-            : `91${riderMobile}`;
-
-          const rideDate = new Date(currentRide.rideInfo.selectedDate)
-            .toLocaleDateString("en-GB");
-
-          const payload = {
-            messaging_product: "whatsapp",
-            to: toNumber,
-            type: "template",
-            template: {
-              name: "hire4drive_ride_cancelled_full",
-              language: { code: "en" },
-              components: [
-                {
-                  type: "body",
-                  parameters: [
-                    { type: "text", text: driverName },
-                    { type: "text", text: rideDate }
-                  ]
-                }
-              ]
-            }
-          };
-
-          await axios.post(WHATSAPP_API_URL, payload, {
-            headers: {
-              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-              "Content-Type": "application/json"
-            }
-          });
-
+        if (!riderMobile) {
+          console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
+          return;
         }
 
+        const toNumber = riderMobile.startsWith("+")
+          ? riderMobile
+          : `91${riderMobile}`;
+
+        const rideDate = new Date(currentRide.rideInfo.selectedDate)
+          .toLocaleDateString("en-GB");
+
+        console.log("📤 Sending FULL CANCEL WhatsApp");
+        console.log("📄 Template:", "hire4drive_ride_cancelled_full");
+        console.log("👤 Driver:", driverName);
+        console.log("📅 Ride Date:", rideDate);
+        console.log("📱 To:", toNumber);
+
+        const payload = {
+          messaging_product: "whatsapp",
+          to: toNumber,
+          type: "template",
+          template: {
+            name: "hire4drive_ride_cancelled_full",
+            language: { code: "en" },
+            components: [
+              {
+                type: "body",
+                parameters: [
+                  { type: "text", text: driverName },
+                  { type: "text", text: rideDate }
+                ]
+              }
+            ]
+          }
+        };
+
+        const response = await axios.post(WHATSAPP_API_URL, payload, {
+          headers: {
+            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        // ✅ SUCCESS
+        console.log("✅ WhatsApp FULL CANCEL SENT");
+        console.log("📨 Response:", response.data);
+
       } catch (whatsappError) {
-        console.error(
-          "WhatsApp full cancellation error:",
-          whatsappError.response?.data || whatsappError.message
-        );
+
+        console.log("❌ WhatsApp FULL CANCEL FAILED");
+
+        if (whatsappError.response) {
+          console.log("🔴 Status:", whatsappError.response.status);
+          console.log("🔴 Error Data:", whatsappError.response.data);
+          console.log(
+            "🔴 Error Message:",
+            whatsappError.response?.data?.error?.message
+          );
+        } else if (whatsappError.request) {
+          console.log("🟠 No response from WhatsApp API");
+        } else {
+          console.log("⚠️ Error:", whatsappError.message);
+        }
+
       }
 
       return res.status(200).json({
@@ -3145,54 +3249,76 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
     // 🟢 WhatsApp Notification for PARTIAL ride cancellation
     try {
-
       const riderMobile = currentRide.riderInfo?.riderMobile;
       const driverName = driver.personalInformation?.fullName || "Driver";
 
-      if (riderMobile) {
-
-        const toNumber = riderMobile.startsWith("+")
-          ? riderMobile
-          : `91${riderMobile}`;
-
-        const formattedDates = selectedDates.map(date => {
-          const dateObj = new Date(date);
-          return dateObj.toLocaleDateString("en-GB");
-        }).join(", ");
-
-        const payload = {
-          messaging_product: "whatsapp",
-          to: toNumber,
-          type: "template",
-          template: {
-            name: "hire4drive_partial_ride_cancelled",
-            language: { code: "en" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  { type: "text", text: driverName },
-                  { type: "text", text: formattedDates }
-                ]
-              }
-            ]
-          }
-        };
-
-        await axios.post(WHATSAPP_API_URL, payload, {
-          headers: {
-            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
-
+      if (!riderMobile) {
+        console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
+        return;
       }
 
+      const toNumber = riderMobile.startsWith("+")
+        ? riderMobile
+        : `91${riderMobile}`;
+
+      const formattedDates = selectedDates.map(date => {
+        const dateObj = new Date(date);
+        return dateObj.toLocaleDateString("en-GB");
+      }).join(", ");
+
+      console.log("📤 Sending PARTIAL CANCEL WhatsApp");
+      console.log("📄 Template:", "hire4drive_partial_ride_cancelled");
+      console.log("👤 Driver:", driverName);
+      console.log("📅 Dates:", formattedDates);
+      console.log("📱 To:", toNumber);
+
+      const payload = {
+        messaging_product: "whatsapp",
+        to: toNumber,
+        type: "template",
+        template: {
+          name: "hire4drive_partial_ride_cancelled",
+          language: { code: "en" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: driverName },
+                { type: "text", text: formattedDates }
+              ]
+            }
+          ]
+        }
+      };
+
+      const response = await axios.post(WHATSAPP_API_URL, payload, {
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      // ✅ SUCCESS
+      console.log("✅ WhatsApp PARTIAL CANCEL SENT");
+      console.log("📨 Response:", response.data);
+
     } catch (whatsappError) {
-      console.error(
-        "WhatsApp partial cancellation error:",
-        whatsappError.response?.data || whatsappError.message
-      );
+
+      console.log("❌ WhatsApp PARTIAL CANCEL FAILED");
+
+      if (whatsappError.response) {
+        console.log("🔴 Status:", whatsappError.response.status);
+        console.log("🔴 Error Data:", whatsappError.response.data);
+        console.log(
+          "🔴 Error Message:",
+          whatsappError.response?.data?.error?.message
+        );
+      } else if (whatsappError.request) {
+        console.log("🟠 No response from WhatsApp API");
+      } else {
+        console.log("⚠️ Error:", whatsappError.message);
+      }
+
     }
 
     return res.status(200).json({
@@ -3397,51 +3523,67 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
 
     // 🟢 WhatsApp Notification (hire4drive_ride_extended)
     try {
-
       const riderMobile = ride.riderInfo?.riderMobile;
 
-      if (riderMobile) {
-
-        const toNumber = riderMobile.startsWith("+")
-          ? riderMobile
-          : `91${riderMobile}`;
-
-        const payload = {
-          messaging_product: "whatsapp",
-          to: toNumber,
-          type: "template",
-          template: {
-            name: "hire4drive_ride_extended",
-            language: { code: "en" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  {
-                    type: "text",
-                    text: driverName
-                  }
-                ]
-              }
-            ]
-          }
-        };
-
-        await axios.post(WHATSAPP_API_URL, payload, {
-          headers: {
-            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
-
+      if (!riderMobile) {
+        console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
+        return;
       }
+
+      const toNumber = riderMobile.startsWith("+")
+        ? riderMobile
+        : `91${riderMobile}`;
+
+      console.log("📤 Sending RIDE EXTENDED WhatsApp");
+      console.log("📄 Template:", "hire4drive_ride_extended");
+      console.log("👤 Driver:", driverName);
+      console.log("📱 To:", toNumber);
+
+      const payload = {
+        messaging_product: "whatsapp",
+        to: toNumber,
+        type: "template",
+        template: {
+          name: "hire4drive_ride_extended",
+          language: { code: "en" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: driverName }
+              ]
+            }
+          ]
+        }
+      };
+
+      const response = await axios.post(WHATSAPP_API_URL, payload, {
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      // ✅ SUCCESS
+      console.log("✅ WhatsApp RIDE EXTENDED SENT");
+      console.log("📨 Response:", response.data);
 
     } catch (whatsappError) {
 
-      console.error(
-        "WhatsApp ride extended message error:",
-        whatsappError.response?.data || whatsappError.message
-      );
+      console.log("❌ WhatsApp RIDE EXTENDED FAILED");
+
+      if (whatsappError.response) {
+        console.log("🔴 Status:", whatsappError.response.status);
+        console.log("🔴 Error Data:", whatsappError.response.data);
+        console.log(
+          "🔴 Error Message:",
+          whatsappError.response?.data?.error?.message
+        );
+      } else if (whatsappError.request) {
+        console.log("🟠 No response from WhatsApp API");
+      } else {
+        console.log("⚠️ Error:", whatsappError.message);
+      }
 
     }
 
@@ -3805,51 +3947,67 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
 
     // 🟢 WhatsApp Notification (hire4drive_ride_completed)
     try {
-
       const riderMobile = updatedRide.riderInfo?.riderMobile;
 
-      if (riderMobile) {
-
-        const toNumber = riderMobile.startsWith("+")
-          ? riderMobile
-          : `91${riderMobile}`;
-
-        const payload = {
-          messaging_product: "whatsapp",
-          to: toNumber,
-          type: "template",
-          template: {
-            name: "hire4drive_ride_completed",
-            language: { code: "en" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  {
-                    type: "text",
-                    text: driverName
-                  }
-                ]
-              }
-            ]
-          }
-        };
-
-        await axios.post(WHATSAPP_API_URL, payload, {
-          headers: {
-            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        });
-
+      if (!riderMobile) {
+        console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
+        return;
       }
+
+      const toNumber = riderMobile.startsWith("+")
+        ? riderMobile
+        : `91${riderMobile}`;
+
+      console.log("📤 Sending RIDE COMPLETED WhatsApp");
+      console.log("📄 Template:", "hire4drive_ride_completed");
+      console.log("👤 Driver:", driverName);
+      console.log("📱 To:", toNumber);
+
+      const payload = {
+        messaging_product: "whatsapp",
+        to: toNumber,
+        type: "template",
+        template: {
+          name: "hire4drive_ride_completed",
+          language: { code: "en" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", text: driverName }
+              ]
+            }
+          ]
+        }
+      };
+
+      const response = await axios.post(WHATSAPP_API_URL, payload, {
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      // ✅ SUCCESS
+      console.log("✅ WhatsApp RIDE COMPLETED SENT");
+      console.log("📨 Response:", response.data);
 
     } catch (whatsappError) {
 
-      console.error(
-        "WhatsApp ride completed message error:",
-        whatsappError.response?.data || whatsappError.message
-      );
+      console.log("❌ WhatsApp RIDE COMPLETED FAILED");
+
+      if (whatsappError.response) {
+        console.log("🔴 Status:", whatsappError.response.status);
+        console.log("🔴 Error Data:", whatsappError.response.data);
+        console.log(
+          "🔴 Error Message:",
+          whatsappError.response?.data?.error?.message
+        );
+      } else if (whatsappError.request) {
+        console.log("🟠 No response from WhatsApp API");
+      } else {
+        console.log("⚠️ Error:", whatsappError.message);
+      }
 
     }
 
