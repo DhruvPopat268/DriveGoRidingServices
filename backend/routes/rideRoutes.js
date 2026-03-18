@@ -2596,12 +2596,14 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     const remainingNoOfDays = remainingDates.length;
     const cancelDays = (selectedDates || []).length;
 
+    // ✅ Declare categoryNameLower early to avoid reference errors
+    const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
+
     // 🔹 Process cancellation charges BEFORE branching
     const driver = await Driver.findById(driverId);
     if (driver) {
       // Get cancellation charges for the ride
       const { categoryName, categoryId, subcategoryId, selectedCategoryId, subcategoryName } = currentRide.rideInfo;
-      const categoryNameLower = categoryName.toLowerCase();
       let cancellationDetails = null;
 
       try {
