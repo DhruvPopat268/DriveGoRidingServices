@@ -1483,7 +1483,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             // Add transaction to wallet for full deduction
             wallet.transactions.push({
               amount: cancellationFee,
-              status: 'paid',
+              status: 'completed',
               type: 'cancellation_charges',
               description: description,
               rideId: rideId,
@@ -1510,7 +1510,7 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             if (currentBalance > 0) {
               wallet.transactions.push({
                 amount: currentBalance,
-                status: 'paid',
+                status: 'completed',
                 type: 'cancellation_charges',
                 description: `${description} (Partial payment)`,
                 rideId: rideId,
