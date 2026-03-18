@@ -3161,7 +3161,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
 
       // Get eligible drivers based on category
       let waitingDrivers = [];
-      const categoryNameLower = currentRide.rideInfo.categoryName.toLowerCase();
 
       if (categoryNameLower === 'driver') {
         const driverQuery = {
