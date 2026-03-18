@@ -1283,7 +1283,11 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
   try {
     const { rideId } = req.body;
 
+    console.log("🔍 CANCELLATION CHARGES CHECK - START");
+    console.log("📋 Ride ID:", rideId);
+
     if (!rideId) {
+      console.log("❌ No ride ID provided");
       return res.status(400).json({ message: "Ride ID is required" });
     }
 
@@ -1293,6 +1297,7 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
     });
 
     if (!ride) {
+      console.log("❌ Ride not found or invalid status");
       return res.status(400).json({
         success: false,
         message: "Ride not found or cannot be cancelled",
@@ -1300,49 +1305,83 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
       });
     }
 
+    console.log("✅ Ride found - Status:", ride.status);
+    console.log("👤 Driver ID:", ride.driverId);
+
     const { categoryName, categoryId, subcategoryId, selectedDate, selectedTime, selectedCategoryId } = ride.rideInfo;
     const bookingDriverId = ride.driverId;
     const categoryNameLower = categoryName.toLowerCase();
 
+    console.log("📊 Ride Details:");
+    console.log("   Category:", categoryName, "(", categoryId, ")");
+    console.log("   Subcategory:", subcategoryId);
+    console.log("   Selected Category:", selectedCategoryId);
+    console.log("   Selected Date:", selectedDate);
+    console.log("   Selected Time:", selectedTime);
+
     let cancellationDetails = null;
 
     if (categoryNameLower === 'driver') {
+      console.log("🔍 Looking up driver ride cost...");
       cancellationDetails = await driverRideCost.findOne({
         category: categoryId,
         subcategory: subcategoryId,
         priceCategory: selectedCategoryId
       }).select('cancellationFee cancellationBufferTime');
     } else if (categoryNameLower === 'cab') {
+      console.log("🔍 Looking up cab ride cost...");
       cancellationDetails = await cabRideCost.findOne({
         category: categoryId,
         subcategory: subcategoryId,
         car: selectedCategoryId
       }).select('cancellationFee cancellationBufferTime');
     } else if (categoryNameLower === 'parcel') {
+      console.log("🔍 Looking up parcel ride cost...");
       cancellationDetails = await parcelRideCost.findOne({
         category: categoryId,
         subcategory: subcategoryId
       }).select('cancellationFee cancellationBufferTime');
     }
 
+    console.log("💰 Cancellation Details Found:", cancellationDetails);
+
     const cancellationFee = cancellationDetails?.cancellationFee || 0;
     const cancellationBufferTime = cancellationDetails?.cancellationBufferTime || 0;
+
+    console.log("💵 Cancellation Fee:", cancellationFee);
+    console.log("⏰ Buffer Time (minutes):", cancellationBufferTime);
 
     let shouldApplyCharges = false;
     let reason = '';
 
     if (cancellationFee > 0) {
+      console.log("✅ Cancellation fee configured, checking conditions...");
+      
       // Check if driver has reached location
       if (bookingDriverId) {
+        console.log("🔍 Checking driver status for ID:", bookingDriverId);
         const driver = await Driver.findById(bookingDriverId);
-        if (driver && driver.rideStatus === 'REACHED') {
-          shouldApplyCharges = true;
-          reason = 'Driver already reached pickup location';
+        
+        if (driver) {
+          console.log("👤 Driver found - Ride Status:", driver.rideStatus);
+          if (driver.rideStatus === 'REACHED') {
+            shouldApplyCharges = true;
+            reason = 'Driver already reached pickup location';
+            console.log("🚨 CHARGES APPLIED - Driver reached pickup location");
+          } else {
+            console.log("ℹ️ Driver has not reached pickup location yet");
+          }
+        } else {
+          console.log("❌ Driver not found in database");
         }
+      } else {
+        console.log("ℹ️ No driver assigned to this ride yet");
       }
 
       // Check if cancellation is outside buffer time window
       if (!shouldApplyCharges && cancellationBufferTime > 0) {
+        console.log("🔍 Checking buffer time window...");
+        
         const rideDateTime = new Date(selectedDate);
         const [hours, minutes] = selectedTime.split(':');
         rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
@@ -1350,21 +1389,53 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
         const bufferEndTime = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
         const currentTime = new Date();
 
+        // Calculate time differences in minutes for better understanding
+        const timeDiffFromRideStart = (currentTime.getTime() - rideDateTime.getTime()) / (1000 * 60);
+        const timeDiffFromBufferEnd = (currentTime.getTime() - bufferEndTime.getTime()) / (1000 * 60);
+        const timeUntilRide = (rideDateTime.getTime() - currentTime.getTime()) / (1000 * 60);
+
+        console.log("📅 Ride Date/Time:", rideDateTime.toISOString());
+        console.log("⏰ Buffer End Time:", bufferEndTime.toISOString());
+        console.log("🕐 Current Time:", currentTime.toISOString());
+        console.log("📊 Time Analysis:");
+        console.log("   Current Time - Ride Start Time =", timeDiffFromRideStart.toFixed(2), "minutes");
+        console.log("   Current Time - Buffer End Time =", timeDiffFromBufferEnd.toFixed(2), "minutes");
+        console.log("   Time Until Ride =", timeUntilRide.toFixed(2), "minutes");
+        console.log("   Buffer Time Window =", cancellationBufferTime, "minutes");
+        console.log("⏳ Condition Check: Current Time > Buffer End Time?", currentTime > bufferEndTime);
+        console.log("⏳ Logic: If (Time Until Ride < Buffer Time) → Apply Charges");
+
         if (currentTime > bufferEndTime) {
           shouldApplyCharges = true;
           reason = `Late cancellation (${cancellationBufferTime} min window exceeded)`;
+          console.log("🚨 CHARGES APPLIED - Late cancellation");
+        } else {
+          console.log("✅ Within buffer time - Free cancellation");
         }
+      } else if (!shouldApplyCharges) {
+        console.log("ℹ️ No buffer time configured or charges already applied");
       }
+    } else {
+      console.log("ℹ️ No cancellation fee configured - Free cancellation");
     }
+
+    const finalCharges = shouldApplyCharges ? cancellationFee : 0;
+    const finalReason = shouldApplyCharges ? reason : 'Free cancellation';
+
+    console.log("🏁 FINAL RESULT:");
+    console.log("   Should Apply Charges:", shouldApplyCharges);
+    console.log("   Cancellation Charges:", finalCharges);
+    console.log("   Reason:", finalReason);
+    console.log("🔍 CANCELLATION CHARGES CHECK - END\n");
 
     res.json({
       success: true,
-      cancellationCharges: shouldApplyCharges ? cancellationFee : 0,
-      reason: shouldApplyCharges ? reason : 'Free cancellation',
+      cancellationCharges: finalCharges,
+      reason: finalReason,
     });
 
   } catch (error) {
-    console.error("Error checking cancellation charges:", error);
+    console.error("❌ Error checking cancellation charges:", error);
     res.status(500).json({
       success: false,
       message: "Server error",

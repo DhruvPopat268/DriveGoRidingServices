@@ -1,4 +1,5 @@
 const express = require("express");
+const axios = require("axios");
 const DriverRating = require("../DriverModel/DriverRating");
 const Ride = require("../models/Ride");
 const Rider = require("../models/Rider");
@@ -72,7 +73,7 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
           rider.oneSignalPlayerId,
           "Driver Rating Received",
           message,
-          "driver_rating_received",
+          "rating_received",
           { rating, comment },
           ride.rideInfo?.categoryId || null,
           rideId
