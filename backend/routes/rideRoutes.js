@@ -1556,41 +1556,18 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       let shouldApplyCharges = false;
       let chargeReason = '';
 
-      console.log("🔍 RIDE CANCELLATION - CHARGE LOGIC START");
-      console.log("💵 Cancellation Fee:", cancellationFee);
-      console.log("⏰ Buffer Time (minutes):", cancellationBufferTime);
-      console.log("👤 Driver ID:", bookingDriverId);
-      console.log("📅 Selected Date:", selectedDate);
-      console.log("🕐 Selected Time:", selectedTime);
-
       if (cancellationFee > 0) {
-        console.log("✅ Cancellation fee configured, checking conditions...");
-        
         // Check if driver has reached location
         if (bookingDriverId) {
-          console.log("🔍 Checking driver status for ID:", bookingDriverId);
           const driver = await Driver.findById(bookingDriverId);
-          
-          if (driver) {
-            console.log("👤 Driver found - Ride Status:", driver.rideStatus);
-            if (driver.rideStatus === 'REACHED') {
-              shouldApplyCharges = true;
-              chargeReason = 'Cancellation fee - Driver already reached pickup location';
-              console.log("🚨 CHARGES WILL BE APPLIED - Driver reached pickup location");
-            } else {
-              console.log("ℹ️ Driver has not reached pickup location yet (Status:", driver.rideStatus, ")");
-            }
-          } else {
-            console.log("❌ Driver not found in database");
+          if (driver && driver.rideStatus === 'REACHED') {
+            shouldApplyCharges = true;
+            chargeReason = 'Cancellation fee - Driver already reached pickup location';
           }
-        } else {
-          console.log("ℹ️ No driver assigned to this ride yet");
         }
 
         // Check if cancellation is outside buffer time window
         if (!shouldApplyCharges && cancellationBufferTime > 0) {
-          console.log("🔍 Checking buffer time window...");
-          
           // selectedTime is in IST format (e.g., "12:41")
           // We need to treat it as IST time, not UTC
           const rideDateTime = new Date(selectedDate);
@@ -1606,54 +1583,17 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
           // Calculate buffer end time in IST
           const bufferEndTimeIST = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
 
-          // Calculate time differences in minutes for better understanding
-          const timeDiffFromRideStart = (currentTimeIST.getTime() - rideDateTime.getTime()) / (1000 * 60);
-          const timeDiffFromBufferEnd = (currentTimeIST.getTime() - bufferEndTimeIST.getTime()) / (1000 * 60);
-          const timeUntilRide = (rideDateTime.getTime() - currentTimeIST.getTime()) / (1000 * 60);
-
-          console.log("📅 Ride Date/Time (IST):", rideDateTime.toISOString());
-          console.log("⏰ Buffer End Time (IST):", bufferEndTimeIST.toISOString());
-          console.log("🕐 Current Time (UTC):", currentTimeUTC.toISOString());
-          console.log("🕐 Current Time (IST):", currentTimeIST.toISOString());
-          console.log("📊 Time Analysis (IST):");
-          console.log("   Selected Time Input (IST):", selectedTime);
-          console.log("   Current Time - Ride Start Time =", timeDiffFromRideStart.toFixed(2), "minutes");
-          console.log("   Current Time - Buffer End Time =", timeDiffFromBufferEnd.toFixed(2), "minutes");
-          console.log("   Time Until Ride =", timeUntilRide.toFixed(2), "minutes");
-          console.log("   Buffer Time Window =", cancellationBufferTime, "minutes");
-          console.log("⏳ Condition Check: Current Time (IST) > Buffer End Time (IST)?", currentTimeIST > bufferEndTimeIST);
-          console.log("⏳ Logic: If (Time Until Ride < Buffer Time) → Apply Charges");
-          console.log("⏳ Simplified: If (", timeUntilRide.toFixed(2), "<", cancellationBufferTime, ") → Apply Charges:", timeUntilRide < cancellationBufferTime);
-
           if (currentTimeIST > bufferEndTimeIST) {
             shouldApplyCharges = true;
             chargeReason = `Cancellation fee - Late cancellation (${cancellationBufferTime} min window exceeded)`;
-            console.log("🚨 CHARGES WILL BE APPLIED - Late cancellation");
-          } else {
-            console.log("✅ Within buffer time - Free cancellation");
           }
-        } else if (!shouldApplyCharges) {
-          console.log("ℹ️ No buffer time configured or charges already determined");
         }
-
-        console.log("🏁 CHARGE DECISION:");
-        console.log("   Should Apply Charges:", shouldApplyCharges);
-        console.log("   Charge Amount:", shouldApplyCharges ? cancellationFee : 0);
-        console.log("   Reason:", shouldApplyCharges ? chargeReason : 'Free cancellation');
 
         // Apply charges if conditions are met
         if (shouldApplyCharges) {
-          console.log("💰 Applying cancellation charges...");
           await applyCancellationCharges(chargeReason);
-          console.log("✅ Cancellation charges applied successfully");
-        } else {
-          console.log("✅ No charges applied - Free cancellation");
         }
-      } else {
-        console.log("ℹ️ No cancellation fee configured - Free cancellation");
       }
-
-      console.log("🔍 RIDE CANCELLATION - CHARGE LOGIC END\n");
 
       // Handle wallet refund for wallet payments (after charges are processed)
       await handleWalletRefund();
