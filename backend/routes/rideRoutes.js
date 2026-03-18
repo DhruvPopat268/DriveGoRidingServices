@@ -1382,31 +1382,32 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
       if (!shouldApplyCharges && cancellationBufferTime > 0) {
         console.log("🔍 Checking buffer time window...");
         
-        // Create ride datetime
+        // selectedTime is in IST format (e.g., "12:41")
+        // We need to treat it as IST time, not UTC
         const rideDateTime = new Date(selectedDate);
         const [hours, minutes] = selectedTime.split(':');
+        
+        // Set the time as IST (treat selectedTime as IST)
         rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-        // Get current time and convert to IST (UTC + 5:30)
+        
+        // Get current time in IST
         const currentTimeUTC = new Date();
         const currentTimeIST = new Date(currentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
         
-        // Convert ride datetime to IST (UTC + 5:30)
-        const rideDateTimeIST = new Date(rideDateTime.getTime() + (5.5 * 60 * 60 * 1000));
-        
-        const bufferEndTimeIST = new Date(rideDateTimeIST.getTime() - (cancellationBufferTime * 60 * 1000));
+        // Calculate buffer end time in IST
+        const bufferEndTimeIST = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
 
         // Calculate time differences in minutes for better understanding
-        const timeDiffFromRideStart = (currentTimeIST.getTime() - rideDateTimeIST.getTime()) / (1000 * 60);
+        const timeDiffFromRideStart = (currentTimeIST.getTime() - rideDateTime.getTime()) / (1000 * 60);
         const timeDiffFromBufferEnd = (currentTimeIST.getTime() - bufferEndTimeIST.getTime()) / (1000 * 60);
-        const timeUntilRide = (rideDateTimeIST.getTime() - currentTimeIST.getTime()) / (1000 * 60);
+        const timeUntilRide = (rideDateTime.getTime() - currentTimeIST.getTime()) / (1000 * 60);
 
-        console.log("📅 Ride Date/Time (UTC):", rideDateTime.toISOString());
-        console.log("📅 Ride Date/Time (IST):", rideDateTimeIST.toISOString());
+        console.log("📅 Ride Date/Time (IST):", rideDateTime.toISOString());
         console.log("⏰ Buffer End Time (IST):", bufferEndTimeIST.toISOString());
         console.log("🕐 Current Time (UTC):", currentTimeUTC.toISOString());
         console.log("🕐 Current Time (IST):", currentTimeIST.toISOString());
         console.log("📊 Time Analysis (IST):");
+        console.log("   Selected Time Input (IST):", selectedTime);
         console.log("   Current Time - Ride Start Time =", timeDiffFromRideStart.toFixed(2), "minutes");
         console.log("   Current Time - Buffer End Time =", timeDiffFromBufferEnd.toFixed(2), "minutes");
         console.log("   Time Until Ride =", timeUntilRide.toFixed(2), "minutes");
@@ -1641,20 +1642,20 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
         // Check if cancellation is outside buffer time window
         if (!shouldApplyCharges && cancellationBufferTime > 0) {
-          // Create ride datetime - Force UTC interpretation
+          // selectedTime is in IST format (e.g., "12:41")
+          // We need to treat it as IST time, not UTC
           const rideDateTime = new Date(selectedDate);
           const [hours, minutes] = selectedTime.split(':');
-          // Use setUTCHours to ensure UTC interpretation
-          rideDateTime.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-          // Get current time and convert to IST (UTC + 5:30)
+          
+          // Set the time as IST (treat selectedTime as IST)
+          rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          
+          // Get current time in IST
           const currentTimeUTC = new Date();
           const currentTimeIST = new Date(currentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
           
-          // Convert ride datetime to IST (UTC + 5:30)
-          const rideDateTimeIST = new Date(rideDateTime.getTime() + (5.5 * 60 * 60 * 1000));
-          
-          const bufferEndTimeIST = new Date(rideDateTimeIST.getTime() - (cancellationBufferTime * 60 * 1000));
+          // Calculate buffer end time in IST
+          const bufferEndTimeIST = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
 
           if (currentTimeIST > bufferEndTimeIST) {
             shouldApplyCharges = true;
