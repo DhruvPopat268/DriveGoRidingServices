@@ -574,9 +574,11 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
     if (req.rider) {
       // User authentication - riderId from middleware
       riderId = req.rider.riderId;
-      const mobile = req.rider.mobile;
-
-      riderData = await Rider.findOne({ mobile });
+      
+      riderData = await Rider.findById(riderId);
+      if (!riderData) {
+        return res.status(404).json({ success: false, message: 'Rider not found' });
+      }
       riderName = riderData.name;
     } else if (req.staff) {
       // Staff authentication - riderId from body, staffId from middleware
@@ -777,7 +779,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       riderId,
       riderInfo: {
         riderName,
-        riderMobile: req.staff ? riderData.mobile : req.rider.mobile
+        riderMobile: riderData.mobile
       },
       ...(staffId && {
         staffId,
