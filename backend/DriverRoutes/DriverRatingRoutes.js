@@ -110,7 +110,8 @@ router.post("/", DriverAuthMiddleware, async (req, res) => {
                   type: "body",
                   parameters: [
                     { type: "text", text: driverName },
-                    { type: "text", text: rating.toString() }
+                    { type: "text", text: rating.toString() },
+                    { type: "text", text: comment || "" } // ✅ FIX
                   ]
                 }
               ]
