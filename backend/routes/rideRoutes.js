@@ -1641,10 +1641,11 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
         // Check if cancellation is outside buffer time window
         if (!shouldApplyCharges && cancellationBufferTime > 0) {
-          // Create ride datetime
+          // Create ride datetime - Force UTC interpretation
           const rideDateTime = new Date(selectedDate);
           const [hours, minutes] = selectedTime.split(':');
-          rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          // Use setUTCHours to ensure UTC interpretation
+          rideDateTime.setUTCHours(parseInt(hours), parseInt(minutes), 0, 0);
 
           // Get current time and convert to IST (UTC + 5:30)
           const currentTimeUTC = new Date();
