@@ -8,6 +8,8 @@ const authMiddleware = require("../middleware/authMiddleware");
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 const axios = require("axios");
 
+const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const { rideId, rating, comment, driverFeedback, cabFeedback, parcelFeedback, wouldChooseAgain } = req.body;
