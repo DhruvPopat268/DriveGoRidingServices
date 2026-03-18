@@ -1382,16 +1382,17 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
       if (!shouldApplyCharges && cancellationBufferTime > 0) {
         console.log("🔍 Checking buffer time window...");
         
-        // Convert to IST for proper comparison
+        // Create ride datetime
         const rideDateTime = new Date(selectedDate);
         const [hours, minutes] = selectedTime.split(':');
         rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-        // Get current time in IST
-        const currentTimeIST = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+        // Get current time and convert to IST (UTC + 5:30)
+        const currentTimeUTC = new Date();
+        const currentTimeIST = new Date(currentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
         
-        // Convert ride date to IST for comparison
-        const rideDateTimeIST = new Date(rideDateTime.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+        // Convert ride datetime to IST (UTC + 5:30)
+        const rideDateTimeIST = new Date(rideDateTime.getTime() + (5.5 * 60 * 60 * 1000));
         
         const bufferEndTimeIST = new Date(rideDateTimeIST.getTime() - (cancellationBufferTime * 60 * 1000));
 
@@ -1403,7 +1404,7 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
         console.log("📅 Ride Date/Time (UTC):", rideDateTime.toISOString());
         console.log("📅 Ride Date/Time (IST):", rideDateTimeIST.toISOString());
         console.log("⏰ Buffer End Time (IST):", bufferEndTimeIST.toISOString());
-        console.log("🕐 Current Time (UTC):", new Date().toISOString());
+        console.log("🕐 Current Time (UTC):", currentTimeUTC.toISOString());
         console.log("🕐 Current Time (IST):", currentTimeIST.toISOString());
         console.log("📊 Time Analysis (IST):");
         console.log("   Current Time - Ride Start Time =", timeDiffFromRideStart.toFixed(2), "minutes");
@@ -1640,16 +1641,17 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
         // Check if cancellation is outside buffer time window
         if (!shouldApplyCharges && cancellationBufferTime > 0) {
-          // Convert to IST for proper comparison
+          // Create ride datetime
           const rideDateTime = new Date(selectedDate);
           const [hours, minutes] = selectedTime.split(':');
           rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-          // Get current time in IST
-          const currentTimeIST = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+          // Get current time and convert to IST (UTC + 5:30)
+          const currentTimeUTC = new Date();
+          const currentTimeIST = new Date(currentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
           
-          // Convert ride date to IST for comparison
-          const rideDateTimeIST = new Date(rideDateTime.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+          // Convert ride datetime to IST (UTC + 5:30)
+          const rideDateTimeIST = new Date(rideDateTime.getTime() + (5.5 * 60 * 60 * 1000));
           
           const bufferEndTimeIST = new Date(rideDateTimeIST.getTime() - (cancellationBufferTime * 60 * 1000));
 
