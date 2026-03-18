@@ -6,6 +6,7 @@ const NotificationService = require('../Services/notificationService');
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
+const axios = require("axios");
 
 router.post("/", authMiddleware, async (req, res) => {
   try {
@@ -118,18 +119,7 @@ router.post("/", authMiddleware, async (req, res) => {
           type: "template",
           template: {
             name: "hire4drive_driver_new_rating",
-            language: { code: "en" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  {
-                    type: "text",
-                    text: rating.toString()
-                  }
-                ]
-              }
-            ]
+            language: { code: "en" }
           }
         };
 
