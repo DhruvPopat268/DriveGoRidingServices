@@ -1190,7 +1190,7 @@ router.get("/current/my-rides", authMiddleware, async (req, res) => {
     const { riderId } = req.rider;
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
-    const rides = await Ride.find({ riderId, status: { $in: ["BOOKED", "CONFIRMED"] } }).sort({ createdAt: -1 });
+    const rides = await Ride.find({ riderId, status: { $in: ["BOOKED", "CONFIRMED" , "REACHED"] } }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
       return res.status(200).json({ success: false, message: "No booked rides found" });
@@ -1214,7 +1214,7 @@ router.get("/ongoing/my-rides", authMiddleware, async (req, res) => {
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
     const rides = await Ride.find({
-      riderId, status: { $in: ["ONGOING", "EXTENDED", "REACHED"] }
+      riderId, status: { $in: ["ONGOING", "EXTENDED"] }
     }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
