@@ -5,7 +5,25 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Ban, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Ban, Eye, ChevronLeft, ChevronRight, Unlock, Loader } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
@@ -37,6 +55,8 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
   const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [unsuspending, setUnsuspending] = useState<string | null>(null);
+  const { toast } = useToast();
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,6 +103,26 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
   const handleRecordsPerPageChange = (value: string) => {
     setRecordsPerPage(parseInt(value));
     setCurrentPage(1);
+  };
+
+  const handleUnsuspend = async (driverId: string) => {
+    setUnsuspending(driverId);
+    try {
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/unsuspend-driver/${driverId}`);
+      toast({
+        title: "Success",
+        description: "Driver unsuspended successfully",
+      });
+      fetchSuspendedDrivers(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to unsuspend driver",
+        variant: "destructive",
+      });
+    } finally {
+      setUnsuspending(null);
+    }
   };
 
   if (loading) {
@@ -193,14 +233,61 @@ export const SuspendedDriversPage = ({ onNavigateToDetail }: SuspendedDriversPag
                           : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onNavigateToDetail(driver._id)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View Details
-                        </Button>
+                        <TooltipProvider>
+                          <div className="flex space-x-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => onNavigateToDetail(driver._id)}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>View Driver Details</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      disabled={unsuspending === driver._id}
+                                    >
+                                      {unsuspending === driver._id ? (
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <Unlock className="w-4 h-4" />
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Unsuspend Driver</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to unsuspend this driver? 
+                                        This action will change the driver's status from "Suspended" to "Approved" and they will be able to take rides again.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleUnsuspend(driver._id)}>
+                                        Unsuspend Driver
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Unsuspend Driver</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TooltipProvider>
                       </TableCell>
                     </TableRow>
                   ))

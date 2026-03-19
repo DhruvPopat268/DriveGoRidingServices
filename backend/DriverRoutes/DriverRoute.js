@@ -2560,6 +2560,65 @@ router.delete("/delete-account", DriverAuthMiddleware, async (req, res) => {
   }
 });
 
+// Admin: Convert deleted driver to approved
+router.post("/admin/restore-driver/:driverId", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    if (driver.status !== "deleted") {
+      return res.status(400).json({ message: "Driver is not deleted" });
+    }
+
+    // Restore driver to approved status
+    driver.status = "Approved";
+    driver.deletedDate = null;
+    await driver.save();
+
+    res.json({
+      success: true,
+      message: "Driver restored to approved status successfully",
+      driver
+    });
+  } catch (error) {
+    console.error("Restore driver error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
+// Admin: Unsuspend driver
+router.post("/admin/unsuspend-driver/:driverId", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    const driver = await Driver.findById(driverId);
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    if (driver.status !== "Suspended") {
+      return res.status(400).json({ message: "Driver is not suspended" });
+    }
+
+    // Change status to Approved
+    driver.status = "Approved";
+    await driver.save();
+
+    res.json({
+      success: true,
+      message: "Driver unsuspended successfully",
+      driver
+    });
+  } catch (error) {
+    console.error("Unsuspend driver error:", error);
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
 // Get all minimum hold balance entries
 router.get("/admin/min-withdraw-balance/all", adminAuthMiddleware, async (req, res) => {
   try {

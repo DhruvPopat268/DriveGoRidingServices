@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Loader, ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,6 +12,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
@@ -41,6 +59,8 @@ interface DriversDeletedPageProps {
 export const DriversDeletedPage = ({ onNavigateToDetail }: DriversDeletedPageProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [restoring, setRestoring] = useState<string | null>(null);
+  const { toast } = useToast();
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,6 +98,26 @@ export const DriversDeletedPage = ({ onNavigateToDetail }: DriversDeletedPagePro
 
   const handleView = (driverId: string) => {
     onNavigateToDetail?.(driverId);
+  };
+
+  const handleRestore = async (driverId: string) => {
+    setRestoring(driverId);
+    try {
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/admin/restore-driver/${driverId}`);
+      toast({
+        title: "Success",
+        description: "Driver restored to approved status successfully",
+      });
+      fetchDrivers(); // Refresh the list
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to restore driver",
+        variant: "destructive",
+      });
+    } finally {
+      setRestoring(null);
+    }
   };
 
   if (loading) {
@@ -164,13 +204,61 @@ export const DriversDeletedPage = ({ onNavigateToDetail }: DriversDeletedPagePro
                       {driver.deletedDate ? new Date(driver.deletedDate).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleView(driver._id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <TooltipProvider>
+                        <div className="flex space-x-2">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleView(driver._id)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>View Driver Details</p>
+                            </TooltipContent>
+                          </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      disabled={restoring === driver._id}
+                                    >
+                                      {restoring === driver._id ? (
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <CheckCircle className="w-4 h-4" />
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Restore Driver</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to restore this driver to approved status? 
+                                        This action will change the driver's status from "deleted" to "Approved".
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleRestore(driver._id)}>
+                                        Restore Driver
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Restore Driver to Approved Status</p>
+                              </TooltipContent>
+                            </Tooltip>
+                        </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))
