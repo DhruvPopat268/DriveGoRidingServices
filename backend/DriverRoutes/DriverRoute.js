@@ -2904,6 +2904,24 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Invalid mobile number format" });
     }
 
+    // Get current driver's mobile number
+    const driver = await Driver.findById(req.driver.driverId).select('mobile');
+    if (!driver) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    // Normalize both numbers for comparison
+    const driverMobile = driver.mobile.replace(/^\+91/, '');
+    const referenceMobile = mobileStr.replace(/^\+91/, '');
+
+    // Check if reference mobile is same as driver's mobile
+    if (driverMobile === referenceMobile) {
+      return res.status(400).json({ 
+        success: false,
+        message: "You cannot use your own mobile number as a reference" 
+      });
+    }
+
     // 🔐 Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -2916,9 +2934,6 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
     });
 
     await otpSession.save();
-
-    // 👤 Get driver
-    const driver = await Driver.findById(req.driver.driverId);
 
     const driverName =
       driver?.personalInformation?.fullName || "Driver";
