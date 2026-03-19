@@ -202,19 +202,20 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
     const Rider = require('../models/Rider');
     
     const ride = await Ride.findById(rideId);
-    const driver = await Driver.findById(driverId);
+    const driver = await Driver.findById(ride?.driverId); // Use driverId from ride, not from req
     const rider = await Rider.findById(ride?.riderId);
 
     if (!ride || !driver || !rider) {
       console.log("⚠️ Missing data - Ride:", !!ride, "Driver:", !!driver, "Rider:", !!rider);
-      return res.json(result);
+      console.log("Driver ID from ride:", ride?.driverId, "Rider ID from ride:", ride?.riderId);
+      // Don't return early - continue with notifications if we have the required data
     }
 
     const selectedDateRaw = ride.rescheduleRequest?.requestedDate;
     const selectedTime = ride.rescheduleRequest?.requestedTime;
     const selectedDate = selectedDateRaw ? new Date(selectedDateRaw).toLocaleDateString("en-GB") : "N/A";
 
-    if (action === "ACCEPTED") {
+    if (action === "ACCEPTED" && ride && rider) {
       // 📱 Send OneSignal notification to rider
       try {
         if (rider.oneSignalPlayerId) {
@@ -278,7 +279,7 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         console.log("❌ WhatsApp RESCHEDULE ACCEPTED FAILED:", whatsappError.response?.data || whatsappError.message);
       }
 
-    } else if (action === "REJECTED") {
+    } else if (action === "REJECTED" && ride && rider) {
       // 📱 Send OneSignal notification to rider
       try {
         if (rider.oneSignalPlayerId) {
@@ -310,19 +311,19 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         const riderMobile = ride.riderInfo?.riderMobile;
         if (riderMobile) {
           const toNumber = riderMobile.startsWith("+") ? riderMobile : `91${riderMobile}`;
+          const riderName = ride.riderInfo?.riderName || "Rider";
 
           const payload = {
             messaging_product: "whatsapp",
             to: toNumber,
             type: "template",
             template: {
-              name: "hire4drive_reschedule_rejected_rider", // You'll need this template
+              name: "hire4drive_reschedule_rejected_rider",
               language: { code: "en" },
               components: [{
                 type: "body",
                 parameters: [
-                  { type: "text", text: selectedDate },
-                  { type: "text", text: selectedTime || "N/A" }
+                  { type: "text", text: riderName }
                 ]
               }]
             }
