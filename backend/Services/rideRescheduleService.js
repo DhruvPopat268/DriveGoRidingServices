@@ -99,9 +99,9 @@ class RideRescheduleService {
 
     const { requestedDate, requestedTime } = ride.rescheduleRequest;
 
-    if (action === 'accept') {
+    if (action === 'ACCEPTED' || action === 'accept') {
       return await this.acceptReschedule(ride, { selectedDate: requestedDate, selectedTime: requestedTime });
-    } else if (action === 'reject') {
+    } else if (action === 'REJECTED' || action === 'reject') {
       return await this.rejectReschedule(ride, { selectedDate: requestedDate, selectedTime: requestedTime });
     } else {
       throw new Error('Invalid action');

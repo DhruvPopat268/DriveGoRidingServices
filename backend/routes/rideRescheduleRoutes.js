@@ -215,7 +215,7 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
     const selectedTime = ride.rescheduleRequest?.requestedTime;
     const selectedDate = selectedDateRaw ? new Date(selectedDateRaw).toLocaleDateString("en-GB") : "N/A";
 
-    if (action === "ACCEPTED" && ride && rider) {
+    if (action === "accept") {
       // 📱 Send OneSignal notification to rider
       try {
         if (rider.oneSignalPlayerId) {
@@ -284,7 +284,7 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         console.log("❌ Full error:", whatsappError);
       }
 
-    } else if (action === "REJECTED" && ride && rider) {
+    } else if (action === "reject" && ride && rider) {
       // 📱 Send OneSignal notification to rider
       try {
         if (rider.oneSignalPlayerId) {
