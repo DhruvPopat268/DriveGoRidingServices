@@ -246,8 +246,9 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         const riderMobile = ride.riderInfo?.riderMobile;
         if (riderMobile) {
           const toNumber = riderMobile.startsWith("+") ? riderMobile : `91${riderMobile}`;
+          const driverName = ride.driverInfo?.driverName || driver?.personalInformation?.firstName || "Driver";
           console.log("📱 Sending WhatsApp RESCHEDULE ACCEPTED to rider:", toNumber);
-          console.log("📱 Template data - Date:", selectedDate, "Time:", selectedTime);
+          console.log("📱 Template data - Driver name:", driverName, "Date:", selectedDate, "Time:", selectedTime);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -259,6 +260,7 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
               components: [{
                 type: "body",
                 parameters: [
+                  { type: "text", text: driverName },
                   { type: "text", text: selectedDate },
                   { type: "text", text: selectedTime || "N/A" }
                 ]
