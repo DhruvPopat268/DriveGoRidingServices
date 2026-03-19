@@ -231,7 +231,7 @@ router.post("/create-order", authMiddleware, async (req, res) => {
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             User Web            >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Get all riders with non-empty names
-router.get("/completeProfile",adminAuthMiddleware, async (req, res) => {
+router.get("/completeProfile", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -291,8 +291,8 @@ router.get("/completeProfile",adminAuthMiddleware, async (req, res) => {
       };
     }));
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ridersWithWallet,
       totalRecords,
       totalPages,
@@ -367,8 +367,8 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
       };
     }));
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ridersWithWallet,
       totalRecords,
       totalPages,
@@ -436,8 +436,8 @@ router.get("/all", adminAuthMiddleware, async (req, res) => {
       };
     }));
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: ridersWithWallet,
       totalRecords,
       totalPages,
@@ -484,7 +484,7 @@ router.get("/find-rider", authMiddleware, async (req, res) => {
 
 router.get("/auth/check", (req, res) => {
   // Get token from "Authorization: Bearer <token>"
-  const token = req.cookies && req.cookies.authToken ;
+  const token = req.cookies && req.cookies.authToken;
 
 
 
@@ -707,101 +707,101 @@ router.delete("/userApp/delete-rider", AuthMiddleware, async (req, res) => {
 });
 
 // dummy otp generation
-router.post("/send-otp", async (req, res) => {
-  try {
-    const { mobile } = req.body;
-    if (!mobile) {
-      return res.status(400).json({ message: "Mobile number is required" });
-    }
+// router.post("/send-otp", async (req, res) => {
+//   try {
+//     const { mobile } = req.body;
+//     if (!mobile) {
+//       return res.status(400).json({ message: "Mobile number is required" });
+//     }
 
-    // Use dummy OTP for testing
-    const otp = "123456";
-    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+//     // Use dummy OTP for testing
+//     const otp = "123456";
+//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile });
-    if (rider && rider.status === "deleted") {
-      return res.status(400).json({ success:false , message: "Rider is already deleted" });
-    }
-    if (!rider) {
-      rider = new Rider({ mobile });
-      await rider.save();
-    }
-    // Save OTP session
-    const otpSession = new OtpSession({
-      rider: rider._id,
-      mobile,
-      otp,
-      otpExpiresAt
-    });
-    await otpSession.save();
+//     // Ensure Rider exists
+//     let rider = await Rider.findOne({ mobile });
+//     if (rider && rider.status === "deleted") {
+//       return res.status(400).json({ success:false , message: "Rider is already deleted" });
+//     }
+//     if (!rider) {
+//       rider = new Rider({ mobile });
+//       await rider.save();
+//     }
+//     // Save OTP session
+//     const otpSession = new OtpSession({
+//       rider: rider._id,
+//       mobile,
+//       otp,
+//       otpExpiresAt
+//     });
+//     await otpSession.save();
 
-    res.json({
-      success: true,
-      message: "Dummy OTP generated successfully",
-      otp // ⚠️ expose only in dev/testing
-    });
-  } catch (error) {
-    console.error("Send OTP error:", error.message);
-    res.status(500).json({ success: false, message: "Failed to generate OTP" });
-  }
-});
+//     res.json({
+//       success: true,
+//       message: "Dummy OTP generated successfully",
+//       otp // ⚠️ expose only in dev/testing
+//     });
+//   } catch (error) {
+//     console.error("Send OTP error:", error.message);
+//     res.status(500).json({ success: false, message: "Failed to generate OTP" });
+//   }
+// });
 
-router.post("/verify-otp", async (req, res) => {
-  try {
-    const { mobile, otp, playerId } = req.body;
-    if (!mobile || !otp) {
-      return res.status(400).json({ message: "Mobile & OTP required" });
-    }
+// router.post("/verify-otp", async (req, res) => {
+//   try {
+//     const { mobile, otp, playerId } = req.body;
+//     if (!mobile || !otp) {
+//       return res.status(400).json({ message: "Mobile & OTP required" });
+//     }
 
-    // 🔒 Check against fixed dummy OTP
-    if (otp !== "123456") {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
+//     // 🔒 Check against fixed dummy OTP
+//     if (otp !== "123456") {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
 
-    // Mark last OTP as verified (optional but clean)
-    await OtpSession.findOneAndUpdate(
-      { mobile },
-      { isVerified: true },
-      { sort: { createdAt: -1 } }
-    );
+//     // Mark last OTP as verified (optional but clean)
+//     await OtpSession.findOneAndUpdate(
+//       { mobile },
+//       { isVerified: true },
+//       { sort: { createdAt: -1 } }
+//     );
 
-    // Ensure Rider exists
-    let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
-    if (!rider) {
-      rider = new Rider({ mobile });
-      await rider.save();
-    }
+//     // Ensure Rider exists
+//     let rider = await Rider.findOne({ mobile, status: { $ne: "deleted" } });
+//     if (!rider) {
+//       rider = new Rider({ mobile });
+//       await rider.save();
+//     }
 
-    // Store OneSignal playerId if provided
-    if (playerId) {
-      rider.oneSignalPlayerId = playerId;
-      await rider.save();
-    }
+//     // Store OneSignal playerId if provided
+//     if (playerId) {
+//       rider.oneSignalPlayerId = playerId;
+//       await rider.save();
+//     }
 
-    const isNew = !rider.name;
+//     const isNew = !rider.name;
 
-    // Generate JWT
-    const token = jwt.sign(
-      { riderId: rider._id, mobile: rider.mobile },
-      process.env.JWT_SECRET_USER,
-      { expiresIn: "7d" }
-    );
+//     // Generate JWT
+//     const token = jwt.sign(
+//       { riderId: rider._id, mobile: rider.mobile },
+//       process.env.JWT_SECRET_USER,
+//       { expiresIn: "7d" }
+//     );
 
-    // Store session
-    await createSession(mobile, token);
+//     // Store session
+//     await createSession(mobile, token);
 
-    res.json({
-      success: true,
-      token,
-      isNew,
-      rider
-    });
-  } catch (error) {
-    console.error("Verify OTP error:", error);
-    res.status(500).json({ success: false, message: "OTP verification failed" });
-  }
-});
+//     res.json({
+//       success: true,
+//       token,
+//       isNew,
+//       rider
+//     });
+//   } catch (error) {
+//     console.error("Verify OTP error:", error);
+//     res.status(500).json({ success: false, message: "OTP verification failed" });
+//   }
+// });
 
 // Web version with cookie authentication
 router.post("/web/verify-otp", async (req, res) => {
@@ -814,11 +814,11 @@ router.post("/web/verify-otp", async (req, res) => {
     // Block Postman/cURL from setting cookies
     const userAgent = req.headers['user-agent'] || '';
     const isPostmanOrCurl = userAgent.includes('Postman') || userAgent.includes('curl') || userAgent.includes('insomnia');
-    
+
     if (isPostmanOrCurl) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Cookie authentication not allowed for API testing tools" 
+      return res.status(403).json({
+        success: false,
+        message: "Cookie authentication not allowed for API testing tools"
       });
     }
 
@@ -879,178 +879,186 @@ router.post("/web/verify-otp", async (req, res) => {
   }
 });
 
-// router.post("/send-otp", async (req, res) => {
-//   try {
-//     const { mobile } = req.body;
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { mobile } = req.body;
 
-//     if (!mobile) {
-//       return res.status(400).json({ message: "Mobile number is required" });
-//     }
+    if (!mobile) {
+      return res.status(400).json({ message: "Mobile number is required" });
+    }
 
-//     const mobileStr = String(mobile).trim();
+    const mobileStr = String(mobile).trim();
 
-//     if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
-//       return res.status(400).json({ message: "Invalid mobile number format" });
-//     }
+    if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
+      return res.status(400).json({ message: "Invalid mobile number format" });
+    }
 
-//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-//     const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-//     let rider = await Rider.findOne({ mobile: mobileStr });
-//     if(rider && rider.status === "deleted") {
-//       return res.status(400).json({ success:false , message: "Rider is already deleted" });
-//     }
-//     if (!rider) {
-//       rider = new Rider({ mobile: mobileStr });
-//       await rider.save();
-//     }
+    let rider = await Rider.findOne({ mobile: mobileStr });
+    if (rider && rider.status === "deleted") {
+      return res.status(400).json({ success: false, message: "Rider is already deleted" });
+    }
+    if (!rider) {
+      rider = new Rider({ mobile: mobileStr });
+      await rider.save();
+    }
 
-//     await new OtpSession({
-//       rider: rider._id,
-//       mobile: mobileStr,
-//       otp,
-//       otpExpiresAt,
-//     }).save();
+    await new OtpSession({
+      rider: rider._id,
+      mobile: mobileStr,
+      otp,
+      otpExpiresAt,
+    }).save();
 
-//     const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
-//     const apiUrl = WHATSAPP_API_URL;
+    const toNumber = mobileStr.startsWith("+") ? mobileStr : `91${mobileStr}`;
+    const apiUrl = WHATSAPP_API_URL;
 
-//     const payload = {
-//       messaging_product: "whatsapp",
-//       to: toNumber,
-//       type: "template",
-//       template: {
-//         name: "riders_otp_verification",
-//         language: { code: "en" },
-//         components: [
-//           {
-//             type: "body",
-//             parameters: [
-//               {
-//                 type: "text",
-//                 text: otp
-//               }
-//             ]
-//           }
-//         ]
-//       }
-//     };
+    const payload = {
+      messaging_product: "whatsapp",
+      to: toNumber,
+      type: "template",
+      template: {
+        name: "your_verification_code",
+        language: { code: "en_US" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: otp }   // {{1}} OTP in body
+            ]
+          },
+          {
+            type: "button",
+            sub_type: "url",       // ← URL type button
+            index: "0",            // ← button at index 0
+            parameters: [
+              {
+                type: "text",
+                text: otp           // ← OTP appended to button URL
+              }
+            ]
+          }
+        ]
+      }
+    };
 
-//     await axios.post(apiUrl, payload, {
-//       headers: {
-//         "Authorization": `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-//         "Content-Type": "application/json"
-//       }
-//     });
+    await axios.post(apiUrl, payload, {
+      headers: {
+        "Authorization": `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
+      }
+    });
 
-//     res.json({
-//       success: true,
-//       message: "OTP sent successfully via WhatsApp"
-//     });
-//   } catch (error) {
-//     console.error("Send OTP error:", error.response?.data || error.message);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to send OTP",
-//       error: error.response?.data || error.message
-//     });
-//   }
-// });
+    res.json({
+      success: true,
+      message: "OTP sent successfully via WhatsApp"
+    });
+  } catch (error) {
+    console.error("Send OTP error:", error.response?.data || error.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send OTP",
+      error: error.response?.data || error.message
+    });
+  }
+});
 
-// //kaleyra integration
-// router.post("/verify-otp", async (req, res) => {
-//   try {
-//     const { mobile, otp, playerId } = req.body;
+//kaleyra integration
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { mobile, otp, playerId } = req.body;
 
-//     // ✅ Validate input
-//     if (!mobile || !otp) {
-//       return res.status(400).json({ message: "Mobile & OTP required" });
-//     }
+    // ✅ Validate input
+    if (!mobile || !otp) {
+      return res.status(400).json({ message: "Mobile & OTP required" });
+    }
 
-//     // ✅ Convert mobile to string
-//     const mobileStr = String(mobile).trim();
+    // ✅ Convert mobile to string
+    const mobileStr = String(mobile).trim();
 
-//     // ✅ Find the latest OTP session for this mobile
-//     const otpSession = await OtpSession.findOne({
-//       mobile: mobileStr,
-//       isVerified: false
-//     }).sort({ createdAt: -1 });
+    // ✅ Find the latest OTP session for this mobile
+    const otpSession = await OtpSession.findOne({
+      mobile: mobileStr,
+      isVerified: false
+    }).sort({ createdAt: -1 });
 
-//     // ✅ Check if OTP session exists
-//     if (!otpSession) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "No OTP found. Please request a new OTP."
-//       });
-//     }
+    // ✅ Check if OTP session exists
+    if (!otpSession) {
+      return res.status(400).json({
+        success: false,
+        message: "No OTP found. Please request a new OTP."
+      });
+    }
 
-//     // ✅ Check if OTP has expired
-//     if (new Date() > otpSession.otpExpiresAt) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "OTP has expired. Please request a new OTP."
-//       });
-//     }
+    // ✅ Check if OTP has expired
+    if (new Date() > otpSession.otpExpiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new OTP."
+      });
+    }
 
-//     // console.log(`Verifying OTP: entered=${otp}, expected=${otpSession.otp}`);
+    // console.log(`Verifying OTP: entered=${otp}, expected=${otpSession.otp}`);
 
-//     // ✅ Verify OTP matches
-//     if (otpSession.otp != otp) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Invalid OTP"
-//       });
-//     }
+    // ✅ Verify OTP matches
+    if (otpSession.otp != otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP"
+      });
+    }
 
-//     // ✅ Mark OTP session as verified
-//     otpSession.isVerified = true;
-//     await otpSession.save();
+    // ✅ Mark OTP session as verified
+    otpSession.isVerified = true;
+    await otpSession.save();
 
-//     // ✅ Ensure Rider exists
-//     let rider = await Rider.findOne({ mobile: mobileStr });
-//     if (!rider) {
-//       rider = new Rider({ mobile: mobileStr });
-//       await rider.save();
-//     }
+    // ✅ Ensure Rider exists
+    let rider = await Rider.findOne({ mobile: mobileStr });
+    if (!rider) {
+      rider = new Rider({ mobile: mobileStr });
+      await rider.save();
+    }
 
-//     // Store OneSignal playerId if provided
-//     if (playerId) {
-//       rider.oneSignalPlayerId = playerId;
-//       await rider.save();
-//     }
+    // Store OneSignal playerId if provided
+    if (playerId) {
+      rider.oneSignalPlayerId = playerId;
+      await rider.save();
+    }
 
-//     const isNew = !rider.name;
+    const isNew = !rider.name;
 
-//     // ✅ Generate JWT
-//     const token = jwt.sign(
-//       { riderId: rider._id, mobile: rider.mobile },
-//       process.env.JWT_SECRET_USER,
-//       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
-//     );
+    // ✅ Generate JWT
+    const token = jwt.sign(
+      { riderId: rider._id, mobile: rider.mobile },
+      process.env.JWT_SECRET_USER,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    );
 
-//     // ✅ Use helper to enforce max 2 sessions
-//     await createSession(mobileStr, token);
+    // ✅ Use helper to enforce max 2 sessions
+    await createSession(mobileStr, token);
 
-//     res.json({
-//       success: true,
-//       token,
-//       isNew,
-//       rider: {
-//         _id: rider._id,
-//         mobile: rider.mobile,
-//         name: rider.name,
-//         email: rider.email,
-//       }
-//     });
-//   } catch (error) {
-//     console.error("Verify OTP error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "OTP verification failed",
-//       error: error.message
-//     });
-//   }
-// });
+    res.json({
+      success: true,
+      token,
+      isNew,
+      rider: {
+        _id: rider._id,
+        mobile: rider.mobile,
+        name: rider.name,
+        email: rider.email,
+      }
+    });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({
+      success: false,
+      message: "OTP verification failed",
+      error: error.message
+    });
+  }
+});
 
 router.post("/save-profile", upload.single('profilePhoto'), authMiddleware, async (req, res) => {
   try {
@@ -1236,13 +1244,13 @@ router.get("/rider-info", authMiddleware, async (req, res) => {
 router.post("/web/logout", authMiddleware, async (req, res) => {
   try {
     const { mobile } = req.rider;
-    
+
     // Remove session from database
     await Session.deleteMany({ mobileNumber: mobile });
-    
+
     // Clear all cookies
     res.clearCookie('authToken');
-    
+
     res.json({
       success: true,
       message: "Logged out successfully"
@@ -1257,19 +1265,19 @@ router.post("/web/logout", authMiddleware, async (req, res) => {
 router.post("/admin/rider-rides", adminAuthMiddleware, async (req, res) => {
   try {
     const { riderId } = req.body;
-    
+
     if (!riderId) {
       return res.status(400).json({ success: false, message: "riderId is required" });
     }
-    
+
     const Ride = require('../models/Ride');
-    
+
     // Get full rider document
     const rider = await Rider.findById(riderId);
     if (!rider) {
       return res.status(404).json({ success: false, message: "Rider not found" });
     }
-    
+
     // Get wallet info
     const wallet = await Wallet.findOne({ riderId: rider._id });
     const riderWithWallet = {
@@ -1280,18 +1288,18 @@ router.post("/admin/rider-rides", adminAuthMiddleware, async (req, res) => {
         balance: wallet?.balance || 0
       }
     };
-    
+
     const rides = await Ride.find({ riderId })
       .select('_id rideInfo.categoryName rideInfo.selectedDate status')
       .sort({ createdAt: -1 });
-    
+
     const formattedRides = rides.map(ride => ({
       rideId: ride._id,
       category: ride.rideInfo.categoryName,
       selectedDate: ride.rideInfo.selectedDate,
       status: ride.status
     }));
-    
+
     res.json({
       success: true,
       rider: riderWithWallet,
