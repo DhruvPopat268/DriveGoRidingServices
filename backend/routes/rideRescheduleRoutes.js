@@ -246,6 +246,8 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         const riderMobile = ride.riderInfo?.riderMobile;
         if (riderMobile) {
           const toNumber = riderMobile.startsWith("+") ? riderMobile : `91${riderMobile}`;
+          console.log("📱 Sending WhatsApp RESCHEDULE ACCEPTED to rider:", toNumber);
+          console.log("📱 Template data - Date:", selectedDate, "Time:", selectedTime);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -264,6 +266,8 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           };
 
+          console.log("📱 WhatsApp payload:", JSON.stringify(payload, null, 2));
+
           const response = await axios.post(WHATSAPP_API_URL, payload, {
             headers: {
               Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
@@ -271,12 +275,13 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           });
 
-          console.log("✅ WhatsApp RESCHEDULE ACCEPTED sent to rider");
+          console.log("✅ WhatsApp RESCHEDULE ACCEPTED sent to rider - Response:", response.status, response.data);
         } else {
           console.log("⚠️ WhatsApp SKIPPED - Rider mobile missing");
         }
       } catch (whatsappError) {
         console.log("❌ WhatsApp RESCHEDULE ACCEPTED FAILED:", whatsappError.response?.data || whatsappError.message);
+        console.log("❌ Full error:", whatsappError);
       }
 
     } else if (action === "REJECTED" && ride && rider) {
@@ -312,6 +317,8 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         if (riderMobile) {
           const toNumber = riderMobile.startsWith("+") ? riderMobile : `91${riderMobile}`;
           const riderName = ride.riderInfo?.riderName || "Rider";
+          console.log("📱 Sending WhatsApp RESCHEDULE REJECTED to rider:", toNumber);
+          console.log("📱 Template data - Rider name:", riderName);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -329,6 +336,8 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           };
 
+          console.log("📱 WhatsApp payload:", JSON.stringify(payload, null, 2));
+
           const response = await axios.post(WHATSAPP_API_URL, payload, {
             headers: {
               Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
@@ -336,12 +345,13 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           });
 
-          console.log("✅ WhatsApp RESCHEDULE REJECTED sent to rider");
+          console.log("✅ WhatsApp RESCHEDULE REJECTED sent to rider - Response:", response.status, response.data);
         } else {
           console.log("⚠️ WhatsApp SKIPPED - Rider mobile missing");
         }
       } catch (whatsappError) {
         console.log("❌ WhatsApp RESCHEDULE REJECTED FAILED:", whatsappError.response?.data || whatsappError.message);
+        console.log("❌ Full error:", whatsappError);
       }
     }
 
