@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
+import { Eye, Loader, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -36,9 +36,10 @@ interface Driver {
 
 interface DriversApprovedPageProps {
   onNavigateToDetail?: (driverId: string) => void;
+  onNavigateToLogs?: (driverId: string) => void;
 }
 
-export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageProps) => {
+export const DriversApprovedPage = ({ onNavigateToDetail, onNavigateToLogs }: DriversApprovedPageProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -78,6 +79,10 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
 
   const handleView = (driverId: string) => {
     onNavigateToDetail?.(driverId);
+  };
+
+  const handleViewLogs = (driverId: string) => {
+    onNavigateToLogs?.(driverId);
   };
 
   if (loading) {
@@ -164,13 +169,22 @@ export const DriversApprovedPage = ({ onNavigateToDetail }: DriversApprovedPageP
                       {driver.approvedDate ? new Date(driver.approvedDate).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleView(driver._id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleView(driver._id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleViewLogs(driver._id)}
+                        >
+                          <Clock className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

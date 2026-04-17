@@ -284,6 +284,117 @@ function getFieldByStep(step, category = "Driver") {
 //   }
 // });
 
+// Get driver's online/offline logs with pagination
+router.get("/online-status", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { driverId, date, fromDate, toDate, page = 1, limit = 20 } = req.query;
+    
+    if (!driverId) {
+      return res.status(400).json({ success: false, message: "Driver ID is required" });
+    }
+    
+    const DriverStatusLog = require("../DriverModel/DriverStatusLog");
+    let filter = { driverId };
+    
+    // Handle date filtering - priority: date range > single date
+    if (fromDate && toDate) {
+      // Parse date range (expected format: YYYY-MM-DD)
+      const startOfRange = new Date(`${fromDate}T00:00:00.000+05:30`);
+      const endOfRange = new Date(`${toDate}T23:59:59.999+05:30`);
+      
+      filter.timestamp = {
+        $gte: startOfRange,
+        $lte: endOfRange
+      };
+    } else if (date) {
+      // Parse single date (dd/mm/yy format)
+      const [day, month, year] = date.split('/');
+      const fullYear = year.length === 2 ? `20${year}` : year;
+      
+      // Create IST date range for the given date
+      const startOfDay = new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000+05:30`);
+      const endOfDay = new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T23:59:59.999+05:30`);
+      
+      filter.timestamp = {
+        $gte: startOfDay,
+        $lte: endOfDay
+      };
+    }
+    
+    // Get driver info
+    const driver = await Driver.findById(driverId)
+      .select("personalInformation.fullName mobile personalInformation.currentAddress personalInformation.permanentAddress")
+      .lean();
+    
+    if (!driver) {
+      return res.status(404).json({ success: false, message: "Driver not found" });
+    }
+    
+    // Pagination
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    // Get total count for pagination
+    const totalRecords = await DriverStatusLog.countDocuments(filter);
+    const totalPages = Math.ceil(totalRecords / limitNum);
+    
+    const logs = await DriverStatusLog.find(filter)
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+    
+    // Convert timestamps to IST format
+    const logsWithIST = logs.map(log => ({
+      ...log,
+      timestamp: new Date(log.timestamp).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      }),
+      timestampISO: log.timestamp // Keep original for reference
+    }));
+    
+    // Prepare driver info
+    const driverInfo = {
+      name: driver.personalInformation?.fullName || null,
+      mobile: driver.mobile || null,
+      currentAddress: driver.personalInformation?.currentAddress || null,
+      permanentAddress: driver.personalInformation?.permanentAddress || null
+    };
+    
+    // Determine filter description
+    let filterDescription = "All dates";
+    if (fromDate && toDate) {
+      filterDescription = `${fromDate} to ${toDate}`;
+    } else if (date) {
+      filterDescription = date;
+    }
+    
+    res.json({
+      success: true,
+      driverInfo,
+      logs: logsWithIST,
+      totalLogs: logsWithIST.length,
+      totalRecords,
+      totalPages,
+      currentPage: pageNum,
+      hasNext: pageNum < totalPages,
+      hasPrev: pageNum > 1,
+      filterDate: filterDescription,
+      driverId
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.post("/deleteAccount", async (req, res) => {
   try {
     const { mobileNo } = req.body;
@@ -1657,6 +1768,8 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
   }
 });
 
+
+
 // Toggle driver online status
 router.patch("/online-status", DriverAuthMiddleware, async (req, res) => {
   try {
@@ -1675,6 +1788,13 @@ router.patch("/online-status", DriverAuthMiddleware, async (req, res) => {
       { isOnline: newStatus },
       { new: true, select: "isOnline" }
     );
+
+    // Log the status change
+    const DriverStatusLog = require("../DriverModel/DriverStatusLog");
+    await DriverStatusLog.create({
+      driverId,
+      status: newStatus ? "online" : "offline"
+    });
 
     res.json({
       success: true,

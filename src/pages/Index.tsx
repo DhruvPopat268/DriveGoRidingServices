@@ -57,6 +57,7 @@ import { DriversPendingForPaymentPage } from "@/components/admin/pages/DriversPe
 import { DriversRejectedPage } from "@/components/admin/pages/DriversRejectedPage";
 import { DriversDeletedPage } from "@/components/admin/pages/DriversDeletedPage";
 import { DriverDetailPage } from "@/components/admin/pages/DriverDetailPage";
+import { DriverOnlineLogsPage } from "@/components/admin/pages/DriverOnlineLogsPage";
 import { DriverTransactionsPage } from "@/components/admin/pages/DriverTransactionsPage";
 import { RBACManagementPage } from "@/components/admin/pages/RBACManagementPage";
 import { PendingWithdrawalPage } from "@/components/admin/pages/PendingWithdrawalPage";
@@ -93,12 +94,14 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
+  const [selectedDriverLogsId, setSelectedDriverLogsId] = useState<string | null>(null);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
   const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string} | null>(null);
 
   const handleSectionChange = (section: string) => {
     setSelectedDriverId(null);
+    setSelectedDriverLogsId(null);
     setSelectedRideId(null);
     setSelectedRiderId(null);
     setActiveSection(section);
@@ -437,6 +440,11 @@ const Index = () => {
             rideId={selectedRideId} 
             onBack={() => setSelectedRideId(null)} 
           />
+        ) : selectedDriverLogsId ? (
+          <DriverOnlineLogsPage 
+            driverId={selectedDriverLogsId} 
+            onBack={() => setSelectedDriverLogsId(null)} 
+          />
         ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
@@ -445,7 +453,8 @@ const Index = () => {
           />
         ) : (
           <DriversApprovedPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)}
+            onNavigateToLogs={(driverId) => setSelectedDriverLogsId(driverId)} 
           />
         );
       case "drivers-pending-payment":
