@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Loader, ChevronLeft, ChevronRight, Calendar, Filter } from "lucide-react";
+import { ArrowLeft, Loader, ChevronLeft, ChevronRight, Calendar, Filter, RefreshCw } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -60,6 +60,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [isFiltering, setIsFiltering] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -69,9 +70,14 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
     fetchLogs();
   }, [driverId, currentPage, recordsPerPage]);
 
-  const fetchLogs = async (fromDateFilter?: string, toDateFilter?: string) => {
+  const fetchLogs = async (fromDateFilter?: string, toDateFilter?: string, isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
       let url = `${import.meta.env.VITE_API_URL}/api/driver/online-status?driverId=${driverId}&page=${currentPage}&limit=${recordsPerPage}`;
       
       if (fromDateFilter && toDateFilter) {
@@ -86,6 +92,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
     } finally {
       setLoading(false);
       setIsFiltering(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -110,6 +117,14 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
     setToDate("");
     setCurrentPage(1);
     fetchLogs();
+  };
+
+  const handleRefresh = () => {
+    if (fromDate && toDate) {
+      fetchLogs(fromDate, toDate, true);
+    } else {
+      fetchLogs(undefined, undefined, true);
+    }
   };
 
   const handlePageChange = (page: number) => {
@@ -158,12 +173,23 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center mb-6">
-        <Button variant="outline" onClick={onBack} className="mr-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Button variant="outline" onClick={onBack} className="mr-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold">Driver Online/Offline Logs</h1>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={handleRefresh}
+          disabled={isRefreshing || loading}
+          className="flex items-center"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
         </Button>
-        <h1 className="text-2xl font-bold">Driver Online/Offline Logs</h1>
       </div>
 
       {/* Driver Info Card */}
@@ -226,7 +252,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
             <div className="flex gap-2">
               <Button 
                 onClick={handleFilter} 
-                disabled={isFiltering}
+                disabled={isFiltering || isRefreshing}
                 className="flex items-center"
               >
                 {isFiltering ? (
@@ -239,7 +265,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
               <Button 
                 variant="outline" 
                 onClick={handleClearFilter}
-                disabled={isFiltering}
+                disabled={isFiltering || isRefreshing}
               >
                 Clear
               </Button>
@@ -292,7 +318,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {loading || isRefreshing ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
                     <Loader className="w-6 h-6 animate-spin mx-auto mb-2" />
@@ -337,7 +363,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={!logsData.hasPrev || loading}
+                  disabled={!logsData.hasPrev || loading || isRefreshing}
                 >
                   <ChevronLeft className="w-4 h-4" />
                   Previous
@@ -363,7 +389,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
                         size="sm"
                         onClick={() => handlePageChange(pageNumber)}
                         className="w-8 h-8 p-0"
-                        disabled={loading}
+                        disabled={loading || isRefreshing}
                       >
                         {pageNumber}
                       </Button>
