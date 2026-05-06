@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Clock, Eye, UserPlus, UserMinus, Loader, ChevronLeft, ChevronRight, DollarSign } from 'lucide-react';
+import { Calendar, Clock, Eye, UserPlus, UserMinus, Loader, ChevronLeft, ChevronRight, XCircle, CalendarClock } from 'lucide-react';
+import { RupeeIcon } from '@/components/ui/RupeeIcon';
 import { apiClient } from '@/lib/apiClient';
 import { RideFilters } from '@/components/admin/shared/RideFilters';
 import { AdminExtraChargesDialog } from '@/components/admin/AdminExtraChargesDialog';
@@ -51,6 +52,19 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
   const [showRemoveDriverDialog, setShowRemoveDriverDialog] = useState(false);
   const [selectedRideForRemoval, setSelectedRideForRemoval] = useState(null);
   const [removingDriver, setRemovingDriver] = useState(false);
+
+  // Cancel ride dialog states
+  const [showCancelRideDialog, setShowCancelRideDialog] = useState(false);
+  const [selectedRideForCancel, setSelectedRideForCancel] = useState(null);
+  const [cancellingRide, setCancellingRide] = useState(false);
+
+  // Reschedule dialog states
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
+  const [showRescheduleConfirmDialog, setShowRescheduleConfirmDialog] = useState(false);
+  const [selectedRideForReschedule, setSelectedRideForReschedule] = useState(null);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduling, setRescheduling] = useState(false);
   
   // Filter subcategories based on selected category
   const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState([]);
@@ -197,30 +211,104 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
     }
   };
 
-  const handleRemoveDriver = (ride) => {
+  const handleRemoveDriver = async (ride) => {
     if (!ride.driverInfo) {
       toast.error('No driver assigned to this ride');
       return;
     }
     setSelectedRideForRemoval(ride);
     setShowRemoveDriverDialog(true);
+    try {
+      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/eligible-drivers`, {
+        rideId: ride._id
+      });
+      setEligibleDrivers(response.data.drivers || []);
+    } catch (err) {
+      setEligibleDrivers([]);
+    }
+  };
+
+  const handleReschedule = (ride) => {
+    setSelectedRideForReschedule(ride);
+    setRescheduleDate('');
+    setRescheduleTime('');
+    setShowRescheduleDialog(true);
+  };
+
+  const proceedToRescheduleConfirm = () => {
+    if (!rescheduleDate || !rescheduleTime) {
+      toast.error('Please select both date and time');
+      return;
+    }
+    setShowRescheduleDialog(false);
+    setShowRescheduleConfirmDialog(true);
+  };
+
+  const confirmReschedule = async () => {
+    if (!selectedRideForReschedule) return;
+    setRescheduling(true);
+    try {
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/admin/reschedule`, {
+        rideId: selectedRideForReschedule._id,
+        selectedDate: rescheduleDate,
+        selectedTime: rescheduleTime
+      });
+      setShowRescheduleConfirmDialog(false);
+      setSelectedRideForReschedule(null);
+      toast.success('Ride rescheduled successfully!');
+      fetchRides();
+    } catch (err) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to reschedule ride';
+      toast.error(errorMessage);
+    } finally {
+      setRescheduling(false);
+    }
+  };
+
+  const handleCancelRide = (ride) => {
+    if (['CANCELLED', 'COMPLETED'].includes(ride.status)) {
+      toast.error('This ride cannot be cancelled');
+      return;
+    }
+    setSelectedRideForCancel(ride);
+    setShowCancelRideDialog(true);
+  };
+
+  const confirmCancelRide = async () => {
+    if (!selectedRideForCancel) return;
+    setCancellingRide(true);
+    try {
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/admin/cancel`, {
+        rideId: selectedRideForCancel._id,
+        reason: 'Cancelled by admin'
+      });
+      setShowCancelRideDialog(false);
+      setSelectedRideForCancel(null);
+      toast.success('Ride cancelled successfully!');
+      fetchRides();
+    } catch (err) {
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to cancel ride';
+      toast.error(errorMessage);
+    } finally {
+      setCancellingRide(false);
+    }
   };
 
   const confirmDriverRemoval = async () => {
-    if (!selectedRideForRemoval) return;
+    if (!selectedRideForRemoval || !selectedDriver) return;
     setRemovingDriver(true);
     try {
-      const response = await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/admin/cancel`, {
+      await apiClient.post(`${import.meta.env.VITE_API_URL}/api/rides/admin/reassign-driver`, {
         rideId: selectedRideForRemoval._id,
-        reason: 'Driver removed by admin'
+        newDriverId: selectedDriver
       });
       setShowRemoveDriverDialog(false);
       setSelectedRideForRemoval(null);
-      toast.success('Driver removed successfully!');
+      setSelectedDriver('');
+      toast.success('Driver reassigned successfully!');
       fetchRides();
     } catch (err) {
-      console.error('Error removing driver:', err);
-      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to remove driver';
+      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to reassign driver';
       toast.error(errorMessage);
     } finally {
       setRemovingDriver(false);
@@ -247,7 +335,7 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
   }
 
   return (
-    <div className="space-y-6 bg-white text-black p-6">
+    <div className="space-y-6 bg-white text-black p-6 overflow-x-hidden">
       {/* Success/Error Messages */}
       {success && (
         <Alert className="border-green-200 bg-green-50">
@@ -261,9 +349,9 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
         </Alert>
       )}
       
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-2">
         <h1 className="text-2xl font-bold text-black">All Rides</h1>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap space-x-2 gap-2">
           <Button variant="outline" onClick={fetchRides}>
             Refresh
           </Button>
@@ -327,39 +415,12 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
         </div>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed border-collapse">
-              <colgroup>
-                <col style={{ width: '5%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '7%' }} />
-              </colgroup>
+            <table className="border-collapse" style={{ minWidth: '1400px', width: '100%' }}>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Staff Info</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Route</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Usage</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Payment</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Booked By</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Status</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Cancelled By</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
+                  {['Ride ID','Rider Info','Driver Info','Staff Info','Route','Service Type','Usage','Date & Time','Amount','Payment','Booked By','Status','Cancelled By','Actions'].map(col => (
+                    <th key={col} className="text-left p-3 font-semibold text-gray-700 whitespace-nowrap" style={{ minWidth: '120px' }}>{col}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -400,7 +461,7 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
                       )}
                     </td>
 
-                    <td className="p-3">
+                    <td className="p-3" style={{ maxWidth: '150px' }}>
                       <div className="space-y-1">
                         <div className="text-xs text-gray-600 truncate" title={ride.rideInfo?.fromLocation?.address}>
                           From: {ride.rideInfo?.fromLocation?.address?.substring(0, 30) || 'N/A'}
@@ -415,25 +476,14 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
 
                     <td className="p-3">
                       <div className="space-y-1">
-                        <div className="text-sm font-medium">
-                          {ride.rideInfo?.categoryName || 'N/A'}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {ride.rideInfo?.subcategoryName || 'N/A'}
-                        </div>
-                        <div className="text-xs text-gray-600 capitalize">
-                          {ride.rideInfo.selectedCategory}
-                        </div>
-
-                        {(ride.rideInfo.carType || ride.rideInfo.transmissionType) && (
-                          <div className="space-y-1">
-                            <div className="text-xs text-gray-600 capitalize">
-                              {ride.rideInfo.carType}
-                            </div>
-                            <div className="text-xs text-gray-600 capitalize">
-                              {ride.rideInfo.transmissionType}
-                            </div>
-                          </div>
+                        <div className="text-sm font-medium capitalize">{ride.rideInfo?.categoryName || 'N/A'}</div>
+                        <div className="text-xs text-gray-600 capitalize">{ride.rideInfo?.subcategoryName || 'N/A'}</div>
+                        {ride.rideInfo?.subcategoryName?.toLowerCase() === 'outstation' && ride.rideInfo?.subSubcategoryName && (
+                          <div className="text-xs text-gray-500 capitalize">{ride.rideInfo.subSubcategoryName}</div>
+                        )}
+                        <div className="text-xs text-gray-600 capitalize">{ride.rideInfo?.selectedCategory}</div>
+                        {(ride.rideInfo?.carType || ride.rideInfo?.transmissionType) && (
+                          <div className="text-xs text-gray-600 capitalize">{ride.rideInfo.carType} {ride.rideInfo.transmissionType}</div>
                         )}
                       </div>
                     </td>
@@ -505,8 +555,8 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
                         {ride.status === 'BOOKED' && (
                           <Button
                             size="sm"
-                            variant="default"
-                            className="h-8 px-3 text-xs"
+                            variant="outline"
+                            className="h-8 px-3 text-xs bg-white"
                             onClick={() => handleAssignDriver(ride)}
                           >
                             <UserPlus className="w-4 h-4" />
@@ -515,25 +565,37 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
                         {ride.status === 'CONFIRMED' && ride.driverInfo && (
                           <Button
                             size="sm"
-                            variant="destructive"
-                            className="h-8 px-3 text-xs"
+                            variant="outline"
+                            className="h-8 px-3 text-xs bg-white"
                             onClick={() => handleRemoveDriver(ride)}
-                            title={`Remove driver: ${ride.driverInfo.driverName}`}
+                            title={`Change driver: ${ride.driverInfo.driverName}`}
                           >
                             <UserMinus className="w-4 h-4" />
                           </Button>
                         )}
+                        {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && ride.status !== 'ONGOING' && ride.status !== 'EXTENDED' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => handleReschedule(ride)}
+                            title="Reschedule Ride"
+                          >
+                            <CalendarClock className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && (
+                          <Button size="sm" variant="secondary" className="h-8 px-3 text-xs" onClick={() => { setSelectedRideForCharges(ride); setShowExtraChargesDialog(true); }} title="Add Extra Charges"><RupeeIcon className="w-4 h-4" /></Button>
+                        )}
                         {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && (
                           <Button
                             size="sm"
-                            variant="secondary"
-                            className="h-8 px-3 text-xs"
-                            onClick={() => {
-                              setSelectedRideForCharges(ride);
-                              setShowExtraChargesDialog(true);
-                            }}
+                            variant="outline"
+                            className="h-8 px-3 text-xs bg-white"
+                            onClick={() => handleCancelRide(ride)}
+                            title="Cancel Ride"
                           >
-                            <DollarSign className="w-4 h-4" />
+                            <XCircle className="w-4 h-4" />
                           </Button>
                         )}
                       </div>
@@ -649,23 +711,127 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showRemoveDriverDialog} onOpenChange={setShowRemoveDriverDialog}>
+      {/* Reschedule Date/Time Dialog */}
+      <Dialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Driver from Ride</DialogTitle>
+            <DialogTitle>Reschedule Ride #{selectedRideForReschedule?.bookingId}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              Current: {selectedRideForReschedule?.rideInfo?.selectedDate ? new Date(selectedRideForReschedule.rideInfo.selectedDate).toLocaleDateString('en-IN') : 'N/A'} at {selectedRideForReschedule?.rideInfo?.selectedTime || 'N/A'}
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New Date</label>
+              <input
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New Time</label>
+              <input
+                type="time"
+                value={rescheduleTime}
+                onChange={(e) => setRescheduleTime(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRescheduleDialog(false)}>Cancel</Button>
+            <Button onClick={proceedToRescheduleConfirm} disabled={!rescheduleDate || !rescheduleTime}>Next</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Confirmation Dialog */}
+      <Dialog open={showRescheduleConfirmDialog} onOpenChange={setShowRescheduleConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Reschedule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to reschedule ride <strong>#{selectedRideForReschedule?.bookingId}</strong>?
+            </p>
+            <div className="bg-gray-50 rounded-md p-3 space-y-1 text-sm">
+              <p className="text-gray-500">From: <span className="text-gray-800">{selectedRideForReschedule?.rideInfo?.selectedDate ? new Date(selectedRideForReschedule.rideInfo.selectedDate).toLocaleDateString('en-IN') : 'N/A'} at {selectedRideForReschedule?.rideInfo?.selectedTime || 'N/A'}</span></p>
+              <p className="text-gray-500">To: <span className="font-medium text-gray-800">{rescheduleDate ? new Date(rescheduleDate).toLocaleDateString('en-IN') : ''} at {rescheduleTime}</span></p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowRescheduleConfirmDialog(false); setShowRescheduleDialog(true); }}>Back</Button>
+            <Button onClick={confirmReschedule} disabled={rescheduling}>
+              {rescheduling ? 'Rescheduling...' : 'Yes, Reschedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCancelRideDialog} onOpenChange={setShowCancelRideDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Ride</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Are you sure you want to remove driver <strong>{selectedRideForRemoval?.driverInfo?.driverName}</strong> from this ride?
+              Are you sure you want to cancel ride <strong>#{selectedRideForCancel?.bookingId}</strong>?
             </p>
             <p className="text-xs text-gray-500">
-              This will cancel the current ride and create a new booking for reassignment.
+              Rider: {selectedRideForCancel?.riderInfo?.riderName} ({selectedRideForCancel?.riderInfo?.riderMobile})
             </p>
           </div>
           <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelRideDialog(false)}>No, Keep it</Button>
+            <Button variant="destructive" onClick={confirmCancelRide} disabled={cancellingRide}>
+              {cancellingRide ? 'Cancelling...' : 'Yes, Cancel Ride'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRemoveDriverDialog} onOpenChange={setShowRemoveDriverDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reassign Driver</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Current driver: <strong>{selectedRideForRemoval?.driverInfo?.driverName}</strong>
+            </p>
+            <div>
+              <label className="text-sm font-medium">Select New Driver</label>
+              <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  {eligibleDrivers.map((driver) => (
+                    <SelectItem key={driver._id} value={driver._id}>
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-2 h-2 rounded-full ${driver.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          <span>{driver.name} - {driver.mobile}</span>
+                        </div>
+                        <span className="text-xs text-gray-500 ml-2">₹{driver.currentBalance}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {eligibleDrivers.length === 0 && (
+              <p className="text-sm text-gray-500">No eligible drivers available</p>
+            )}
+          </div>
+          <DialogFooter>
             <Button variant="outline" onClick={() => setShowRemoveDriverDialog(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDriverRemoval} disabled={removingDriver}>
-              {removingDriver ? 'Removing...' : 'Remove Driver'}
+            <Button variant="default" onClick={confirmDriverRemoval} disabled={!selectedDriver || removingDriver}>
+              {removingDriver ? 'Reassigning...' : 'Reassign Driver'}
             </Button>
           </DialogFooter>
         </DialogContent>

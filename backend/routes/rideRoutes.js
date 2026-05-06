@@ -3353,78 +3353,230 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
   }
 });
 
-// Admin cancel ride - Full cancellation only
+// Admin cancel ride - Full cancellation only, no new ride creation
 router.post("/admin/cancel", adminAuthMiddleware, async (req, res) => {
   try {
     const { rideId, reason } = req.body;
 
-    // Validate rideId
     const currentRide = await Ride.findById(rideId);
     if (!currentRide) {
       return res.status(404).json({ success: false, message: "Ride not found" });
     }
 
-    // Validate ride status - only allow CONFIRMED rides to be cancelled by admin
-    if (currentRide.status !== 'CONFIRMED') {
+    if (['CANCELLED', 'COMPLETED'].includes(currentRide.status)) {
       return res.status(400).json({
         success: false,
-        message: `Cannot cancel ride with status ${currentRide.status}. Only CONFIRMED rides can be cancelled by admin.`
+        message: `Cannot cancel ride with status ${currentRide.status}`
       });
     }
 
-    // Validate that ride has a driver assigned
-    if (!currentRide.driverId) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot cancel ride without assigned driver"
-      });
-    }
-
-    // Update original ride to CANCELLED
     await Ride.findByIdAndUpdate(rideId, {
       status: "CANCELLED",
       whoCancel: "Admin",
-      cancellationReason: reason || "Driver removed by admin"
+      cancellationReason: reason || "Cancelled by admin"
     });
 
-    // Update driver status to WAITING
-    await Driver.findByIdAndUpdate(currentRide.driverId, { rideStatus: "WAITING" });
-
-    // Create new BOOKED ride with same data
-    const newRide = new Ride({
-      riderId: currentRide.riderId,
-      riderInfo: currentRide.riderInfo,
-      ...(currentRide.staffId && {
-        staffId: currentRide.staffId,
-        staffInfo: currentRide.staffInfo
-      }),
-      rideInfo: {
-        ...currentRide.rideInfo.toObject(),
-        remainingDates: currentRide.rideInfo.selectedDates
-      },
-      isReferralEarningUsed: currentRide.isReferralEarningUsed,
-      referralEarningUsedAmount: currentRide.referralEarningUsedAmount,
-      totalPayable: currentRide.totalPayable,
-      paymentType: currentRide.paymentType,
-      bookedBy: currentRide.bookedBy,
-      status: "BOOKED"
-    });
-
-    await newRide.save();
+    if (currentRide.driverId) {
+      await Driver.findByIdAndUpdate(currentRide.driverId, { rideStatus: "WAITING" });
+    }
 
     res.status(200).json({
       success: true,
-      message: "Driver removed and ride reassigned successfully",
-      newRideId: newRide._id
+      message: "Ride cancelled successfully"
     });
 
   } catch (error) {
     console.error("Admin cancel ride error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Admin reschedule ride - directly updates date/time without driver approval
+router.post("/admin/reschedule", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId, selectedDate, selectedTime } = req.body;
+
+    if (!rideId || !selectedDate || !selectedTime) {
+      return res.status(400).json({ success: false, message: "rideId, selectedDate and selectedTime are required" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ success: false, message: "Ride not found" });
+    }
+
+    if (['CANCELLED', 'COMPLETED', 'ONGOING', 'EXTENDED'].includes(ride.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot reschedule ride with status ${ride.status}`
+      });
+    }
+
+    const subcategoryName = ride.rideInfo?.subcategoryName?.toLowerCase() || '';
+    if (subcategoryName.includes('weekly') || subcategoryName.includes('monthly')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Weekly or monthly rides cannot be rescheduled'
+      });
+    }
+
+    // Directly update date/time and clear any pending reschedule request
+    await Ride.findByIdAndUpdate(rideId, {
+      'rideInfo.selectedDate': new Date(selectedDate),
+      'rideInfo.selectedTime': selectedTime,
+      'rescheduleRequest.status': 'ACCEPTED',
+      'rescheduleRequest.rescheduledBy': 'Admin',
+      'rescheduleRequest.respondedAt': new Date()
     });
+
+    // If driver is assigned, update their pending reschedule requests too
+    if (ride.driverId) {
+      await Driver.updateOne(
+        { _id: ride.driverId, 'pendingRescheduleRequests.rideId': ride._id },
+        {
+          $set: {
+            'pendingRescheduleRequests.$.status': 'ACCEPTED',
+            'pendingRescheduleRequests.$.respondedAt': new Date()
+          }
+        }
+      );
+
+      // Notify driver
+      try {
+        const driver = await Driver.findById(ride.driverId);
+        if (driver && driver.oneSignalPlayerId) {
+          await NotificationService.sendAndStoreDriverNotification(
+            ride.driverId,
+            driver.oneSignalPlayerId,
+            'Ride Rescheduled by Admin',
+            `Your ride has been rescheduled to ${new Date(selectedDate).toLocaleDateString('en-GB')} at ${selectedTime}`,
+            'reschedule_request',
+            { rideId, selectedDate, selectedTime },
+            ride.rideInfo.categoryId,
+            rideId
+          );
+        }
+      } catch (notifError) {
+        console.error('Error notifying driver:', notifError);
+      }
+    }
+
+    // Notify rider
+    try {
+      const rider = await Rider.findById(ride.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        await NotificationService.sendAndStoreRiderNotification(
+          ride.riderId,
+          rider.oneSignalPlayerId,
+          'Ride Rescheduled',
+          `Your ride has been rescheduled to ${new Date(selectedDate).toLocaleDateString('en-GB')} at ${selectedTime}`,
+          'reschedule_accepted',
+          { rideId, selectedDate, selectedTime },
+          ride.rideInfo.categoryId,
+          rideId
+        );
+      }
+    } catch (notifError) {
+      console.error('Error notifying rider:', notifError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Ride rescheduled successfully'
+    });
+
+  } catch (error) {
+    console.error('Admin reschedule error:', error);
+    res.status(500).json({ success: false, message: 'Internal Server Error', error: error.message });
+  }
+});
+
+// Admin reassign driver - swap driver without cancelling the ride
+router.post("/admin/reassign-driver", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId, newDriverId } = req.body;
+
+    if (!rideId || !newDriverId) {
+      return res.status(400).json({ success: false, message: "rideId and newDriverId are required" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(newDriverId)) {
+      return res.status(400).json({ success: false, message: "Invalid driver ID" });
+    }
+
+    const currentRide = await Ride.findById(rideId);
+    if (!currentRide) {
+      return res.status(404).json({ success: false, message: "Ride not found" });
+    }
+
+    if (currentRide.status !== 'CONFIRMED') {
+      return res.status(400).json({
+        success: false,
+        message: `Can only reassign driver for CONFIRMED rides. Current status: ${currentRide.status}`
+      });
+    }
+
+    const newDriver = await Driver.findById(newDriverId);
+    if (!newDriver) {
+      return res.status(404).json({ success: false, message: "New driver not found" });
+    }
+
+    if (newDriver.rideStatus !== 'WAITING') {
+      return res.status(400).json({
+        success: false,
+        message: `Driver is not available. Current status: ${newDriver.rideStatus}`
+      });
+    }
+
+    // Reset old driver to WAITING
+    if (currentRide.driverId) {
+      await Driver.findByIdAndUpdate(currentRide.driverId, { rideStatus: "WAITING" });
+    }
+
+    // Update ride with new driver info
+    const updatedRide = await Ride.findByIdAndUpdate(
+      rideId,
+      {
+        driverId: newDriverId,
+        driverInfo: {
+          driverName: newDriver.personalInformation?.fullName,
+          driverMobile: newDriver.mobile
+        }
+      },
+      { new: true }
+    );
+
+    // Set new driver to CONFIRMED
+    await Driver.findByIdAndUpdate(newDriverId, { rideStatus: "CONFIRMED" });
+
+    // Notify rider
+    try {
+      const rider = await Rider.findById(currentRide.riderId);
+      if (rider && rider.oneSignalPlayerId) {
+        await NotificationService.sendAndStoreRiderNotification(
+          currentRide.riderId,
+          rider.oneSignalPlayerId,
+          'Driver Updated',
+          `Your driver has been updated to ${newDriver.personalInformation?.fullName}`,
+          'ride_confirmed',
+          {},
+          currentRide.rideInfo?.categoryId || null,
+          rideId
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Driver reassigned successfully",
+      data: updatedRide
+    });
+
+  } catch (error) {
+    console.error("Admin reassign driver error:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 });
 

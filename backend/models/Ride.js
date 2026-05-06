@@ -140,6 +140,7 @@ const rideSchema = new mongoose.Schema(
       requestedTime: { type: String },
       requestedAt: { type: Date },
       respondedAt: { type: Date },
+      rescheduledBy: { type: String, enum: ["Admin", "User"], default: "User" },
       _id: false
     },
   },
