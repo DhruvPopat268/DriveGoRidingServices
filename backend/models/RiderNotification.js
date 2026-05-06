@@ -37,7 +37,8 @@ const riderNotificationSchema = new mongoose.Schema({
       'withdrawal_approved',
       'withdrawal_rejected',
       'reschedule_accepted',
-      'reschedule_rejected'
+      'reschedule_rejected',
+      'usage_updated'
     ]
   },
   data: {

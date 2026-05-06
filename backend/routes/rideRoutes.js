@@ -4687,3 +4687,494 @@ router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
 });
 
 module.exports = router;
+
+// Get included data from all ride cost models
+router.post("/get-included-data", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { categoryId, subcategoryId, subSubcategoryId } = req.body;
+
+    if (!categoryId || !subcategoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "categoryId and subcategoryId are required",
+      });
+    }
+
+    const subcategoryDoc = await subcategory.findById(subcategoryId);
+    if (!subcategoryDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Subcategory not found",
+      });
+    }
+
+    const formattedSubcategory = subcategoryDoc.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const matchQuery = {
+      category: new mongoose.Types.ObjectId(categoryId),
+      subcategory: new mongoose.Types.ObjectId(subcategoryId),
+      ...(subSubcategoryId && {
+        subSubCategory: new mongoose.Types.ObjectId(subSubcategoryId),
+      }),
+      status: true
+    };
+
+    const aggregatePipeline = [
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: {
+            includedKm: "$includedKm",
+            includedMinutes: "$includedMinutes",
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          includedKm: "$_id.includedKm",
+          includedMinutes: "$_id.includedMinutes",
+        },
+      },
+      {
+        $addFields: {
+          sortField:
+            formattedSubcategory === "oneway"
+              ? { $toInt: "$includedKm" }
+              : { $toInt: "$includedMinutes" },
+        },
+      },
+      { $sort: { sortField: 1 } },
+      { $project: { sortField: 0 } },
+    ];
+
+    const [cabRecords, driverRecords, parcelRecords] = await Promise.all([
+      CabRideCost.aggregate(aggregatePipeline),
+      DriverRideCost.aggregate(aggregatePipeline),
+      ParcelRideCost.aggregate(aggregatePipeline)
+    ]);
+
+    const allRecords = [...cabRecords, ...driverRecords, ...parcelRecords];
+
+    if (!allRecords.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No record found for given category and subcategory",
+      });
+    }
+
+    const uniqueRecords = Array.from(
+      new Map(
+        allRecords.map(item => [
+          `${item.includedKm}-${item.includedMinutes}`,
+          item
+        ])
+      ).values()
+    ).sort((a, b) => {
+      const sortFieldA = formattedSubcategory === "oneway" 
+        ? parseInt(a.includedKm) 
+        : parseInt(a.includedMinutes);
+      const sortFieldB = formattedSubcategory === "oneway" 
+        ? parseInt(b.includedKm) 
+        : parseInt(b.includedMinutes);
+      return sortFieldA - sortFieldB;
+    });
+
+    return res.status(200).json(uniqueRecords);
+
+  } catch (error) {
+    console.error("Error fetching included data:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+});
+
+// Update selected usage and recalculate charges
+router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { rideId, newSelectedUsage } = req.body;
+
+    if (!rideId || !newSelectedUsage) {
+      return res.status(400).json({
+        success: false,
+        message: "rideId and newSelectedUsage are required"
+      });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({
+        success: false,
+        message: "Ride not found"
+      });
+    }
+
+    if (['COMPLETED', 'CANCELLED'].includes(ride.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot update usage for ${ride.status} rides`
+      });
+    }
+
+    const rider = await Rider.findById(ride.riderId);
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message: "Rider not found"
+      });
+    }
+
+    const {
+      categoryId,
+      categoryName,
+      subcategoryId,
+      subSubcategoryId,
+      selectedDate,
+      selectedTime,
+      includeInsurance,
+      selectedCategoryId,
+      selectedCarCategoryId,
+      selectedParcelCategoryId
+    } = ride.rideInfo;
+
+    const categoryNameLower = categoryName.toLowerCase();
+
+    let calculatedCharges;
+    try {
+      const calcParams = {
+        categoryName,
+        categoryId,
+        subcategoryId,
+        subSubcategoryId,
+        selectedDate,
+        selectedTime,
+        includeInsurance,
+        selectedUsage: newSelectedUsage,
+        durationType: null,
+        durationValue: null,
+        selectedCategoryId,
+        isReferralEarningUsed: ride.isReferralEarningUsed || false,
+        referralEarningUsedAmount: ride.referralEarningUsedAmount || 0,
+        rider
+      };
+
+      if (categoryNameLower === 'driver') {
+        calculatedCharges = await calculateDriverRideCost(calcParams);
+      } else if (categoryNameLower === 'cab') {
+        calculatedCharges = await calculateCabRideCost({
+          ...calcParams,
+          carCategoryId: selectedCarCategoryId
+        });
+      } else if (categoryNameLower === 'parcel') {
+        calculatedCharges = await calculateParcelRideCost({
+          ...calcParams,
+          parcelCategoryId: selectedParcelCategoryId
+        });
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid category"
+        });
+      }
+    } catch (calcError) {
+      console.error('Calculation error:', calcError);
+      return res.status(400).json({
+        success: false,
+        message: calcError.message || "Failed to calculate ride cost"
+      });
+    }
+
+    const unpaidCancellationCharges = rider.cancellationCharges || 0;
+    calculatedCharges.cancellationCharges = unpaidCancellationCharges;
+
+    const newTotalPayable = Math.round(
+      calculatedCharges.driverCharges +
+      calculatedCharges.pickCharges +
+      calculatedCharges.peakCharges +
+      calculatedCharges.nightCharges +
+      calculatedCharges.insuranceCharges +
+      calculatedCharges.adminCharges +
+      calculatedCharges.gstCharges +
+      calculatedCharges.cancellationCharges
+    );
+
+    const oldTotalPayable = ride.totalPayable;
+    const priceDifference = newTotalPayable - oldTotalPayable;
+
+    // Get existing format from database
+    const existingSelectedUsage = ride.rideInfo.selectedUsage;
+    console.log('📋 Existing selectedUsage format:', existingSelectedUsage);
+    console.log('📥 New selectedUsage input:', newSelectedUsage);
+
+    // Format new usage to match existing format
+    let formattedSelectedUsage;
+    
+    // Check if existing format has specific patterns
+    if (existingSelectedUsage) {
+      // Check for different format patterns
+      const hasKmsAndHours = existingSelectedUsage.includes('Kms') && existingSelectedUsage.includes('Hours');
+      const hasKmAndMin = existingSelectedUsage.includes('Km') && existingSelectedUsage.includes('Min');
+      const hasOnlyKms = existingSelectedUsage.includes('Kms') && !existingSelectedUsage.includes('Hours') && !existingSelectedUsage.includes('Min');
+      const hasOnlyHours = existingSelectedUsage.includes('Hours') && !existingSelectedUsage.includes('Kms') && !existingSelectedUsage.includes('Km');
+      const hasOnlyMinutes = existingSelectedUsage.includes('Min') && !existingSelectedUsage.includes('Kms') && !existingSelectedUsage.includes('Km');
+
+      if (hasKmsAndHours) {
+        console.log('🔍 Detected format: "X Kms & Y Hours"');
+        // Format: "10 Kms & 2 Hours"
+        const parts = newSelectedUsage.toLowerCase().split('&').map(p => p.trim());
+        let kmPart = '', hourPart = '';
+        
+        parts.forEach(part => {
+          if (part.includes('km')) {
+            const km = part.match(/\d+/)?.[0] || '0';
+            kmPart = `${km} Kms`;
+          } else if (part.includes('min') || part.includes('hour')) {
+            const minutes = part.match(/\d+/)?.[0] || '0';
+            const hours = Math.floor(parseInt(minutes) / 60);
+            hourPart = `${hours} Hours`;
+          }
+        });
+        formattedSelectedUsage = `${kmPart} & ${hourPart}`;
+      } else if (hasKmAndMin) {
+        console.log('🔍 Detected format: "X Km & Y Min"');
+        // Format: "10 Km & 120 Min"
+        const parts = newSelectedUsage.toLowerCase().split('&').map(p => p.trim());
+        let kmPart = '', minPart = '';
+        
+        parts.forEach(part => {
+          if (part.includes('km')) {
+            const km = part.match(/\d+/)?.[0] || '0';
+            kmPart = `${km} Km`;
+          } else if (part.includes('min')) {
+            const min = part.match(/\d+/)?.[0] || '0';
+            minPart = `${min} Min`;
+          }
+        });
+        formattedSelectedUsage = `${kmPart} & ${minPart}`;
+      } else if (hasOnlyKms) {
+        console.log('🔍 Detected format: "X Kms"');
+        // Format: "50 Kms"
+        const km = newSelectedUsage.match(/\d+/)?.[0] || '0';
+        formattedSelectedUsage = `${km} Kms`;
+      } else if (hasOnlyHours) {
+        console.log('🔍 Detected format: "X Hours"');
+        // Format: "2 Hours"
+        // Extract minutes from input (could be "300min" or "0km & 300min")
+        let minutes = 0;
+        const lowerInput = newSelectedUsage.toLowerCase();
+        
+        if (lowerInput.includes('&')) {
+          // Format like "0km & 300min"
+          const parts = lowerInput.split('&').map(p => p.trim());
+          parts.forEach(part => {
+            if (part.includes('min')) {
+              minutes = parseInt(part.match(/\d+/)?.[0] || '0');
+            }
+          });
+        } else if (lowerInput.includes('min')) {
+          // Format like "300min"
+          minutes = parseInt(lowerInput.match(/\d+/)?.[0] || '0');
+        } else {
+          // Just a number
+          minutes = parseInt(newSelectedUsage.match(/\d+/)?.[0] || '0');
+        }
+        
+        const hours = Math.floor(minutes / 60);
+        formattedSelectedUsage = `${hours} Hours`;
+      } else if (hasOnlyMinutes) {
+        console.log('🔍 Detected format: "X Min"');
+        // Format: "120 Min"
+        const min = newSelectedUsage.match(/\d+/)?.[0] || '0';
+        formattedSelectedUsage = `${min} Min`;
+      } else {
+        console.log('⚠️ Unknown format, using formatUsage function');
+        // Fallback to formatUsage function
+        formattedSelectedUsage = formatUsage(
+          newSelectedUsage,
+          categoryName,
+          ride.rideInfo.subcategoryName,
+          ride.rideInfo.subSubcategoryName
+        );
+      }
+    } else {
+      console.log('⚠️ No existing format found, using formatUsage function');
+      // No existing format, use formatUsage function
+      formattedSelectedUsage = formatUsage(
+        newSelectedUsage,
+        categoryName,
+        ride.rideInfo.subcategoryName,
+        ride.rideInfo.subSubcategoryName
+      );
+    }
+
+    console.log('✅ Converted format to match existing:', formattedSelectedUsage);
+
+    const updatedRide = await Ride.findByIdAndUpdate(
+      rideId,
+      {
+        $set: {
+          'rideInfo.selectedUsage': formattedSelectedUsage,
+          'rideInfo.driverCharges': calculatedCharges.driverCharges,
+          'rideInfo.pickCharges': calculatedCharges.pickCharges,
+          'rideInfo.peakCharges': calculatedCharges.peakCharges,
+          'rideInfo.nightCharges': calculatedCharges.nightCharges,
+          'rideInfo.insuranceCharges': calculatedCharges.insuranceCharges,
+          'rideInfo.cancellationCharges': calculatedCharges.cancellationCharges,
+          'rideInfo.discount': calculatedCharges.discount,
+          'rideInfo.gstCharges': calculatedCharges.gstCharges,
+          'rideInfo.subtotal': calculatedCharges.subtotal,
+          'rideInfo.adminCharges': calculatedCharges.adminCharges,
+          totalPayable: newTotalPayable
+        }
+      },
+      { new: true }
+    );
+
+    if (ride.paymentType === 'wallet') {
+      const wallet = await Wallet.findOne({ riderId: ride.riderId });
+      
+      if (wallet) {
+        if (priceDifference > 0) {
+          if (wallet.balance < priceDifference) {
+            return res.status(400).json({
+              success: false,
+              message: `Insufficient wallet balance. Need additional ₹${priceDifference}, but wallet has ₹${wallet.balance}`,
+              priceDifference,
+              currentBalance: wallet.balance
+            });
+          }
+
+          wallet.balance -= priceDifference;
+          wallet.totalSpent += priceDifference;
+          wallet.transactions.push({
+            amount: priceDifference,
+            status: 'completed',
+            type: 'spend',
+            description: `Additional charge for updated usage (${formattedSelectedUsage})`,
+            rideId: ride._id,
+            paidAt: new Date()
+          });
+          await wallet.save();
+
+          let adminWallet = await AdminWalletLedger.findOne();
+          if (!adminWallet) {
+            adminWallet = new AdminWalletLedger();
+          }
+          adminWallet.addTransaction({
+            transactionType: "CREDIT",
+            amount: priceDifference,
+            description: `Additional payment for updated ride usage`,
+            type: "RIDE_PAYMENT",
+            category: categoryId
+          });
+          await adminWallet.save();
+
+        } else if (priceDifference < 0) {
+          const refundAmount = Math.abs(priceDifference);
+          wallet.balance += refundAmount;
+          wallet.transactions.push({
+            amount: refundAmount,
+            status: 'completed',
+            type: 'refund',
+            description: `Refund for reduced usage (${formattedSelectedUsage})`,
+            rideId: ride._id,
+            paidAt: new Date()
+          });
+          await wallet.save();
+
+          let adminWallet = await AdminWalletLedger.findOne();
+          if (!adminWallet) {
+            adminWallet = new AdminWalletLedger();
+          }
+          adminWallet.addTransaction({
+            transactionType: "DEBIT",
+            amount: refundAmount,
+            description: `Refund for reduced ride usage`,
+            type: "RIDE_REFUND",
+            category: categoryId
+          });
+          await adminWallet.save();
+        }
+      }
+    }
+
+    try {
+      if (rider.oneSignalPlayerId) {
+        const message = priceDifference > 0
+          ? `Your ride usage has been updated to ${formattedSelectedUsage}. Additional charge: ₹${priceDifference}`
+          : priceDifference < 0
+          ? `Your ride usage has been updated to ${formattedSelectedUsage}. Refund: ₹${Math.abs(priceDifference)}`
+          : `Your ride usage has been updated to ${formattedSelectedUsage}`;
+
+        await NotificationService.sendAndStoreRiderNotification(
+          ride.riderId,
+          rider.oneSignalPlayerId,
+          'Ride Usage Updated',
+          message,
+          'usage_updated',
+          { rideId, newSelectedUsage: formattedSelectedUsage, priceDifference },
+          categoryId,
+          rideId
+        );
+      }
+    } catch (notifError) {
+      console.error('Error sending rider notification:', notifError);
+    }
+
+    try {
+      if (ride.driverId) {
+        const driver = await Driver.findById(ride.driverId);
+        if (driver && driver.oneSignalPlayerId) {
+          const driverMessage = `Ride usage updated to ${formattedSelectedUsage} by admin`;
+
+          await NotificationService.sendAndStoreDriverNotification(
+            ride.driverId,
+            driver.oneSignalPlayerId,
+            'Ride Usage Updated',
+            driverMessage,
+            'usage_updated',
+            { rideId, newSelectedUsage: formattedSelectedUsage },
+            categoryId,
+            rideId
+          );
+        }
+      }
+    } catch (notifError) {
+      console.error('Error sending driver notification:', notifError);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Selected usage and charges updated successfully",
+      data: {
+        oldUsage: ride.rideInfo.selectedUsage,
+        newUsage: formattedSelectedUsage,
+        oldTotalPayable,
+        newTotalPayable,
+        priceDifference,
+        charges: {
+          driverCharges: calculatedCharges.driverCharges,
+          pickCharges: calculatedCharges.pickCharges,
+          peakCharges: calculatedCharges.peakCharges,
+          nightCharges: calculatedCharges.nightCharges,
+          insuranceCharges: calculatedCharges.insuranceCharges,
+          cancellationCharges: calculatedCharges.cancellationCharges,
+          discount: calculatedCharges.discount,
+          gstCharges: calculatedCharges.gstCharges,
+          subtotal: calculatedCharges.subtotal,
+          adminCharges: calculatedCharges.adminCharges
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Update selected usage error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
+    });
+  }
+});

@@ -33,7 +33,8 @@ const driverNotificationSchema = new mongoose.Schema({
       'withdrawal_rejected',
       'ride_cancelled',
       'rating_received',
-      'reschedule_request'
+      'reschedule_request',
+      'usage_updated'
     ]
   },
   data: {

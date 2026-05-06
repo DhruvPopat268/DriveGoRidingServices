@@ -4,6 +4,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ArrowLeft,
   User,
   Phone,
@@ -18,13 +33,15 @@ import {
   Timer,
   Loader,
   UserCheck,
-  Download
+  Download,
+  Edit
 } from 'lucide-react';
 import { RupeeIcon } from '@/components/ui/RupeeIcon';
 import apiClient from '../../../lib/axiosInterceptor';
 import { generateInvoice, InvoiceData } from '../../../utils/invoiceGenerator';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { toast } from 'sonner';
 
 interface RideDetails {
   _id: string;
@@ -116,6 +133,11 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
   const [rideDetails, setRideDetails] = useState<RideDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUpdateUsageOpen, setIsUpdateUsageOpen] = useState(false);
+  const [usageOptions, setUsageOptions] = useState<Array<{ includedKm: string; includedMinutes: string }>>([]);
+  const [selectedNewUsage, setSelectedNewUsage] = useState<string>('');
+  const [loadingUsageOptions, setLoadingUsageOptions] = useState(false);
+  const [updatingUsage, setUpdatingUsage] = useState(false);
 
   useEffect(() => {
     if (rideId) {
@@ -133,6 +155,81 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUsageOptions = async () => {
+    if (!rideDetails) return;
+
+    try {
+      setLoadingUsageOptions(true);
+      const response = await apiClient.post(
+        `${import.meta.env.VITE_API_URL}/api/rides/get-included-data`,
+        {
+          categoryId: rideDetails.rideInfo.categoryId,
+          subcategoryId: rideDetails.rideInfo.subcategoryId,
+          subSubcategoryId: rideDetails.rideInfo.subSubcategoryId || undefined,
+        }
+      );
+      
+      const currentUsage = rideDetails.rideInfo.selectedUsage;
+      const filteredOptions = response.data.filter((option: any) => {
+        const optionStr = `${option.includedKm}Km & ${option.includedMinutes}Mins`;
+        return optionStr !== currentUsage;
+      });
+      
+      setUsageOptions(filteredOptions);
+    } catch (err) {
+      console.error('Error fetching usage options:', err);
+      toast.error('Failed to load usage options');
+    } finally {
+      setLoadingUsageOptions(false);
+    }
+  };
+
+  const handleUpdateUsage = async () => {
+    if (!selectedNewUsage || !rideDetails) return;
+
+    try {
+      setUpdatingUsage(true);
+      const response = await apiClient.post(
+        `${import.meta.env.VITE_API_URL}/api/rides/update-selected-usage`,
+        {
+          rideId: rideDetails._id,
+          newSelectedUsage: selectedNewUsage,
+        }
+      );
+
+      if (response.data.success) {
+        toast.success('Usage updated successfully!');
+        setIsUpdateUsageOpen(false);
+        setSelectedNewUsage('');
+        fetchRideDetails(rideId);
+      }
+    } catch (err: any) {
+      console.error('Error updating usage:', err);
+      const errorMessage = err.response?.data?.message || 'Failed to update usage';
+      toast.error(errorMessage);
+    } finally {
+      setUpdatingUsage(false);
+    }
+  };
+
+  const formatUsageDisplay = (km: string, minutes: string) => {
+    const parts = [];
+    if (parseInt(km) > 0) parts.push(`${km} Km`);
+    if (parseInt(minutes) > 0) {
+      const mins = parseInt(minutes);
+      const hours = Math.floor(mins / 60);
+      const remainingMins = mins % 60;
+      if (hours > 0) parts.push(`${hours} ${hours === 1 ? 'Hour' : 'Hours'}`);
+      if (remainingMins > 0) parts.push(`${remainingMins} ${remainingMins === 1 ? 'Minute' : 'Minutes'}`);
+    }
+    return parts.join(' & ');
+  };
+
+  const handleOpenUpdateUsage = () => {
+    setIsUpdateUsageOpen(true);
+    fetchUsageOptions();
   };
 
   const getStatusColor = (status: string) => {
@@ -383,6 +480,12 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
           </div>
         </div>
         <div className="flex items-center space-x-3">
+          {!['COMPLETED', 'CANCELLED'].includes(rideDetails.status) && (
+            <Button onClick={handleOpenUpdateUsage} variant="outline">
+              <Edit className="w-4 h-4 mr-2" />
+              Update Usage
+            </Button>
+          )}
           {rideDetails.status.toLowerCase() === 'completed' && (
             <Button onClick={downloadInvoice} className="bg-blue-600 hover:bg-blue-700">
               <Download className="w-4 h-4 mr-2" />
@@ -860,6 +963,101 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
           </Card>
         </div>
       </div>
+
+      {/* Update Usage Dialog */}
+      <Dialog open={isUpdateUsageOpen} onOpenChange={setIsUpdateUsageOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Update Selected Usage</DialogTitle>
+            <DialogDescription>
+              Change the ride usage. This will recalculate all charges automatically.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Current Usage
+              </label>
+              <div className="p-3 bg-gray-100 rounded-md">
+                <p className="text-sm font-semibold">{rideDetails?.rideInfo.selectedUsage}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Select New Usage
+              </label>
+              {loadingUsageOptions ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader className="w-5 h-5 animate-spin" />
+                  <span className="ml-2 text-sm">Loading options...</span>
+                </div>
+              ) : (
+                <Select value={selectedNewUsage} onValueChange={setSelectedNewUsage}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select new usage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usageOptions.length === 0 ? (
+                      <div className="p-2 text-sm text-gray-500 text-center">
+                        No other usage options available
+                      </div>
+                    ) : (
+                      usageOptions.map((option, index) => {
+                        const displayValue = formatUsageDisplay(option.includedKm, option.includedMinutes);
+                        const actualValue = `${option.includedKm}km & ${option.includedMinutes}min`;
+                        return (
+                          <SelectItem key={index} value={actualValue}>
+                            {displayValue}
+                          </SelectItem>
+                        );
+                      })
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {selectedNewUsage && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-xs text-blue-700 font-medium mb-1">Note:</p>
+                <p className="text-xs text-blue-600">
+                  All charges will be recalculated based on the new usage. If you paid via wallet, 
+                  the difference will be automatically adjusted.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsUpdateUsageOpen(false);
+                setSelectedNewUsage('');
+              }}
+              disabled={updatingUsage}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateUsage}
+              disabled={!selectedNewUsage || updatingUsage}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {updatingUsage ? (
+                <>
+                  <Loader className="w-4 h-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update Usage'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
