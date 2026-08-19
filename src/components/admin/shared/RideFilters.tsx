@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Search } from "lucide-react";
@@ -15,6 +16,12 @@ interface SubCategory {
   categoryId: string;
 }
 
+interface DropdownPerson {
+  _id: string;
+  name: string;
+  mobile: string;
+}
+
 interface RideFiltersProps {
   searchQuery: string;
   setSearchQuery: (value: string) => void;
@@ -30,6 +37,10 @@ interface RideFiltersProps {
   applyFilters: () => void;
   dateFilter: string;
   filterSubcategoriesForFilter: SubCategory[];
+  filterRider: string;
+  setFilterRider: (value: string) => void;
+  filterDriver: string;
+  setFilterDriver: (value: string) => void;
 }
 
 export const RideFilters = ({
@@ -46,8 +57,15 @@ export const RideFilters = ({
   clearFilters,
   applyFilters,
   dateFilter,
-  filterSubcategoriesForFilter
+  filterSubcategoriesForFilter,
+  filterRider,
+  setFilterRider,
+  filterDriver,
+  setFilterDriver,
 }: RideFiltersProps) => {
+  const [riderSearch, setRiderSearch] = useState('');
+  const [driverSearch, setDriverSearch] = useState('');
+
   // Fetch categories
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -66,9 +84,37 @@ export const RideFilters = ({
     },
   });
 
+  // Fetch riders for dropdown
+  const { data: riders = [] } = useQuery<DropdownPerson[]>({
+    queryKey: ["riders-list", riderSearch],
+    queryFn: async () => {
+      const params = riderSearch ? `?search=${encodeURIComponent(riderSearch)}` : '';
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/admin/riders-list${params}`);
+      return response.data?.data || [];
+    },
+  });
+
+  // Fetch drivers for dropdown
+  const { data: drivers = [] } = useQuery<DropdownPerson[]>({
+    queryKey: ["drivers-list", driverSearch],
+    queryFn: async () => {
+      const params = driverSearch ? `?search=${encodeURIComponent(driverSearch)}` : '';
+      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/admin/drivers-list${params}`);
+      return response.data?.data || [];
+    },
+  });
+
+  const hasActiveFilters =
+    (filterCategory && filterCategory !== 'all') ||
+    (filterSubcategory && filterSubcategory !== 'all') ||
+    (filterCity && filterCity !== 'all') ||
+    (filterRider && filterRider !== 'all') ||
+    (filterDriver && filterDriver !== 'all') ||
+    searchQuery || dateFilter || dateRange.from || dateRange.to;
+
   return (
     <div className="mb-6 p-4 rounded-lg">
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
             Search
@@ -86,10 +132,7 @@ export const RideFilters = ({
           <label className="block text-xs font-medium text-gray-600 mb-1">
             Category
           </label>
-          <Select
-            value={filterCategory}
-            onValueChange={setFilterCategory}
-          >
+          <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="All" />
             </SelectTrigger>
@@ -131,10 +174,7 @@ export const RideFilters = ({
           <label className="block text-xs font-medium text-gray-600 mb-1">
             City
           </label>
-          <Select
-            value={filterCity}
-            onValueChange={setFilterCity}
-          >
+          <Select value={filterCity} onValueChange={setFilterCity}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="All" />
             </SelectTrigger>
@@ -143,6 +183,70 @@ export const RideFilters = ({
               {cities.map((city: any) => (
                 <SelectItem key={city._id} value={city.name}>
                   {city.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Rider Filter */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Rider
+          </label>
+          <Select value={filterRider} onValueChange={setFilterRider}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Riders" />
+            </SelectTrigger>
+            <SelectContent>
+              <div className="p-2">
+                <input
+                  type="text"
+                  placeholder="Search rider..."
+                  value={riderSearch}
+                  onChange={(e) => setRiderSearch(e.target.value)}
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              <SelectItem value="all">All Riders</SelectItem>
+              {riders.map((rider) => (
+                <SelectItem key={rider._id} value={rider._id}>
+                  <span className="font-medium">{rider.name || 'N/A'}</span>
+                  <span className="text-gray-500 ml-1 text-xs">· {rider.mobile}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Partner (Driver) Filter */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Partner
+          </label>
+          <Select value={filterDriver} onValueChange={setFilterDriver}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All Partners" />
+            </SelectTrigger>
+            <SelectContent>
+              <div className="p-2">
+                <input
+                  type="text"
+                  placeholder="Search partner..."
+                  value={driverSearch}
+                  onChange={(e) => setDriverSearch(e.target.value)}
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              <SelectItem value="all">All Partners</SelectItem>
+              {drivers.map((driver) => (
+                <SelectItem key={driver._id} value={driver._id}>
+                  <span className="font-medium">{driver.name || 'N/A'}</span>
+                  <span className="text-gray-500 ml-1 text-xs">· {driver.mobile}</span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -172,29 +276,19 @@ export const RideFilters = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
           />
         </div>
+      </div>
 
-        <div className="flex items-end space-x-2">
-          <Button
-            variant="default"
-            size="sm"
-            onClick={applyFilters}
-            className="text-xs h-8"
-          >
-            <Search className="w-3 h-3 mr-1" />
-            Apply
+      <div className="flex items-center justify-end space-x-2 mt-3">
+        <Button variant="default" size="sm" onClick={applyFilters} className="text-xs h-8">
+          <Search className="w-3 h-3 mr-1" />
+          Apply
+        </Button>
+        {hasActiveFilters && (
+          <Button variant="outline" size="sm" onClick={clearFilters} className="text-xs h-8">
+            <X className="w-3 h-3 mr-1" />
+            Clear
           </Button>
-          {((filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') || (filterCity && filterCity !== 'all') || searchQuery || dateFilter || dateRange.from || dateRange.to) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearFilters}
-              className="text-xs h-8"
-            >
-              <X className="w-3 h-3 mr-1" />
-              Clear
-            </Button>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );

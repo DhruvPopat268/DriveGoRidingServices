@@ -10,8 +10,10 @@ const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('Login attempt for email:', email, 'with password:', password); // Log the email and password for debugging
 
     const user = await User.findOne({ email }).populate('role');
+    console.log('User found:', user); // Log the user object for debugging
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }

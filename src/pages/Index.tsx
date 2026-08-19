@@ -239,9 +239,23 @@ const Index = () => {
             rideId={selectedRideId} 
             onBack={() => setSelectedRideId(null)} 
           />
+        ) : selectedDriverId ? (
+          <DriverDetailPage
+            driverId={selectedDriverId}
+            onBack={() => setSelectedDriverId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
+          />
+        ) : selectedRiderId ? (
+          <RiderDetailPage
+            riderId={selectedRiderId}
+            onBack={() => setSelectedRiderId(null)}
+            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
+          />
         ) : (
           <AllRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
+            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)}
+            onNavigateToRiderDetail={(riderId) => setSelectedRiderId(riderId)}
+            onNavigateToDriverDetail={(driverId) => setSelectedDriverId(driverId)}
           />
         );
       case "booked-rides":

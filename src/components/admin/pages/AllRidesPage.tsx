@@ -5,14 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Clock, Eye, UserPlus, UserMinus, Loader, ChevronLeft, ChevronRight, XCircle, CalendarClock } from 'lucide-react';
+import { Calendar, Clock, Eye, UserPlus, UserMinus, Loader, ChevronLeft, ChevronRight, XCircle, CalendarClock, MapPin } from 'lucide-react';
 import { RupeeIcon } from '@/components/ui/RupeeIcon';
 import { apiClient } from '@/lib/apiClient';
 import { RideFilters } from '@/components/admin/shared/RideFilters';
 import { AdminExtraChargesDialog } from '@/components/admin/AdminExtraChargesDialog';
 import toast, { Toaster } from 'react-hot-toast';
 
-export const AllRidesPage = ({ onNavigateToDetail }) => {
+export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNavigateToDriverDetail }) => {
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,6 +22,8 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
   const [totalRides, setTotalRides] = useState(0);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [dateFilter, setDateFilter] = useState('');
+  const [riderStats, setRiderStats] = useState<Record<string, { completed: number; cancelled: number }>>({});
+  const [driverStats, setDriverStats] = useState<Record<string, { completed: number; cancelled: number }>>({}); 
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,6 +31,8 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
   const [filterSubcategory, setFilterSubcategory] = useState('all');
   const [filterCity, setFilterCity] = useState('all');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [filterRider, setFilterRider] = useState('all');
+  const [filterDriver, setFilterDriver] = useState('all');
   
   // Applied filter states
   const [appliedSearchQuery, setAppliedSearchQuery] = useState('');
@@ -36,6 +40,8 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
   const [appliedFilterSubcategory, setAppliedFilterSubcategory] = useState('all');
   const [appliedFilterCity, setAppliedFilterCity] = useState('all');
   const [appliedDateRange, setAppliedDateRange] = useState({ from: '', to: '' });
+  const [appliedFilterRider, setAppliedFilterRider] = useState('all');
+  const [appliedFilterDriver, setAppliedFilterDriver] = useState('all');
   
   // Driver assignment states
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -71,7 +77,7 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
 
   useEffect(() => {
     fetchRides();
-  }, [currentPage, recordsPerPage, dateFilter, appliedSearchQuery, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedDateRange]);
+  }, [currentPage, recordsPerPage, dateFilter, appliedSearchQuery, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedDateRange, appliedFilterRider, appliedFilterDriver]);
 
   const handleDateFilter = (filter) => {
     setDateFilter(filter);
@@ -88,6 +94,8 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
     setAppliedFilterSubcategory(filterSubcategory);
     setAppliedFilterCity(filterCity);
     setAppliedDateRange(dateRange);
+    setAppliedFilterRider(filterRider);
+    setAppliedFilterDriver(filterDriver);
     setCurrentPage(1);
   };
 
@@ -98,11 +106,15 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
     setFilterCity('all');
     setDateFilter('');
     setDateRange({ from: '', to: '' });
+    setFilterRider('all');
+    setFilterDriver('all');
     setAppliedFilterCategory('all');
     setAppliedFilterSubcategory('all');
     setAppliedFilterCity('all');
     setAppliedSearchQuery('');
     setAppliedDateRange({ from: '', to: '' });
+    setAppliedFilterRider('all');
+    setAppliedFilterDriver('all');
     setCurrentPage(1);
   };
 
@@ -127,13 +139,17 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
         ...(appliedFilterCategory && appliedFilterCategory !== 'all' && { categoryId: appliedFilterCategory }),
         ...(appliedFilterSubcategory && appliedFilterSubcategory !== 'all' && { subCategoryId: appliedFilterSubcategory }),
         ...(appliedFilterCity && appliedFilterCity !== 'all' && { city: appliedFilterCity }),
-        ...(appliedSearchQuery && { search: appliedSearchQuery })
+        ...(appliedSearchQuery && { search: appliedSearchQuery }),
+        ...(appliedFilterRider && appliedFilterRider !== 'all' && { userId: appliedFilterRider }),
+        ...(appliedFilterDriver && appliedFilterDriver !== 'all' && { driverId: appliedFilterDriver })
       });
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides?${params}`);
       const data = response.data;
       setRides(data.data);
       setTotalPages(data.totalPages);
       setTotalRides(data.totalRides);
+      setRiderStats(data.riderStats || {});
+      setDriverStats(data.driverStats || {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -393,6 +409,10 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
             applyFilters={applyFilters}
             dateFilter={dateFilter}
             filterSubcategoriesForFilter={filterSubcategoriesForFilter}
+            filterRider={filterRider}
+            setFilterRider={setFilterRider}
+            filterDriver={filterDriver}
+            setFilterDriver={setFilterDriver}
           />
 
           <div className="flex items-center justify-end mb-4">
@@ -418,7 +438,7 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
             <table className="border-collapse" style={{ minWidth: '1400px', width: '100%' }}>
               <thead>
                 <tr className="border-b border-gray-200">
-                  {['Ride ID','Rider Info','Driver Info','Staff Info','Route','Service Type','Usage','Date & Time','Amount','Payment','Booked By','Status','Cancelled By','Actions'].map(col => (
+                  {['Ride ID','Rider Info','Route','Category','Service Type','Usage','Partner Details','Date & Time','Status','Actions'].map(col => (
                     <th key={col} className="text-left p-3 font-semibold text-gray-700 whitespace-nowrap" style={{ minWidth: '120px' }}>{col}</th>
                   ))}
                 </tr>
@@ -430,53 +450,77 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
                       <div className="text-sm font-mono text-blue-600">
                         {ride.bookingId || 'N/A'}
                       </div>
+                      <Badge variant={ride.bookedBy === 'STAFF' ? 'secondary' : 'default'} className="text-xs mt-1">
+                        {ride.bookedBy || 'USER'}
+                      </Badge>
+                      {ride.city && (
+                        <div className="text-xs text-gray-500 mt-0.5">{ride.city}</div>
+                      )}
                     </td>
 
                     <td className="p-3">
                       <div className="space-y-1">
                         <div className="text-sm font-medium">{ride.riderInfo?.riderName || 'N/A'}</div>
                         <div className="text-xs text-gray-600">{ride.riderInfo?.riderMobile || 'N/A'}</div>
+                        {ride.riderId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs mt-1"
+                            onClick={() => onNavigateToRiderDetail?.(ride.riderId)}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            View
+                          </Button>
+                        )}
+                        <div className="text-xs text-green-600">Completed - {riderStats[ride.riderId?.toString()]?.completed || 0}</div>
+                        <div className="text-xs text-red-500">Cancelled - {riderStats[ride.riderId?.toString()]?.cancelled || 0}</div>
                       </div>
                     </td>
 
-                    <td className="p-3">
-                      {ride.driverInfo ? (
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">{ride.driverInfo.driverName}</div>
-                          <div className="text-xs text-gray-600">{ride.driverInfo.driverMobile}</div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">Not Assigned</span>
-                      )}
-                    </td>
-
-                    <td className="p-3">
-                      {ride.staffInfo ? (
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">{ride.staffInfo.staffName}</div>
-                          <div className="text-xs text-gray-600">{ride.staffInfo.staffMobile}</div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">N/A</span>
-                      )}
-                    </td>
-
-                    <td className="p-3" style={{ maxWidth: '150px' }}>
+                    <td className="p-3" style={{ maxWidth: '160px' }}>
                       <div className="space-y-1">
-                        <div className="text-xs text-gray-600 truncate" title={ride.rideInfo?.fromLocation?.address}>
-                          From: {ride.rideInfo?.fromLocation?.address?.substring(0, 30) || 'N/A'}
+                        <div className="flex items-start gap-1">
+                          {ride.rideInfo?.fromLocation?.address ? (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ride.rideInfo.fromLocation.address)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Open in Google Maps: ${ride.rideInfo.fromLocation.address}`}
+                              className="flex-shrink-0 mt-0.5"
+                            >
+                              <MapPin className="w-3 h-3 text-green-600 hover:text-green-800" />
+                            </a>
+                          ) : null}
+                          <div className="text-xs text-gray-600 truncate" title={ride.rideInfo?.fromLocation?.address}>
+                            From: {ride.rideInfo?.fromLocation?.address?.substring(0, 28) || 'N/A'}
+                          </div>
                         </div>
                         {ride.rideInfo?.toLocation?.address && (
-                          <div className="text-xs text-gray-600 truncate" title={ride.rideInfo.toLocation.address}>
-                            To: {ride.rideInfo.toLocation.address.substring(0, 30)}
+                          <div className="flex items-start gap-1">
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ride.rideInfo.toLocation.address)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Open in Google Maps: ${ride.rideInfo.toLocation.address}`}
+                              className="flex-shrink-0 mt-0.5"
+                            >
+                              <MapPin className="w-3 h-3 text-red-500 hover:text-red-700" />
+                            </a>
+                            <div className="text-xs text-gray-600 truncate" title={ride.rideInfo.toLocation.address}>
+                              To: {ride.rideInfo.toLocation.address.substring(0, 28)}
+                            </div>
                           </div>
                         )}
                       </div>
                     </td>
 
                     <td className="p-3">
+                      <div className="text-sm font-medium capitalize">{ride.rideInfo?.categoryName || 'N/A'}</div>
+                    </td>
+
+                    <td className="p-3">
                       <div className="space-y-1">
-                        <div className="text-sm font-medium capitalize">{ride.rideInfo?.categoryName || 'N/A'}</div>
                         <div className="text-xs text-gray-600 capitalize">{ride.rideInfo?.subcategoryName || 'N/A'}</div>
                         {ride.rideInfo?.subcategoryName?.toLowerCase() === 'outstation' && ride.rideInfo?.subSubcategoryName && (
                           <div className="text-xs text-gray-500 capitalize">{ride.rideInfo.subSubcategoryName}</div>
@@ -489,9 +533,39 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
                     </td>
 
                     <td className="p-3">
-                      <div className="text-sm text-gray-700">
-                        {ride.rideInfo.selectedUsage || 'N/A'}
+                      <div className="space-y-1">
+                        <div className="text-sm text-gray-700">
+                          {ride.rideInfo.selectedUsage || 'N/A'}
+                        </div>
+                        <div className="text-sm font-semibold text-yellow-600">
+                          {formatCurrency(ride.totalPayable)}
+                        </div>
+                        <div className="text-xs text-gray-500 capitalize">{ride.paymentType}</div>
                       </div>
+                    </td>
+
+                    <td className="p-3">
+                      {ride.driverInfo ? (
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">{ride.driverInfo.driverName}</div>
+                          <div className="text-xs text-gray-600">{ride.driverInfo.driverMobile}</div>
+                          {ride.driverId && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs mt-1"
+                              onClick={() => onNavigateToDriverDetail?.(ride.driverId)}
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              View
+                            </Button>
+                          )}
+                          <div className="text-xs text-green-600">Completed - {driverStats[ride.driverId?.toString()]?.completed || 0}</div>
+                          <div className="text-xs text-red-500">Cancelled - {driverStats[ride.driverId?.toString()]?.cancelled || 0}</div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Not Assigned</span>
+                      )}
                     </td>
 
                     <td className="p-3">
@@ -508,94 +582,69 @@ export const AllRidesPage = ({ onNavigateToDetail }) => {
                     </td>
 
                     <td className="p-3">
-                      <div className="flex items-center space-x-1 text-sm font-semibold text-yellow-600">
-                        <span>{formatCurrency(ride.totalPayable)}</span>
-                      </div>
-                    </td>
-
-                    <td className="p-3">
-                      <span className="text-sm capitalize">{ride.paymentType}</span>
-                    </td>
-
-                    <td className="p-3">
-                      <Badge variant={ride.bookedBy === 'STAFF' ? 'secondary' : 'default'} className="text-xs">
-                        {ride.bookedBy || 'USER'}
-                      </Badge>
-                    </td>
-
-                    <td className="p-3">
                       <Badge variant={getStatusBadgeVariant(ride.status)} className="text-xs">
                         {ride.status}
                       </Badge>
                     </td>
 
                     <td className="p-3">
-                      {ride.status === 'CANCELLED' ? (
-                        <Badge 
-                          variant={ride.whoCancel === 'Admin' ? 'destructive' : ride.whoCancel === 'Driver' ? 'secondary' : 'default'} 
-                          className="text-xs"
-                        >
-                          {ride.whoCancel || 'N/A'}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
-                    </td>
-
-                    <td className="p-3">
-                      <div className="flex space-x-2">
+                      <div className="flex flex-col gap-1">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 px-3 text-xs"
+                          className="h-7 px-2 text-xs w-full justify-start bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
                           onClick={() => onNavigateToDetail?.(ride._id)}
                         >
-                          <Eye className="w-4 h-4" />
+                          View Details
                         </Button>
                         {ride.status === 'BOOKED' && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 px-3 text-xs bg-white"
+                            className="h-7 px-2 text-xs w-full justify-start bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
                             onClick={() => handleAssignDriver(ride)}
                           >
-                            <UserPlus className="w-4 h-4" />
+                            Assign Driver
                           </Button>
                         )}
                         {ride.status === 'CONFIRMED' && ride.driverInfo && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 px-3 text-xs bg-white"
+                            className="h-7 px-2 text-xs w-full justify-start bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
                             onClick={() => handleRemoveDriver(ride)}
-                            title={`Change driver: ${ride.driverInfo.driverName}`}
                           >
-                            <UserMinus className="w-4 h-4" />
+                            Reassign Driver
                           </Button>
                         )}
                         {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && ride.status !== 'ONGOING' && ride.status !== 'EXTENDED' && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 px-3 text-xs"
+                            className="h-7 px-2 text-xs w-full justify-start bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100"
                             onClick={() => handleReschedule(ride)}
-                            title="Reschedule Ride"
                           >
-                            <CalendarClock className="w-4 h-4" />
+                            Reschedule
                           </Button>
-                        )}
-                        {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && (
-                          <Button size="sm" variant="secondary" className="h-8 px-3 text-xs" onClick={() => { setSelectedRideForCharges(ride); setShowExtraChargesDialog(true); }} title="Add Extra Charges"><RupeeIcon className="w-4 h-4" /></Button>
                         )}
                         {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && (
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-8 px-3 text-xs bg-white"
-                            onClick={() => handleCancelRide(ride)}
-                            title="Cancel Ride"
+                            className="h-7 px-2 text-xs w-full justify-start bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                            onClick={() => { setSelectedRideForCharges(ride); setShowExtraChargesDialog(true); }}
                           >
-                            <XCircle className="w-4 h-4" />
+                            Extra Charges
+                          </Button>
+                        )}
+                        {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs w-full justify-start bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                            onClick={() => handleCancelRide(ride)}
+                          >
+                            Cancel Ride
                           </Button>
                         )}
                       </div>

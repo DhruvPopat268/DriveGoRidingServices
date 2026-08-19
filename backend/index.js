@@ -130,6 +130,9 @@ app.use('/api/offline-staff', require('./offline&agentBookingRoutes/offlineStaff
 
 // admin
 app.use('/api/admin/rides', require('./AdminRoutes/AdminRideRoutes'));
+app.use('/api/admin/all-drivers', require('./AdminRoutes/getAllDriversRoute'));
+app.use('/api/admin/all-users', require('./AdminRoutes/getAllUsersRoute'));
+app.use('/api/admin', require('./AdminRoutes/dropdownListRoutes'));
 
 app.use('/api/payments', require('./routes/Payment&Wallet'));
 

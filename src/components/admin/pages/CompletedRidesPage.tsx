@@ -1,107 +1,84 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Car, Phone, Calendar, CreditCard, Eye, Loader, ChevronLeft, ChevronRight } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RideFilters } from "../shared/RideFilters";
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import apiClient from "../../../lib/axiosInterceptor";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, Clock, Eye, Loader, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import { apiClient } from '@/lib/apiClient';
+import { RideFilters } from '@/components/admin/shared/RideFilters';
 
-interface SubCategory {
-  _id: string;
-  name: string;
-  categoryId: string;
-}
-
-interface CompletedRidesPageProps {
-  onNavigateToDetail?: (rideId: string) => void;
-}
-
-export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPageProps) => {
+export const CompletedRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNavigateToDriverDetail }) => {
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRides, setTotalRides] = useState(0);
-  const [dateFilter, setDateFilter] = useState('');
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const limit = recordsPerPage;
+  const [dateFilter, setDateFilter] = useState('');
+  const [riderStats, setRiderStats] = useState<Record<string, { completed: number; cancelled: number }>>({});
+  const [driverStats, setDriverStats] = useState<Record<string, { completed: number; cancelled: number }>>({}); 
 
-  // Filter states (applied filters)
-  const [appliedFilterCategory, setAppliedFilterCategory] = useState<string>('all');
-  const [appliedFilterSubcategory, setAppliedFilterSubcategory] = useState<string>('all');
-  const [appliedFilterCity, setAppliedFilterCity] = useState<string>('all');
-  const [appliedSearchQuery, setAppliedSearchQuery] = useState<string>('');
-  const [appliedDateRange, setAppliedDateRange] = useState({ from: '', to: '' });
-
-  // Filter states (UI states - not applied until Apply is clicked)
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
-  const [filterCity, setFilterCity] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterSubcategory, setFilterSubcategory] = useState('all');
+  const [filterCity, setFilterCity] = useState('all');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
-  const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<SubCategory[]>([]);
+  const [filterRider, setFilterRider] = useState('all');
+  const [filterDriver, setFilterDriver] = useState('all');
 
-  // Fetch subcategories
-  const { data: subCategories = [] } = useQuery({
-    queryKey: ["subcategories"],
-    queryFn: async () => {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
-      return response.data || [];
-    },
-  });
+  // Applied filter states
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState('');
+  const [appliedFilterCategory, setAppliedFilterCategory] = useState('all');
+  const [appliedFilterSubcategory, setAppliedFilterSubcategory] = useState('all');
+  const [appliedFilterCity, setAppliedFilterCity] = useState('all');
+  const [appliedDateRange, setAppliedDateRange] = useState({ from: '', to: '' });
+  const [appliedFilterRider, setAppliedFilterRider] = useState('all');
+  const [appliedFilterDriver, setAppliedFilterDriver] = useState('all');
+
+  const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState([]);
 
   useEffect(() => {
     fetchRides();
-  }, [currentPage, dateFilter, appliedDateRange, recordsPerPage, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedSearchQuery]);
+  }, [currentPage, recordsPerPage, dateFilter, appliedSearchQuery, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedDateRange, appliedFilterRider, appliedFilterDriver]);
 
-  // Filter subcategories for filter dropdown
-  useEffect(() => {
-    if (filterCategory && filterCategory !== 'all') {
-      const filtered = subCategories.filter((sub: SubCategory) => sub.categoryId === filterCategory);
-      setFilterSubcategoriesForFilter(filtered);
-      setFilterSubcategory('all');
-    } else {
-      setFilterSubcategoriesForFilter([]);
-      setFilterSubcategory('all');
-    }
-  }, [filterCategory, subCategories]);
-
-  const handleDateFilter = (filter: string) => {
-    setDateFilter(filter === dateFilter ? '' : filter);
-    setDateRange({ from: '', to: '' });
+  const handleDateFilter = (filter) => {
+    setDateFilter(filter);
     setCurrentPage(1);
   };
 
-  const handleDateRangeChange = (field: 'from' | 'to', value: string) => {
+  const handleDateRangeChange = (field, value) => {
     setDateRange(prev => ({ ...prev, [field]: value }));
-    setDateFilter('');
-    setCurrentPage(1);
   };
 
   const applyFilters = () => {
+    setAppliedSearchQuery(searchQuery);
     setAppliedFilterCategory(filterCategory);
     setAppliedFilterSubcategory(filterSubcategory);
     setAppliedFilterCity(filterCity);
-    setAppliedSearchQuery(searchQuery);
     setAppliedDateRange(dateRange);
+    setAppliedFilterRider(filterRider);
+    setAppliedFilterDriver(filterDriver);
     setCurrentPage(1);
   };
 
   const clearFilters = () => {
+    setSearchQuery('');
     setFilterCategory('all');
     setFilterSubcategory('all');
     setFilterCity('all');
-    setSearchQuery('');
     setDateFilter('');
     setDateRange({ from: '', to: '' });
+    setFilterRider('all');
+    setFilterDriver('all');
     setAppliedFilterCategory('all');
     setAppliedFilterSubcategory('all');
     setAppliedFilterCity('all');
     setAppliedSearchQuery('');
     setAppliedDateRange({ from: '', to: '' });
+    setAppliedFilterRider('all');
+    setAppliedFilterDriver('all');
     setCurrentPage(1);
   };
 
@@ -126,13 +103,17 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
         ...(appliedFilterCategory && appliedFilterCategory !== 'all' && { categoryId: appliedFilterCategory }),
         ...(appliedFilterSubcategory && appliedFilterSubcategory !== 'all' && { subCategoryId: appliedFilterSubcategory }),
         ...(appliedFilterCity && appliedFilterCity !== 'all' && { city: appliedFilterCity }),
-        ...(appliedSearchQuery && { search: appliedSearchQuery })
+        ...(appliedSearchQuery && { search: appliedSearchQuery }),
+        ...(appliedFilterRider && appliedFilterRider !== 'all' && { userId: appliedFilterRider }),
+        ...(appliedFilterDriver && appliedFilterDriver !== 'all' && { driverId: appliedFilterDriver })
       });
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides/completed?${params}`);
       const data = response.data;
       setRides(data.data);
       setTotalPages(data.totalPages);
       setTotalRides(data.totalRides);
+      setRiderStats(data.riderStats || {});
+      setDriverStats(data.driverStats || {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -157,6 +138,14 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
     return `₹${amount?.toFixed(2) || '0.00'}`;
   };
 
+  const getStatusBadgeVariant = (status) => {
+    switch (status) {
+      case 'COMPLETED': return 'default';
+      case 'CANCELLED': return 'destructive';
+      default: return 'secondary';
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -177,10 +166,10 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
   }
 
   return (
-    <div className="space-y-6 bg-white text-black p-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 bg-white text-black p-6 overflow-x-hidden">
+      <div className="flex flex-wrap justify-between items-center gap-2">
         <h1 className="text-2xl font-bold text-black">Completed Rides</h1>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap space-x-2 gap-2">
           <Button variant="outline" onClick={fetchRides}>
             Refresh
           </Button>
@@ -222,6 +211,10 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
             applyFilters={applyFilters}
             dateFilter={dateFilter}
             filterSubcategoriesForFilter={filterSubcategoriesForFilter}
+            filterRider={filterRider}
+            setFilterRider={setFilterRider}
+            filterDriver={filterDriver}
+            setFilterDriver={setFilterDriver}
           />
 
           <div className="flex items-center justify-end mb-4">
@@ -244,180 +237,179 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
         </div>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed border-collapse">
-              <colgroup>
-                <col style={{ width: '5%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '7%' }} />
-                <col style={{ width: '11%' }} />
-              </colgroup>
+            <table className="border-collapse" style={{ minWidth: '1400px', width: '100%' }}>
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left p-3 font-semibold text-gray-700">Ride ID</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Rider Info</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Driver Info</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Route</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Service Type</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Driver Category</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Usage</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Date & Time</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Amount</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Payment Method</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Booked By</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Staff Info</th>
-                  <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
+                  {['Ride ID', 'Rider Info', 'Route', 'Category', 'Service Type', 'Usage', 'Partner Details', 'Date & Time', 'Status', 'Actions'].map(col => (
+                    <th key={col} className="text-left p-3 font-semibold text-gray-700 whitespace-nowrap" style={{ minWidth: '120px' }}>{col}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {rides.map((ride, index) => (
+                {rides.map((ride) => (
                   <tr key={ride._id} className="border-b border-gray-100 hover:bg-gray-50">
+                    {/* Ride ID */}
                     <td className="p-3">
-                      <div className="font-mono text-sm text-blue-600">
+                      <div className="text-sm font-mono text-blue-600">
                         {ride.bookingId || 'N/A'}
                       </div>
+                      <Badge variant={ride.bookedBy === 'STAFF' ? 'secondary' : 'default'} className="text-xs mt-1">
+                        {ride.bookedBy || 'USER'}
+                      </Badge>
+                      {ride.city && (
+                        <div className="text-xs text-gray-500 mt-0.5">{ride.city}</div>
+                      )}
                     </td>
 
+                    {/* Rider Info */}
                     <td className="p-3">
                       <div className="space-y-1">
-                        <div className="flex items-center space-x-1 text-sm">
-                          <User className="w-3 h-3 text-gray-500" />
-                          <span>{ride.riderInfo?.riderName}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-sm text-gray-600">
-                          <Phone className="w-3 h-3 text-gray-500" />
-                          <span>{ride.riderInfo?.riderMobile}</span>
-                        </div>
+                        <div className="text-sm font-medium">{ride.riderInfo?.riderName || 'N/A'}</div>
+                        <div className="text-xs text-gray-600">{ride.riderInfo?.riderMobile || 'N/A'}</div>
+                        {ride.riderId && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs mt-1"
+                            onClick={() => onNavigateToRiderDetail?.(ride.riderId)}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            View
+                          </Button>
+                        )}
+                        <div className="text-xs text-green-600">Completed - {riderStats[ride.riderId?.toString()]?.completed || 0}</div>
+                        <div className="text-xs text-red-500">Cancelled - {riderStats[ride.riderId?.toString()]?.cancelled || 0}</div>
                       </div>
                     </td>
 
-                    
-                    <td className="p-3">
+                    {/* Route */}
+                    <td className="p-3" style={{ maxWidth: '160px' }}>
                       <div className="space-y-1">
-                        <div className="flex items-center space-x-1 text-sm">
-                          <User className="w-3 h-3 text-gray-500" />
-                          <span>{ride.driverInfo?.driverName}</span>
+                        <div className="flex items-start gap-1">
+                          {ride.rideInfo?.fromLocation?.address ? (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ride.rideInfo.fromLocation.address)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Open in Google Maps: ${ride.rideInfo.fromLocation.address}`}
+                              className="flex-shrink-0 mt-0.5"
+                            >
+                              <MapPin className="w-3 h-3 text-green-600 hover:text-green-800" />
+                            </a>
+                          ) : null}
+                          <div className="text-xs text-gray-600 truncate" title={ride.rideInfo?.fromLocation?.address}>
+                            From: {ride.rideInfo?.fromLocation?.address?.substring(0, 28) || 'N/A'}
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-1 text-sm text-gray-600">
-                          <Phone className="w-3 h-3 text-gray-500" />
-                          <span>{ride.driverInfo?.driverMobile}</span>
-                        </div>
-                      </div>
-                    </td>
-
-
-                    <td className="p-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-1 text-sm truncate">
-                          <MapPin className="w-3 h-3 text-green-500 flex-shrink-0" />
-                          <span className="capitalize truncate" title={ride.rideInfo.fromLocation?.address}>
-                            {ride.rideInfo.fromLocation?.address || "N/A"}
-                          </span>
-                        </div>
-                        {ride.rideInfo.toLocation && (
-                          <div className="flex items-center space-x-1 text-sm truncate">
-                            <MapPin className="w-3 h-3 text-red-500 flex-shrink-0" />
-                            <span className="capitalize truncate" title={ride.rideInfo.toLocation?.address}>
-                              {ride.rideInfo.toLocation?.address || "N/A"}
-                            </span>
+                        {ride.rideInfo?.toLocation?.address && (
+                          <div className="flex items-start gap-1">
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ride.rideInfo.toLocation.address)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Open in Google Maps: ${ride.rideInfo.toLocation.address}`}
+                              className="flex-shrink-0 mt-0.5"
+                            >
+                              <MapPin className="w-3 h-3 text-red-500 hover:text-red-700" />
+                            </a>
+                            <div className="text-xs text-gray-600 truncate" title={ride.rideInfo.toLocation.address}>
+                              To: {ride.rideInfo.toLocation.address.substring(0, 28)}
+                            </div>
                           </div>
                         )}
                       </div>
                     </td>
 
+                    {/* Category */}
+                    <td className="p-3">
+                      <div className="text-sm font-medium capitalize">{ride.rideInfo?.categoryName || 'N/A'}</div>
+                    </td>
+
+                    {/* Service Type */}
                     <td className="p-3">
                       <div className="space-y-1">
-                        <div className="text-sm font-medium capitalize">
-                          {ride.rideInfo.categoryName}
-                        </div>
-                        <div className="text-xs text-gray-600 capitalize">
-                          {ride.rideInfo.subcategoryName}
-                        </div>
-
+                        <div className="text-xs text-gray-600 capitalize">{ride.rideInfo?.subcategoryName || 'N/A'}</div>
+                        {ride.rideInfo?.subcategoryName?.toLowerCase() === 'outstation' && ride.rideInfo?.subSubcategoryName && (
+                          <div className="text-xs text-gray-500 capitalize">{ride.rideInfo.subSubcategoryName}</div>
+                        )}
+                        <div className="text-xs text-gray-600 capitalize">{ride.rideInfo?.selectedCategory}</div>
+                        {(ride.rideInfo?.carType || ride.rideInfo?.transmissionType) && (
+                          <div className="text-xs text-gray-600 capitalize">{ride.rideInfo.carType} {ride.rideInfo.transmissionType}</div>
+                        )}
                       </div>
                     </td>
 
+                    {/* Usage */}
                     <td className="p-3">
-                      <div className="text-sm font-medium capitalize">
-                        {ride.rideInfo.selectedCategory}
-                      </div>
-
-                      {(ride.rideInfo.carType || ride.rideInfo.transmissionType) && (
-                        <div className="space-y-1">
-                          <div className="text-xs text-gray-600 capitalize">
-                            {ride.rideInfo.carType}
-                          </div>
-                          <div className="text-xs text-gray-600 capitalize">
-                            {ride.rideInfo.transmissionType}
-                          </div>
-
+                      <div className="space-y-1">
+                        <div className="text-sm text-gray-700">
+                          {ride.rideInfo?.selectedUsage || 'N/A'}
                         </div>
+                        <div className="text-sm font-semibold text-yellow-600">
+                          {formatCurrency(ride.totalPayable)}
+                        </div>
+                        <div className="text-xs text-gray-500 capitalize">{ride.paymentType}</div>
+                      </div>
+                    </td>
+
+                    {/* Partner Details */}
+                    <td className="p-3">
+                      {ride.driverInfo ? (
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">{ride.driverInfo.driverName}</div>
+                          <div className="text-xs text-gray-600">{ride.driverInfo.driverMobile}</div>
+                          {ride.driverId && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs mt-1"
+                              onClick={() => onNavigateToDriverDetail?.(ride.driverId)}
+                            >
+                              <Eye className="w-3 h-3 mr-1" />
+                              View
+                            </Button>
+                          )}
+                          <div className="text-xs text-green-600">Completed - {driverStats[ride.driverId?.toString()]?.completed || 0}</div>
+                          <div className="text-xs text-red-500">Cancelled - {driverStats[ride.driverId?.toString()]?.cancelled || 0}</div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Not Assigned</span>
                       )}
                     </td>
 
-                    <td className="p-3">
-                      <div className="text-sm text-gray-700">
-                        {ride.rideInfo.selectedUsage || 'N/A'}
-                      </div>
-                    </td>
-
+                    {/* Date & Time */}
                     <td className="p-3">
                       <div className="space-y-1">
                         <div className="flex items-center space-x-1 text-sm">
                           <Calendar className="w-3 h-3 text-gray-500" />
-                          <span>{formatDate(ride.rideInfo.selectedDate)}</span>
+                          <span>{formatDate(ride.rideInfo?.selectedDate)}</span>
                         </div>
                         <div className="flex items-center space-x-1 text-sm text-gray-600">
                           <Clock className="w-3 h-3 text-gray-500" />
-                          <span>{formatTime(ride.rideInfo.selectedTime)}</span>
+                          <span>{formatTime(ride.rideInfo?.selectedTime)}</span>
                         </div>
                       </div>
                     </td>
 
+                    {/* Status */}
                     <td className="p-3">
-                      <div className="flex items-center space-x-1 text-sm font-semibold text-green-600">
-                        <span>{formatCurrency(ride.totalPayable)}</span>
-                      </div>
-                    </td>
-
-                    <td className="p-3">
-                      <span className="text-sm capitalize">{ride.paymentType}</span>
-                    </td>
-
-                    <td className="p-3">
-                      <Badge variant={ride.bookedBy === 'STAFF' ? 'secondary' : 'default'} className="text-xs">
-                        {ride.bookedBy || 'USER'}
+                      <Badge variant={getStatusBadgeVariant(ride.status)} className="text-xs">
+                        {ride.status}
                       </Badge>
                     </td>
 
+                    {/* Actions */}
                     <td className="p-3">
-                      {ride.staffInfo ? (
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">{ride.staffInfo.staffName}</div>
-                          <div className="text-xs text-gray-600">{ride.staffInfo.staffMobile}</div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400">N/A</span>
-                      )}
-                    </td>
-
-                    <td className="p-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={() => onNavigateToDetail?.(ride._id)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs w-full justify-start bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                          onClick={() => onNavigateToDetail?.(ride._id)}
+                        >
+                          View Details
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -448,7 +440,7 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
                 <ChevronLeft className="w-4 h-4" />
                 Previous
               </Button>
-              
+
               <div className="flex items-center space-x-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNumber;
@@ -461,11 +453,11 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
                   } else {
                     pageNumber = currentPage - 2 + i;
                   }
-                  
+
                   return (
                     <Button
                       key={pageNumber}
-                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      variant={currentPage === pageNumber ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => handlePageChange(pageNumber)}
                       className="w-8 h-8 p-0"
@@ -475,7 +467,7 @@ export const CompletedRidesPage = ({ onNavigateToDetail }: CompletedRidesPagePro
                   );
                 })}
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"

@@ -58,6 +58,8 @@ const getPaginatedRides = async (status = null, req) => {
   const subCategoryId = req.query.subCategoryId;
   const city = req.query.city;
   const search = req.query.search;
+  const userId = req.query.userId;
+  const driverId = req.query.driverId;
 
   let query = {};
   if (status) query.status = status;
@@ -137,17 +139,96 @@ const getPaginatedRides = async (status = null, req) => {
     query.$or = searchConditions;
   }
 
+  // Rider filter by userId
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    query.riderId = new mongoose.Types.ObjectId(userId);
+  }
+
+  // Driver filter by driverId
+  if (driverId && mongoose.Types.ObjectId.isValid(driverId)) {
+    query.driverId = new mongoose.Types.ObjectId(driverId);
+  }
+
   const [rides, totalRides] = await Promise.all([
     Ride.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
     Ride.countDocuments(query)
   ]);
+
+  // Extract city from the first comma-separated component of fromLocation address
+  const ridesWithCity = rides.map((ride) => {
+    const rideObj = ride.toObject();
+    const address = rideObj.rideInfo?.fromLocation?.address || '';
+    const parts = address.split(',');
+    rideObj.city = parts.length >= 1 ? parts[0].trim() : '';
+    return rideObj;
+  });
+
+  // Collect distinct riderIds and driverIds from current page
+  const riderIds = [...new Set(ridesWithCity.map(r => r.riderId?.toString()).filter(Boolean))];
+  const driverIds = [...new Set(ridesWithCity.map(r => r.driverId?.toString()).filter(Boolean))];
+
+  // Aggregate completed and cancelled counts across ALL rides for these IDs
+  const [riderAgg, driverAgg] = await Promise.all([
+    riderIds.length > 0
+      ? Ride.aggregate([
+          {
+            $match: {
+              riderId: { $in: riderIds.map(id => new mongoose.Types.ObjectId(id)) },
+              status: { $in: ['COMPLETED', 'CANCELLED'] }
+            }
+          },
+          {
+            $group: {
+              _id: { riderId: '$riderId', status: '$status' },
+              count: { $sum: 1 }
+            }
+          }
+        ])
+      : [],
+    driverIds.length > 0
+      ? Ride.aggregate([
+          {
+            $match: {
+              driverId: { $in: driverIds.map(id => new mongoose.Types.ObjectId(id)) },
+              status: { $in: ['COMPLETED', 'CANCELLED'] }
+            }
+          },
+          {
+            $group: {
+              _id: { driverId: '$driverId', status: '$status' },
+              count: { $sum: 1 }
+            }
+          }
+        ])
+      : []
+  ]);
+
+  // Build riderStats map: { [riderId]: { completed, cancelled } }
+  const riderStats = {};
+  for (const entry of riderAgg) {
+    const id = entry._id.riderId.toString();
+    if (!riderStats[id]) riderStats[id] = { completed: 0, cancelled: 0 };
+    if (entry._id.status === 'COMPLETED') riderStats[id].completed = entry.count;
+    if (entry._id.status === 'CANCELLED') riderStats[id].cancelled = entry.count;
+  }
+
+  // Build driverStats map: { [driverId]: { completed, cancelled } }
+  const driverStats = {};
+  for (const entry of driverAgg) {
+    const id = entry._id.driverId.toString();
+    if (!driverStats[id]) driverStats[id] = { completed: 0, cancelled: 0 };
+    if (entry._id.status === 'COMPLETED') driverStats[id].completed = entry.count;
+    if (entry._id.status === 'CANCELLED') driverStats[id].cancelled = entry.count;
+  }
 
   return {
     page,
     limit,
     totalRides,
     totalPages: Math.ceil(totalRides / limit),
-    data: rides
+    data: ridesWithCity,
+    riderStats,
+    driverStats
   };
 };
 
