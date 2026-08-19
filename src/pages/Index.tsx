@@ -14,14 +14,7 @@ import { RevenueDistributionChart } from "@/components/admin/RevenueDistribution
 import { LiveMap } from "@/components/admin/LiveMap";
 import { RidersPage } from "@/components/admin/pages/RidersPage";
 import { RidesPage } from "@/components/admin/pages/RidesPage";
-import { BookedRidesPage } from "@/components/admin/pages/BookedRidesPage";
 import { AllRidesPage } from "@/components/admin/pages/AllRidesPage";
-import { ConfirmedRidesPage } from "@/components/admin/pages/ConfirmedRidesPage";
-import { OngoingRidesPage } from "@/components/admin/pages/OngoingRidesPage";
-import { CompletedRidesPage } from "@/components/admin/pages/CompletedRidesPage";
-import { CancelledRidesPage } from "@/components/admin/pages/CancelledRidesPage";
-import { ExtendedRidesPage } from "@/components/admin/pages/ExtendedRidesPage";
-import { ReachedRidesPage } from "@/components/admin/pages/ReachedRidesPage";
 import { CategoryPage } from "@/components/admin/pages/CategoryPage";
 import { SubCategoryPage } from "@/components/admin/pages/SubCategoryPage";
 import { SubSubCategoryPage } from "@/components/admin/pages/SubSubCategoryPage";
@@ -112,11 +105,7 @@ const Index = () => {
     url.searchParams.delete('rideId');
     
     // Update URL for specific sections
-    if (section === 'booked-rides') {
-      navigate('/booked-rides');
-    } else if (section === 'confirmed-rides') {
-      navigate('/confirmed-rides');
-    } else if (section === 'dashboard') {
+    if (section === 'dashboard') {
       navigate('/');
     } else {
       // For other sections, just update the URL without parameters
@@ -140,19 +129,13 @@ const Index = () => {
     }
     
     // Handle direct URL navigation
-    if (path === '/booked-rides') {
-      setActiveSection('booked-rides');
-    } else if (path === '/confirmed-rides') {
-      setActiveSection('confirmed-rides');
-    } else {
-      const match = path.match(/\/admin\/category-assignment\/(\w+)\/([a-f0-9]+)/);
-      if (match) {
-        const [, categoryType, categoryId] = match;
-        fetchCategoryAndSet(categoryType, categoryId);
-        setActiveSection('category-assignment');
-      } else if (!activeSection) {
-        setActiveSection("dashboard");
-      }
+    const match = path.match(/\/admin\/category-assignment\/(\w+)\/([a-f0-9]+)/);
+    if (match) {
+      const [, categoryType, categoryId] = match;
+      fetchCategoryAndSet(categoryType, categoryId);
+      setActiveSection('category-assignment');
+    } else if (!activeSection) {
+      setActiveSection("dashboard");
     }
   }, [location.pathname, location.search]);
 
@@ -256,83 +239,6 @@ const Index = () => {
             onNavigateToDetail={(rideId) => setSelectedRideId(rideId)}
             onNavigateToRiderDetail={(riderId) => setSelectedRiderId(riderId)}
             onNavigateToDriverDetail={(driverId) => setSelectedDriverId(driverId)}
-          />
-        );
-      case "booked-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <BookedRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "confirmed-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <ConfirmedRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "ongoing-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <OngoingRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "completed-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <CompletedRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "cancelled-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <CancelledRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "extended-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <ExtendedRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "reached-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <ReachedRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
           />
         );
       case "category":

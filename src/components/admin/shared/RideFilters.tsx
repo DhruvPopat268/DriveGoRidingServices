@@ -11,7 +11,8 @@ interface Category {
 }
 
 interface SubCategory {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   categoryId: string;
 }
@@ -41,7 +42,21 @@ interface RideFiltersProps {
   setFilterRider: (value: string) => void;
   filterDriver: string;
   setFilterDriver: (value: string) => void;
+  filterStatus?: string;
+  setFilterStatus?: (value: string) => void;
+  statusCounts?: Record<string, number>;
 }
+
+const STATUS_OPTIONS = [
+  { value: 'all',       label: 'All Statuses' },
+  { value: 'BOOKED',    label: 'Booked' },
+  { value: 'CONFIRMED', label: 'Confirmed' },
+  { value: 'ONGOING',   label: 'Ongoing' },
+  { value: 'REACHED',   label: 'Reached' },
+  { value: 'EXTENDED',  label: 'Extended' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+];
 
 export const RideFilters = ({
   searchQuery,
@@ -62,11 +77,13 @@ export const RideFilters = ({
   setFilterRider,
   filterDriver,
   setFilterDriver,
+  filterStatus = 'all',
+  setFilterStatus,
+  statusCounts = {},
 }: RideFiltersProps) => {
   const [riderSearch, setRiderSearch] = useState('');
   const [driverSearch, setDriverSearch] = useState('');
 
-  // Fetch categories
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
@@ -75,7 +92,6 @@ export const RideFilters = ({
     },
   });
 
-  // Fetch cities
   const { data: cities = [] } = useQuery({
     queryKey: ["cities"],
     queryFn: async () => {
@@ -84,7 +100,6 @@ export const RideFilters = ({
     },
   });
 
-  // Fetch riders for dropdown
   const { data: riders = [] } = useQuery<DropdownPerson[]>({
     queryKey: ["riders-list", riderSearch],
     queryFn: async () => {
@@ -94,7 +109,6 @@ export const RideFilters = ({
     },
   });
 
-  // Fetch drivers for dropdown
   const { data: drivers = [] } = useQuery<DropdownPerson[]>({
     queryKey: ["drivers-list", driverSearch],
     queryFn: async () => {
@@ -104,21 +118,24 @@ export const RideFilters = ({
     },
   });
 
+  const totalCount = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
   const hasActiveFilters =
     (filterCategory && filterCategory !== 'all') ||
     (filterSubcategory && filterSubcategory !== 'all') ||
     (filterCity && filterCity !== 'all') ||
     (filterRider && filterRider !== 'all') ||
     (filterDriver && filterDriver !== 'all') ||
+    (filterStatus && filterStatus !== 'all') ||
     searchQuery || dateFilter || dateRange.from || dateRange.to;
 
   return (
     <div className="mb-6 p-4 rounded-lg">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        {/* Row 1 */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Search
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Search</label>
           <input
             type="text"
             placeholder="Search..."
@@ -129,75 +146,53 @@ export const RideFilters = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Category
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
           <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {categories.map((cat: Category) => (
-                <SelectItem key={cat._id} value={cat._id}>
-                  {cat.name}
-                </SelectItem>
+                <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Subcategory
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Subcategory</label>
           <Select
             value={filterSubcategory}
             onValueChange={setFilterSubcategory}
             disabled={!filterCategory || filterCategory === 'all'}
           >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Subcategories</SelectItem>
               {filterSubcategoriesForFilter.map((sub: SubCategory) => (
-                <SelectItem key={sub._id} value={sub._id}>
-                  {sub.name}
-                </SelectItem>
+                <SelectItem key={sub._id || sub.id} value={sub._id || sub.id}>{sub.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            City
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">City</label>
           <Select value={filterCity} onValueChange={setFilterCity}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Cities</SelectItem>
               {cities.map((city: any) => (
-                <SelectItem key={city._id} value={city.name}>
-                  {city.name}
-                </SelectItem>
+                <SelectItem key={city._id} value={city.name}>{city.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Rider Filter */}
+        {/* Row 2 */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Rider
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Rider</label>
           <Select value={filterRider} onValueChange={setFilterRider}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Riders" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All Riders" /></SelectTrigger>
             <SelectContent>
               <div className="p-2">
                 <input
@@ -221,15 +216,10 @@ export const RideFilters = ({
           </Select>
         </div>
 
-        {/* Partner (Driver) Filter */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Partner
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Partner</label>
           <Select value={filterDriver} onValueChange={setFilterDriver}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="All Partners" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All Partners" /></SelectTrigger>
             <SelectContent>
               <div className="p-2">
                 <input
@@ -254,9 +244,7 @@ export const RideFilters = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            From Date
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">From Date</label>
           <input
             type="date"
             value={dateRange.from}
@@ -266,9 +254,7 @@ export const RideFilters = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            To Date
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">To Date</label>
           <input
             type="date"
             value={dateRange.to}
@@ -276,6 +262,29 @@ export const RideFilters = ({
             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
           />
         </div>
+
+        {/* Status Filter — after To Date */}
+        {setFilterStatus && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    <div className="flex items-center justify-between w-full gap-4">
+                      <span>{label}</span>
+                      <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {value === 'all' ? totalCount : (statusCounts[value] ?? 0)}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
       </div>
 
       <div className="flex items-center justify-end space-x-2 mt-3">

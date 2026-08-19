@@ -24,6 +24,9 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
   const [dateFilter, setDateFilter] = useState('');
   const [riderStats, setRiderStats] = useState<Record<string, { completed: number; cancelled: number }>>({});
   const [driverStats, setDriverStats] = useState<Record<string, { completed: number; cancelled: number }>>({}); 
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [appliedFilterStatus, setAppliedFilterStatus] = useState('all');
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,11 +76,37 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
   const [rescheduling, setRescheduling] = useState(false);
   
   // Filter subcategories based on selected category
+  const [subcategories, setSubcategories] = useState([]);
   const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState([]);
+
+  // Fetch all subcategories once on mount
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+        setSubcategories(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch subcategories:', err);
+      }
+    };
+    fetchSubcategories();
+  }, []);
+
+  // Populate subcategory filter options when category changes
+  useEffect(() => {
+    if (filterCategory && filterCategory !== 'all') {
+      const filtered = subcategories.filter((sub: any) => sub.categoryId === filterCategory);
+      setFilterSubcategoriesForFilter(filtered);
+      setFilterSubcategory('all');
+    } else {
+      setFilterSubcategoriesForFilter([]);
+      setFilterSubcategory('all');
+    }
+  }, [filterCategory, subcategories]);
 
   useEffect(() => {
     fetchRides();
-  }, [currentPage, recordsPerPage, dateFilter, appliedSearchQuery, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedDateRange, appliedFilterRider, appliedFilterDriver]);
+  }, [currentPage, recordsPerPage, dateFilter, appliedSearchQuery, appliedFilterCategory, appliedFilterSubcategory, appliedFilterCity, appliedDateRange, appliedFilterRider, appliedFilterDriver, appliedFilterStatus]);
 
   const handleDateFilter = (filter) => {
     setDateFilter(filter);
@@ -96,6 +125,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
     setAppliedDateRange(dateRange);
     setAppliedFilterRider(filterRider);
     setAppliedFilterDriver(filterDriver);
+    setAppliedFilterStatus(filterStatus);
     setCurrentPage(1);
   };
 
@@ -108,6 +138,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
     setDateRange({ from: '', to: '' });
     setFilterRider('all');
     setFilterDriver('all');
+    setFilterStatus('all');
     setAppliedFilterCategory('all');
     setAppliedFilterSubcategory('all');
     setAppliedFilterCity('all');
@@ -115,6 +146,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
     setAppliedDateRange({ from: '', to: '' });
     setAppliedFilterRider('all');
     setAppliedFilterDriver('all');
+    setAppliedFilterStatus('all');
     setCurrentPage(1);
   };
 
@@ -141,7 +173,8 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
         ...(appliedFilterCity && appliedFilterCity !== 'all' && { city: appliedFilterCity }),
         ...(appliedSearchQuery && { search: appliedSearchQuery }),
         ...(appliedFilterRider && appliedFilterRider !== 'all' && { userId: appliedFilterRider }),
-        ...(appliedFilterDriver && appliedFilterDriver !== 'all' && { driverId: appliedFilterDriver })
+        ...(appliedFilterDriver && appliedFilterDriver !== 'all' && { driverId: appliedFilterDriver }),
+        ...(appliedFilterStatus && appliedFilterStatus !== 'all' && { status: appliedFilterStatus })
       });
       const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/rides?${params}`);
       const data = response.data;
@@ -150,6 +183,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
       setTotalRides(data.totalRides);
       setRiderStats(data.riderStats || {});
       setDriverStats(data.driverStats || {});
+      setStatusCounts(data.statusCounts || {});
     } catch (err) {
       setError(err.message);
     } finally {
@@ -366,7 +400,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
       )}
       
       <div className="flex flex-wrap justify-between items-center gap-2">
-        <h1 className="text-2xl font-bold text-black">All Rides</h1>
+        <h1 className="text-2xl font-bold text-black">Rides Management</h1>
         <div className="flex flex-wrap space-x-2 gap-2">
           <Button variant="outline" onClick={fetchRides}>
             Refresh
@@ -389,7 +423,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
       <Card className="bg-white border-gray-200">
         <CardHeader>
           <CardTitle className="text-black">
-            All Rides ({totalRides})
+            Rides ({totalRides})
           </CardTitle>
         </CardHeader>
         <div className="px-6">
@@ -413,6 +447,9 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
             setFilterRider={setFilterRider}
             filterDriver={filterDriver}
             setFilterDriver={setFilterDriver}
+            filterStatus={filterStatus}
+            setFilterStatus={setFilterStatus}
+            statusCounts={statusCounts}
           />
 
           <div className="flex items-center justify-end mb-4">

@@ -60,9 +60,14 @@ const getPaginatedRides = async (status = null, req) => {
   const search = req.query.search;
   const userId = req.query.userId;
   const driverId = req.query.driverId;
+  const statusFilter = req.query.status;
 
+  console.log("search", search)
   let query = {};
   if (status) query.status = status;
+
+  // If a specific status filter is passed from frontend (for all-rides page), override
+  if (statusFilter) query.status = statusFilter;
 
   // Date filtering
   if (dateFilter === 'today') {
@@ -114,26 +119,25 @@ const getPaginatedRides = async (status = null, req) => {
   // Search filtering
   if (search) {
     const searchConditions = [];
+    const escapedSearch = escapeRegex(search.trim());
 
-    // Check if search term is a number (for exact bookingId match only)
-    if (!isNaN(search) && search.trim() !== '') {
-      searchConditions.push({ bookingId: parseInt(search) });
-    } else {
-      // For non-numeric searches, search in text fields
-      const escapedSearch = escapeRegex(search);
-      searchConditions.push(
-        { 'riderInfo.riderName': { $regex: escapedSearch, $options: 'i' } },
-        { 'riderInfo.riderMobile': { $regex: escapedSearch, $options: 'i' } },
-        { 'driverInfo.driverName': { $regex: escapedSearch, $options: 'i' } },
-        { 'driverInfo.driverMobile': { $regex: escapedSearch, $options: 'i' } },
-        { 'staffInfo.staffName': { $regex: escapedSearch, $options: 'i' } },
-        { 'staffInfo.staffMobile': { $regex: escapedSearch, $options: 'i' } }
-      );
+    // Always search name and mobile fields
+    searchConditions.push(
+      { 'riderInfo.riderName': { $regex: escapedSearch, $options: 'i' } },
+      { 'riderInfo.riderMobile': { $regex: escapedSearch, $options: 'i' } },
+      { 'driverInfo.driverName': { $regex: escapedSearch, $options: 'i' } },
+      { 'driverInfo.driverMobile': { $regex: escapedSearch, $options: 'i' } }
+    );
 
-      // Also check if it's a valid ObjectId
-      if (mongoose.Types.ObjectId.isValid(search)) {
-        searchConditions.push({ _id: search });
-      }
+    // Also search bookingId if input is a number (short enough to be a booking ID, not a phone number)
+    const trimmed = search.trim();
+    if (!isNaN(trimmed) && trimmed !== '' && trimmed.length <= 7) {
+      searchConditions.push({ bookingId: parseInt(trimmed) });
+    }
+
+    // Also check if it's a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(trimmed)) {
+      searchConditions.push({ _id: trimmed });
     }
 
     query.$or = searchConditions;
@@ -171,35 +175,35 @@ const getPaginatedRides = async (status = null, req) => {
   const [riderAgg, driverAgg] = await Promise.all([
     riderIds.length > 0
       ? Ride.aggregate([
-          {
-            $match: {
-              riderId: { $in: riderIds.map(id => new mongoose.Types.ObjectId(id)) },
-              status: { $in: ['COMPLETED', 'CANCELLED'] }
-            }
-          },
-          {
-            $group: {
-              _id: { riderId: '$riderId', status: '$status' },
-              count: { $sum: 1 }
-            }
+        {
+          $match: {
+            riderId: { $in: riderIds.map(id => new mongoose.Types.ObjectId(id)) },
+            status: { $in: ['COMPLETED', 'CANCELLED'] }
           }
-        ])
+        },
+        {
+          $group: {
+            _id: { riderId: '$riderId', status: '$status' },
+            count: { $sum: 1 }
+          }
+        }
+      ])
       : [],
     driverIds.length > 0
       ? Ride.aggregate([
-          {
-            $match: {
-              driverId: { $in: driverIds.map(id => new mongoose.Types.ObjectId(id)) },
-              status: { $in: ['COMPLETED', 'CANCELLED'] }
-            }
-          },
-          {
-            $group: {
-              _id: { driverId: '$driverId', status: '$status' },
-              count: { $sum: 1 }
-            }
+        {
+          $match: {
+            driverId: { $in: driverIds.map(id => new mongoose.Types.ObjectId(id)) },
+            status: { $in: ['COMPLETED', 'CANCELLED'] }
           }
-        ])
+        },
+        {
+          $group: {
+            _id: { driverId: '$driverId', status: '$status' },
+            count: { $sum: 1 }
+          }
+        }
+      ])
       : []
   ]);
 
@@ -221,6 +225,27 @@ const getPaginatedRides = async (status = null, req) => {
     if (entry._id.status === 'CANCELLED') driverStats[id].cancelled = entry.count;
   }
 
+  // Aggregate status-wise counts using the same filter (without status constraint)
+  // Global status counts — always across ALL rides, no filters applied
+  const statusAgg = await Ride.aggregate([
+    { $group: { _id: '$status', count: { $sum: 1 } } }
+  ]);
+
+  const statusCounts = {
+    BOOKED: 0,
+    CONFIRMED: 0,
+    ONGOING: 0,
+    COMPLETED: 0,
+    CANCELLED: 0,
+    EXTENDED: 0,
+    REACHED: 0
+  };
+  for (const entry of statusAgg) {
+    if (entry._id in statusCounts) {
+      statusCounts[entry._id] = entry.count;
+    }
+  }
+
   return {
     page,
     limit,
@@ -228,7 +253,8 @@ const getPaginatedRides = async (status = null, req) => {
     totalPages: Math.ceil(totalRides / limit),
     data: ridesWithCity,
     riderStats,
-    driverStats
+    driverStats,
+    statusCounts
   };
 };
 
@@ -655,7 +681,7 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
     if (req.rider) {
       // User authentication - riderId from middleware
       riderId = req.rider.riderId;
-      
+
       riderData = await Rider.findById(riderId);
       if (!riderData) {
         return res.status(404).json({ success: false, message: 'Rider not found' });
@@ -1271,7 +1297,7 @@ router.get("/current/my-rides", authMiddleware, async (req, res) => {
     const { riderId } = req.rider;
 
     // Find only rides with status = "BOOKED" sorted by createdAt desc
-    const rides = await Ride.find({ riderId, status: { $in: ["BOOKED", "CONFIRMED" , "REACHED"] } }).sort({ createdAt: -1 });
+    const rides = await Ride.find({ riderId, status: { $in: ["BOOKED", "CONFIRMED", "REACHED"] } }).sort({ createdAt: -1 });
 
     if (!rides || rides.length === 0) {
       return res.status(200).json({ success: false, message: "No booked rides found" });
@@ -1428,14 +1454,14 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
         // We need to treat it as IST time, not UTC
         const rideDateTime = new Date(selectedDate);
         const [hours, minutes] = selectedTime.split(':');
-        
+
         // Set the time as IST (treat selectedTime as IST)
         rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
+
         // Get current time in IST
         const currentTimeUTC = new Date();
         const currentTimeIST = new Date(currentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
-        
+
         // Calculate buffer end time in IST
         const bufferEndTimeIST = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
 
@@ -1653,14 +1679,14 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
           // We need to treat it as IST time, not UTC
           const rideDateTime = new Date(selectedDate);
           const [hours, minutes] = selectedTime.split(':');
-          
+
           // Set the time as IST (treat selectedTime as IST)
           rideDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-          
+
           // Get current time in IST
           const currentTimeUTC = new Date();
           const currentTimeIST = new Date(currentTimeUTC.getTime() + (5.5 * 60 * 60 * 1000));
-          
+
           // Calculate buffer end time in IST
           const bufferEndTimeIST = new Date(rideDateTime.getTime() - (cancellationBufferTime * 60 * 1000));
 
@@ -4852,11 +4878,11 @@ router.post("/get-included-data", adminAuthMiddleware, async (req, res) => {
         ])
       ).values()
     ).sort((a, b) => {
-      const sortFieldA = formattedSubcategory === "oneway" 
-        ? parseInt(a.includedKm) 
+      const sortFieldA = formattedSubcategory === "oneway"
+        ? parseInt(a.includedKm)
         : parseInt(a.includedMinutes);
-      const sortFieldB = formattedSubcategory === "oneway" 
-        ? parseInt(b.includedKm) 
+      const sortFieldB = formattedSubcategory === "oneway"
+        ? parseInt(b.includedKm)
         : parseInt(b.includedMinutes);
       return sortFieldA - sortFieldB;
     });
@@ -4991,7 +5017,7 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
 
     // Format new usage to match existing format
     let formattedSelectedUsage;
-    
+
     // Check if existing format has specific patterns
     if (existingSelectedUsage) {
       // Check for different format patterns
@@ -5006,7 +5032,7 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         // Format: "10 Kms & 2 Hours"
         const parts = newSelectedUsage.toLowerCase().split('&').map(p => p.trim());
         let kmPart = '', hourPart = '';
-        
+
         parts.forEach(part => {
           if (part.includes('km')) {
             const km = part.match(/\d+/)?.[0] || '0';
@@ -5023,7 +5049,7 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         // Format: "10 Km & 120 Min"
         const parts = newSelectedUsage.toLowerCase().split('&').map(p => p.trim());
         let kmPart = '', minPart = '';
-        
+
         parts.forEach(part => {
           if (part.includes('km')) {
             const km = part.match(/\d+/)?.[0] || '0';
@@ -5045,7 +5071,7 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         // Extract minutes from input (could be "300min" or "0km & 300min")
         let minutes = 0;
         const lowerInput = newSelectedUsage.toLowerCase();
-        
+
         if (lowerInput.includes('&')) {
           // Format like "0km & 300min"
           const parts = lowerInput.split('&').map(p => p.trim());
@@ -5061,7 +5087,7 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
           // Just a number
           minutes = parseInt(newSelectedUsage.match(/\d+/)?.[0] || '0');
         }
-        
+
         const hours = Math.floor(minutes / 60);
         formattedSelectedUsage = `${hours} Hours`;
       } else if (hasOnlyMinutes) {
@@ -5115,7 +5141,7 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
 
     if (ride.paymentType === 'wallet') {
       const wallet = await Wallet.findOne({ riderId: ride.riderId });
-      
+
       if (wallet) {
         if (priceDifference > 0) {
           if (wallet.balance < priceDifference) {
@@ -5186,8 +5212,8 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         const message = priceDifference > 0
           ? `Your ride usage has been updated to ${formattedSelectedUsage}. Additional charge: ₹${priceDifference}`
           : priceDifference < 0
-          ? `Your ride usage has been updated to ${formattedSelectedUsage}. Refund: ₹${Math.abs(priceDifference)}`
-          : `Your ride usage has been updated to ${formattedSelectedUsage}`;
+            ? `Your ride usage has been updated to ${formattedSelectedUsage}. Refund: ₹${Math.abs(priceDifference)}`
+            : `Your ride usage has been updated to ${formattedSelectedUsage}`;
 
         await NotificationService.sendAndStoreRiderNotification(
           ride.riderId,
