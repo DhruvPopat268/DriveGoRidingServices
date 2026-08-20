@@ -1504,7 +1504,43 @@ router.post("/send-otp", async (req, res) => {
         name: "Driver"
       });
       await driver.save();
-    } else {
+    }
+
+    // 🔒 Block deleted drivers
+    if (driver.status === "deleted") {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been deleted. Please contact support for assistance."
+      });
+    }
+
+    // 🔒 Block suspended drivers (check active suspension window)
+    if (driver.status === "Suspended") {
+      const suspendRecord = await DriverSuspend.findOne({ drivers: driver._id }).sort({ createdAt: -1 });
+
+      if (suspendRecord) {
+        const now = new Date();
+        const suspendFrom = new Date(suspendRecord.suspendFrom);
+        const suspendTo = new Date(suspendRecord.suspendTo);
+
+        if (now >= suspendFrom && now <= suspendTo) {
+          return res.status(403).json({
+            success: false,
+            message: `Your account is suspended from ${suspendFrom.toLocaleDateString('en-IN')} to ${suspendTo.toLocaleDateString('en-IN')}. Reason: ${suspendRecord.description}`,
+            suspendFrom,
+            suspendTo,
+            reason: suspendRecord.description
+          });
+        } else {
+          // Suspension period has passed or not started — restore to Approved
+          driver.status = "Approved";
+          await driver.save();
+        }
+      } else {
+        // No suspend record found — restore to Approved
+        driver.status = "Approved";
+        await driver.save();
+      }
     }
 
     const driverName = driver.name || "Driver";

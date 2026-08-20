@@ -55,6 +55,16 @@ const menuItems = [
     ]
   },
   {
+    icon: UserCheck,
+    label: "Drivers Management",
+    key: "drivers-management",
+    isDropdown: true,
+    subItems: [
+      { icon: Users, label: "Drivers", key: "drivers-all" },
+      { icon: Ban, label: "Suspend Driver", key: "suspend-driver" }
+    ]
+  },
+  {
     icon: MapPin,
     label: "State and City Management",
     key: "location-management",
@@ -115,23 +125,6 @@ const menuItems = [
     ]
   },
   { icon: Clock, label: "Peak and Night Charges Management", key: "peakhours" },
-  {
-    icon: UserCheck,
-    label: "Drivers Registration Management",
-    key: "drivers-management",
-    isDropdown: true,
-    subItems: [
-      { icon: Users, label: "All Drivers", key: "drivers-all" },
-      { icon: Users, label: "OnReview Registration Requests", key: "drivers-onreview" },
-      { icon: Clock, label: "Pending Registration Requests", key: "drivers-pending" },
-      { icon: CheckCircle, label: "Approved Registration Requests", key: "drivers-approved" },
-      { icon: Wallet, label: "Pending For Payment Requests", key: "drivers-pending-payment" },
-      { icon: XCircle, label: "Rejected Registration Requests", key: "drivers-rejected" },
-      { icon: Ban, label: "Deleted Drivers", key: "drivers-deleted" },
-      { icon: Ban, label: "Suspended Drivers", key: "drivers-suspended" },
-      { icon: Ban, label: "Suspend Driver", key: "suspend-driver" }
-    ]
-  },
   { icon: BookOpen, label: "T & C", key: "t&c" },
 
   { icon: Gift, label: "Refer Earn", key: "UserReferearn" },

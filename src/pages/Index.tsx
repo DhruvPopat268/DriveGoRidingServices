@@ -42,13 +42,7 @@ import ParcelVehicleTypePage from "@/components/admin/pages/ParcelVehicleTypePag
 import { ParcelVehicleManagementPage } from "@/components/admin/pages/ParcelVehicleManagementPage";
 import { ParcelRideCostPage } from "@/components/admin/pages/ParcelRideCostPage";
 import { DriverSubscriptionPage } from "@/components/admin/pages/DriverSubscriptionPage";
-import { DriversOnReviewPage } from "@/components/admin/pages/DriversOnReviewPage";
-import { DriversPendingPage } from "@/components/admin/pages/DriversPendingPage";
-import { DriversApprovedPage } from "@/components/admin/pages/DriversApprovedPage";
 import { AllDriversPage } from "@/components/admin/pages/AllDriversPage";
-import { DriversPendingForPaymentPage } from "@/components/admin/pages/DriversPendingForPaymentPage";
-import { DriversRejectedPage } from "@/components/admin/pages/DriversRejectedPage";
-import { DriversDeletedPage } from "@/components/admin/pages/DriversDeletedPage";
 import { DriverDetailPage } from "@/components/admin/pages/DriverDetailPage";
 import { DriverOnlineLogsPage } from "@/components/admin/pages/DriverOnlineLogsPage";
 import { DriverTransactionsPage } from "@/components/admin/pages/DriverTransactionsPage";
@@ -69,7 +63,6 @@ import UserRatingsPage from "@/components/admin/pages/UserRatingsPage";
 import DriverRatingsPage from "@/components/admin/pages/DriverRatingsPage";
 import DriverIncentivePage from "@/components/admin/pages/DriverIncentivePage";
 import SuspendDriverPage from "@/components/admin/pages/SuspendDriverPage";
-import SuspendedDriversPage from "@/components/admin/pages/SuspendedDriversPage";
 import { UsersPage } from "@/components/admin/pages/UsersPage";
 import { RiderDetailPage } from "@/components/admin/pages/RiderDetailPage";
 import PendingVehiclesPage from "@/components/admin/pages/PendingVehiclesPage";
@@ -309,6 +302,11 @@ const Index = () => {
             rideId={selectedRideId} 
             onBack={() => setSelectedRideId(null)} 
           />
+        ) : selectedDriverLogsId ? (
+          <DriverOnlineLogsPage
+            driverId={selectedDriverLogsId}
+            onBack={() => setSelectedDriverLogsId(null)}
+          />
         ) : selectedDriverId ? (
           <DriverDetailPage 
             driverId={selectedDriverId} 
@@ -317,132 +315,8 @@ const Index = () => {
           />
         ) : (
           <AllDriversPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
-          />
-        );
-      case "drivers-onreview":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <DriversOnReviewPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
-          />
-        );
-      case "drivers-pending":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <DriversPendingPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
-          />
-        );
-      case "drivers-approved":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverLogsId ? (
-          <DriverOnlineLogsPage 
-            driverId={selectedDriverLogsId} 
-            onBack={() => setSelectedDriverLogsId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <DriversApprovedPage 
             onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)}
-            onNavigateToLogs={(driverId) => setSelectedDriverLogsId(driverId)} 
-          />
-        );
-      case "drivers-pending-payment":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <DriversPendingForPaymentPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
-          />
-        );
-      case "drivers-rejected":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <DriversRejectedPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
-          />
-        );
-      case "drivers-deleted":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <DriversDeletedPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
-          />
-        );
-      case "drivers-suspended":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <SuspendedDriversPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)} 
+            onNavigateToLogs={(driverId) => setSelectedDriverLogsId(driverId)}
           />
         );
       case "pending-withdrawals":

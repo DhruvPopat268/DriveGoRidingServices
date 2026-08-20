@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const Driver = require('../DriverModel/DriverModel');
+const Ride = require('../models/Ride');
+const DriverSuspend = require('../models/DriverSuspend');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // GET /api/admin/all-drivers
-// Returns all drivers with pagination, search, and status filter
+// Returns all drivers with pagination, search, category, subcategory, ownership, status filters
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
     const {
@@ -12,7 +14,9 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
       limit = 10,
       search = '',
       status = '',
-      category = ''
+      category = '',
+      subcategoryId = '',
+      ownership = ''
     } = req.query;
 
     const pageNum = parseInt(page);
@@ -27,7 +31,15 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
     }
 
     if (category) {
-      filter['selectedCategory.name'] = category;
+      filter['personalInformation.category'] = category;
+    }
+
+    if (subcategoryId) {
+      filter['personalInformation.subCategory'] = subcategoryId;
+    }
+
+    if (ownership) {
+      filter.ownership = ownership;
     }
 
     if (search) {
@@ -42,8 +54,10 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
     const [drivers, totalDrivers] = await Promise.all([
       Driver.find(filter)
         .select(
-          'mobile uniqueId selectedCategory ownership personalInformation.fullName personalInformation.email personalInformation.passportPhoto status isOnline rideStatus ratings currentPlan approvedDate createdAt'
+          'mobile uniqueId selectedCategory ownership personalInformation.fullName personalInformation.email personalInformation.passportPhoto personalInformation.category personalInformation.subCategory status isOnline rideStatus ratings currentPlan approvedDate rejectedDate deletedDate createdAt'
         )
+        .populate('personalInformation.category', 'name')
+        .populate('personalInformation.subCategory', 'name')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum)
@@ -51,10 +65,38 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
       Driver.countDocuments(filter)
     ]);
 
+    // Attach completed rides count and status-relevant date for each driver
+    const driversWithStats = await Promise.all(drivers.map(async (driver) => {
+      const completedRides = await Ride.countDocuments({ driverId: driver._id, status: 'COMPLETED' });
+
+      let statusDate = null;
+      switch (driver.status) {
+        case 'Approved':
+          statusDate = driver.approvedDate || null;
+          break;
+        case 'Rejected':
+          statusDate = driver.rejectedDate || null;
+          break;
+        case 'deleted':
+          statusDate = driver.deletedDate || null;
+          break;
+        case 'Suspended': {
+          const suspendRecord = await DriverSuspend.findOne({ drivers: driver._id }).sort({ createdAt: -1 }).lean();
+          statusDate = suspendRecord?.suspendedAt || null;
+          break;
+        }
+        default:
+          statusDate = null;
+      }
+
+      return { ...driver, completedRides, statusDate };
+    }));
+
     res.json({
       success: true,
-      data: drivers,
+      data: driversWithStats,
       totalDrivers,
+      totalRecords: totalDrivers,
       totalPages: Math.ceil(totalDrivers / limitNum),
       currentPage: pageNum
     });
