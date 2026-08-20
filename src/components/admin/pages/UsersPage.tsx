@@ -28,8 +28,14 @@ interface User {
   ratings: {
     avgRating: number;
   };
+  rideStats: {
+    completedRides: number;
+    cancelledRides: number;
+    totalRides: number;
+  };
   createdAt: string;
   updatedAt: string;
+  lastActiveAt: string | null;
 }
 
 interface UsersPageProps {
@@ -124,20 +130,23 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    return new Date(dateString).toLocaleString('en-IN', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     });
   };
 
   const getProfileStatus = (user: User) => {
-    const isComplete = user.name && user.name.trim() !== '' && user.gender && user.gender.trim() !== '';
+    const isComplete = user.name && user.name.trim() !== '';
     return isComplete ? 'Complete' : 'Incomplete';
   };
 
   const getProfileStatusColor = (user: User) => {
-    const isComplete = user.name && user.name.trim() !== '' && user.gender && user.gender.trim() !== '';
+    const isComplete = user.name && user.name.trim() !== '';
     return isComplete ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
   };
 
@@ -264,6 +273,10 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
                     <TableHead>Contact</TableHead>
                     <TableHead>Profile Status</TableHead>
                     <TableHead>Rating</TableHead>
+                    <TableHead>Completed Rides</TableHead>
+                    <TableHead>Cancelled Rides</TableHead>
+                    <TableHead>Total Rides</TableHead>
+                    <TableHead>Last Active</TableHead>
                     <TableHead>Joined Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -308,6 +321,25 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-500 mr-1" />
                           <span>{user.ratings?.avgRating?.toFixed(1) || '0.0'}</span>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <span className="font-medium text-green-600">{user.rideStats?.completedRides ?? 0}</span>
+                      </TableCell>
+
+                      <TableCell>
+                        <span className="font-medium text-red-500">{user.rideStats?.cancelledRides ?? 0}</span>
+                      </TableCell>
+
+                      <TableCell>
+                        <span className="font-medium">{user.rideStats?.totalRides ?? 0}</span>
+                      </TableCell>
+                      
+                      <TableCell>
+                        <div className="flex items-center text-sm">
+                          <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+                          {user.lastActiveAt ? formatDate(user.lastActiveAt) : <span className="text-muted-foreground">Never</span>}
                         </div>
                       </TableCell>
                       

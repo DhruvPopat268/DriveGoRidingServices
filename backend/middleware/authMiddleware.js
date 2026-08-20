@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const Session = require("../models/Session"); // adjust path as needed
+const Rider = require("../models/Rider");
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -31,6 +32,9 @@ const authMiddleware = async (req, res, next) => {
     if (!isValidSession) {
       return res.status(401).json({ success: false, message: "Session expired or not found" });
     }
+
+    // ✅ Update lastActiveAt for the rider (fire-and-forget, don't block the request)
+    Rider.findByIdAndUpdate(decoded.riderId, { lastActiveAt: new Date() }).catch(() => {});
 
     // ✅ Attach user info to request object
     req.rider = decoded; // contains { riderId, mobile }

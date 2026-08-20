@@ -55,7 +55,10 @@ const riderSchema = new mongoose.Schema(
     ratings: {
       ratingHistory: [{ type: Number }],
       avgRating: { type: Number, default: 0 }
-    }
+    },
+
+    // 🔹 Last active tracking
+    lastActiveAt: { type: Date, default: null }
   },
   { timestamps: true }
 );

@@ -15,6 +15,7 @@ const fs = require('fs');
 const AuthMiddleware = require("../middleware/authMiddleware");
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 const axios = require("axios");
+const Ride = require("../models/Ride");
 
 // WhatsApp API URL constant
 const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
@@ -280,13 +281,23 @@ router.get("/completeProfile", adminAuthMiddleware, async (req, res) => {
       .limit(limit);
 
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
-      const wallet = await Wallet.findOne({ riderId: rider._id });
+      const [wallet, completedRides, cancelledRides, totalRides] = await Promise.all([
+        Wallet.findOne({ riderId: rider._id }),
+        Ride.countDocuments({ riderId: rider._id, status: "COMPLETED" }),
+        Ride.countDocuments({ riderId: rider._id, status: "CANCELLED" }),
+        Ride.countDocuments({ riderId: rider._id })
+      ]);
       return {
         ...rider.toObject(),
         wallet: {
           totalDeposited: wallet?.totalDeposited || 0,
           totalSpent: wallet?.totalSpent || 0,
           balance: wallet?.balance || 0
+        },
+        rideStats: {
+          completedRides,
+          cancelledRides,
+          totalRides
         }
       };
     }));
@@ -314,7 +325,7 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
     const toDate = req.query.toDate;
 
     // Build search query
-    let searchQuery = { name: "", gender: "" };
+    let searchQuery = { name: "" };
 
     // Add date range filter
     if (fromDate || toDate) {
@@ -333,7 +344,6 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
       searchQuery = {
         $and: [
           { name: "" },
-          { gender: "" },
           {
             $or: [
               { mobile: { $regex: search, $options: 'i' } },
@@ -356,13 +366,23 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
       .limit(limit);
 
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
-      const wallet = await Wallet.findOne({ riderId: rider._id });
+      const [wallet, completedRides, cancelledRides, totalRides] = await Promise.all([
+        Wallet.findOne({ riderId: rider._id }),
+        Ride.countDocuments({ riderId: rider._id, status: "COMPLETED" }),
+        Ride.countDocuments({ riderId: rider._id, status: "CANCELLED" }),
+        Ride.countDocuments({ riderId: rider._id })
+      ]);
       return {
         ...rider.toObject(),
         wallet: {
           totalDeposited: wallet?.totalDeposited || 0,
           totalSpent: wallet?.totalSpent || 0,
           balance: wallet?.balance || 0
+        },
+        rideStats: {
+          completedRides,
+          cancelledRides,
+          totalRides
         }
       };
     }));
@@ -425,13 +445,23 @@ router.get("/all", adminAuthMiddleware, async (req, res) => {
       .limit(limit);
 
     const ridersWithWallet = await Promise.all(riders.map(async (rider) => {
-      const wallet = await Wallet.findOne({ riderId: rider._id });
+      const [wallet, completedRides, cancelledRides, totalRides] = await Promise.all([
+        Wallet.findOne({ riderId: rider._id }),
+        Ride.countDocuments({ riderId: rider._id, status: "COMPLETED" }),
+        Ride.countDocuments({ riderId: rider._id, status: "CANCELLED" }),
+        Ride.countDocuments({ riderId: rider._id })
+      ]);
       return {
         ...rider.toObject(),
         wallet: {
           totalDeposited: wallet?.totalDeposited || 0,
           totalSpent: wallet?.totalSpent || 0,
           balance: wallet?.balance || 0
+        },
+        rideStats: {
+          completedRides,
+          cancelledRides,
+          totalRides
         }
       };
     }));
