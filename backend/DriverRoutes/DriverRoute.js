@@ -3577,4 +3577,41 @@ router.post("/webhook", async (req, res) => {
 
 
 
+// Driver: Log a call attempt for a ride
+router.post("/log-call", DriverAuthMiddleware, async (req, res) => {
+  try {
+    const driverId = req.driver.driverId;
+    const { rideId } = req.body;
+
+    if (!rideId) {
+      return res.status(400).json({ success: false, message: "rideId is required" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ success: false, message: "Ride not found" });
+    }
+
+    if (!ride.driverId || ride.driverId.toString() !== driverId.toString()) {
+      return res.status(403).json({ success: false, message: "You are not assigned for this ride" });
+    }
+
+    ride.driverCallCount += 1;
+    ride.driverLastCallAt = new Date();
+    await ride.save();
+
+    res.json({
+      success: true,
+      message: "Call logged successfully",
+      data: {
+        rideId: ride._id,
+        driverCallCount: ride.driverCallCount,
+        driverLastCallAt: ride.driverLastCallAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
+  }
+});
+
 module.exports = router;

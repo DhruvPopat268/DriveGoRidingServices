@@ -475,7 +475,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
             <table className="border-collapse" style={{ minWidth: '1400px', width: '100%' }}>
               <thead>
                 <tr className="border-b border-gray-200">
-                  {['Ride ID','Rider Info','Route','Category','Service Type','Usage','Partner Details','Date & Time','Status','Actions'].map(col => (
+                  {['Ride ID','Rider Info','Route','Category','Service Type','Usage','Driver Details','Date & Time','Status','Actions'].map(col => (
                     <th key={col} className="text-left p-3 font-semibold text-gray-700 whitespace-nowrap" style={{ minWidth: '120px' }}>{col}</th>
                   ))}
                 </tr>
@@ -599,6 +599,8 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
                           )}
                           <div className="text-xs text-green-600">Completed - {driverStats[ride.driverId?.toString()]?.completed || 0}</div>
                           <div className="text-xs text-red-500">Cancelled - {driverStats[ride.driverId?.toString()]?.cancelled || 0}</div>
+                          <div className="text-xs text-blue-500">Call Count - {ride.driverCallCount || 0}</div>
+                          <div className="text-xs text-gray-500">Last Call - {ride.driverLastCallAt ? new Date(ride.driverLastCallAt).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A'}</div>
                         </div>
                       ) : (
                         <span className="text-xs text-gray-400">Not Assigned</span>

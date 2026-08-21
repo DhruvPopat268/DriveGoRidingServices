@@ -118,6 +118,9 @@ const rideSchema = new mongoose.Schema(
       },
     },
 
+    driverCallCount: { type: Number, default: 0 },
+    driverLastCallAt: { type: Date, default: null },
+
     isReferralEarningUsed: { type: Boolean, default: false },
     referralEarningUsedAmount: { type: Number, default: 0 },
 
