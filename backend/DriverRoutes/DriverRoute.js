@@ -3512,6 +3512,7 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
 router.post("/webhook", async (req, res) => {
   try {
     const webhookPayload = req.body;
+    console.log("Received Razorpay webhook:", webhookPayload);
     const receivedSignature = req.headers['x-razorpay-signature'];
 
     // Verify webhook signature
