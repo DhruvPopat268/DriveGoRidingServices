@@ -1,7 +1,7 @@
 // services/adminSessionService.js
 const AdminSession = require("../models/AdminSession");
 
-const MAX_SESSIONS = 1;
+const MAX_SESSIONS = 10;
 
 async function createAdminSession(email, token) {
   // Get all sessions for this admin, sorted oldest first

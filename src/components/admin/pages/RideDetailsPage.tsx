@@ -733,7 +733,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                         <div className="flex flex-wrap gap-2 mt-2">
                           {rideDetails.rideInfo.selectedDates.map((date, index) => (
                             <Badge key={index} variant="outline" className="bg-blue-50">
-                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </Badge>
                           ))}
                         </div>
@@ -746,7 +746,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                         <div className="flex flex-wrap gap-2 mt-2">
                           {rideDetails.rideInfo.completedDates.map((date, index) => (
                             <Badge key={index} variant="outline" className="bg-green-50 text-green-700">
-                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </Badge>
                           ))}
                         </div>
@@ -759,7 +759,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
                         <div className="flex flex-wrap gap-2 mt-2">
                           {rideDetails.rideInfo.remainingDates.map((date, index) => (
                             <Badge key={index} variant="outline" className="bg-yellow-50 text-yellow-700">
-                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                              {new Date(date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </Badge>
                           ))}
                         </div>
