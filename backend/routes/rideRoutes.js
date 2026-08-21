@@ -62,7 +62,6 @@ const getPaginatedRides = async (status = null, req) => {
   const driverId = req.query.driverId;
   const statusFilter = req.query.status;
 
-  console.log("search", search)
   let query = {};
   if (status) query.status = status;
 
@@ -358,7 +357,6 @@ router.get("/booking/:id", adminAuthMiddleware, async (req, res) => {
 
     res.json({ success: true, data: booking });
   } catch (error) {
-    console.error("Error fetching booking:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -415,7 +413,6 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
             const mobileStr = driver.mobile;
 
             if (!mobileStr) {
-              console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
               return;
             }
 
@@ -423,9 +420,6 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
               ? mobileStr
               : `91${mobileStr}`;
 
-            console.log("📤 Sending EXTRA CHARGES WhatsApp");
-            console.log("📄 Template:", "hire4drive_extra_charges_added");
-            console.log("📱 To:", toNumber);
 
             const payload = {
               messaging_product: "whatsapp",
@@ -445,24 +439,13 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
             });
 
             // ✅ SUCCESS
-            console.log("✅ WhatsApp EXTRA CHARGES SENT");
-            console.log("📨 Response:", response.data);
 
           } catch (whatsappError) {
 
-            console.log("❌ WhatsApp EXTRA CHARGES FAILED");
 
             if (whatsappError.response) {
-              console.log("🔴 Status:", whatsappError.response.status);
-              console.log("🔴 Error Data:", whatsappError.response.data);
-              console.log(
-                "🔴 Error Message:",
-                whatsappError.response?.data?.error?.message
-              );
             } else if (whatsappError.request) {
-              console.log("🟠 No response from WhatsApp API");
             } else {
-              console.log("⚠️ Error:", whatsappError.message);
             }
 
           }
@@ -470,7 +453,6 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
         }
 
       } catch (notifError) {
-        console.error("Error sending notification to driver:", notifError);
       }
 
     }
@@ -483,7 +465,6 @@ router.post("/admin/extra-charges", adminAuthMiddleware, async (req, res) => {
 
   } catch (error) {
 
-    console.error("Error adding admin extra charges:", error);
 
     res.status(500).json({
       message: "Server error",
@@ -560,7 +541,6 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
         });
       }
     } catch (walletError) {
-      console.error('Wallet balance check error:', walletError);
       return res.status(500).json({
         success: false,
         message: 'Failed to validate wallet balance'
@@ -617,10 +597,8 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
           updatedRide.rideInfo?.categoryId || null,
           rideId
         );
-        console.log('Rider notification sent for admin ride confirmation', rider.oneSignalPlayerId);
       }
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
     }
 
     // Emit socket event to remove ride from all drivers
@@ -630,7 +608,6 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
         rideId: rideId,
         driverId: driverId
       });
-      //console.log('🚗 Ride assigned event emitted:', rideId);
     }
 
     res.json({
@@ -638,7 +615,6 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
       ride: updatedRide,
     });
   } catch (error) {
-    console.error("Error confirming ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -778,7 +754,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
         return res.status(400).json({ message: "Invalid category" });
       }
     } catch (calcError) {
-      console.error('Calculation error:', calcError);
       return res.status(400).json({ message: calcError.message || "Failed to calculate ride cost" });
     }
 
@@ -800,7 +775,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       calculatedCharges.cancellationCharges
     //  - calculatedCharges.discount;
 
-    console.log("server charges", serverTotalPayable, "client charges", totalPayable)
     // ✅ VALIDATE AGAINST FRONTEND TOTAL (allow 2 rupee tolerance for rounding)
     const tolerance = 2;
     if (Math.abs(serverTotalPayable - totalPayable) > tolerance) {
@@ -877,7 +851,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
 
     // Convert selectedDate to Date object before saving
     let rideDate = selectedDate ? new Date(selectedDate) : null;
-    // console.log('📅 Ride date:', rideDate);
 
 
 
@@ -962,7 +935,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
           vehicleTypeName = car.vehicleType.name;
         }
       } catch (error) {
-        console.error('Error fetching cab vehicle type:', error);
       }
     } else if (categoryNameLower === 'parcel' && selectedCategoryId) {
       try {
@@ -972,7 +944,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
           vehicleTypeName = parcelVehicle.parcelVehicleType.name;
         }
       } catch (error) {
-        console.error('Error fetching parcel vehicle type:', error);
       }
     }
 
@@ -994,7 +965,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       }
     }
 
-    // console.log('📱 New ride booked:', newRide._id);
 
     // Emit socket event to drivers with EXTENDED rides only
     const io = req.app.get('io');
@@ -1084,11 +1054,9 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
         }
       }
 
-      console.log("waiting drivers", waitingDrivers)
 
       const waitingDriverIds = waitingDrivers.map(driver => driver._id.toString());
 
-      console.log(`✅ Found ${waitingDriverIds.length} drivers with WAITING status`);
 
       let sentCount = 0;
 
@@ -1104,7 +1072,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
 
       });
 
-      console.log(`🚗 Ride ${newRide._id} sent to ${sentCount} drivers via socket`);
 
 
       // ============================
@@ -1151,7 +1118,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
               }
             );
 
-            console.log(`📱 Push sent to ${playerIds.length} drivers`);
 
           }
 
@@ -1159,7 +1125,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
 
       } catch (pushError) {
 
-        console.error("❌ OneSignal push error:", pushError);
 
       }
 
@@ -1201,7 +1166,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
               ? mobileStr
               : `91${mobileStr}`;
 
-            console.log("📤 Sending WhatsApp to:", toNumber);
 
             const payload = {
               messaging_product: "whatsapp",
@@ -1232,25 +1196,17 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
             });
 
             // ✅ SUCCESS LOG
-            console.log("✅ WhatsApp API SUCCESS");
-            console.log("📨 Response:", response.data);
 
           } catch (error) {
 
             // ❌ FAILURE LOG
-            console.log("❌ WhatsApp API FAILED");
 
             if (error.response) {
               // API responded with error
-              console.log("🔴 Status:", error.response.status);
-              console.log("🔴 Error Data:", error.response.data);
             } else if (error.request) {
               // No response received
-              console.log("🟠 No response from WhatsApp API");
-              console.log("🟠 Request:", error.request);
             } else {
               // Other error
-              console.log("⚠️ Error:", error.message);
             }
           }
 
@@ -1258,7 +1214,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
 
       } catch (whatsappError) {
 
-        console.error("❌ WhatsApp bulk error:", whatsappError);
 
       }
 
@@ -1285,7 +1240,6 @@ router.post("/book", combinedAuthMiddleware, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Book ride error:", error);
     res.status(500).json({ message: "Server error", error });
   }
 });
@@ -1309,7 +1263,6 @@ router.get("/current/my-rides", authMiddleware, async (req, res) => {
       rides,
     });
   } catch (error) {
-    console.error("Error fetching booked rides:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1334,7 +1287,6 @@ router.get("/ongoing/my-rides", authMiddleware, async (req, res) => {
       rides,
     });
   } catch (error) {
-    console.error("Error fetching booked rides:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1358,7 +1310,6 @@ router.get("/past/my-rides", authMiddleware, async (req, res) => {
       rides,
     });
   } catch (error) {
-    console.error("Error fetching rides:", error.message);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -1380,7 +1331,6 @@ router.post("/bookingDetail", combinedAuthMiddleware, async (req, res) => {
 
     res.json({ success: true, data: ride });
   } catch (error) {
-    console.error("Error fetching booking:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -1479,7 +1429,6 @@ router.post("/booking/cancellation-charges", authMiddleware, async (req, res) =>
     });
 
   } catch (error) {
-    console.error("Error checking cancellation charges:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -1611,7 +1560,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               await rider.save();
             }
 
-            // console.log(`Deducted full cancellation fee: ${cancellationFee} from wallet`);
           } else {
             // Add transaction to wallet for partial deduction
             if (currentBalance > 0) {
@@ -1643,7 +1591,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
               await rider.save();
             }
 
-            // console.log(`Deducted ${currentBalance} from wallet, stored ${remainingCharges} as pending charges`);
           }
         } else {
           // No wallet found, store full amount in rider model
@@ -1655,7 +1602,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             await rider.save();
           }
 
-          //console.log(`No wallet found, stored ${cancellationFee} as pending charges`);
         }
       };
 
@@ -1707,7 +1653,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
 
     } catch (modelError) {
-      console.error('Error processing cancellation:', modelError);
     }
 
     // ✅ Now update the ride status to CANCELLED after successful processing
@@ -1768,10 +1713,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
 
             const apiUrl = WHATSAPP_API_URL;
 
-            console.log("📤 Sending CANCEL WhatsApp");
-            console.log("👤 Rider:", riderName);
-            console.log("🚗 Ride:", subcategoryName);
-            console.log("📱 To:", toNumber);
 
             const payload = {
               messaging_product: "whatsapp",
@@ -1800,24 +1741,13 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
             });
 
             // ✅ SUCCESS LOG
-            console.log("✅ WhatsApp CANCEL MESSAGE SENT");
-            console.log("📨 Response:", response.data);
 
           } catch (whatsappError) {
 
-            console.log("❌ WhatsApp CANCEL MESSAGE FAILED");
 
             if (whatsappError.response) {
-              console.log("🔴 Status:", whatsappError.response.status);
-              console.log("🔴 Error Data:", whatsappError.response.data);
-              console.log(
-                "🔴 Error Message:",
-                whatsappError.response?.data?.error?.message
-              );
             } else if (whatsappError.request) {
-              console.log("🟠 No response received from WhatsApp API");
             } else {
-              console.log("⚠️ Error:", whatsappError.message);
             }
 
           }
@@ -1825,7 +1755,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
         }
 
       } catch (notifError) {
-        console.error('Cancellation notification error:', notifError);
       }
     }
 
@@ -1834,7 +1763,6 @@ router.post("/booking/cancel", authMiddleware, async (req, res) => {
       booking: updatedBooking,
     });
   } catch (error) {
-    console.error("Error cancelling booking:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -1858,7 +1786,6 @@ router.post("/driver/ride/id", driverAuthMiddleware, async (req, res) => {
 
     res.json({ success: true, data: ride });
   } catch (error) {
-    console.error("Error fetching booking:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -1876,7 +1803,6 @@ router.get("/driver/info", driverAuthMiddleware, async (req, res) => {
 
     res.json({ success: true, data: driver });
   } catch (error) {
-    console.error("Get driver info error:", error);
     res.status(500).json({ success: false, message: "Server error", error });
   }
 });
@@ -1909,7 +1835,6 @@ router.get("/driver/rides/confirmed", driverAuthMiddleware, async (req, res) => 
       data: confirmedRides
     });
   } catch (error) {
-    console.error("Error fetching confirmed rides:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -1947,7 +1872,6 @@ router.get("/driver/rides/ongoing", driverAuthMiddleware, async (req, res) => {
       data: confirmedRides
     });
   } catch (error) {
-    console.error("Error fetching confirmed rides:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -1985,7 +1909,6 @@ router.get("/driver/rides/completed", driverAuthMiddleware, async (req, res) => 
       data: confirmedRides
     });
   } catch (error) {
-    console.error("Error fetching confirmed rides:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -2022,7 +1945,6 @@ router.get("/driver/rides/extended", driverAuthMiddleware, async (req, res) => {
       data: confirmedRides
     });
   } catch (error) {
-    console.error("Error fetching confirmed rides:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -2059,7 +1981,6 @@ router.get("/driver/rides/cancelled", driverAuthMiddleware, async (req, res) => 
       data: confirmedRides
     });
   } catch (error) {
-    console.error("Error fetching confirmed rides:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -2131,7 +2052,6 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     } catch (walletError) {
 
-      console.error('Wallet balance check error:', walletError);
 
       return res.status(500).json({
         success: false,
@@ -2226,11 +2146,6 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
             ? mobileStr
             : `91${mobileStr}`;
 
-          console.log("📤 Sending CONFIRMATION WhatsApp");
-          console.log("👤 Driver:", driverName);
-          console.log("📅 Date:", formattedDate);
-          console.log("⏰ Time:", formattedTime);
-          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2260,24 +2175,13 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
           });
 
           // ✅ SUCCESS LOG
-          console.log("✅ WhatsApp CONFIRMATION SENT");
-          console.log("📨 Response:", response.data);
 
         } catch (whatsappError) {
 
-          console.log("❌ WhatsApp CONFIRMATION FAILED");
 
           if (whatsappError.response) {
-            console.log("🔴 Status:", whatsappError.response.status);
-            console.log("🔴 Error Data:", whatsappError.response.data);
-            console.log(
-              "🔴 Error Message:",
-              whatsappError.response?.data?.error?.message
-            );
           } else if (whatsappError.request) {
-            console.log("🟠 No response from WhatsApp API");
           } else {
-            console.log("⚠️ Error:", whatsappError.message);
           }
 
         }
@@ -2286,7 +2190,6 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     } catch (notifError) {
 
-      console.error("Error sending rider notification:", notifError);
 
     }
 
@@ -2312,7 +2215,6 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
   } catch (error) {
 
-    console.error("Error confirming ride:", error);
 
     res.status(500).json({
       message: "Server error",
@@ -2469,9 +2371,6 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
             ? mobileStr
             : `91${mobileStr}`;
 
-          console.log("📤 Sending DRIVER REACHED WhatsApp");
-          console.log("👤 Driver:", driverName);
-          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2499,24 +2398,13 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
           });
 
           // ✅ SUCCESS
-          console.log("✅ WhatsApp DRIVER REACHED SENT");
-          console.log("📨 Response:", response.data);
 
         } catch (whatsappError) {
 
-          console.log("❌ WhatsApp DRIVER REACHED FAILED");
 
           if (whatsappError.response) {
-            console.log("🔴 Status:", whatsappError.response.status);
-            console.log("🔴 Error Data:", whatsappError.response.data);
-            console.log(
-              "🔴 Error Message:",
-              whatsappError.response?.data?.error?.message
-            );
           } else if (whatsappError.request) {
-            console.log("🟠 No response from WhatsApp API");
           } else {
-            console.log("⚠️ Error:", whatsappError.message);
           }
 
         }
@@ -2525,7 +2413,6 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
 
     } catch (notifError) {
 
-      console.error("Error sending rider notification:", notifError);
 
     }
 
@@ -2538,7 +2425,6 @@ router.post("/driver/reached", driverAuthMiddleware, async (req, res) => {
 
   } catch (error) {
 
-    console.error("Update ride status error:", error);
 
     res.status(500).json({
       success: false,
@@ -2642,7 +2528,6 @@ router.post("/driver/ongoing", driverAuthMiddleware, async (req, res) => {
       data: updatedRide
     });
   } catch (error) {
-    console.error("Error confirming ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -2796,7 +2681,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
           }
         }
       } catch (error) {
-        console.error('Error processing cancellation charges:', error);
       }
     }
 
@@ -2902,7 +2786,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
               vehicleTypeName = car.vehicleType.name;
             }
           } catch (error) {
-            console.error('Error fetching cab vehicle type:', error);
           }
         } else if (categoryNameLower === 'parcel' && currentRide.rideInfo.selectedCategoryId) {
           try {
@@ -2912,7 +2795,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
               vehicleTypeName = parcelVehicle.parcelVehicleType.name;
             }
           } catch (error) {
-            console.error('Error fetching parcel vehicle type:', error);
           }
         }
 
@@ -3035,7 +2917,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         }
 
       } catch (notifError) {
-        console.error('Error sending rider notification:', notifError);
       }
 
       // 🟢 WhatsApp Notification for FULL ride cancellation
@@ -3044,7 +2925,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         const driverName = driver.personalInformation?.fullName || "Driver";
 
         if (!riderMobile) {
-          console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
           return;
         }
 
@@ -3055,11 +2935,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         const rideDate = new Date(currentRide.rideInfo.selectedDate)
           .toLocaleDateString("en-GB");
 
-        console.log("📤 Sending FULL CANCEL WhatsApp");
-        console.log("📄 Template:", "hire4drive_ride_cancelled_full");
-        console.log("👤 Driver:", driverName);
-        console.log("📅 Ride Date:", rideDate);
-        console.log("📱 To:", toNumber);
 
         const payload = {
           messaging_product: "whatsapp",
@@ -3088,24 +2963,13 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         });
 
         // ✅ SUCCESS
-        console.log("✅ WhatsApp FULL CANCEL SENT");
-        console.log("📨 Response:", response.data);
 
       } catch (whatsappError) {
 
-        console.log("❌ WhatsApp FULL CANCEL FAILED");
 
         if (whatsappError.response) {
-          console.log("🔴 Status:", whatsappError.response.status);
-          console.log("🔴 Error Data:", whatsappError.response.data);
-          console.log(
-            "🔴 Error Message:",
-            whatsappError.response?.data?.error?.message
-          );
         } else if (whatsappError.request) {
-          console.log("🟠 No response from WhatsApp API");
         } else {
-          console.log("⚠️ Error:", whatsappError.message);
         }
 
       }
@@ -3230,7 +3094,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             vehicleTypeName = car.vehicleType.name;
           }
         } catch (error) {
-          console.error('Error fetching cab vehicle type:', error);
         }
       } else if (categoryNameLower === 'parcel' && currentRide.rideInfo.selectedCategoryId) {
         try {
@@ -3240,7 +3103,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
             vehicleTypeName = parcelVehicle.parcelVehicleType.name;
           }
         } catch (error) {
-          console.error('Error fetching parcel vehicle type:', error);
         }
       }
 
@@ -3370,7 +3232,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         });
       }
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
     }
 
     // 🟢 WhatsApp Notification for PARTIAL ride cancellation
@@ -3379,7 +3240,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       const driverName = driver.personalInformation?.fullName || "Driver";
 
       if (!riderMobile) {
-        console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
         return;
       }
 
@@ -3392,11 +3252,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
         return dateObj.toLocaleDateString("en-GB");
       }).join(", ");
 
-      console.log("📤 Sending PARTIAL CANCEL WhatsApp");
-      console.log("📄 Template:", "hire4drive_partial_ride_cancelled");
-      console.log("👤 Driver:", driverName);
-      console.log("📅 Dates:", formattedDates);
-      console.log("📱 To:", toNumber);
 
       const payload = {
         messaging_product: "whatsapp",
@@ -3425,24 +3280,13 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
       });
 
       // ✅ SUCCESS
-      console.log("✅ WhatsApp PARTIAL CANCEL SENT");
-      console.log("📨 Response:", response.data);
 
     } catch (whatsappError) {
 
-      console.log("❌ WhatsApp PARTIAL CANCEL FAILED");
 
       if (whatsappError.response) {
-        console.log("🔴 Status:", whatsappError.response.status);
-        console.log("🔴 Error Data:", whatsappError.response.data);
-        console.log(
-          "🔴 Error Message:",
-          whatsappError.response?.data?.error?.message
-        );
       } else if (whatsappError.request) {
-        console.log("🟠 No response from WhatsApp API");
       } else {
-        console.log("⚠️ Error:", whatsappError.message);
       }
 
     }
@@ -3455,7 +3299,6 @@ router.post("/driver/cancel", driverAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Cancel Ride Error:", error);
     return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 });
@@ -3493,7 +3336,6 @@ router.post("/admin/cancel", adminAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Admin cancel ride error:", error);
     res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 });
@@ -3564,7 +3406,6 @@ router.post("/admin/reschedule", adminAuthMiddleware, async (req, res) => {
           );
         }
       } catch (notifError) {
-        console.error('Error notifying driver:', notifError);
       }
     }
 
@@ -3584,7 +3425,6 @@ router.post("/admin/reschedule", adminAuthMiddleware, async (req, res) => {
         );
       }
     } catch (notifError) {
-      console.error('Error notifying rider:', notifError);
     }
 
     res.status(200).json({
@@ -3593,7 +3433,6 @@ router.post("/admin/reschedule", adminAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Admin reschedule error:', error);
     res.status(500).json({ success: false, message: 'Internal Server Error', error: error.message });
   }
 });
@@ -3672,7 +3511,6 @@ router.post("/admin/reassign-driver", adminAuthMiddleware, async (req, res) => {
         );
       }
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
     }
 
     res.status(200).json({
@@ -3682,7 +3520,6 @@ router.post("/admin/reassign-driver", adminAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Admin reassign driver error:", error);
     res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
   }
 });
@@ -3774,7 +3611,6 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
         );
       }
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
     }
 
     // Send notification to rider
@@ -3795,7 +3631,6 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
         );
       }
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
     }
 
 
@@ -3804,7 +3639,6 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       const riderMobile = ride.riderInfo?.riderMobile;
 
       if (!riderMobile) {
-        console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
         return;
       }
 
@@ -3812,10 +3646,6 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
         ? riderMobile
         : `91${riderMobile}`;
 
-      console.log("📤 Sending RIDE EXTENDED WhatsApp");
-      console.log("📄 Template:", "hire4drive_ride_extended");
-      console.log("👤 Driver:", driverName);
-      console.log("📱 To:", toNumber);
 
       const payload = {
         messaging_product: "whatsapp",
@@ -3843,24 +3673,13 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       });
 
       // ✅ SUCCESS
-      console.log("✅ WhatsApp RIDE EXTENDED SENT");
-      console.log("📨 Response:", response.data);
 
     } catch (whatsappError) {
 
-      console.log("❌ WhatsApp RIDE EXTENDED FAILED");
 
       if (whatsappError.response) {
-        console.log("🔴 Status:", whatsappError.response.status);
-        console.log("🔴 Error Data:", whatsappError.response.data);
-        console.log(
-          "🔴 Error Message:",
-          whatsappError.response?.data?.error?.message
-        );
       } else if (whatsappError.request) {
-        console.log("🟠 No response from WhatsApp API");
       } else {
-        console.log("⚠️ Error:", whatsappError.message);
       }
 
     }
@@ -3870,7 +3689,6 @@ router.post("/driver/extend", driverAuthMiddleware, async (req, res) => {
       ride: updatedRide,
     });
   } catch (error) {
-    console.error("Error extending ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -4220,7 +4038,6 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         );
       }
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
     }
 
     // 🟢 WhatsApp Notification (hire4drive_ride_completed)
@@ -4228,7 +4045,6 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       const riderMobile = updatedRide.riderInfo?.riderMobile;
 
       if (!riderMobile) {
-        console.log("⚠️ WhatsApp SKIPPED - Rider mobile not found");
         return;
       }
 
@@ -4236,10 +4052,6 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
         ? riderMobile
         : `91${riderMobile}`;
 
-      console.log("📤 Sending RIDE COMPLETED WhatsApp");
-      console.log("📄 Template:", "hire4drive_ride_completed");
-      console.log("👤 Driver:", driverName);
-      console.log("📱 To:", toNumber);
 
       const payload = {
         messaging_product: "whatsapp",
@@ -4267,24 +4079,13 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
       });
 
       // ✅ SUCCESS
-      console.log("✅ WhatsApp RIDE COMPLETED SENT");
-      console.log("📨 Response:", response.data);
 
     } catch (whatsappError) {
 
-      console.log("❌ WhatsApp RIDE COMPLETED FAILED");
 
       if (whatsappError.response) {
-        console.log("🔴 Status:", whatsappError.response.status);
-        console.log("🔴 Error Data:", whatsappError.response.data);
-        console.log(
-          "🔴 Error Message:",
-          whatsappError.response?.data?.error?.message
-        );
       } else if (whatsappError.request) {
-        console.log("🟠 No response from WhatsApp API");
       } else {
-        console.log("⚠️ Error:", whatsappError.message);
       }
 
     }
@@ -4295,7 +4096,6 @@ router.post("/driver/complete", driverAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error completing ride:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -4329,7 +4129,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     const { categoryId, categoryName, subcategoryId, subcategoryName, subSubcategoryId, ridseStartTime, selectedUsage, selectedCategoryId, } = ride.rideInfo;
 
-    // console.log("Ride info:", { categoryId, categoryName, subcategoryId, subcategoryName, ridseStartTime, selectedUsage, selectedCategoryId });
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
@@ -4372,13 +4171,9 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     // Validate inputs and calculate extraKm
     const safeTotalKm = Number(totalKm) || 0;
-    // console.log("safeTotalKm", safeTotalKm)
     const safeIncludedKm = Number(includedKm) || 0;
-    // console.log("safeIncludedKm", safeIncludedKm)
     let extraKm = Math.max(0, safeTotalKm - safeIncludedKm);
-    // console.log("extraKm", extraKm)
 
-    // console.log("extraKm", extraKm)
 
     let driverCharges = ride.rideInfo?.driverCharges || 0;
     let adminCharges = ride.rideInfo?.adminCharges || 0;
@@ -4389,7 +4184,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     let gstCharges = ride.rideInfo?.gstCharges || 0;
     let totalPayable = ride.totalPayable || 0;
 
-    // console.log("includedKm , includedMinutes", includedKm, includedMinutes)
 
     // Helper to convert "HH:MM:SS" string to minutes
     function timeToMinutes(timeStr) {
@@ -4406,10 +4200,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     let diffOfMinutes = endMinutes - startMinutes;
     if (diffOfMinutes < 0) diffOfMinutes += 24 * 60; // handle overnight rides
 
-    // console.log("included minutes", includedMinutes)
 
     const safeIncludedMinutes = Number(includedMinutes) || 0;
-    // console.log("safeIncludedMinutes", safeIncludedMinutes)
     let extraMinutes = 0
 
     // Calculate extra charges only if extraKm is provided
@@ -4516,7 +4308,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error counting extra charges:", error);
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -4619,12 +4410,10 @@ router.post("/driver/cancellation-info", driverAuthMiddleware, async (req, res) 
       });
 
     } catch (error) {
-      console.error('Error fetching cancellation details:', error);
       res.status(500).json({ message: "Error fetching cancellation details" });
     }
 
   } catch (error) {
-    console.error("Error getting cancellation info:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -4708,7 +4497,6 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error completing day:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -4788,7 +4576,6 @@ router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
       drivers
     });
   } catch (error) {
-    console.error("Error fetching eligible drivers:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -4890,7 +4677,6 @@ router.post("/get-included-data", adminAuthMiddleware, async (req, res) => {
     return res.status(200).json(uniqueRecords);
 
   } catch (error) {
-    console.error("Error fetching included data:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -4986,7 +4772,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         });
       }
     } catch (calcError) {
-      console.error('Calculation error:', calcError);
       return res.status(400).json({
         success: false,
         message: calcError.message || "Failed to calculate ride cost"
@@ -5012,8 +4797,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
 
     // Get existing format from database
     const existingSelectedUsage = ride.rideInfo.selectedUsage;
-    console.log('📋 Existing selectedUsage format:', existingSelectedUsage);
-    console.log('📥 New selectedUsage input:', newSelectedUsage);
 
     // Format new usage to match existing format
     let formattedSelectedUsage;
@@ -5028,7 +4811,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
       const hasOnlyMinutes = existingSelectedUsage.includes('Min') && !existingSelectedUsage.includes('Kms') && !existingSelectedUsage.includes('Km');
 
       if (hasKmsAndHours) {
-        console.log('🔍 Detected format: "X Kms & Y Hours"');
         // Format: "10 Kms & 2 Hours"
         const parts = newSelectedUsage.toLowerCase().split('&').map(p => p.trim());
         let kmPart = '', hourPart = '';
@@ -5045,7 +4827,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         });
         formattedSelectedUsage = `${kmPart} & ${hourPart}`;
       } else if (hasKmAndMin) {
-        console.log('🔍 Detected format: "X Km & Y Min"');
         // Format: "10 Km & 120 Min"
         const parts = newSelectedUsage.toLowerCase().split('&').map(p => p.trim());
         let kmPart = '', minPart = '';
@@ -5061,12 +4842,10 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         });
         formattedSelectedUsage = `${kmPart} & ${minPart}`;
       } else if (hasOnlyKms) {
-        console.log('🔍 Detected format: "X Kms"');
         // Format: "50 Kms"
         const km = newSelectedUsage.match(/\d+/)?.[0] || '0';
         formattedSelectedUsage = `${km} Kms`;
       } else if (hasOnlyHours) {
-        console.log('🔍 Detected format: "X Hours"');
         // Format: "2 Hours"
         // Extract minutes from input (could be "300min" or "0km & 300min")
         let minutes = 0;
@@ -5091,12 +4870,10 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         const hours = Math.floor(minutes / 60);
         formattedSelectedUsage = `${hours} Hours`;
       } else if (hasOnlyMinutes) {
-        console.log('🔍 Detected format: "X Min"');
         // Format: "120 Min"
         const min = newSelectedUsage.match(/\d+/)?.[0] || '0';
         formattedSelectedUsage = `${min} Min`;
       } else {
-        console.log('⚠️ Unknown format, using formatUsage function');
         // Fallback to formatUsage function
         formattedSelectedUsage = formatUsage(
           newSelectedUsage,
@@ -5106,7 +4883,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         );
       }
     } else {
-      console.log('⚠️ No existing format found, using formatUsage function');
       // No existing format, use formatUsage function
       formattedSelectedUsage = formatUsage(
         newSelectedUsage,
@@ -5116,7 +4892,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
       );
     }
 
-    console.log('✅ Converted format to match existing:', formattedSelectedUsage);
 
     const updatedRide = await Ride.findByIdAndUpdate(
       rideId,
@@ -5227,7 +5002,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         );
       }
     } catch (notifError) {
-      console.error('Error sending rider notification:', notifError);
     }
 
     try {
@@ -5249,7 +5023,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
         }
       }
     } catch (notifError) {
-      console.error('Error sending driver notification:', notifError);
     }
 
     res.status(200).json({
@@ -5277,7 +5050,6 @@ router.post("/update-selected-usage", adminAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Update selected usage error:", error);
     res.status(500).json({
       success: false,
       message: "Internal Server Error",

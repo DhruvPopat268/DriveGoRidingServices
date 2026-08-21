@@ -149,7 +149,6 @@ function getFieldByStep(step, category = "Driver") {
 //     });
 
 //   } catch (error) {
-//     console.error("Send OTP error:", error.message);
 //     res.status(500).json({ success: false, message: "Failed to generate OTP" });
 //   }
 // });
@@ -275,7 +274,6 @@ function getFieldByStep(step, category = "Driver") {
 //     res.json(response);
 
 //   } catch (error) {
-//     console.error("Verify OTP error:", error);
 //     res.status(500).json({
 //       success: false,
 //       message: "OTP verification failed",
@@ -418,7 +416,6 @@ router.post("/deleteAccount", async (req, res) => {
 
     res.json({ success: true, message: "Driver account deleted successfully" });
   } catch (error) {
-    console.error("Delete account error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -529,7 +526,6 @@ router.put("/assign-category", adminAuthMiddleware, async (req, res) => {
       updatedCount: driverIds.length
     });
   } catch (error) {
-    console.error("Assign category error:", error);
     res.status(500).json({ success: false, message: "Failed to assign categories" });
   }
 });
@@ -948,7 +944,6 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
         null
       );
     } catch (notifError) {
-      console.error("Driver approval notification error:", notifError);
     }
 
     // 🟢 Send WhatsApp Notification
@@ -956,7 +951,6 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
       const mobileStr = driver.mobile;
 
       if (!mobileStr) {
-        console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
         return;
       }
 
@@ -966,9 +960,6 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
 
       const apiUrl = WHATSAPP_API_URL;
 
-      console.log("📤 Sending DRIVER APPROVAL WhatsApp");
-      console.log("📄 Template:", "hire4drive_driver_registration_approved");
-      console.log("📱 To:", toNumber);
 
       const payload = {
         messaging_product: "whatsapp",
@@ -990,24 +981,13 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
       });
 
       // ✅ SUCCESS
-      console.log("✅ WhatsApp DRIVER APPROVAL SENT");
-      console.log("📨 Response:", response.data);
 
     } catch (whatsappError) {
 
-      console.log("❌ WhatsApp DRIVER APPROVAL FAILED");
 
       if (whatsappError.response) {
-        console.log("🔴 Status:", whatsappError.response.status);
-        console.log("🔴 Error Data:", whatsappError.response.data);
-        console.log(
-          "🔴 Error Message:",
-          whatsappError.response?.data?.error?.message
-        );
       } else if (whatsappError.request) {
-        console.log("🟠 No response from WhatsApp API");
       } else {
-        console.log("⚠️ Error:", whatsappError.message);
       }
 
     }
@@ -1018,7 +998,6 @@ router.post("/approve/:driverId", adminAuthMiddleware, async (req, res) => {
       driver: updatedDriver,
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       success: false,
       message: "Failed to approve driver",
@@ -1091,7 +1070,6 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
         null
       );
     } catch (notifError) {
-      console.error("Driver rejection notification error:", notifError);
     }
 
     // 🟢 WhatsApp Notification
@@ -1099,7 +1077,6 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
       const mobileStr = driver.mobile;
 
       if (!mobileStr) {
-        console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
         return;
       }
 
@@ -1109,9 +1086,6 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
 
       const apiUrl = WHATSAPP_API_URL;
 
-      console.log("📤 Sending DRIVER REJECTION WhatsApp");
-      console.log("📄 Template:", "hire4drive_driver_registration_rejected");
-      console.log("📱 To:", toNumber);
 
       const payload = {
         messaging_product: "whatsapp",
@@ -1133,24 +1107,13 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
       });
 
       // ✅ SUCCESS
-      console.log("✅ WhatsApp DRIVER REJECTION SENT");
-      console.log("📨 Response:", response.data);
 
     } catch (whatsappError) {
 
-      console.log("❌ WhatsApp DRIVER REJECTION FAILED");
 
       if (whatsappError.response) {
-        console.log("🔴 Status:", whatsappError.response.status);
-        console.log("🔴 Error Data:", whatsappError.response.data);
-        console.log(
-          "🔴 Error Message:",
-          whatsappError.response?.data?.error?.message
-        );
       } else if (whatsappError.request) {
-        console.log("🟠 No response from WhatsApp API");
       } else {
-        console.log("⚠️ Error:", whatsappError.message);
       }
 
     }
@@ -1162,7 +1125,6 @@ router.post("/reject/:driverId", adminAuthMiddleware, async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
     res.status(500).json({
       success: false,
       message: "Failed to reject driver"
@@ -1202,7 +1164,6 @@ router.get("/cancellation-credits", adminAuthMiddleware, async (req, res) => {
       currentPage: page
     });
   } catch (error) {
-    console.error('Cancellation credits API error:', error);
     res.status(500).json({ success: false, message: "Failed to fetch driver", error: error.message });
   }
 });
@@ -1373,7 +1334,6 @@ router.get("/filter-for-incentive", adminAuthMiddleware, async (req, res) => {
 
     res.json({ success: true, count: formattedDrivers.length, drivers: formattedDrivers });
   } catch (error) {
-    console.error("Filter drivers error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to filter drivers",
@@ -1477,12 +1437,10 @@ router.get("/:driverId", adminAuthMiddleware, async (req, res) => {
 
 router.post("/send-otp", async (req, res) => {
   try {
-    console.log("==== SEND OTP API HIT ====");
 
     const { mobile } = req.body;
 
     if (!mobile) {
-      console.log("❌ Mobile missing");
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
@@ -1587,7 +1545,6 @@ router.post("/send-otp", async (req, res) => {
       }
     };
 
-    console.log("📦 Payload:", JSON.stringify(payload, null, 2));
 
     const response = await axios.post(apiUrl, payload, {
       headers: {
@@ -1596,7 +1553,6 @@ router.post("/send-otp", async (req, res) => {
       }
     });
 
-    console.log("✅ WhatsApp API Response:", response.data);
 
     res.json({
       success: true,
@@ -1605,9 +1561,6 @@ router.post("/send-otp", async (req, res) => {
 
   } catch (error) {
 
-    console.log("❌ ERROR STATUS:", error.response?.status);
-    console.log("❌ ERROR DATA:", JSON.stringify(error.response?.data, null, 2));
-    console.log("❌ ERROR MESSAGE:", error.message);
 
     res.status(500).json({
       success: false,
@@ -1729,7 +1682,6 @@ router.post("/verify-otp", async (req, res) => {
     res.json(response);
 
   } catch (error) {
-    console.error("Verify OTP error:", error);
     res.status(500).json({
       success: false,
       message: "OTP verification failed",
@@ -1799,7 +1751,6 @@ router.get("/application/driverDeatils", DriverAuthMiddleware, async (req, res) 
 
     res.json(response);
   } catch (error) {
-    console.error("Driver details error:", error);
     res.status(500).json({ success: false, message: "Failed to get driver details" });
   }
 });
@@ -1890,7 +1841,6 @@ const processAllFiles = async (files) => {
         const url = await uploadToServerFast(file.buffer, filename, isImage);
         return { fieldname: file.fieldname, url, success: true };
       } catch (error) {
-        console.error(`❌ Upload failed for ${file.fieldname}:`, error.message);
         return {
           fieldname: file.fieldname,
           error: error.message,
@@ -1908,14 +1858,12 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
   const startTime = Date.now();
   let checkpointTime = startTime;
 
-  //console.log('req.files', req.files);
 
   const logTime = (label) => {
     const now = Date.now();
     const elapsed = now - checkpointTime;
     const total = now - startTime;
     timings[label] = { elapsed, total };
-    // console.log(`⏱️  [${label}]: ${elapsed}ms (Total: ${total}ms)`);
     checkpointTime = now;
   };
 
@@ -1930,7 +1878,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     try {
       data = JSON.parse(req.body.data || "{}");
     } catch (err) {
-      console.error("❌ JSON parse error:", err.message);
       return res.status(400).json({
         success: false,
         message: "Invalid JSON in data field",
@@ -1961,7 +1908,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     // logTime("VALIDATION");
 
     // 🚀 CRITICAL OPTIMIZATION: Parallel driver fetch + file upload (all at once)
-    // console.log(`📤 Starting parallel operations: DB fetch + ${req.files?.length || 0} file uploads`);
 
     // Always include all fields needed for progress evaluation
     const selectFields = "personalInformation drivingDetails ownership paymentAndSubscription languageSkillsAndReferences declaration status mobile currentPlan selectedCategory";
@@ -1972,10 +1918,8 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     ]);
 
     // logTime("PARALLEL_FETCH_AND_UPLOAD");
-    // console.log(`✅ Uploaded ${uploadResults.filter(r => r.success).length}/${uploadResults.length} files`);
 
     if (!driverData) {
-      console.error("❌ Driver not found:", mobile);
       return res.status(404).json({ message: "Driver not found" });
     }
 
@@ -2038,12 +1982,10 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
           };
         }
       } catch (error) {
-        console.error('Category lookup error:', error);
       }
     }
 
     // 🚀 Single atomic database update
-    // console.log(`💾 Updating database for step ${step}...`);
     const updatedDriver = await Driver.findOneAndUpdate(
       { mobile },
       { $set: updates },
@@ -2111,7 +2053,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
         await Driver.findByIdAndUpdate(updatedDriver._id, driverUpdates);
 
-        //console.log(`✅ Vehicle created for ${ownership} driver: ${savedVehicle._id}`);
       }
     }
 
@@ -2131,29 +2072,18 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
     const totalTime = Date.now() - startTime;
 
     // 🎯 Performance summary
-    // console.log("\n" + "=".repeat(50));
-    // console.log("📊 PERFORMANCE SUMMARY");
-    // console.log("=".repeat(50));
-    // console.log(`Total Time: ${totalTime}ms (${(totalTime/1000).toFixed(2)}s)`);
-    // console.log(`Step: ${step} | Mobile: ${mobile}`);
-    // console.log(`Files: ${req.files?.length || 0} uploaded`);
-    // console.log("\nBreakdown:");
     Object.entries(timings).forEach(([label, time]) => {
       const percentage = ((time.elapsed / totalTime) * 100).toFixed(1);
-      // console.log(`  ${label.padEnd(30)} ${time.elapsed}ms (${percentage}%)`);
     });
-    // console.log("=".repeat(50) + "\n");
 
     // Calculate next step properly
     let nextStep = null;
     if (progressResult.step === 0) {
       // All steps completed
       nextStep = 0;
-      //console.log(`✅ All steps completed for driver`);
     } else {
       // Return the current incomplete step as nextStep
       nextStep = progressResult.step;
-      //console.log(`🔄 Next incomplete step: ${nextStep}`);
     }
 
     res.json({
@@ -2174,8 +2104,6 @@ router.post("/update-step", DriverAuthMiddleware, upload.any(), async (req, res)
 
   } catch (error) {
     const errorTime = Date.now() - startTime;
-    console.error("❌ Update step error:", error);
-    console.error(`⏱️  Failed after ${errorTime}ms`);
 
     if (error.name === "ValidationError") {
       const validationErrors = {};
@@ -2274,7 +2202,6 @@ router.post("/driver/withdraw-request", DriverAuthMiddleware, async (req, res) =
       withdrawalRequest: withdrawal,
     });
   } catch (error) {
-    console.error("Withdrawal request error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -2305,7 +2232,6 @@ router.get("/admin/withdrawals/pending", adminAuthMiddleware, async (req, res) =
       currentPage: page
     });
   } catch (error) {
-    console.error('Fetch pending driver withdrawal requests error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch pending withdrawal requests' });
   }
 });
@@ -2334,7 +2260,6 @@ router.get("/admin/withdrawals/completed", adminAuthMiddleware, async (req, res)
       currentPage: page
     });
   } catch (error) {
-    console.error('Fetch completed driver withdrawal requests error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch completed withdrawal requests' });
   }
 });
@@ -2363,7 +2288,6 @@ router.get("/admin/withdrawals/rejected", adminAuthMiddleware, async (req, res) 
       currentPage: page
     });
   } catch (error) {
-    console.error('Fetch rejected driver withdrawal requests error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch rejected withdrawal requests' });
   }
 });
@@ -2424,7 +2348,6 @@ router.post("/admin/withdrawal/complete", adminAuthMiddleware, async (req, res) 
           const mobileStr = driver.mobile;
 
           if (!mobileStr) {
-            console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
             return;
           }
 
@@ -2434,10 +2357,6 @@ router.post("/admin/withdrawal/complete", adminAuthMiddleware, async (req, res) 
 
           const apiUrl = WHATSAPP_API_URL;
 
-          console.log("📤 Sending WITHDRAWAL APPROVED WhatsApp");
-          console.log("📄 Template:", "hire4drive_withdrawal_approved");
-          console.log("💰 Amount:", withdrawal.amount);
-          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2468,31 +2387,19 @@ router.post("/admin/withdrawal/complete", adminAuthMiddleware, async (req, res) 
           });
 
           // ✅ SUCCESS
-          console.log("✅ WhatsApp WITHDRAWAL APPROVED SENT");
-          console.log("📨 Response:", response.data);
 
         } catch (whatsappError) {
 
-          console.log("❌ WhatsApp WITHDRAWAL APPROVED FAILED");
 
           if (whatsappError.response) {
-            console.log("🔴 Status:", whatsappError.response.status);
-            console.log("🔴 Error Data:", whatsappError.response.data);
-            console.log(
-              "🔴 Error Message:",
-              whatsappError.response?.data?.error?.message
-            );
           } else if (whatsappError.request) {
-            console.log("🟠 No response from WhatsApp API");
           } else {
-            console.log("⚠️ Error:", whatsappError.message);
           }
 
         }
       }
 
     } catch (notifError) {
-      console.error("Withdrawal approval notification error:", notifError);
     }
 
     res.json({
@@ -2502,7 +2409,6 @@ router.post("/admin/withdrawal/complete", adminAuthMiddleware, async (req, res) 
     });
 
   } catch (error) {
-    console.error("Complete withdrawal error:", error);
 
     res.status(500).json({
       success: false,
@@ -2573,7 +2479,6 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
           const mobileStr = driver.mobile;
 
           if (!mobileStr) {
-            console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
             return;
           }
 
@@ -2583,10 +2488,6 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
 
           const apiUrl = WHATSAPP_API_URL;
 
-          console.log("📤 Sending WITHDRAWAL REJECTED WhatsApp");
-          console.log("📄 Template:", "hire4drive_withdrawal_rejected");
-          console.log("💰 Amount:", withdrawal.amount);
-          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -2617,31 +2518,19 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
           });
 
           // ✅ SUCCESS
-          console.log("✅ WhatsApp WITHDRAWAL REJECTED SENT");
-          console.log("📨 Response:", response.data);
 
         } catch (whatsappError) {
 
-          console.log("❌ WhatsApp WITHDRAWAL REJECTED FAILED");
 
           if (whatsappError.response) {
-            console.log("🔴 Status:", whatsappError.response.status);
-            console.log("🔴 Error Data:", whatsappError.response.data);
-            console.log(
-              "🔴 Error Message:",
-              whatsappError.response?.data?.error?.message
-            );
           } else if (whatsappError.request) {
-            console.log("🟠 No response from WhatsApp API");
           } else {
-            console.log("⚠️ Error:", whatsappError.message);
           }
 
         }
       }
 
     } catch (notifError) {
-      console.error("Withdrawal rejection notification error:", notifError);
     }
 
     res.json({
@@ -2651,7 +2540,6 @@ router.post("/admin/withdrawal/reject", adminAuthMiddleware, async (req, res) =>
     });
 
   } catch (error) {
-    console.error("Reject withdrawal error:", error);
 
     res.status(500).json({
       success: false,
@@ -2707,7 +2595,6 @@ router.delete("/delete-account", DriverAuthMiddleware, async (req, res) => {
       withdrawnAmount
     });
   } catch (error) {
-    console.error("Delete account error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -2737,7 +2624,6 @@ router.post("/admin/restore-driver/:driverId", adminAuthMiddleware, async (req, 
       driver
     });
   } catch (error) {
-    console.error("Restore driver error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -2766,7 +2652,6 @@ router.post("/admin/unsuspend-driver/:driverId", adminAuthMiddleware, async (req
       driver
     });
   } catch (error) {
-    console.error("Unsuspend driver error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -3049,14 +2934,12 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
     const { mobile } = req.body;
 
     if (!mobile) {
-      console.log("❌ Mobile missing");
       return res.status(400).json({ message: "Mobile number is required" });
     }
 
     const mobileStr = String(mobile).trim();
 
     if (!/^\d{10}$/.test(mobileStr) && !/^\+91\d{10}$/.test(mobileStr)) {
-      console.log("❌ Invalid mobile format:", mobileStr);
       return res.status(400).json({ message: "Invalid mobile number format" });
     }
 
@@ -3132,16 +3015,10 @@ router.post("/reference/send-otp", DriverAuthMiddleware, async (req, res) => {
 
   } catch (error) {
 
-    console.log("❌ Reference OTP API FAILED");
 
     if (error.response) {
-      console.log("🔴 Status:", error.response.status);
-      console.log("🔴 Error Data:", error.response.data);
-      console.log("🔴 Error Message:", error.response?.data?.error?.message);
     } else if (error.request) {
-      console.log("🟠 No response from WhatsApp API");
     } else {
-      console.log("⚠️ Error:", error.message);
     }
 
     return res.status(500).json({
@@ -3197,7 +3074,6 @@ router.post("/reference/verify-otp", DriverAuthMiddleware, async (req, res) => {
       mobile: mobileStr
     });
   } catch (error) {
-    console.error("Reference verify OTP error:", error);
     res.status(500).json({
       success: false,
       message: "OTP verification failed",
@@ -3263,7 +3139,6 @@ router.post("/admin/create-incentive", adminAuthMiddleware, async (req, res) => 
         await wallet.save();
         results.push({ driverId, success: true });
       } catch (error) {
-        console.error(`Error adding incentive for driver ${driverId}:`, error);
         results.push({ driverId, success: false, error: error.message });
       }
     }
@@ -3304,7 +3179,6 @@ router.post("/admin/create-incentive", adminAuthMiddleware, async (req, res) => 
       }
     });
   } catch (error) {
-    console.error("Create incentive error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 });
@@ -3401,7 +3275,6 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
             null
           );
         } catch (notifError) {
-          console.error("Suspension notification error:", notifError);
         }
 
         // 🟢 WhatsApp Notification
@@ -3409,7 +3282,6 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
           const mobileStr = driver.mobile;
 
           if (!mobileStr) {
-            console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
             return;
           }
 
@@ -3417,12 +3289,6 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
             ? mobileStr
             : `91${mobileStr}`;
 
-          console.log("📤 Sending ACCOUNT SUSPENDED WhatsApp");
-          console.log("📄 Template:", "hire4drive_account_suspended");
-          console.log("📅 From:", formattedFrom);
-          console.log("📅 To:", formattedTo);
-          console.log("📝 Description:", description?.trim());
-          console.log("📱 To:", toNumber);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -3452,24 +3318,13 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
           });
 
           // ✅ SUCCESS
-          console.log("✅ WhatsApp ACCOUNT SUSPENDED SENT");
-          console.log("📨 Response:", response.data);
 
         } catch (whatsappError) {
 
-          console.log("❌ WhatsApp ACCOUNT SUSPENDED FAILED");
 
           if (whatsappError.response) {
-            console.log("🔴 Status:", whatsappError.response.status);
-            console.log("🔴 Error Data:", whatsappError.response.data);
-            console.log(
-              "🔴 Error Message:",
-              whatsappError.response?.data?.error?.message
-            );
           } else if (whatsappError.request) {
-            console.log("🟠 No response from WhatsApp API");
           } else {
-            console.log("⚠️ Error:", whatsappError.message);
           }
 
         }
@@ -3478,7 +3333,6 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
 
       } catch (error) {
 
-        console.error(`Error suspending driver ${driverId}:`, error);
 
         results.push({
           driverId,
@@ -3510,7 +3364,6 @@ router.post("/admin/suspend-drivers", adminAuthMiddleware, async (req, res) => {
 
   } catch (error) {
 
-    console.error("Suspend drivers error:", error);
 
     res.status(500).json({
       success: false,
@@ -3569,7 +3422,6 @@ router.post("/create-order", DriverAuthMiddleware, async (req, res) => {
       raw: order,                    // optional: for debugging
     });
   } catch (err) {
-    console.error("Create order error:", err);
     return res.status(500).json({
       success: false,
       message: "Failed to create order",
@@ -3652,7 +3504,6 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
       walletBalance: wallet.balance
     });
   } catch (error) {
-    console.error("Deposit error:", error);
     res.status(500).json({ success: false, message: "Deposit failed", error: error.message });
   }
 });
@@ -3661,7 +3512,6 @@ router.post("/deposit", DriverAuthMiddleware, async (req, res) => {
 router.post("/webhook", async (req, res) => {
   try {
     const webhookPayload = req.body;
-    console.log("Razorpay Webhook received:", webhookPayload);
     const receivedSignature = req.headers['x-razorpay-signature'];
 
     // Verify webhook signature
@@ -3673,7 +3523,6 @@ router.post("/webhook", async (req, res) => {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.error('⚠️ RAZORPAY_WEBHOOK_SECRET not configured');
       return res.status(500).json({ error: "Webhook secret not configured" });
     }
 
@@ -3683,7 +3532,6 @@ router.post("/webhook", async (req, res) => {
       .digest('hex');
 
     if (receivedSignature !== expectedSignature) {
-      console.error('⚠️ Invalid webhook signature');
       return res.status(400).json({ error: "Invalid webhook signature" });
     }
 
@@ -3722,7 +3570,6 @@ router.post("/webhook", async (req, res) => {
     }
 
   } catch (error) {
-    console.error("Webhook error:", error);
     res.status(500).json({ error: "Webhook processing failed" });
   }
 });

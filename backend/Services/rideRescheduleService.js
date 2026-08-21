@@ -77,7 +77,6 @@ class RideRescheduleService {
       type: 'reschedule_request',
       data: { selectedDate, selectedTime }
     });
-    console.log(`📱 Reschedule request notification sent to driver playerId: ${driver.oneSignalPlayerId}`);
 
     return { 
       success: true, 
@@ -143,10 +142,8 @@ class RideRescheduleService {
           type: 'reschedule_accepted',
           data: { selectedDate, selectedTime }
         });
-        console.log(`📱 Reschedule accepted notification sent to rider playerId: ${rider.oneSignalPlayerId}`);
       }
     } catch (notifError) {
-      console.error('Error sending acceptance notification:', notifError);
     }
 
     return { 
@@ -220,10 +217,8 @@ class RideRescheduleService {
           type: 'reschedule_rejected',
           data: { selectedDate, selectedTime, newRideId: newRide._id }
         });
-        console.log(`📱 Reschedule rejected notification sent to rider playerId: ${rider.oneSignalPlayerId}`);
       }
     } catch (notifError) {
-      console.error('Error storing rejection notification:', notifError);
     }
 
     return { 
@@ -342,12 +337,9 @@ class RideRescheduleService {
           message
         );
         
-        console.log(`📱 Push notification sent to ${playerIds.length} eligible drivers`);
       }
 
-      console.log(`🚗 New reschedule ride ${newRide._id} sent to ${sentCount} available drivers`);
     } catch (error) {
-      console.error('Error emitting new-ride event:', error);
     }
   }
 }

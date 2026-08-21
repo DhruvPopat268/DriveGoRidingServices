@@ -94,7 +94,6 @@ router.post("/", authMiddleware, async (req, res) => {
           rideId
         );
       } catch (notifError) {
-        console.error('Rating notification error:', notifError);
       }
 
       // 🟢 WhatsApp Notification to Driver (hire4drive_driver_new_rating)
@@ -102,7 +101,6 @@ router.post("/", authMiddleware, async (req, res) => {
         const driverMobile = driver.mobile;
 
         if (!driverMobile) {
-          console.log("⚠️ WhatsApp SKIPPED - Driver mobile not found");
           return;
         }
 
@@ -110,10 +108,6 @@ router.post("/", authMiddleware, async (req, res) => {
           ? driverMobile
           : `91${driverMobile}`;
 
-        console.log("📤 Sending DRIVER NEW RATING WhatsApp");
-        console.log("📄 Template:", "hire4drive_driver_new_rating");
-        console.log("⭐ Rating:", rating);
-        console.log("📱 To:", toNumber);
 
         const payload = {
           messaging_product: "whatsapp",
@@ -133,24 +127,13 @@ router.post("/", authMiddleware, async (req, res) => {
         });
 
         // ✅ SUCCESS
-        console.log("✅ WhatsApp DRIVER NEW RATING SENT");
-        console.log("📨 Response:", response.data);
 
       } catch (whatsappError) {
 
-        console.log("❌ WhatsApp DRIVER NEW RATING FAILED");
 
         if (whatsappError.response) {
-          console.log("🔴 Status:", whatsappError.response.status);
-          console.log("🔴 Error Data:", whatsappError.response.data);
-          console.log(
-            "🔴 Error Message:",
-            whatsappError.response?.data?.error?.message
-          );
         } else if (whatsappError.request) {
-          console.log("🟠 No response from WhatsApp API");
         } else {
-          console.log("⚠️ Error:", whatsappError.message);
         }
 
       }

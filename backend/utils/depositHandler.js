@@ -8,7 +8,6 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
   try {
     const { driverId } = notes;
 
-    console.log(`🔔 Handling driver deposit: Payment ID: ${paymentId}, Status: ${status}, Amount: ₹${webhookAmount}, Driver ID: ${driverId}`);
     
     if (!driverId) {
       return { success: false, error: "Driver ID not found in payment notes" };
@@ -20,7 +19,6 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
       'transactions.razorpayPaymentId': paymentId
     });
 
-    console.log("🔍 Existing wallet check result:", wallet ? "Found" : "Not Found");
 
     let transaction;
     
@@ -32,7 +30,6 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
       
       if (transaction && transaction.status !== 'pending') {
         // Transaction already processed
-        console.log(`⚠️ Transaction already processed: ${paymentId}, Status: ${transaction.status}`);
         return {
           success: true,
           message: `Transaction already processed with status: ${transaction.status}`,
@@ -63,7 +60,6 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
 
     if (!transaction) {
       // Webhook came first - create new transaction with webhook status
-      console.log(`🔔 Webhook first: Creating new transaction for ${paymentId}`);
       
       const statusMap = {
         'captured': 'completed',
@@ -92,24 +88,19 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
         webhookTimestamp: new Date()
       };
 
-      console.log("🆕 Creating transaction:", transaction);
 
       wallet.transactions.push(transaction);
       
       // Handle balance updates based on status
       if (mappedStatus === 'completed') {
         wallet.balance += webhookAmount;
-        console.log(`✅ Webhook first - deposit completed: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
       } else if (mappedStatus === 'refunded') {
         // For refund webhook first, deduct from wallet balance
         wallet.balance = Math.max(0, wallet.balance - webhookAmount);
-        console.log(`🔄 Webhook first - refund processed: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
       } else if (mappedStatus === 'failed') {
         // For failed webhook first, just log - no balance change
-        console.log(`❌ Webhook first - deposit failed: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
       } else if (mappedStatus === 'pending') {
         // For authorized webhook first, just log - no balance change yet
-        console.log(`🕑 Webhook first - payment authorized: ${paymentId}, Amount: ₹${webhookAmount}, Driver: ${driverId}`);
       }
 
       await wallet.save();
@@ -128,11 +119,9 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
     }
 
     // Transaction exists and is pending - update it
-    console.log(`🔍 Found pending transaction for payment_id: ${paymentId}, Driver: ${driverId}`);
 
     // SECURITY: Verify amount matches what was stored
     if (webhookAmount && transaction.amount !== webhookAmount) {
-      console.error(`⚠️ Amount mismatch for ${paymentId}: stored=${transaction.amount}, webhook=${webhookAmount}`);
       transaction.status = 'failed';
       transaction.description = `Amount verification failed - stored: ₹${transaction.amount}, webhook: ₹${webhookAmount}`;
       await wallet.save();
@@ -169,7 +158,6 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
     // Handle balance updates based on status
     if (mappedStatus === 'completed' && oldStatus === 'pending') {
       wallet.balance += transaction.amount;
-      console.log(`✅ Driver deposit verified and completed: ${paymentId}, Amount: ₹${transaction.amount}, Driver: ${driverId}`);
     } else if (mappedStatus === 'refunded') {
       // Create new refund transaction and deduct amount from wallet
       const refundTransaction = {
@@ -185,10 +173,8 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
       
       wallet.transactions.push(refundTransaction);
       wallet.balance = Math.max(0, wallet.balance - transaction.amount); // Ensure balance doesn't go negative
-      console.log(`🔄 Driver deposit refunded: ${paymentId}, Amount: ₹${transaction.amount}, Driver: ${driverId}`);
     } else if (mappedStatus === 'failed' && oldStatus === 'pending') {
       // For failed transactions, just log - no balance change needed
-      console.log(`❌ Driver deposit failed: ${paymentId}, Amount: ₹${transaction.amount}, Driver: ${driverId}`);
     }
 
     await wallet.save();
@@ -206,7 +192,6 @@ const handleDriverDeposit = async (paymentId, status, webhookAmount, notes) => {
     };
 
   } catch (error) {
-    console.error("Driver deposit handler error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -215,13 +200,11 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
   try {
     const { riderId } = notes;
 
-    console.log(`🔔 Handling user wallet deposit: Payment ID: ${paymentId}, Status: ${status}, Amount: ₹${webhookAmount}, Rider ID: ${riderId}`);
     
     if (!riderId) {
       return { success: false, error: "Rider ID not found in payment notes" };
     }
 
-    console.log('riderId:',  riderId);
 
     const { Wallet } = require('../models/Payment&Wallet');
 
@@ -241,7 +224,6 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
       
       if (transaction && transaction.status !== 'pending') {
         // Transaction already processed
-        console.log(`⚠️ User transaction already processed: ${paymentId}, Status: ${transaction.status}`);
         return {
           success: true,
           message: `Transaction already processed with status: ${transaction.status}`,
@@ -272,7 +254,6 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
 
     if (!transaction) {
       // Webhook came first - create new transaction with webhook status
-      console.log(`🔔 Webhook first: Creating new user transaction for ${paymentId}`);
       
       const statusMap = {
         'captured': 'completed',
@@ -308,17 +289,13 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
         wallet.balance += webhookAmount;
         wallet.totalDeposited += webhookAmount;
         wallet.lastTransactionAt = new Date();
-        console.log(`✅ Webhook first - user deposit completed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
       } else if (mappedStatus === 'refunded') {
         // For refund webhook first, deduct from wallet balance
         wallet.balance = Math.max(0, wallet.balance - webhookAmount);
-        console.log(`🔄 Webhook first - user refund processed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
       } else if (mappedStatus === 'failed') {
         // For failed webhook first, just log - no balance change
-        console.log(`❌ Webhook first - user deposit failed: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
       } else if (mappedStatus === 'pending') {
         // For authorized webhook first, just log - no balance change yet
-        console.log(`🕑 Webhook first - user payment authorized: ${paymentId}, Amount: ₹${webhookAmount}, Rider: ${riderId}`);
       }
 
       await wallet.save();
@@ -337,11 +314,9 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
     }
 
     // Transaction exists and is pending - update it
-    console.log(`🔍 Found pending user transaction for payment_id: ${paymentId}, Rider: ${riderId}`);
 
     // SECURITY: Verify amount matches what was stored
     if (webhookAmount && transaction.amount !== webhookAmount) {
-      console.error(`⚠️ Amount mismatch for ${paymentId}: stored=${transaction.amount}, webhook=${webhookAmount}`);
       transaction.status = 'failed';
       transaction.description = `Amount verification failed - stored: ₹${transaction.amount}, webhook: ₹${webhookAmount}`;
       await wallet.save();
@@ -380,7 +355,6 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
       wallet.balance += transaction.amount;
       wallet.totalDeposited += transaction.amount;
       wallet.lastTransactionAt = new Date();
-      console.log(`✅ User deposit verified and completed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
     } else if (mappedStatus === 'refunded') {
       // Create new refund transaction and deduct amount from wallet
       const refundTransaction = {
@@ -396,10 +370,8 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
       
       wallet.transactions.push(refundTransaction);
       wallet.balance = Math.max(0, wallet.balance - transaction.amount);
-      console.log(`🔄 User deposit refunded: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
     } else if (mappedStatus === 'failed' && oldStatus === 'pending') {
       // For failed transactions, just log - no balance change needed
-      console.log(`❌ User deposit failed: ${paymentId}, Amount: ₹${transaction.amount}, Rider: ${riderId}`);
     }
 
     await wallet.save();
@@ -417,7 +389,6 @@ const handleUserWalletDeposit = async (paymentId, status, webhookAmount, notes) 
     };
 
   } catch (error) {
-    console.error("User wallet deposit handler error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -450,7 +421,6 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
       
       if (existingPlan && existingPlan.status !== 'Pending') {
         // Plan purchase already processed
-        console.log(`⚠️ Plan purchase already processed: ${paymentId}, Status: ${existingPlan.status}`);
         return {
           success: true,
           message: `Plan purchase already processed with status: ${existingPlan.status}`,
@@ -495,7 +465,6 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
 
     if (!existingPlan) {
       // Webhook came first - create new plan purchase
-      console.log(`🔔 Webhook first: Creating new plan purchase for ${paymentId}`);
       
       const planPurchase = {
         paymentId,
@@ -524,9 +493,7 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
           });
           
           await adminLedger.save();
-          console.log(`💰 Admin wallet credited: ₹${webhookAmount} for driver registration`);
         } catch (adminError) {
-          console.error("Admin wallet ledger error:", adminError);
         }
       }
       
@@ -551,11 +518,8 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
           driver.status = 'Onreview';
         }
         
-        console.log(`✅ Webhook first - plan purchase completed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
       } else if (mappedStatus === 'Failed') {
-        console.log(`❌ Webhook first - plan purchase failed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
       } else if (mappedStatus === 'Pending') {
-        console.log(`🕑 Webhook first - plan purchase pending: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
       }
 
       await driver.save();
@@ -575,11 +539,9 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
     }
 
     // Plan purchase exists and is pending - update it
-    console.log(`🔍 Found pending plan purchase for payment_id: ${paymentId}, Driver: ${driverId}`);
 
     // SECURITY: Verify amount matches what was stored
     if (webhookAmount && existingPlan.amount !== webhookAmount) {
-      console.error(`⚠️ Amount mismatch for ${paymentId}: stored=${existingPlan.amount}, webhook=${webhookAmount}`);
       existingPlan.status = 'Failed';
       await driver.save();
       return { 
@@ -613,7 +575,6 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
         driver.status = 'Onreview';
       }
       
-      console.log(`✅ Driver plan purchase verified and completed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
       
       // Add transaction to admin wallet ledger
       try {
@@ -631,12 +592,9 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
         });
         
         await adminLedger.save();
-        console.log(`💰 Admin wallet credited: ₹${existingPlan.amount} for driver registration`);
       } catch (adminError) {
-        console.error("Admin wallet ledger error:", adminError);
       }
     } else if (mappedStatus === 'Failed' && oldStatus === 'Pending') {
-      console.log(`❌ Driver plan purchase failed: ${paymentId}, Plan: ${plan.name}, Driver: ${driverId}`);
     }
 
     await driver.save();
@@ -655,7 +613,6 @@ const handleDriverPlanPurchase = async (paymentId, status, webhookAmount, notes)
     };
 
   } catch (error) {
-    console.error("Driver plan purchase handler error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -668,19 +625,15 @@ const processDeposit = async (paymentId, status, webhookAmount, notes) => {
       return { success: false, error: "Payment type not specified in notes" };
     }
 
-    console.log(`🔄 Processing ${type} deposit: ${paymentId}, Status: ${status}, Amount: ₹${webhookAmount}`);
 
     switch (type) {
       case 'driver_deposit':
-        console.log("🚗 Detected driver deposit");
         return await handleDriverDeposit(paymentId, status, webhookAmount, notes);
       
       case 'user_deposit':
-        console.log("🧑 Detected user wallet deposit");
         return await handleUserWalletDeposit(paymentId, status, webhookAmount, notes);
       
       case 'driver_plan_purchase':
-        console.log("📦 Detected driver plan purchase");
         return await handleDriverPlanPurchase(paymentId, status, webhookAmount, notes);
       
       default:
@@ -692,7 +645,6 @@ const processDeposit = async (paymentId, status, webhookAmount, notes) => {
     }
 
   } catch (error) {
-    console.error("Deposit processor error:", error);
     return { success: false, error: error.message };
   }
 };

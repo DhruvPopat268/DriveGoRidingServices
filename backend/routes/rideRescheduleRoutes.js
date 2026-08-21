@@ -124,12 +124,9 @@ router.put('/reschedule', authMiddleware, async (req, res) => {
                 ride.rideInfo.categoryId,
                 rideId
               );
-              console.log("✅ OneSignal RESCHEDULE REQUEST sent to driver");
             } else {
-              console.log("⚠️ OneSignal SKIPPED - Driver playerId missing");
             }
           } catch (oneSignalError) {
-            console.log("❌ OneSignal RESCHEDULE REQUEST FAILED:", oneSignalError.message);
           }
 
           // 📱 Send WhatsApp notification
@@ -163,15 +160,11 @@ router.put('/reschedule', authMiddleware, async (req, res) => {
                 }
               });
 
-              console.log("✅ WhatsApp RESCHEDULE REQUEST sent to driver");
             } else {
-              console.log("⚠️ WhatsApp SKIPPED - Driver mobile missing");
             }
           } catch (whatsappError) {
-            console.log("❌ WhatsApp RESCHEDULE REQUEST FAILED:", whatsappError.response?.data || whatsappError.message);
           }
         } else {
-          console.log("⚠️ Notifications SKIPPED - Driver not found:", ride.driverId);
         }
       }
 
@@ -206,8 +199,6 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
     const rider = await Rider.findById(ride?.riderId);
 
     if (!ride || !driver || !rider) {
-      console.log("⚠️ Missing data - Ride:", !!ride, "Driver:", !!driver, "Rider:", !!rider);
-      console.log("Driver ID from ride:", ride?.driverId, "Rider ID from ride:", ride?.riderId);
       // Don't return early - continue with notifications if we have the required data
     }
 
@@ -233,12 +224,9 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             ride.rideInfo.categoryId,
             rideId
           );
-          console.log("✅ OneSignal RESCHEDULE ACCEPTED sent to rider");
         } else {
-          console.log("⚠️ OneSignal SKIPPED - Rider playerId missing");
         }
       } catch (oneSignalError) {
-        console.log("❌ OneSignal RESCHEDULE ACCEPTED FAILED:", oneSignalError.message);
       }
 
       // 📱 Send WhatsApp to rider
@@ -247,8 +235,6 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         if (riderMobile) {
           const toNumber = riderMobile.startsWith("+") ? riderMobile : `91${riderMobile}`;
           const driverName = ride.driverInfo?.driverName || driver?.personalInformation?.firstName || "Driver";
-          console.log("📱 Sending WhatsApp RESCHEDULE ACCEPTED to rider:", toNumber);
-          console.log("📱 Template data - Driver name:", driverName, "Date:", selectedDate, "Time:", selectedTime);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -268,7 +254,6 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           };
 
-          console.log("📱 WhatsApp payload:", JSON.stringify(payload, null, 2));
 
           const response = await axios.post(WHATSAPP_API_URL, payload, {
             headers: {
@@ -277,13 +262,9 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           });
 
-          console.log("✅ WhatsApp RESCHEDULE ACCEPTED sent to rider - Response:", response.status, response.data);
         } else {
-          console.log("⚠️ WhatsApp SKIPPED - Rider mobile missing");
         }
       } catch (whatsappError) {
-        console.log("❌ WhatsApp RESCHEDULE ACCEPTED FAILED:", whatsappError.response?.data || whatsappError.message);
-        console.log("❌ Full error:", whatsappError);
       }
 
     } else if (action === "reject" && ride && rider) {
@@ -305,12 +286,9 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             ride.rideInfo.categoryId,
             rideId
           );
-          console.log("✅ OneSignal RESCHEDULE REJECTED sent to rider");
         } else {
-          console.log("⚠️ OneSignal SKIPPED - Rider playerId missing");
         }
       } catch (oneSignalError) {
-        console.log("❌ OneSignal RESCHEDULE REJECTED FAILED:", oneSignalError.message);
       }
 
       // 📱 Send WhatsApp to rider
@@ -319,8 +297,6 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
         if (riderMobile) {
           const toNumber = riderMobile.startsWith("+") ? riderMobile : `91${riderMobile}`;
           const riderName = ride.riderInfo?.riderName || "Rider";
-          console.log("📱 Sending WhatsApp RESCHEDULE REJECTED to rider:", toNumber);
-          console.log("📱 Template data - Rider name:", riderName);
 
           const payload = {
             messaging_product: "whatsapp",
@@ -338,7 +314,6 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           };
 
-          console.log("📱 WhatsApp payload:", JSON.stringify(payload, null, 2));
 
           const response = await axios.post(WHATSAPP_API_URL, payload, {
             headers: {
@@ -347,20 +322,15 @@ router.put('/reschedule-response', driverAuthMiddleware, async (req, res) => {
             }
           });
 
-          console.log("✅ WhatsApp RESCHEDULE REJECTED sent to rider - Response:", response.status, response.data);
         } else {
-          console.log("⚠️ WhatsApp SKIPPED - Rider mobile missing");
         }
       } catch (whatsappError) {
-        console.log("❌ WhatsApp RESCHEDULE REJECTED FAILED:", whatsappError.response?.data || whatsappError.message);
-        console.log("❌ Full error:", whatsappError);
       }
     }
 
     return res.json(result);
 
   } catch (error) {
-    console.error("❌ Reschedule response error:", error);
     res.status(500).json({ message: error.message });
   }
 });
