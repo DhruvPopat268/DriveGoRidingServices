@@ -241,12 +241,17 @@ router.get("/completeProfile", adminAuthMiddleware, async (req, res) => {
     const sort = req.query.sort || 'newest';
     const fromDate = req.query.fromDate;
     const toDate = req.query.toDate;
+    const status = req.query.status || '';
 
     // Build search query
     let searchQuery = {
       name: { $ne: "" },
       gender: { $ne: "" }
     };
+
+    if (status) {
+      searchQuery.status = status;
+    }
 
     // Add date range filter
     if (fromDate || toDate) {
@@ -323,9 +328,14 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
     const sort = req.query.sort || 'newest';
     const fromDate = req.query.fromDate;
     const toDate = req.query.toDate;
+    const status = req.query.status || '';
 
     // Build search query
     let searchQuery = { name: "" };
+
+    if (status) {
+      searchQuery.status = status;
+    }
 
     // Add date range filter
     if (fromDate || toDate) {
@@ -344,6 +354,7 @@ router.get("/inCompleteProfile", adminAuthMiddleware, async (req, res) => {
       searchQuery = {
         $and: [
           { name: "" },
+          ...(status ? [{ status }] : []),
           {
             $or: [
               { mobile: { $regex: search, $options: 'i' } },
@@ -408,9 +419,14 @@ router.get("/all", adminAuthMiddleware, async (req, res) => {
     const sort = req.query.sort || 'newest';
     const fromDate = req.query.fromDate;
     const toDate = req.query.toDate;
+    const status = req.query.status || '';
 
     // Build search query
     let searchQuery = {};
+
+    if (status) {
+      searchQuery.status = status;
+    }
 
     // Add date range filter
     if (fromDate || toDate) {
@@ -1374,6 +1390,168 @@ router.post("/admin/rider-rides", adminAuthMiddleware, async (req, res) => {
   } catch (error) {
     console.error("Get rides error:", error);
     res.status(500).json({ success: false, message: "Failed to get rides" });
+  }
+});
+
+// Admin: Soft delete a user (mark status as deleted)
+router.patch("/admin/delete-user/:riderId", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { riderId } = req.params;
+
+    const rider = await Rider.findById(riderId);
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (rider.status === "deleted") {
+      return res.status(400).json({ success: false, message: "User is already deleted" });
+    }
+
+    rider.status = "deleted";
+    await rider.save();
+
+    res.json({
+      success: true,
+      message: "User deleted successfully",
+      data: rider
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Edit an existing user
+router.put("/admin/edit-user/:riderId", adminAuthMiddleware, upload.single('profilePhoto'), async (req, res) => {
+  try {
+    const { riderId } = req.params;
+    const { name, email, gender, status } = req.body;
+
+    const rider = await Rider.findById(riderId);
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (name !== undefined) rider.name = name;
+    if (email !== undefined) rider.email = email;
+    if (gender !== undefined) rider.gender = gender;
+    if (status !== undefined) rider.status = status;
+
+    if (req.file) {
+      const uploadPath = path.join(__dirname, '../cloud/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(req.file.originalname || '.jpg');
+      const filePath = path.join(uploadPath, uniqueName);
+      fs.writeFileSync(filePath, req.file.buffer);
+      rider.profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+    }
+
+    await rider.save();
+
+    res.json({
+      success: true,
+      message: "User updated successfully",
+      data: rider
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Create a new user manually
+router.post("/admin/create-user", adminAuthMiddleware, upload.single('profilePhoto'), async (req, res) => {
+  try {
+    const { mobile, name, email, gender, status } = req.body;
+
+    if (!mobile) {
+      return res.status(400).json({ success: false, message: "Mobile number is required" });
+    }
+
+    if (!/^\d{10}$/.test(mobile) && !/^\+91\d{10}$/.test(mobile)) {
+      return res.status(400).json({ success: false, message: "Invalid mobile number format" });
+    }
+
+    const existing = await Rider.findOne({ mobile });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "A user with this mobile number already exists" });
+    }
+
+    let profilePhoto = '';
+    if (req.file) {
+      const uploadPath = path.join(__dirname, '../cloud/images');
+      if (!fs.existsSync(uploadPath)) {
+        fs.mkdirSync(uploadPath, { recursive: true });
+      }
+      const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(req.file.originalname || '.jpg');
+      const filePath = path.join(uploadPath, uniqueName);
+      fs.writeFileSync(filePath, req.file.buffer);
+      profilePhoto = `https://adminbackend.hire4drive.com/app/cloud/images/${uniqueName}`;
+    }
+
+    const rider = new Rider({
+      mobile,
+      name: name || '',
+      email: email || '',
+      gender: gender || '',
+      status: status || 'active',
+      profilePhoto
+    });
+
+    await rider.save();
+
+    // Initialize wallet
+    const { Wallet } = require('../models/Payment&Wallet');
+    await Wallet.create({
+      riderId: rider._id,
+      balance: 0,
+      totalDeposited: 0,
+      totalSpent: 0,
+      transactions: []
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: rider
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Admin: Toggle rider active/inactive status
+router.patch("/toggle-active", adminAuthMiddleware, async (req, res) => {
+  try {
+    const { riderId, isActive } = req.body;
+
+    if (!riderId) {
+      return res.status(400).json({ success: false, message: "riderId is required" });
+    }
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({ success: false, message: "isActive must be true or false" });
+    }
+
+    const newStatus = isActive ? "active" : "inactive";
+
+    const rider = await Rider.findByIdAndUpdate(
+      riderId,
+      { status: newStatus },
+      { new: true }
+    ).select("_id name mobile status");
+
+    if (!rider) {
+      return res.status(404).json({ success: false, message: "Rider not found" });
+    }
+
+    res.json({
+      success: true,
+      message: `Rider ${newStatus === "active" ? "activated" : "deactivated"} successfully`,
+      data: rider
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

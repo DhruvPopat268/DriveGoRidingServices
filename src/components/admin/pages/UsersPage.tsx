@@ -3,9 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users, Search, Filter, Phone, Mail, Calendar, User, Star, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Users, Search, Filter, Phone, Mail, Calendar, User, Star, ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface User {
@@ -15,6 +19,7 @@ interface User {
   email: string;
   gender: string;
   referralCode: string;
+  status: string;
   referralEarning: {
     totalEarnings: number;
     currentBalance: number;
@@ -48,7 +53,39 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [profileFilter, setProfileFilter] = useState('complete');
   const [sortOrder, setSortOrder] = useState('newest');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Create user dialog state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    mobile: '',
+    email: '',
+    gender: '',
+    status: 'active',
+    profilePhoto: null as File | null,
+    profilePhotoPreview: ''
+  });
+
+  // Edit user dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [editForm, setEditForm] = useState({
+    _id: '',
+    name: '',
+    email: '',
+    gender: '',
+    status: 'active',
+    profilePhoto: null as File | null,
+    profilePhotoPreview: '',
+    existingPhoto: ''
+  });
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,7 +95,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
 
   useEffect(() => {
     fetchUsers();
-  }, [profileFilter, currentPage, recordsPerPage, searchTerm, sortOrder, dateRange]);
+  }, [profileFilter, statusFilter, currentPage, recordsPerPage, searchTerm, sortOrder, dateRange]);
 
   const fetchUsers = async () => {
     try {
@@ -76,6 +113,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
         limit: recordsPerPage.toString(),
         search: searchTerm,
         sort: sortOrder,
+        ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(dateRange.from && { fromDate: dateRange.from }),
         ...(dateRange.to && { toDate: dateRange.to })
       });
@@ -99,6 +137,25 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
     setCurrentPage(page);
   };
 
+  const handleToggleActive = async (riderId: string, currentStatus: boolean) => {
+    try {
+      setTogglingId(riderId);
+      const response = await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/rider-auth/toggle-active`, {
+        riderId,
+        isActive: !currentStatus
+      });
+      if (response.data.success) {
+        setUsers(prev =>
+          prev.map(u => u._id === riderId ? { ...u, status: !currentStatus ? 'active' : 'inactive' } : u)
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling rider status:', error);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleRecordsPerPageChange = (value: string) => {
     setRecordsPerPage(parseInt(value));
     setCurrentPage(1);
@@ -111,6 +168,11 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
 
   const handleFilterChange = (value: string) => {
     setProfileFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
     setCurrentPage(1);
   };
 
@@ -127,6 +189,153 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
   const clearDateRange = () => {
     setDateRange({ from: '', to: '' });
     setCurrentPage(1);
+  };
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setProfileFilter('complete');
+    setStatusFilter('all');
+    setSortOrder('newest');
+    setDateRange({ from: '', to: '' });
+    setCurrentPage(1);
+  };
+
+  const handleCreateFormChange = (field: string, value: string) => {
+    setCreateForm(prev => ({ ...prev, [field]: value }));
+    setCreateError('');
+  };
+
+  const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCreateForm(prev => ({
+      ...prev,
+      profilePhoto: file,
+      profilePhotoPreview: URL.createObjectURL(file)
+    }));
+  };
+
+  const resetCreateForm = () => {
+    setCreateForm({ name: '', mobile: '', email: '', gender: '', status: 'active', profilePhoto: null, profilePhotoPreview: '' });
+    setCreateError('');
+  };
+
+  const handleCreateUser = async () => {
+    if (!createForm.mobile) {
+      setCreateError('Mobile number is required');
+      return;
+    }
+    if (!/^\d{10}$/.test(createForm.mobile)) {
+      setCreateError('Enter a valid 10-digit mobile number');
+      return;
+    }
+    try {
+      setCreating(true);
+      const formData = new FormData();
+      formData.append('mobile', createForm.mobile);
+      if (createForm.name) formData.append('name', createForm.name);
+      if (createForm.email) formData.append('email', createForm.email);
+      if (createForm.gender) formData.append('gender', createForm.gender);
+      formData.append('status', createForm.status);
+      if (createForm.profilePhoto) formData.append('profilePhoto', createForm.profilePhoto);
+
+      const response = await apiClient.post(
+        `${import.meta.env.VITE_API_URL}/api/rider-auth/admin/create-user`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      if (response.data.success) {
+        setCreateOpen(false);
+        resetCreateForm();
+        fetchUsers();
+      } else {
+        setCreateError(response.data.message || 'Failed to create user');
+      }
+    } catch (error: any) {
+      setCreateError(error.response?.data?.message || 'Failed to create user');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleOpenEdit = (user: User) => {
+    setEditForm({
+      _id: user._id,
+      name: user.name || '',
+      email: user.email || '',
+      gender: user.gender || '',
+      status: user.status || 'active',
+      profilePhoto: null,
+      profilePhotoPreview: '',
+      existingPhoto: (user as any).profilePhoto || ''
+    });
+    setEditError('');
+    setEditOpen(true);
+  };
+
+  const handleEditFormChange = (field: string, value: string) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+    setEditError('');
+  };
+
+  const handleEditPhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setEditForm(prev => ({
+      ...prev,
+      profilePhoto: file,
+      profilePhotoPreview: URL.createObjectURL(file)
+    }));
+  };
+
+  const handleEditUser = async () => {
+    try {
+      setEditing(true);
+      const formData = new FormData();
+      formData.append('name', editForm.name);
+      formData.append('email', editForm.email);
+      formData.append('gender', editForm.gender);
+      formData.append('status', editForm.status);
+      if (editForm.profilePhoto) formData.append('profilePhoto', editForm.profilePhoto);
+
+      const response = await apiClient.put(
+        `${import.meta.env.VITE_API_URL}/api/rider-auth/admin/edit-user/${editForm._id}`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+
+      if (response.data.success) {
+        setUsers(prev =>
+          prev.map(u => u._id === editForm._id ? { ...u, ...response.data.data } : u)
+        );
+        setEditOpen(false);
+      } else {
+        setEditError(response.data.message || 'Failed to update user');
+      }
+    } catch (error: any) {
+      setEditError(error.response?.data?.message || 'Failed to update user');
+    } finally {
+      setEditing(false);
+    }
+  };
+
+  const handleDeleteUser = async (riderId: string) => {
+    try {
+      setDeletingId(riderId);
+      const response = await apiClient.patch(
+        `${import.meta.env.VITE_API_URL}/api/rider-auth/admin/delete-user/${riderId}`
+      );
+      if (response.data.success) {
+        setUsers(prev =>
+          prev.map(u => u._id === riderId ? { ...u, status: 'deleted' } : u)
+        );
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete user');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -161,7 +370,173 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
           <h1 className="text-3xl font-bold tracking-tight">Users Management</h1>
           <p className="text-muted-foreground">Manage and view all registered users</p>
         </div>
+        <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Create User
+        </Button>
       </div>
+
+      {/* Create User Dialog */}
+      <Dialog open={createOpen} onOpenChange={(open) => { setCreateOpen(open); if (!open) resetCreateForm(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Profile Photo */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                {createForm.profilePhotoPreview ? (
+                  <img src={createForm.profilePhotoPreview} alt="Preview" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <User className="w-8 h-8 text-gray-400" />
+                )}
+              </div>
+              <Label htmlFor="profilePhotoInput" className="cursor-pointer flex items-center gap-1 text-sm text-primary hover:underline">
+                <Upload className="w-4 h-4" />
+                Upload Photo
+              </Label>
+              <input id="profilePhotoInput" type="file" accept="image/*" className="hidden" onChange={handleProfilePhotoChange} />
+            </div>
+
+            {/* Name */}
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input placeholder="Enter name" value={createForm.name} onChange={(e) => handleCreateFormChange('name', e.target.value)} />
+            </div>
+
+            {/* Mobile */}
+            <div className="space-y-1">
+              <Label>Mobile <span className="text-red-500">*</span></Label>
+              <Input placeholder="10-digit mobile number" value={createForm.mobile} onChange={(e) => handleCreateFormChange('mobile', e.target.value)} maxLength={10} />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input placeholder="Enter email" type="email" value={createForm.email} onChange={(e) => handleCreateFormChange('email', e.target.value)} />
+            </div>
+
+            {/* Gender */}
+            <div className="space-y-1">
+              <Label>Gender</Label>
+              <Select value={createForm.gender} onValueChange={(v) => handleCreateFormChange('gender', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status toggle */}
+            <div className="flex items-center justify-between">
+              <Label>Status</Label>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={createForm.status === 'active'}
+                  onCheckedChange={(checked) => handleCreateFormChange('status', checked ? 'active' : 'inactive')}
+                />
+                <span className={`text-sm font-medium ${createForm.status === 'active' ? 'text-green-600' : 'text-red-500'}`}>
+                  {createForm.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+
+            {createError && <p className="text-sm text-red-500">{createError}</p>}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCreateOpen(false); resetCreateForm(); }}>Cancel</Button>
+            <Button onClick={handleCreateUser} disabled={creating}>
+              {creating ? 'Creating...' : 'Create User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); setEditError(''); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Profile Photo */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                {editForm.profilePhotoPreview ? (
+                  <img src={editForm.profilePhotoPreview} alt="Preview" className="w-full h-full object-cover rounded-full" />
+                ) : editForm.existingPhoto ? (
+                  <img src={editForm.existingPhoto} alt="Profile" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <User className="w-8 h-8 text-gray-400" />
+                )}
+              </div>
+              <Label htmlFor="editPhotoInput" className="cursor-pointer flex items-center gap-1 text-sm text-primary hover:underline">
+                <Upload className="w-4 h-4" />
+                Change Photo
+              </Label>
+              <input id="editPhotoInput" type="file" accept="image/*" className="hidden" onChange={handleEditPhotoChange} />
+            </div>
+
+            {/* Name */}
+            <div className="space-y-1">
+              <Label>Name</Label>
+              <Input placeholder="Enter name" value={editForm.name} onChange={(e) => handleEditFormChange('name', e.target.value)} />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input placeholder="Enter email" type="email" value={editForm.email} onChange={(e) => handleEditFormChange('email', e.target.value)} />
+            </div>
+
+            {/* Gender */}
+            <div className="space-y-1">
+              <Label>Gender</Label>
+              <Select value={editForm.gender} onValueChange={(v) => handleEditFormChange('gender', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status toggle */}
+            <div className="flex items-center justify-between">
+              <Label>Status</Label>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editForm.status === 'active'}
+                  onCheckedChange={(checked) => handleEditFormChange('status', checked ? 'active' : 'inactive')}
+                />
+                <span className={`text-sm font-medium ${editForm.status === 'active' ? 'text-green-600' : 'text-red-500'}`}>
+                  {editForm.status === 'active' ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+            </div>
+
+            {editError && <p className="text-sm text-red-500">{editError}</p>}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditUser} disabled={editing}>
+              {editing ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <Card>
@@ -172,7 +547,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -191,6 +566,18 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
                 <SelectItem value="all">All Users</SelectItem>
                 <SelectItem value="complete">Complete Profile</SelectItem>
                 <SelectItem value="incomplete">Incomplete Profile</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
               </SelectContent>
             </Select>
 
@@ -219,14 +606,9 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
             />
 
             <div className="flex gap-2">
-              <Button onClick={fetchUsers} variant="outline">
-                Refresh
+              <Button onClick={clearAllFilters} variant="outline" size="sm">
+                Clear Filters
               </Button>
-              {(dateRange.from || dateRange.to) && (
-                <Button onClick={clearDateRange} variant="outline" size="sm">
-                  Clear Dates
-                </Button>
-              )}
             </div>
           </div>
         </CardContent>
@@ -272,6 +654,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
                     <TableHead>User Info</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Profile Status</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Rating</TableHead>
                     <TableHead>Completed Rides</TableHead>
                     <TableHead>Cancelled Rides</TableHead>
@@ -318,6 +701,23 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
                       </TableCell>
                       
                       <TableCell>
+                        {user.status === 'deleted' ? (
+                          <Badge className="bg-red-100 text-red-700">Deleted</Badge>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={user.status === 'active'}
+                              disabled={togglingId === user._id}
+                              onCheckedChange={() => handleToggleActive(user._id, user.status === 'active')}
+                            />
+                            <span className={`text-sm font-medium ${user.status === 'active' ? 'text-green-600' : 'text-red-500'}`}>
+                              {togglingId === user._id ? 'Updating...' : user.status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        )}
+                      </TableCell>
+                      
+                      <TableCell>
                         <div className="flex items-center">
                           <Star className="w-4 h-4 text-yellow-500 mr-1" />
                           <span>{user.ratings?.avgRating?.toFixed(1) || '0.0'}</span>
@@ -351,14 +751,54 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
                       </TableCell>
                       
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewRider(user._id)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewRider(user._id)}
+                          >
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenEdit(user)}
+                          >
+                            Edit
+                          </Button>
+                          {user.status !== 'deleted' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-red-400 text-red-500 hover:bg-red-50"
+                                  disabled={deletingId === user._id}
+                                >
+                                  {deletingId === user._id ? 'Deleting...' : 'Delete'}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete "{user.name || user.mobile}".
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={deletingId === user._id}>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteUser(user._id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                    disabled={deletingId === user._id}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
