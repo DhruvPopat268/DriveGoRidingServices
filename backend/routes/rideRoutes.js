@@ -4531,7 +4531,7 @@ router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
         'personalInformation.category': categoryId,
         'personalInformation.subCategory': { $in: [subcategoryId] },
         driverCategory: selectedCategoryId
-      }).select('personalInformation.fullName mobile isOnline');
+      }).select('personalInformation.fullName personalInformation.permanentAddress mobile isOnline');
     } else if (categoryNameLower === 'cab' || categoryNameLower === 'parcel') {
       const vehicleField = categoryNameLower === 'cab' ? 'cabVehicleDetails.modelType' : 'parcelVehicleDetails.modelType';
 
@@ -4551,7 +4551,7 @@ router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
           'personalInformation.category': categoryId,
           'personalInformation.subCategory': { $in: [subcategoryId] },
           ownership: { $ne: 'Owner' }
-        }).select('personalInformation.fullName mobile isOnline');
+        }).select('personalInformation.fullName personalInformation.permanentAddress mobile isOnline');
       }
     }
 
@@ -4567,7 +4567,8 @@ router.post("/eligible-drivers", adminAuthMiddleware, async (req, res) => {
       name: driver.personalInformation?.fullName || 'N/A',
       mobile: driver.mobile || 'N/A',
       isOnline: driver.isOnline || false,
-      currentBalance: walletMap[driver._id.toString()] || 0
+      currentBalance: walletMap[driver._id.toString()] || 0,
+      permanentAddress: driver.personalInformation?.permanentAddress || 'N/A'
     }));
 
     res.json({

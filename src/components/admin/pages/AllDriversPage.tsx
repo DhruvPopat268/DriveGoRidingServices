@@ -330,10 +330,11 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                     <TableHead>Mobile</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Ownership</TableHead>
+                    <TableHead>Area</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Avg Rating</TableHead>
                     <TableHead>Completed Rides</TableHead>
-                    <TableHead>Created At</TableHead>
+                    <TableHead>Joined At</TableHead>
                     <TableHead>Status Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -341,7 +342,7 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                 <TableBody>
                   {drivers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                         No drivers found
                       </TableCell>
                     </TableRow>
@@ -355,6 +356,7 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                         <TableCell>{driver.mobile}</TableCell>
                         <TableCell>{driver.personalInformation?.category?.name || 'N/A'}</TableCell>
                         <TableCell>{driver.ownership?.replace('_', ' ') || 'N/A'}</TableCell>
+                        <TableCell>{driver.personalInformation?.permanentAddress || 'N/A'}</TableCell>
                         <TableCell>
                           <Badge variant={getStatusBadgeVariant(driver.status)}>{driver.status}</Badge>
                         </TableCell>
@@ -367,7 +369,12 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                         <TableCell>
                           <span className="font-medium text-green-600">{driver.completedRides ?? 0}</span>
                         </TableCell>
-                        <TableCell>{new Date(driver.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span>{new Date(driver.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            <span className="text-xs text-muted-foreground">{new Date(driver.createdAt).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {driver.statusDate ? (
                             <div className="flex flex-col">
@@ -377,7 +384,8 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                                 {driver.status === 'deleted' && 'Deleted On'}
                                 {driver.status === 'Suspended' && 'Suspended On'}
                               </span>
-                              <span>{new Date(driver.statusDate).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                              <span>{new Date(driver.statusDate).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                              <span className="text-xs text-muted-foreground">{new Date(driver.statusDate).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                             </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">N/A</span>

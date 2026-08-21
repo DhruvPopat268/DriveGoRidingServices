@@ -54,7 +54,7 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
     const [drivers, totalDrivers] = await Promise.all([
       Driver.find(filter)
         .select(
-          'mobile uniqueId selectedCategory ownership personalInformation.fullName personalInformation.email personalInformation.passportPhoto personalInformation.category personalInformation.subCategory status isOnline rideStatus ratings currentPlan approvedDate rejectedDate deletedDate createdAt'
+          'mobile uniqueId selectedCategory ownership personalInformation.fullName personalInformation.email personalInformation.passportPhoto personalInformation.category personalInformation.subCategory personalInformation.permanentAddress status isOnline rideStatus ratings currentPlan approvedDate rejectedDate deletedDate createdAt'
         )
         .populate('personalInformation.category', 'name')
         .populate('personalInformation.subCategory', 'name')

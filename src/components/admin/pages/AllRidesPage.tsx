@@ -769,17 +769,21 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
               <label className="text-sm font-medium">Select Driver</label>
               <Select value={selectedDriver} onValueChange={setSelectedDriver}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a driver" />
+                  {selectedDriver
+                    ? <span>{eligibleDrivers.find(d => d._id === selectedDriver)?.name} - {eligibleDrivers.find(d => d._id === selectedDriver)?.mobile}</span>
+                    : <span className="text-gray-400">Choose a driver</span>
+                  }
                 </SelectTrigger>
                 <SelectContent>
                   {eligibleDrivers.map((driver) => (
                     <SelectItem key={driver._id} value={driver._id}>
-                      <div className="flex items-center justify-between w-full">
+                      <div className="flex flex-col gap-0.5">
                         <div className="flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full ${driver.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                          <span>{driver.name} - {driver.mobile}</span>
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${driver.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          <span className="font-medium">{driver.name} - {driver.mobile}</span>
                         </div>
-                        <span className="text-xs text-gray-500 ml-2">₹{driver.currentBalance}</span>
+                        <div className="text-xs text-gray-500 pl-4">Current Wallet Balance: ₹{driver.currentBalance}</div>
+                        <div className="text-xs text-gray-500 pl-4">Area: {driver.permanentAddress || 'N/A'}</div>
                       </div>
                     </SelectItem>
                   ))}
@@ -895,17 +899,21 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
               <label className="text-sm font-medium">Select New Driver</label>
               <Select value={selectedDriver} onValueChange={setSelectedDriver}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a driver" />
+                  {selectedDriver
+                    ? <span>{eligibleDrivers.find(d => d._id === selectedDriver)?.name} - {eligibleDrivers.find(d => d._id === selectedDriver)?.mobile}</span>
+                    : <span className="text-gray-400">Choose a driver</span>
+                  }
                 </SelectTrigger>
                 <SelectContent>
                   {eligibleDrivers.map((driver) => (
                     <SelectItem key={driver._id} value={driver._id}>
-                      <div className="flex items-center justify-between w-full">
+                      <div className="flex flex-col gap-0.5">
                         <div className="flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full ${driver.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                          <span>{driver.name} - {driver.mobile}</span>
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${driver.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          <span className="font-medium">{driver.name} - {driver.mobile}</span>
                         </div>
-                        <span className="text-xs text-gray-500 ml-2">₹{driver.currentBalance}</span>
+                        <div className="text-xs text-gray-500 pl-4">Current Wallet Balance: ₹{driver.currentBalance}</div>
+                        <div className="text-xs text-gray-500 pl-4">Area: {driver.permanentAddress || 'N/A'}</div>
                       </div>
                     </SelectItem>
                   ))}

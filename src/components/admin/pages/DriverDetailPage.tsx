@@ -285,7 +285,7 @@ export const DriverDetailPage = ({ driverId, onBack, onNavigateToRideDetail }: D
               <p>{driver.personalInformation?.currentAddress || 'Not provided'}</p>
             </div>
             <div>
-              <p className="font-semibold">Permanent Address</p>
+              <p className="font-semibold">Area</p>
               <p>{driver.personalInformation?.permanentAddress || 'Not provided'}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
