@@ -2861,22 +2861,24 @@ router.get("/transactions/paginated", adminAuthMiddleware, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || "";
+    const driverId = req.query.driverId || "";
+    const transactionType = req.query.transactionType || "";
     const skip = (page - 1) * limit;
 
     let matchQuery = {};
-    if (search) {
-      matchQuery = {
-        $or: [
-          { "driverId.personalInformation.fullName": { $regex: search, $options: "i" } },
-          { "driverId.mobile": { $regex: search, $options: "i" } },
-          { "transactions.type": { $regex: search, $options: "i" } },
-          { "transactions.description": { $regex: search, $options: "i" } }
-        ]
-      };
+    
+    // Filter by driver ID
+    if (driverId && driverId !== 'all') {
+      matchQuery.driverId = new mongoose.Types.ObjectId(driverId);
+    }
+    
+    // Filter by transaction type
+    if (transactionType && transactionType !== 'all') {
+      matchQuery["transactions.type"] = transactionType;
     }
 
     const pipeline = [
+      ...(driverId && driverId !== 'all' ? [{ $match: { driverId: new mongoose.Types.ObjectId(driverId) } }] : []),
       {
         $lookup: {
           from: "drivers",
@@ -2887,7 +2889,7 @@ router.get("/transactions/paginated", adminAuthMiddleware, async (req, res) => {
       },
       { $unwind: "$driverId" },
       { $unwind: "$transactions" },
-      ...(search ? [{ $match: matchQuery }] : []),
+      ...(transactionType && transactionType !== 'all' ? [{ $match: { "transactions.type": transactionType } }] : []),
       {
         $addFields: {
           "transactions.driver": "$driverId"

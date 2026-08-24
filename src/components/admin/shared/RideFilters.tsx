@@ -217,14 +217,14 @@ export const RideFilters = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Partner</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Driver</label>
           <Select value={filterDriver} onValueChange={setFilterDriver}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="All Partners" /></SelectTrigger>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All Drivers" /></SelectTrigger>
             <SelectContent>
               <div className="p-2">
                 <input
                   type="text"
-                  placeholder="Search partner..."
+                  placeholder="Search driver..."
                   value={driverSearch}
                   onChange={(e) => setDriverSearch(e.target.value)}
                   className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -232,7 +232,7 @@ export const RideFilters = ({
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
-              <SelectItem value="all">All Partners</SelectItem>
+              <SelectItem value="all">All Drivers</SelectItem>
               {drivers.map((driver) => (
                 <SelectItem key={driver._id} value={driver._id}>
                   <span className="font-medium">{driver.name || 'N/A'}</span>

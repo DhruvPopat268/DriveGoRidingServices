@@ -3,6 +3,7 @@ const router = express.Router();
 const Driver = require('../DriverModel/DriverModel');
 const Ride = require('../models/Ride');
 const DriverSuspend = require('../models/DriverSuspend');
+const DriverWallet = require('../DriverModel/driverWallet');
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 
 // GET /api/admin/all-drivers
@@ -65,9 +66,12 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
       Driver.countDocuments(filter)
     ]);
 
-    // Attach completed rides count and status-relevant date for each driver
+    // Attach completed rides count, status-relevant date, and wallet balance for each driver
     const driversWithStats = await Promise.all(drivers.map(async (driver) => {
-      const completedRides = await Ride.countDocuments({ driverId: driver._id, status: 'COMPLETED' });
+      const [completedRides, wallet] = await Promise.all([
+        Ride.countDocuments({ driverId: driver._id, status: 'COMPLETED' }),
+        DriverWallet.findOne({ driverId: driver._id }).select('balance').lean()
+      ]);
 
       let statusDate = null;
       switch (driver.status) {
@@ -89,7 +93,7 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
           statusDate = null;
       }
 
-      return { ...driver, completedRides, statusDate };
+      return { ...driver, completedRides, statusDate, walletBalance: wallet?.balance ?? 0 };
     }));
 
     res.json({

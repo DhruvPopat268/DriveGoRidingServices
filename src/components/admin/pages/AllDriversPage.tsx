@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Loader, ChevronLeft, ChevronRight, Search, X, Filter } from "lucide-react";
+import { Eye, Loader, ChevronLeft, ChevronRight, Search, X, Filter, Wallet } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -32,12 +32,14 @@ interface Driver {
   approvedDate: string;
   ratings?: { avgRating: number };
   completedRides: number;
+  walletBalance: number;
   statusDate: string | null;
 }
 
 interface AllDriversPageProps {
   onNavigateToDetail?: (driverId: string) => void;
   onNavigateToLogs?: (driverId: string) => void;
+  onNavigateToWalletHistory?: (driverId: string) => void;
 }
 
 const DRIVER_STATUSES = [
@@ -56,7 +58,7 @@ const OWNERSHIP_OPTIONS = [
   { value: 'Owner_With_Vehicle',label: 'Owner With Vehicle' },
 ];
 
-export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriversPageProps) => {
+export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs, onNavigateToWalletHistory }: AllDriversPageProps) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -321,28 +323,30 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
               <span>Loading drivers...</span>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
+            <>
+              <div className="overflow-x-auto">
+                <Table className="min-w-[1400px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>Full Name</TableHead>
-                    <TableHead>Mobile</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Ownership</TableHead>
-                    <TableHead>Area</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Avg Rating</TableHead>
-                    <TableHead>Completed Rides</TableHead>
-                    <TableHead>Joined At</TableHead>
-                    <TableHead>Status Date</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="min-w-[50px]">#</TableHead>
+                    <TableHead className="min-w-[160px]">Full Name</TableHead>
+                    <TableHead className="min-w-[130px]">Mobile</TableHead>
+                    <TableHead className="min-w-[120px]">Category</TableHead>
+                    <TableHead className="min-w-[150px]">Ownership</TableHead>
+                    <TableHead className="min-w-[150px]">Area</TableHead>
+                    <TableHead className="min-w-[120px]">Status</TableHead>
+                    <TableHead className="min-w-[110px]">Avg Rating</TableHead>
+                    <TableHead className="min-w-[140px]">Completed Rides</TableHead>
+                    <TableHead className="min-w-[140px]">Current Wallet Balance</TableHead>
+                    <TableHead className="min-w-[150px]">Joined At</TableHead>
+                    <TableHead className="min-w-[150px]">Status Date</TableHead>
+                    <TableHead className="min-w-[160px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {drivers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={13} className="text-center py-8 text-gray-500">
                         No drivers found
                       </TableCell>
                     </TableRow>
@@ -368,6 +372,11 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                         </TableCell>
                         <TableCell>
                           <span className="font-medium text-green-600">{driver.completedRides ?? 0}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium text-blue-600">
+                            ₹{(driver.walletBalance ?? 0).toFixed(2)}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
@@ -403,14 +412,25 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                               View Details
                             </Button>
                             {['Approved', 'Suspended', 'deleted'].includes(driver.status) && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 px-2 text-xs w-full justify-start bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                                onClick={() => onNavigateToLogs?.(driver._id)}
-                              >
-                                Check Online/Offline Logs
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs w-full justify-start bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
+                                  onClick={() => onNavigateToLogs?.(driver._id)}
+                                >
+                                  Check Online/Offline Logs
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2 text-xs w-full justify-start bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                  onClick={() => onNavigateToWalletHistory?.(driver._id)}
+                                >
+                                  <Wallet className="w-4 h-4 mr-1" />
+                                  Check Wallet History
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
@@ -420,45 +440,46 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs }: AllDriv
                 </TableBody>
               </Table>
             </div>
-          )}
 
-          {/* Pagination */}
-          {!loading && drivers.length > 0 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-gray-600">
-                Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </Button>
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNumber;
-                    if (totalPages <= 5) pageNumber = i + 1;
-                    else if (currentPage <= 3) pageNumber = i + 1;
-                    else if (currentPage >= totalPages - 2) pageNumber = totalPages - 4 + i;
-                    else pageNumber = currentPage - 2 + i;
-                    return (
-                      <Button
-                        key={pageNumber}
-                        variant={currentPage === pageNumber ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handlePageChange(pageNumber)}
-                        className="w-8 h-8 p-0"
-                      >
-                        {pageNumber}
-                      </Button>
-                    );
-                  })}
+            {/* Pagination */}
+            {drivers.length > 0 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-gray-600">
+                  Showing {Math.min((currentPage - 1) * recordsPerPage + 1, totalRecords)} to {Math.min(currentPage * recordsPerPage, totalRecords)} of {totalRecords} entries
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) pageNumber = i + 1;
+                      else if (currentPage <= 3) pageNumber = i + 1;
+                      else if (currentPage >= totalPages - 2) pageNumber = totalPages - 4 + i;
+                      else pageNumber = currentPage - 2 + i;
+                      return (
+                        <Button
+                          key={pageNumber}
+                          variant={currentPage === pageNumber ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNumber)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
+          </>
           )}
         </CardContent>
       </Card>

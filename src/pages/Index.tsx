@@ -79,6 +79,7 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState("");
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [selectedDriverLogsId, setSelectedDriverLogsId] = useState<string | null>(null);
+  const [selectedDriverTransactionsId, setSelectedDriverTransactionsId] = useState<string | null>(null);
   const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
   const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string} | null>(null);
@@ -86,6 +87,7 @@ const Index = () => {
   const handleSectionChange = (section: string) => {
     setSelectedDriverId(null);
     setSelectedDriverLogsId(null);
+    setSelectedDriverTransactionsId(null);
     setSelectedRideId(null);
     setSelectedRiderId(null);
     setActiveSection(section);
@@ -315,6 +317,10 @@ const Index = () => {
           <AllDriversPage 
             onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)}
             onNavigateToLogs={(driverId) => setSelectedDriverLogsId(driverId)}
+            onNavigateToWalletHistory={(driverId) => {
+              setSelectedDriverTransactionsId(driverId);
+              setActiveSection("driver-transactions");
+            }}
           />
         );
       case "pending-withdrawals":
@@ -324,7 +330,7 @@ const Index = () => {
       case "rejected-withdrawals":
         return <RejectedWithdrawalPage />;
       case "driver-transactions":
-        return <DriverTransactionsPage />;
+        return <DriverTransactionsPage preselectedDriverId={selectedDriverTransactionsId || undefined} />;
       case "driver-purchased-plans":
         return <DriverPurchasedPlansPage />;
       case "all-drivers-credits":
