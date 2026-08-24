@@ -113,17 +113,7 @@ const menuItems = [
       { icon: Calculator, label: "Parcel Ride Cost Management", key: "parcelridecost" }
     ]
   },
-  {
-    icon: Truck,
-    label: "Vehicle Management",
-    key: "vehicle-management",
-    isDropdown: true,
-    subItems: [
-      { icon: Clock, label: "Pending Vehicles", key: "pending-vehicles" },
-      { icon: CheckCircle, label: "Approved Vehicles", key: "approved-vehicles" },
-      { icon: XCircle, label: "Rejected Vehicles", key: "rejected-vehicles" }
-    ]
-  },
+  { icon: Truck, label: "Vehicle Management", key: "approved-vehicles" },
   { icon: Clock, label: "Peak and Night Charges Management", key: "peakhours" },
   { icon: BookOpen, label: "T & C", key: "t&c" },
 

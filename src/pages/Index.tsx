@@ -65,9 +65,7 @@ import DriverIncentivePage from "@/components/admin/pages/DriverIncentivePage";
 import SuspendDriverPage from "@/components/admin/pages/SuspendDriverPage";
 import { UsersPage } from "@/components/admin/pages/UsersPage";
 import { RiderDetailPage } from "@/components/admin/pages/RiderDetailPage";
-import PendingVehiclesPage from "@/components/admin/pages/PendingVehiclesPage";
 import ApprovedVehiclesPage from "@/components/admin/pages/ApprovedVehiclesPage";
-import RejectedVehiclesPage from "@/components/admin/pages/RejectedVehiclesPage";
 import RiderPendingWithdrawalPage from "@/components/admin/pages/RiderPendingWithdrawalPage";
 import RiderApprovedWithdrawalPage from "@/components/admin/pages/RiderApprovedWithdrawalPage";
 import RiderRejectedWithdrawalPage from "@/components/admin/pages/RiderRejectedWithdrawalPage";
@@ -382,12 +380,8 @@ const Index = () => {
             onNavigateToRiderDetail={(riderId) => setSelectedRiderId(riderId)} 
           />
         );
-      case "pending-vehicles":
-        return <PendingVehiclesPage />;
       case "approved-vehicles":
-        return <ApprovedVehiclesPage />;
-      case "rejected-vehicles":
-        return <RejectedVehiclesPage />;
+        return <ApprovedVehiclesPage onNavigateToDriverDetail={(driverId) => { setSelectedDriverId(driverId); setActiveSection('drivers-all'); }} />;
       case "rider-pending-withdrawals":
         return <RiderPendingWithdrawalPage />;
       case "rider-approved-withdrawals":

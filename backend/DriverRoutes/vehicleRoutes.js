@@ -2,6 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Vehicle = require("../DriverModel/VehicleModel");
 const Driver = require("../DriverModel/DriverModel");
+const Car = require("../models/Car");
+const ParcelVehicle = require("../models/ParcelVehicle");
 const DriverAuthMiddleware = require("../middleware/driverAuthMiddleware");
 const { evaluateDriverProgress } = require("../utils/driverSteps");
 const multer = require("multer");
@@ -640,106 +642,70 @@ router.post("/assign-vehicles-to-driver", DriverAuthMiddleware, async (req, res)
   }
 });
 
-// Admin: Get all pending vehicles (adminStatus: 'pending')
-router.get("/admin/pending",adminAuthMiddleware, async (req, res) => {
+// Admin: Get vehicles filtered by status and optional category
+// Query params: status (required), categoryId (optional), page, limit
+router.get("/admin/vehicles", adminAuthMiddleware, async (req, res) => {
   try {
+    const { status, categoryId, search } = req.query;
+    const validStatuses = ['pending', 'approved', 'rejected'];
+
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or missing status. Must be 'pending', 'approved', or 'rejected'."
+      });
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
+    // Build query filter
+    const filter = { adminStatus: status };
+    if (categoryId && mongoose.Types.ObjectId.isValid(categoryId)) {
+      filter.category = new mongoose.Types.ObjectId(categoryId);
+    }
+
+    // Search by vehicle model name — find matching Car/ParcelVehicle IDs first
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      const [matchingCars, matchingParcelVehicles] = await Promise.all([
+        Car.find({ name: searchRegex }).select('_id'),
+        ParcelVehicle.find({ name: searchRegex }).select('_id')
+      ]);
+      const carIds = matchingCars.map(c => c._id);
+      const parcelIds = matchingParcelVehicles.map(p => p._id);
+      filter.$or = [
+        { 'cabVehicleDetails.modelType': { $in: carIds } },
+        { 'parcelVehicleDetails.modelType': { $in: parcelIds } }
+      ];
+    }
+
     const [vehicles, totalRecords] = await Promise.all([
-      Vehicle.find({ adminStatus: 'pending' })
-        .populate('owner', 'personalInformation.fullName mobile uniqueId')
+      Vehicle.find(filter)
+        .populate('owner', 'personalInformation.fullName mobile uniqueId ownership')
         .populate('category', 'name')
         .populate('assignedTo', 'personalInformation.fullName mobile')
         .populate('cabVehicleDetails.vehicleType')
-        .populate('cabVehicleDetails.modelType')
+        .populate({
+          path: 'cabVehicleDetails.modelType',
+          populate: { path: 'category' }
+        })
         .populate('parcelVehicleDetails.vehicleType')
-        .populate('parcelVehicleDetails.modelType')
+        .populate({
+          path: 'parcelVehicleDetails.modelType',
+          populate: { path: 'parcelCategory' }
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Vehicle.countDocuments({ adminStatus: 'pending' })
+      Vehicle.countDocuments(filter)
     ]);
 
     const totalPages = Math.ceil(totalRecords / limit);
 
-    res.json({ 
-      success: true, 
-      data: vehicles,
-      totalRecords,
-      totalPages,
-      currentPage: page,
-      limit
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Admin: Get all approved vehicles (adminStatus: 'approved')
-router.get("/admin/approved",adminAuthMiddleware, async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const [vehicles, totalRecords] = await Promise.all([
-      Vehicle.find({ adminStatus: 'approved' })
-        .populate('owner', 'personalInformation.fullName mobile uniqueId')
-        .populate('category', 'name')
-        .populate('assignedTo', 'personalInformation.fullName mobile')
-        .populate('cabVehicleDetails.vehicleType')
-        .populate('cabVehicleDetails.modelType')
-        .populate('parcelVehicleDetails.vehicleType')
-        .populate('parcelVehicleDetails.modelType')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      Vehicle.countDocuments({ adminStatus: 'approved' })
-    ]);
-
-    const totalPages = Math.ceil(totalRecords / limit);
-
-    res.json({ 
-      success: true, 
-      data: vehicles,
-      totalRecords,
-      totalPages,
-      currentPage: page,
-      limit
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// Admin: Get all rejected vehicles (adminStatus: 'rejected')
-router.get("/admin/rejected",adminAuthMiddleware, async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const [vehicles, totalRecords] = await Promise.all([
-      Vehicle.find({ adminStatus: 'rejected' })
-        .populate('owner', 'personalInformation.fullName mobile uniqueId')
-        .populate('category', 'name')
-        .populate('assignedTo', 'personalInformation.fullName mobile')
-        .populate('cabVehicleDetails.vehicleType')
-        .populate('cabVehicleDetails.modelType')
-        .populate('parcelVehicleDetails.vehicleType')
-        .populate('parcelVehicleDetails.modelType')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      Vehicle.countDocuments({ adminStatus: 'rejected' })
-    ]);
-
-    const totalPages = Math.ceil(totalRecords / limit);
-
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       data: vehicles,
       totalRecords,
       totalPages,
