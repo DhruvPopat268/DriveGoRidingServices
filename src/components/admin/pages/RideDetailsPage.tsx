@@ -662,7 +662,8 @@ export const RideDetailsPage = () => {
                 </div>
               </div>
 
-              {(rideDetails.rideInfo.driverReachTime || rideDetails.rideInfo.ridseStartTime || rideDetails.rideInfo.rideEndTime) && (
+              {((rideDetails.rideInfo.driverReachTime || rideDetails.rideInfo.ridseStartTime || rideDetails.rideInfo.rideEndTime) ||
+                (rideDetails.rideInfo.weeklyMonthlyRideTimings && rideDetails.rideInfo.weeklyMonthlyRideTimings.length > 0)) && (
                 <>
                   <Separator />
                   <div className="bg-blue-50 p-4 rounded-lg">
