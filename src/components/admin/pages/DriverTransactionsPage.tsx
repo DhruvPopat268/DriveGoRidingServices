@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader, Search, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Wallet, Filter, X } from "lucide-react";
+import { Loader, Search, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Wallet, Filter, X, ArrowLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import apiClient from '../../../lib/axiosInterceptor';
 
@@ -35,9 +35,10 @@ interface Transaction {
 
 interface DriverTransactionsPageProps {
   preselectedDriverId?: string;
+  onBack?: () => void;
 }
 
-export const DriverTransactionsPage = ({ preselectedDriverId }: DriverTransactionsPageProps = {}) => {
+export const DriverTransactionsPage = ({ preselectedDriverId, onBack }: DriverTransactionsPageProps = {}) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -187,6 +188,14 @@ export const DriverTransactionsPage = ({ preselectedDriverId }: DriverTransactio
 
   return (
     <div className="p-6 space-y-6">
+      {/* Back Button */}
+      {onBack && (
+        <Button variant="outline" onClick={onBack} className="mb-2">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>

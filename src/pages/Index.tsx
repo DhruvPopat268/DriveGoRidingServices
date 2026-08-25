@@ -330,7 +330,13 @@ const Index = () => {
       case "rejected-withdrawals":
         return <RejectedWithdrawalPage />;
       case "driver-transactions":
-        return <DriverTransactionsPage preselectedDriverId={selectedDriverTransactionsId || undefined} />;
+        return <DriverTransactionsPage
+          preselectedDriverId={selectedDriverTransactionsId || undefined}
+          onBack={selectedDriverTransactionsId ? () => {
+            setSelectedDriverTransactionsId(null);
+            setActiveSection("drivers-all");
+          } : undefined}
+        />;
       case "driver-purchased-plans":
         return <DriverPurchasedPlansPage />;
       case "all-drivers-credits":
