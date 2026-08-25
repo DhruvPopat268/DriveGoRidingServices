@@ -522,6 +522,28 @@ router.post("/admin/driver/confirm", adminAuthMiddleware, async (req, res) => {
       });
     }
 
+    // Check if this is an outstation ride and validate completed rides
+    const outstationSubcategoryId = process.env.DRIVER_OUTSTATION_ID;
+    const outstationRidesLimit = parseInt(process.env.DRIVER_OUTSTATION_COMPLETED_RIDES_LIMIT) || 15;
+
+    if (ride.rideInfo.subcategoryId === outstationSubcategoryId) {
+      // Count completed rides for this driver
+      const completedRides = await Ride.countDocuments({
+        driverId: driverId,
+        status: "COMPLETED"
+      });
+
+      if (completedRides < outstationRidesLimit) {
+        return res.status(403).json({
+          success: false,
+          message: `To accept outstation rides, you must have completed at least ${outstationRidesLimit} rides. You have completed ${completedRides} rides.`,
+          completedRides: completedRides,
+          requiredRides: outstationRidesLimit,
+          errorCode: 'INSUFFICIENT_COMPLETED_RIDES'
+        });
+      }
+    }
+
     // Check wallet balance before confirming ride
     try {
       const balanceCheck = await checkDriverWalletBalance(
@@ -2027,6 +2049,28 @@ router.post("/driver/confirm", driverAuthMiddleware, async (req, res) => {
 
     if (!ride) {
       return res.status(404).json({ message: "Ride not found" });
+    }
+
+    // Check if this is an outstation ride and validate completed rides
+    const outstationSubcategoryId = process.env.DRIVER_OUTSTATION_ID;
+    const outstationRidesLimit = parseInt(process.env.DRIVER_OUTSTATION_COMPLETED_RIDES_LIMIT) || 15;
+
+    if (ride.rideInfo.subcategoryId === outstationSubcategoryId) {
+      // Count completed rides for this driver
+      const completedRides = await Ride.countDocuments({
+        driverId: driverId,
+        status: "COMPLETED"
+      });
+
+      if (completedRides < outstationRidesLimit) {
+        return res.status(403).json({
+          success: false,
+          message: `To accept outstation rides, you must have completed at least ${outstationRidesLimit} rides. You have completed ${completedRides} rides.`,
+          completedRides: completedRides,
+          requiredRides: outstationRidesLimit,
+          errorCode: 'INSUFFICIENT_COMPLETED_RIDES'
+        });
+      }
     }
 
     try {
