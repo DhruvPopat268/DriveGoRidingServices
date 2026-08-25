@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Loader, Search, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Wallet, Filter, X, ArrowLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Transaction {
@@ -39,6 +40,7 @@ interface DriverTransactionsPageProps {
 }
 
 export const DriverTransactionsPage = ({ preselectedDriverId, onBack }: DriverTransactionsPageProps = {}) => {
+  const navigate = useNavigate();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -190,7 +192,7 @@ export const DriverTransactionsPage = ({ preselectedDriverId, onBack }: DriverTr
     <div className="p-6 space-y-6">
       {/* Back Button */}
       {onBack && (
-        <Button variant="outline" onClick={onBack} className="mb-2">
+        <Button variant="outline" onClick={() => onBack?.()} className="mb-2">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>

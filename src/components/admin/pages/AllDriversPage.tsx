@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,12 +37,6 @@ interface Driver {
   statusDate: string | null;
 }
 
-interface AllDriversPageProps {
-  onNavigateToDetail?: (driverId: string) => void;
-  onNavigateToLogs?: (driverId: string) => void;
-  onNavigateToWalletHistory?: (driverId: string) => void;
-}
-
 const DRIVER_STATUSES = [
   { value: 'Pending',          label: 'Pending' },
   { value: 'Onreview',         label: 'On Review' },
@@ -58,7 +53,8 @@ const OWNERSHIP_OPTIONS = [
   { value: 'Owner_With_Vehicle',label: 'Owner With Vehicle' },
 ];
 
-export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs, onNavigateToWalletHistory }: AllDriversPageProps) => {
+export const AllDriversPage = () => {
+  const navigate = useNavigate();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -406,7 +402,7 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs, onNavigat
                               size="sm"
                               variant="outline"
                               className="h-7 px-2 text-xs w-full justify-start bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                              onClick={() => onNavigateToDetail?.(driver._id)}
+                              onClick={() => navigate(`/drivers/${driver._id}`)}
                             >
                               <Eye className="w-4 h-4 mr-1" />
                               View Details
@@ -417,7 +413,7 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs, onNavigat
                                   size="sm"
                                   variant="outline"
                                   className="h-7 px-2 text-xs w-full justify-start bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                                  onClick={() => onNavigateToLogs?.(driver._id)}
+                                  onClick={() => navigate(`/drivers/${driver._id}/logs`)}
                                 >
                                   Check Online/Offline Logs
                                 </Button>
@@ -425,7 +421,7 @@ export const AllDriversPage = ({ onNavigateToDetail, onNavigateToLogs, onNavigat
                                   size="sm"
                                   variant="outline"
                                   className="h-7 px-2 text-xs w-full justify-start bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                                  onClick={() => onNavigateToWalletHistory?.(driver._id)}
+                                  onClick={() => navigate(`/driver-transactions?driverId=${driver._id}`)}
                                 >
                                   <Wallet className="w-4 h-4 mr-1" />
                                   Check Wallet History

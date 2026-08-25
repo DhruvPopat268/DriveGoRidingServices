@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Driver {
@@ -36,12 +37,9 @@ interface UniversalCategoryAssignmentPageProps {
   onBack: () => void;
 }
 
-export const UniversalCategoryAssignmentPage = ({ 
-  categoryType, 
-  categoryId, 
-  categoryName, 
-  onBack 
-}: UniversalCategoryAssignmentPageProps) => {
+export const UniversalCategoryAssignmentPage = () => {
+  const { categoryType, categoryId } = useParams<{ categoryType: string; categoryId: string }>();
+  const navigate = useNavigate();
   
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
@@ -53,7 +51,7 @@ export const UniversalCategoryAssignmentPage = ({
 
   useEffect(() => {
     if (!config) {
-      onBack();
+      () => navigate(-1)();
       return;
     }
     fetchDrivers();

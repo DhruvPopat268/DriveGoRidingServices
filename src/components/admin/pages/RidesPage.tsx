@@ -3,13 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Clock, User, Car, Phone, Calendar, CreditCard, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import apiClient from '../../../lib/axiosInterceptor';
 
-interface RidesPageProps {
-  onNavigateToDetail?: (rideId: string) => void;
-}
-
-export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
+export const RidesPage = () => {
+  const navigate = useNavigate();
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -284,7 +282,7 @@ export const RidesPage = ({ onNavigateToDetail }: RidesPageProps) => {
                         size="sm" 
                         variant="outline" 
                         className="h-8 px-3 text-xs"
-                        onClick={() => onNavigateToDetail?.(ride._id)}
+                        onClick={() => navigate(`/rides/${ride._id}`)}
                       >
                         <Eye className="w-4 h-4" />
                       </Button>

@@ -7,12 +7,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Calendar, Clock, Eye, UserPlus, UserMinus, Loader, ChevronLeft, ChevronRight, XCircle, CalendarClock, MapPin } from 'lucide-react';
 import { RupeeIcon } from '@/components/ui/RupeeIcon';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { RideFilters } from '@/components/admin/shared/RideFilters';
 import { AdminExtraChargesDialog } from '@/components/admin/AdminExtraChargesDialog';
 import toast, { Toaster } from 'react-hot-toast';
 
-export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNavigateToDriverDetail }) => {
+export const AllRidesPage = () => {
+  const navigate = useNavigate();
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -504,7 +506,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
                             size="sm"
                             variant="outline"
                             className="h-6 px-2 text-xs mt-1"
-                            onClick={() => onNavigateToRiderDetail?.(ride.riderId)}
+                            onClick={() => navigate(`/users/${ride.riderId}`)}
                           >
                             <Eye className="w-3 h-3 mr-1" />
                             View
@@ -591,7 +593,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
                               size="sm"
                               variant="outline"
                               className="h-6 px-2 text-xs mt-1"
-                              onClick={() => onNavigateToDriverDetail?.(ride.driverId)}
+                              onClick={() => navigate(`/drivers/${ride.driverId}`)}
                             >
                               <Eye className="w-3 h-3 mr-1" />
                               View
@@ -632,7 +634,7 @@ export const AllRidesPage = ({ onNavigateToDetail, onNavigateToRiderDetail, onNa
                           size="sm"
                           variant="outline"
                           className="h-7 px-2 text-xs w-full justify-start bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                          onClick={() => onNavigateToDetail?.(ride._id)}
+                          onClick={() => navigate(`/all-rides/${ride._id}`)}
                         >
                           View Details
                         </Button>

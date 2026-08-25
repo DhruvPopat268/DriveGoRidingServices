@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useParams, useNavigate } from "react-router-dom";
 import apiClient from "../../../lib/axiosInterceptor";
 
 interface DriverDetail {
@@ -86,13 +87,9 @@ interface Ride {
   status: string;
 }
 
-interface DriverDetailPageProps {
-  driverId: string;
-  onBack: () => void;
-  onNavigateToRideDetail?: (rideId: string) => void;
-}
-
-export const DriverDetailPage = ({ driverId, onBack, onNavigateToRideDetail }: DriverDetailPageProps) => {
+export const DriverDetailPage = () => {
+  const { driverId } = useParams<{ driverId: string }>();
+  const navigate = useNavigate();
   const [driver, setDriver] = useState<DriverDetail | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +132,7 @@ export const DriverDetailPage = ({ driverId, onBack, onNavigateToRideDetail }: D
   const handleApprove = async () => {
     try {
       await apiClient.post(`${import.meta.env.VITE_API_URL}/api/driver/approve/${driverId}`);
-      onBack();
+      () => navigate(-1)();
     } catch (error) {
       console.error('Error approving driver:', error);
     }
@@ -149,7 +146,7 @@ export const DriverDetailPage = ({ driverId, onBack, onNavigateToRideDetail }: D
       });
       setShowRejectDialog(false);
       setSelectedSteps([]);
-      onBack();
+      () => navigate(-1)();
     } catch (error) {
       console.error('Error rejecting driver:', error);
     } finally {
@@ -166,9 +163,7 @@ export const DriverDetailPage = ({ driverId, onBack, onNavigateToRideDetail }: D
   };
 
   const handleViewRide = (rideId: string) => {
-    if (onNavigateToRideDetail) {
-      onNavigateToRideDetail(rideId);
-    }
+    navigate(`/all-rides/${rideId}`);
   };
 
   const formatDate = (dateString: string) => {
@@ -206,7 +201,7 @@ export const DriverDetailPage = ({ driverId, onBack, onNavigateToRideDetail }: D
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <Button variant="outline" onClick={onBack}>
+          <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>

@@ -7,9 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
 import { Login } from "./pages/Login";
-
 
 const queryClient = new QueryClient();
 
@@ -18,20 +16,15 @@ const App = () => (
     <AuthProvider>
       <ThemeProvider>
         <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Index />} />
-            <Route path="/booked-rides" element={<Index />} />
-            <Route path="/confirmed-rides" element={<Index />} />
-            <Route path="/admin/category-assignment/:categoryType/:categoryId" element={<Index />} />
-
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              {/* All admin pages go through Index layout — wildcard passes full path to inner Routes */}
+              <Route path="/*" element={<Index />} />
+            </Routes>
+          </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
     </AuthProvider>

@@ -1,17 +1,15 @@
-
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Header } from "@/components/admin/Header";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { RecentRides } from "@/components/admin/RecentRides";
 import { BookedRides } from "@/components/admin/BookedRides";
 import { ConfirmedRides } from "@/components/admin/ConfirmedRides";
-import { DriverRequests } from "@/components/admin/DriverRequests";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import { RideStatusChart } from "@/components/admin/RideStatusChart";
 import { RevenueDistributionChart } from "@/components/admin/RevenueDistributionChart";
-import { LiveMap } from "@/components/admin/LiveMap";
 import { RidersPage } from "@/components/admin/pages/RidersPage";
 import { RidesPage } from "@/components/admin/pages/RidesPage";
 import { AllRidesPage } from "@/components/admin/pages/AllRidesPage";
@@ -31,7 +29,7 @@ import { NotificationsPage } from "@/components/admin/pages/NotificationsPage";
 import { SafetyPage } from "@/components/admin/pages/SafetyPage";
 import { SettingsPage } from "@/components/admin/pages/SettingsPage";
 import { InstructionsPage } from "@/components/admin/pages/InstructionsPage";
-import  ReferEarnPage  from "@/components/admin/pages/ReferEarnPage";
+import ReferEarnPage from "@/components/admin/pages/ReferEarnPage";
 import { StatesPage } from "@/components/admin/pages/StatesPage";
 import { CitiesPage } from "@/components/admin/pages/CitiesPage";
 import { CarCategoryPage } from "@/components/admin/pages/CarCategoryPage";
@@ -52,7 +50,6 @@ import { CompletedWithdrawalPage } from "@/components/admin/pages/CompletedWithd
 import { RejectedWithdrawalPage } from "@/components/admin/pages/RejectedWithdrawalPage";
 import { DriverPurchasedPlansPage } from "@/components/admin/pages/DriverPurchasedPlansPage";
 import { RideDetailsPage } from "@/components/admin/pages/RideDetailsPage";
-
 import FileUploadTest from "@/components/admin/pages/FileUploadTest";
 import { AllDriversCreditsPage } from "@/components/admin/pages/AllDriversCreditsPage";
 import { ManageDriverCreditsPage } from "@/components/admin/pages/ManageDriverCreditsPage";
@@ -72,372 +69,113 @@ import RiderRejectedWithdrawalPage from "@/components/admin/pages/RiderRejectedW
 import RiderWalletConfigPage from "@/components/admin/pages/RiderWalletConfigPage";
 import AdminWalletLedger from "@/components/admin/pages/AdminWalletLedger";
 import { OfflineStaffPage } from "@/components/admin/pages/OfflineStaffPage";
-import axios from "axios";
+import NotFound from "@/pages/NotFound";
+
+// Dashboard
+const Dashboard = () => (
+  <div className="space-y-6">
+    <DashboardStats />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <RevenueChart />
+      <RideStatusChart />
+      <RevenueDistributionChart />
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <BookedRides />
+      <ConfirmedRides />
+    </div>
+  </div>
+);
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeSection, setActiveSection] = useState("");
-  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-  const [selectedDriverLogsId, setSelectedDriverLogsId] = useState<string | null>(null);
-  const [selectedDriverTransactionsId, setSelectedDriverTransactionsId] = useState<string | null>(null);
-  const [selectedRideId, setSelectedRideId] = useState<string | null>(null);
-  const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
-  const [categoryAssignment, setCategoryAssignment] = useState<{categoryType: string, categoryId: string, categoryName: string} | null>(null);
-
-  const handleSectionChange = (section: string) => {
-    setSelectedDriverId(null);
-    setSelectedDriverLogsId(null);
-    setSelectedDriverTransactionsId(null);
-    setSelectedRideId(null);
-    setSelectedRiderId(null);
-    setActiveSection(section);
-    
-    // Clear URL parameters
-    const url = new URL(window.location.href);
-    url.searchParams.delete('section');
-    url.searchParams.delete('rideId');
-    
-    // Update URL for specific sections
-    if (section === 'dashboard') {
-      navigate('/');
-    } else {
-      // For other sections, just update the URL without parameters
-      window.history.replaceState({}, '', url.pathname);
-    }
-  };
-  const location = useLocation();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const path = location.pathname;
-    const urlParams = new URLSearchParams(location.search);
-    const section = urlParams.get('section');
-    const rideId = urlParams.get('rideId');
-    
-    // Handle URL parameters for navigation
-    if (section && rideId) {
-      setActiveSection(section);
-      setSelectedRideId(rideId);
-      return;
-    }
-    
-    // Handle direct URL navigation
-    const match = path.match(/\/admin\/category-assignment\/(\w+)\/([a-f0-9]+)/);
-    if (match) {
-      const [, categoryType, categoryId] = match;
-      fetchCategoryAndSet(categoryType, categoryId);
-      setActiveSection('category-assignment');
-    } else if (!activeSection) {
-      setActiveSection("dashboard");
-    }
-  }, [location.pathname, location.search]);
-
-  const fetchCategoryAndSet = async (categoryType: string, categoryId: string) => {
-    try {
-      let endpoint = '';
-      let nameField = '';
-      
-      switch (categoryType) {
-        case 'parcel':
-          endpoint = `/api/parcelVehicles/${categoryId}`;
-          nameField = 'name';
-          break;
-        case 'driver':
-          endpoint = `/api/price-categories/${categoryId}`;
-          nameField = 'priceCategoryName';
-          break;
-        case 'car':
-          endpoint = `/api/cars/${categoryId}`;
-          nameField = 'name';
-          break;
-      }
-      
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}${endpoint}`);
-      setCategoryAssignment({
-        categoryType,
-        categoryId,
-        categoryName: response.data[nameField]
-      });
-    } catch (err) {
-      console.error('Failed to fetch category:', err);
-      navigate('/');
-    }
-  };
-
-
-  const renderContent = () => {
-    switch (activeSection) {
-      case "dashboard":
-        return (
-          <div className="space-y-6">
-            <DashboardStats />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div>
-                <RevenueChart />
-              </div>
-              <div>
-                <RideStatusChart />
-              </div>
-              <div>
-                <RevenueDistributionChart />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <BookedRides />
-              </div>
-              <div>
-                <ConfirmedRides />
-              </div>
-            </div>
-          </div>
-        );
-      case "states":
-        return <StatesPage />;
-      case "cities":
-        return <CitiesPage />;
-      case "riders":
-        return <RidersPage />;
-      case "rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <RidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "all-rides":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage
-            driverId={selectedDriverId}
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : selectedRiderId ? (
-          <RiderDetailPage
-            riderId={selectedRiderId}
-            onBack={() => setSelectedRiderId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <AllRidesPage 
-            onNavigateToDetail={(rideId) => setSelectedRideId(rideId)}
-            onNavigateToRiderDetail={(riderId) => setSelectedRiderId(riderId)}
-            onNavigateToDriverDetail={(driverId) => setSelectedDriverId(driverId)}
-          />
-        );
-      case "category":
-        return <CategoryPage />;
-      case "subcategory":
-        return <SubCategoryPage />;
-      case "subsubcategory":
-        return <SubSubCategoryPage />;
-      case "vehiclecategory":
-        return <VehicleCategoryPage />;
-      case "drivervehicletype":
-        return <DriverVehicleTypePage />;
-      case "drivercategory":
-        return <PriceCategoryPage />;
-      case "parcelcategory":
-        return <ParcelCategoryPage />;
-      case "parcelvehicletype":
-        return <ParcelVehicleTypePage />;
-      case "parcelvehicleManagement":
-        return <ParcelVehicleManagementPage />;
-      case "parcelridecost":
-        return <ParcelRideCostPage />;
-      case "DriverRidecost":
-        return <DriverRideCostPage />;  
-      case "cabridecost":
-        return <CabRideCostPage />;
-      case "peakhours":
-        return <PeakHoursPage />;
-      case "t&c":
-        return <InstructionsPage />;
-      case "payments":
-        return <PaymentsPage />;
-      case "analytics":
-        return <AnalyticsPage />;
-      case "support":
-        return <SupportPage />;
-      case "notifications":
-        return <NotificationsPage />;
-      case "safety":
-        return <SafetyPage />;
-      case "settings":
-        return <SettingsPage />;
-      case "UserReferearn":
-        return <ReferEarnPage />;
-      case "rbac":
-        return <RBACManagementPage />;
-      case "rolemanagement":
-        return <RBACManagementPage />;
-      case "carcategory":
-        return <CarCategoryPage />;
-      case "vehicletype":
-        return <VehicleTypePage />;
-      case "carmanagement":
-        return <CarManagementPage />;
-      case "cabridecost":
-        return <CabRideCostPage />;
-      case "driversubscription":
-        return <DriverSubscriptionPage />;
-      case "payments":
-        return <PaymentsPage />;
-      case "riders":
-        return <RidersPage />;
-      case "support":
-        return <SupportPage />;
-      case "drivers-all":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedDriverLogsId ? (
-          <DriverOnlineLogsPage
-            driverId={selectedDriverLogsId}
-            onBack={() => setSelectedDriverLogsId(null)}
-          />
-        ) : selectedDriverId ? (
-          <DriverDetailPage 
-            driverId={selectedDriverId} 
-            onBack={() => setSelectedDriverId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <AllDriversPage 
-            onNavigateToDetail={(driverId) => setSelectedDriverId(driverId)}
-            onNavigateToLogs={(driverId) => setSelectedDriverLogsId(driverId)}
-            onNavigateToWalletHistory={(driverId) => {
-              setSelectedDriverTransactionsId(driverId);
-              setActiveSection("driver-transactions");
-            }}
-          />
-        );
-      case "pending-withdrawals":
-        return <PendingWithdrawalPage />;
-      case "completed-withdrawals":
-        return <CompletedWithdrawalPage />;
-      case "rejected-withdrawals":
-        return <RejectedWithdrawalPage />;
-      case "driver-transactions":
-        return <DriverTransactionsPage
-          preselectedDriverId={selectedDriverTransactionsId || undefined}
-          onBack={selectedDriverTransactionsId ? () => {
-            setSelectedDriverTransactionsId(null);
-            setActiveSection("drivers-all");
-          } : undefined}
-        />;
-      case "driver-purchased-plans":
-        return <DriverPurchasedPlansPage />;
-      case "all-drivers-credits":
-        return <AllDriversCreditsPage />;
-      case "manage-driver-credits":
-        return <ManageDriverCreditsPage />;
-      case "min-withdraw-balance":
-        return <MinWithdrawBalancePage />;
-      case "service-wallet-balance":
-        return <ServiceWiseMinWalletPage />;
-      case "user-ratings":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <UserRatingsPage 
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "driver-ratings":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : (
-          <DriverRatingsPage 
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)} 
-          />
-        );
-      case "file-upload-test":
-        return <FileUploadTest />;
-      case "driver-incentives":
-        return <DriverIncentivePage />;
-      case "suspend-driver":
-        return <SuspendDriverPage />;
-      case "users":
-        return selectedRideId ? (
-          <RideDetailsPage 
-            rideId={selectedRideId} 
-            onBack={() => setSelectedRideId(null)} 
-          />
-        ) : selectedRiderId ? (
-          <RiderDetailPage 
-            riderId={selectedRiderId} 
-            onBack={() => setSelectedRiderId(null)}
-            onNavigateToRideDetail={(rideId) => setSelectedRideId(rideId)}
-          />
-        ) : (
-          <UsersPage 
-            onNavigateToRiderDetail={(riderId) => setSelectedRiderId(riderId)} 
-          />
-        );
-      case "approved-vehicles":
-        return <ApprovedVehiclesPage onNavigateToDriverDetail={(driverId) => { setSelectedDriverId(driverId); setActiveSection('drivers-all'); }} />;
-      case "rider-pending-withdrawals":
-        return <RiderPendingWithdrawalPage />;
-      case "rider-approved-withdrawals":
-        return <RiderApprovedWithdrawalPage />;
-      case "rider-rejected-withdrawals":
-        return <RiderRejectedWithdrawalPage />;
-      case "rider-wallet-config":
-        return <RiderWalletConfigPage />;
-      case "create-offline-staff":
-      case "manage-offline-staff":
-        return <OfflineStaffPage />;
-      case "admin-wallet-ledger":
-        return <AdminWalletLedger />;
-
-      case "category-assignment":
-        return categoryAssignment ? (
-          <UniversalCategoryAssignmentPage 
-            categoryType={categoryAssignment.categoryType}
-            categoryId={categoryAssignment.categoryId}
-            categoryName={categoryAssignment.categoryName}
-            isCarAssignment={categoryAssignment.categoryType === 'car'}
-            onBack={() => {
-              setCategoryAssignment(null);
-              setActiveSection('dashboard');
-              navigate('/');
-            }}
-          />
-        ) : null;
-      default:
-        return <div className="text-white dark:text-white text-gray-900">Page not found</div>;
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
-      <Sidebar
-        isOpen={sidebarOpen}
-        activeSection={activeSection}
-        onSectionChange={handleSectionChange}
-      />
+      <Sidebar isOpen={sidebarOpen} />
       <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
         <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
         <main className="p-6">
-          {renderContent()}
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* Rides */}
+            <Route path="/rides" element={<RidesPage />} />
+            <Route path="/rides/:rideId" element={<RideDetailsPage />} />
+            <Route path="/all-rides" element={<AllRidesPage />} />
+            <Route path="/all-rides/:rideId" element={<RideDetailsPage />} />
+
+            {/* Drivers */}
+            <Route path="/drivers" element={<AllDriversPage />} />
+            <Route path="/drivers/:driverId" element={<DriverDetailPage />} />
+            <Route path="/drivers/:driverId/logs" element={<DriverOnlineLogsPage />} />
+            <Route path="/suspend-driver" element={<SuspendDriverPage />} />
+
+            {/* Driver Wallet & Payments */}
+            <Route path="/driver-transactions" element={<DriverTransactionsPage />} />
+            <Route path="/pending-withdrawals" element={<PendingWithdrawalPage />} />
+            <Route path="/completed-withdrawals" element={<CompletedWithdrawalPage />} />
+            <Route path="/rejected-withdrawals" element={<RejectedWithdrawalPage />} />
+            <Route path="/driver-purchased-plans" element={<DriverPurchasedPlansPage />} />
+            <Route path="/min-withdraw-balance" element={<MinWithdrawBalancePage />} />
+            <Route path="/service-wallet-balance" element={<ServiceWiseMinWalletPage />} />
+            <Route path="/driver-incentives" element={<DriverIncentivePage />} />
+
+            {/* Driver Credits */}
+            <Route path="/all-drivers-credits" element={<AllDriversCreditsPage />} />
+            <Route path="/manage-driver-credits" element={<ManageDriverCreditsPage />} />
+
+            {/* Users */}
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/users/:riderId" element={<RiderDetailPage />} />
+            <Route path="/rider-pending-withdrawals" element={<RiderPendingWithdrawalPage />} />
+            <Route path="/rider-approved-withdrawals" element={<RiderApprovedWithdrawalPage />} />
+            <Route path="/rider-rejected-withdrawals" element={<RiderRejectedWithdrawalPage />} />
+            <Route path="/rider-wallet-config" element={<RiderWalletConfigPage />} />
+
+            {/* Vehicles */}
+            <Route path="/approved-vehicles" element={<ApprovedVehiclesPage />} />
+
+            {/* Categories */}
+            <Route path="/category" element={<CategoryPage />} />
+            <Route path="/subcategory" element={<SubCategoryPage />} />
+            <Route path="/subsubcategory" element={<SubSubCategoryPage />} />
+            <Route path="/vehiclecategory" element={<VehicleCategoryPage />} />
+            <Route path="/drivervehicletype" element={<DriverVehicleTypePage />} />
+            <Route path="/drivercategory" element={<PriceCategoryPage />} />
+            <Route path="/parcelcategory" element={<ParcelCategoryPage />} />
+            <Route path="/parcelvehicletype" element={<ParcelVehicleTypePage />} />
+            <Route path="/parcelvehicleManagement" element={<ParcelVehicleManagementPage />} />
+            <Route path="/parcelridecost" element={<ParcelRideCostPage />} />
+            <Route path="/DriverRidecost" element={<DriverRideCostPage />} />
+            <Route path="/carcategory" element={<CarCategoryPage />} />
+            <Route path="/vehicletype" element={<VehicleTypePage />} />
+            <Route path="/carmanagement" element={<CarManagementPage />} />
+            <Route path="/cabridecost" element={<CabRideCostPage />} />
+
+            {/* Category Assignment */}
+            <Route path="/admin/category-assignment/:categoryType/:categoryId" element={<UniversalCategoryAssignmentPage />} />
+
+            {/* Location */}
+            <Route path="/states" element={<StatesPage />} />
+            <Route path="/cities" element={<CitiesPage />} />
+
+            {/* Ratings */}
+            <Route path="/user-ratings" element={<UserRatingsPage />} />
+            <Route path="/driver-ratings" element={<DriverRatingsPage />} />
+
+            {/* Other */}
+            <Route path="/peakhours" element={<PeakHoursPage />} />
+            <Route path="/t&c" element={<InstructionsPage />} />
+            <Route path="/UserReferearn" element={<ReferEarnPage />} />
+            <Route path="/rolemanagement" element={<RBACManagementPage />} />
+            <Route path="/driversubscription" element={<DriverSubscriptionPage />} />
+            <Route path="/admin-wallet-ledger" element={<AdminWalletLedger />} />
+            <Route path="/create-offline-staff" element={<OfflineStaffPage />} />
+            <Route path="/file-upload-test" element={<FileUploadTest />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
         </main>
       </div>
     </div>

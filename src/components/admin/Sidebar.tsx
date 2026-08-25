@@ -24,34 +24,32 @@ import {
   CheckCircle,
   XCircle,
   FileText,
-  Upload,
   Ban,
   Star
 } from "lucide-react";
 import { RupeeIcon } from "@/components/ui/RupeeIcon";
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import apiClient from "../../lib/axiosInterceptor";
 
 interface SidebarProps {
   isOpen: boolean;
-  activeSection: string;
-  onSectionChange: (section: string) => void;
 }
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", key: "dashboard" },
-  { icon: Bike, label: "Rides", key: "all-rides" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: Bike, label: "Rides", path: "/all-rides" },
   {
     icon: Users,
     label: "Users Management",
     key: "users-management",
     isDropdown: true,
     subItems: [
-      { icon: Users, label: "Users", key: "users" },
-      { icon: Clock, label: "Pending Withdrawal Requests", key: "rider-pending-withdrawals" },
-      { icon: CheckCircle, label: "Approved Withdrawal Requests", key: "rider-approved-withdrawals" },
-      { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rider-rejected-withdrawals" },
-      { icon: Wallet, label: "Rider Wallet Config", key: "rider-wallet-config" }
+      { icon: Users, label: "Users", path: "/users" },
+      { icon: Clock, label: "Pending Withdrawal Requests", path: "/rider-pending-withdrawals" },
+      { icon: CheckCircle, label: "Approved Withdrawal Requests", path: "/rider-approved-withdrawals" },
+      { icon: XCircle, label: "Rejected Withdrawal Requests", path: "/rider-rejected-withdrawals" },
+      { icon: Wallet, label: "Rider Wallet Config", path: "/rider-wallet-config" }
     ]
   },
   {
@@ -60,8 +58,8 @@ const menuItems = [
     key: "drivers-management",
     isDropdown: true,
     subItems: [
-      { icon: Users, label: "Drivers", key: "drivers-all" },
-      { icon: Ban, label: "Suspend Driver", key: "suspend-driver" }
+      { icon: Users, label: "Drivers", path: "/drivers", key: "drivers-all" },
+      { icon: Ban, label: "Suspend Driver", path: "/suspend-driver" }
     ]
   },
   {
@@ -70,23 +68,23 @@ const menuItems = [
     key: "location-management",
     isDropdown: true,
     subItems: [
-      { icon: Map, label: "States", key: "states" },
-      { icon: Building, label: "Cities", key: "cities" }
+      { icon: Map, label: "States", path: "/states" },
+      { icon: Building, label: "Cities", path: "/cities" }
     ]
   },
-  { icon: Tags, label: "Category", key: "category" },
-  { icon: FolderTree, label: "Sub Category", key: "subcategory" },
-  { icon: Layers3, label: "Sub-Sub Category", key: "subsubcategory" },
+  { icon: Tags, label: "Category", path: "/category" },
+  { icon: FolderTree, label: "Sub Category", path: "/subcategory" },
+  { icon: Layers3, label: "Sub-Sub Category", path: "/subsubcategory" },
   {
     icon: Users,
     label: "Driver Category Management",
     key: "driver-category-management",
     isDropdown: true,
     subItems: [
-      { icon: Bike, label: "Driver Vehicle Type", key: "drivervehicletype" },
-      { icon: Truck, label: "Vehicle Category", key: "vehiclecategory" },
-      { icon: RupeeIcon, label: "Driver Category", key: "drivercategory" },
-      { icon: Calculator, label: "Driver Ride Cost Management", key: "DriverRidecost" }
+      { icon: Bike, label: "Driver Vehicle Type", path: "/drivervehicletype" },
+      { icon: Truck, label: "Vehicle Category", path: "/vehiclecategory" },
+      { icon: RupeeIcon, label: "Driver Category", path: "/drivercategory" },
+      { icon: Calculator, label: "Driver Ride Cost Management", path: "/DriverRidecost" }
     ]
   },
   {
@@ -95,10 +93,10 @@ const menuItems = [
     key: "cab-category-management",
     isDropdown: true,
     subItems: [
-      { icon: Tags, label: "Cab Category", key: "carcategory" },
-      { icon: Truck, label: "Vehicle Type", key: "vehicletype" },
-      { icon: Car, label: "Cab Management", key: "carmanagement" },
-      { icon: Calculator, label: "Cab Ride Cost Management", key: "cabridecost" }
+      { icon: Tags, label: "Cab Category", path: "/carcategory" },
+      { icon: Truck, label: "Vehicle Type", path: "/vehicletype" },
+      { icon: Car, label: "Cab Management", path: "/carmanagement" },
+      { icon: Calculator, label: "Cab Ride Cost Management", path: "/cabridecost" }
     ]
   },
   {
@@ -107,30 +105,29 @@ const menuItems = [
     key: "parcel-category-management",
     isDropdown: true,
     subItems: [
-      { icon: Tags, label: "Parcel Category", key: "parcelcategory" },
-      { icon: Truck, label: "Parcel Vehicle Type", key: "parcelvehicletype" },
-      { icon: Truck, label: "Parcel Vehicle Management", key: "parcelvehicleManagement" },
-      { icon: Calculator, label: "Parcel Ride Cost Management", key: "parcelridecost" }
+      { icon: Tags, label: "Parcel Category", path: "/parcelcategory" },
+      { icon: Truck, label: "Parcel Vehicle Type", path: "/parcelvehicletype" },
+      { icon: Truck, label: "Parcel Vehicle Management", path: "/parcelvehicleManagement" },
+      { icon: Calculator, label: "Parcel Ride Cost Management", path: "/parcelridecost" }
     ]
   },
-  { icon: Truck, label: "Vehicle Management", key: "approved-vehicles" },
-  { icon: Clock, label: "Peak and Night Charges Management", key: "peakhours" },
-  { icon: BookOpen, label: "T & C", key: "t&c" },
-
-  { icon: Gift, label: "Refer Earn", key: "UserReferearn" },
+  { icon: Truck, label: "Vehicle Management", path: "/approved-vehicles" },
+  { icon: Clock, label: "Peak and Night Charges Management", path: "/peakhours" },
+  { icon: BookOpen, label: "T & C", path: "/t&c" },
+  { icon: Gift, label: "Refer Earn", path: "/UserReferearn" },
   {
     icon: Wallet,
     label: "Driver Wallet & Payments Management",
     key: "payments-management",
     isDropdown: true,
     subItems: [
-      { icon: Clock, label: "Pending Withdrawal Requests", key: "pending-withdrawals" },
-      { icon: CheckCircle, label: "Completed Withdrawal Requests", key: "completed-withdrawals" },
-      { icon: XCircle, label: "Rejected Withdrawal Requests", key: "rejected-withdrawals" },
-      { icon: CreditCard, label: "Driver Transactions", key: "driver-transactions" },
-      { icon: Wallet, label: "Min Withdrawal Balance", key: "min-withdraw-balance" },
-      { icon: Calculator, label: "Service Wise Min Wallet Balance", key: "service-wallet-balance" },
-      { icon: Gift, label: "Driver Incentives", key: "driver-incentives" }
+      { icon: Clock, label: "Pending Withdrawal Requests", path: "/pending-withdrawals" },
+      { icon: CheckCircle, label: "Completed Withdrawal Requests", path: "/completed-withdrawals" },
+      { icon: XCircle, label: "Rejected Withdrawal Requests", path: "/rejected-withdrawals" },
+      { icon: CreditCard, label: "Driver Transactions", path: "/driver-transactions" },
+      { icon: Wallet, label: "Min Withdrawal Balance", path: "/min-withdraw-balance" },
+      { icon: Calculator, label: "Service Wise Min Wallet Balance", path: "/service-wallet-balance" },
+      { icon: Gift, label: "Driver Incentives", path: "/driver-incentives" }
     ]
   },
   {
@@ -139,8 +136,8 @@ const menuItems = [
     key: "driver-cancellation-credits",
     isDropdown: true,
     subItems: [
-      { icon: Users, label: "All Drivers", key: "all-drivers-credits" },
-      { icon: CreditCard, label: "Manage Driver Credits", key: "manage-driver-credits" }
+      { icon: Users, label: "All Drivers", path: "/all-drivers-credits" },
+      { icon: CreditCard, label: "Manage Driver Credits", path: "/manage-driver-credits" }
     ]
   },
   {
@@ -149,8 +146,8 @@ const menuItems = [
     key: "ratings-management",
     isDropdown: true,
     subItems: [
-      { icon: Users, label: "User Ratings", key: "user-ratings" },
-      { icon: UserCheck, label: "Driver Ratings", key: "driver-ratings" }
+      { icon: Users, label: "User Ratings", path: "/user-ratings" },
+      { icon: UserCheck, label: "Driver Ratings", path: "/driver-ratings" }
     ]
   },
   {
@@ -159,56 +156,83 @@ const menuItems = [
     key: "offline-booking-management",
     isDropdown: true,
     subItems: [
-      { icon: Users, label: "Staff Management", key: "create-offline-staff" }
+      { icon: Users, label: "Staff Management", path: "/create-offline-staff" }
     ]
   },
-  { icon: Wallet, label: "Admin Wallet Management", key: "admin-wallet-ledger" },
-  { icon: Shield, label: "Role Management", key: "rolemanagement" },
-  { icon: CreditCard, label: "Driver Subscription & Registration fee management", key: "driversubscription" },
-  { icon: FileText, label: "Driver Purchased Plans History", key: "driver-purchased-plans" },
-  // { icon: Upload, label: "File Upload Test", key: "file-upload-test" }
+  { icon: Wallet, label: "Admin Wallet Management", path: "/admin-wallet-ledger" },
+  { icon: Shield, label: "Role Management", path: "/rolemanagement" },
+  { icon: CreditCard, label: "Driver Subscription & Registration fee management", path: "/driversubscription" },
+  { icon: FileText, label: "Driver Purchased Plans History", path: "/driver-purchased-plans" },
 ];
 
 const cn = (...classes: (string | boolean | undefined)[]) => {
   return classes.filter(Boolean).join(' ');
 };
 
-export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps) => {
+export const Sidebar = ({ isOpen }: SidebarProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [openDropdowns, setOpenDropdowns] = useState<{ [key: string]: boolean }>({});
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
-        // Small delay to ensure cookie is set after login
         await new Promise(resolve => setTimeout(resolve, 100));
         const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/auth/permissions`);
         setUserPermissions(response.data.permissions);
-        
       } catch (error) {
         console.error('Error fetching permissions:', error);
       }
     };
-
     fetchPermissions();
   }, []);
 
+  // Determine if a path is active based on current location
+  const isActive = (path: string) => {
+    if (path === '/dashboard') return location.pathname === '/' || location.pathname === '/dashboard';
+    return location.pathname.startsWith(path);
+  };
+
+  // Determine if any sub-item in a dropdown is active
+  const isDropdownActive = (subItems: { path: string }[]) => {
+    return subItems.some(sub => isActive(sub.path));
+  };
+
+  // Auto-open dropdown if a sub-item is active
+  useEffect(() => {
+    menuItems.forEach(item => {
+      if (item.isDropdown && item.subItems) {
+        if (isDropdownActive(item.subItems)) {
+          setOpenDropdowns(prev => ({ ...prev, [item.key!]: true }));
+        }
+      }
+    });
+  }, [location.pathname]);
+
   const filteredMenuItems = menuItems.filter(item => {
-    // Show if user has permission for the parent section
-    if (userPermissions.includes(item.key)) {
-      return true;
-    }
-    // Show if user has permission for any sub-item
+    const key = item.key || (item as any).path?.replace('/', '');
+    if (userPermissions.includes(key)) return true;
     if (item.subItems) {
-      return item.subItems.some(subItem => userPermissions.includes(subItem.key));
+      return item.subItems.some(sub => {
+        const subKey = (sub as any).key || sub.path.replace('/', '');
+        return userPermissions.includes(subKey);
+      });
     }
     return false;
   }).map(item => {
-    // Filter sub-items based on permissions
     if (item.subItems) {
+      const key = item.key || (item as any).path?.replace('/', '');
+      // If parent has permission, show all subitems. Otherwise filter by individual item permissions
+      const hasParentPermission = userPermissions.includes(key);
       return {
         ...item,
-        subItems: item.subItems.filter(subItem => userPermissions.includes(subItem.key))
+        subItems: hasParentPermission 
+          ? item.subItems 
+          : item.subItems.filter(sub => {
+              const subKey = (sub as any).key || sub.path.replace('/', '');
+              return userPermissions.includes(subKey);
+            })
       };
     }
     return item;
@@ -247,7 +271,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
             {item.isDropdown ? (
               <>
                 <button
-                  onClick={() => toggleDropdown(item.key)}
+                  onClick={() => toggleDropdown(item.key!)}
                   className={cn(
                     "w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
                     "text-black hover:bg-gray-100"
@@ -257,7 +281,7 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
                   {isOpen && (
                     <>
                       <span className="flex-1 text-left">{item.label}</span>
-                      {openDropdowns[item.key] ? (
+                      {openDropdowns[item.key!] ? (
                         <ChevronDown className="w-4 h-4" />
                       ) : (
                         <ChevronRight className="w-4 h-4" />
@@ -265,15 +289,15 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
                     </>
                   )}
                 </button>
-                {isOpen && openDropdowns[item.key] && item.subItems && (
+                {isOpen && openDropdowns[item.key!] && item.subItems && (
                   <div className="ml-6 mt-2 space-y-1">
                     {item.subItems.map((subItem, subIndex) => (
                       <button
                         key={subIndex}
-                        onClick={() => onSectionChange(subItem.key)}
+                        onClick={() => navigate(subItem.path)}
                         className={cn(
                           "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors cursor-pointer text-sm",
-                          activeSection === subItem.key
+                          isActive(subItem.path)
                             ? "bg-blue-600 text-white"
                             : "text-gray-600 hover:bg-gray-100"
                         )}
@@ -287,10 +311,10 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
               </>
             ) : (
               <button
-                onClick={() => onSectionChange(item.key)}
+                onClick={() => navigate((item as any).path)}
                 className={cn(
                   "w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
-                  activeSection === item.key
+                  isActive((item as any).path)
                     ? "bg-blue-600 text-white"
                     : "text-black hover:bg-gray-100"
                 )}
@@ -305,40 +329,3 @@ export const Sidebar = ({ isOpen, activeSection, onSectionChange }: SidebarProps
     </div>
   );
 };
-
-// Demo usage
-export default function App() {
-  const [isOpen, setIsOpen] = useState(true);
-  const [activeSection, setActiveSection] = useState("dashboard");
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar
-        isOpen={isOpen}
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
-      />
-
-      {/* Main content area */}
-      <div className={cn("transition-all duration-300", isOpen ? "ml-64" : "ml-16")}>
-        <div className="p-8">
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Toggle Sidebar
-          </button>
-
-          <div className="mt-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Active Section: {activeSection}
-            </h2>
-            <p className="text-gray-600">
-              Click on sidebar items to navigate. The sidebar now properly scrolls without cutting off menu items.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}

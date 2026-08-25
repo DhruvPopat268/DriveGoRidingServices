@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, User, Phone, Mail, Calendar, Star, ChevronLeft, ChevronRight, Eye, Copy } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface RiderDetail {
@@ -46,13 +47,9 @@ interface Ride {
   status: string;
 }
 
-interface RiderDetailPageProps {
-  riderId: string;
-  onBack: () => void;
-  onNavigateToRideDetail?: (rideId: string) => void;
-}
-
-export const RiderDetailPage = ({ riderId, onBack, onNavigateToRideDetail }: RiderDetailPageProps) => {
+export const RiderDetailPage = () => {
+  const { riderId } = useParams<{ riderId: string }>();
+  const navigate = useNavigate();
   const [rider, setRider] = useState<RiderDetail | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,12 +117,7 @@ export const RiderDetailPage = ({ riderId, onBack, onNavigateToRideDetail }: Rid
   };
 
   const handleViewRide = (rideId: string) => {
-    console.log('Navigating to ride:', rideId);
-    if (onNavigateToRideDetail) {
-      onNavigateToRideDetail(rideId);
-    } else {
-      console.warn('onNavigateToRideDetail callback not provided');
-    }
+    navigate(`/all-rides/${rideId}`);
   };
 
   if (loading) {
@@ -140,7 +132,7 @@ export const RiderDetailPage = ({ riderId, onBack, onNavigateToRideDetail }: Rid
     return (
       <div className="text-center py-8">
         <div className="text-gray-600 mb-4">Rider not found</div>
-        <Button onClick={onBack}>
+        <Button onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Users
         </Button>
@@ -153,7 +145,7 @@ export const RiderDetailPage = ({ riderId, onBack, onNavigateToRideDetail }: Rid
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onBack}>
+          <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Users
           </Button>

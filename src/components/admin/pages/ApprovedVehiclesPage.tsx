@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface Category {
@@ -49,11 +50,8 @@ const STATUS_CONFIG: Record<VehicleStatus, { label: string; badgeClass: string }
   rejected: { label: 'Rejected', badgeClass: 'bg-red-100 text-red-800'     },
 };
 
-interface VehiclesPageProps {
-  onNavigateToDriverDetail?: (driverId: string) => void;
-}
-
-export default function VehiclesPage({ onNavigateToDriverDetail }: VehiclesPageProps) {
+export default function VehiclesPage() {
+  const navigate = useNavigate();
   // Draft filter states (what user is editing)
   const [filterStatus, setFilterStatus] = useState<VehicleStatus>('approved');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -705,7 +703,7 @@ export default function VehiclesPage({ onNavigateToDriverDetail }: VehiclesPageP
                               <button
                                 onClick={() => {
                                   closeModal();
-                                  onNavigateToDriverDetail?.(driver._id);
+                                  navigate(`/drivers/${driver._id}`);
                                 }}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                 title="View driver details"

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Star, Filter, Search, Eye, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface DriverRating {
@@ -22,11 +23,8 @@ interface Driver {
   mobile: string;
 }
 
-interface DriverRatingsPageProps {
-  onNavigateToRideDetail?: (rideId: string) => void;
-}
-
-const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) => {
+const DriverRatingsPage = () => {
+  const navigate = useNavigate();
   const [ratings, setRatings] = useState<DriverRating[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -258,7 +256,7 @@ const DriverRatingsPage = ({ onNavigateToRideDetail }: DriverRatingsPageProps) =
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
-                        onClick={() => onNavigateToRideDetail?.(rating.rideId)}
+                        onClick={() => navigate(`/all-rides/${rating.rideId}`)}
                         className="inline-flex items-center px-2 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                       >
                         <Eye className="w-4 h-4 mr-1" />

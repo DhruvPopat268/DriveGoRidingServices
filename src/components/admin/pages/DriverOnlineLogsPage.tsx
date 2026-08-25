@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useParams, useNavigate } from "react-router-dom";
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface DriverInfo {
@@ -47,12 +48,9 @@ interface LogsResponse {
   driverId: string;
 }
 
-interface DriverOnlineLogsPageProps {
-  driverId: string;
-  onBack: () => void;
-}
-
-export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageProps) => {
+export const DriverOnlineLogsPage = () => {
+  const { driverId } = useParams<{ driverId: string }>();
+  const navigate = useNavigate();
   const [logsData, setLogsData] = useState<LogsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   
@@ -153,7 +151,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
     return (
       <div className="p-6">
         <div className="flex items-center mb-6">
-          <Button variant="outline" onClick={onBack} className="mr-4">
+          <Button variant="outline" onClick={() => navigate(-1)} className="mr-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
@@ -175,7 +173,7 @@ export const DriverOnlineLogsPage = ({ driverId, onBack }: DriverOnlineLogsPageP
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <Button variant="outline" onClick={onBack} className="mr-4">
+          <Button variant="outline" onClick={() => navigate(-1)} className="mr-4">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>

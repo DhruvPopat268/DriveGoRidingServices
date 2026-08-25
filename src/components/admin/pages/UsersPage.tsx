@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Users, Search, Filter, Phone, Mail, Calendar, User, Star, ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../../lib/axiosInterceptor';
 
 interface User {
@@ -43,11 +44,10 @@ interface User {
   lastActiveAt: string | null;
 }
 
-interface UsersPageProps {
-  onNavigateToRiderDetail?: (riderId: string) => void;
-}
+interface UsersPageProps {}
 
-export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
+export const UsersPage = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -360,7 +360,7 @@ export const UsersPage = ({ onNavigateToRiderDetail }: UsersPageProps) => {
   };
 
   const handleViewRider = (riderId: string) => {
-    onNavigateToRiderDetail?.(riderId);
+    navigate(`/users/${riderId}`);
   };
 
   return (

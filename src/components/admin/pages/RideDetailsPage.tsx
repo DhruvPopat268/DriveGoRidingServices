@@ -37,6 +37,7 @@ import {
   Edit
 } from 'lucide-react';
 import { RupeeIcon } from '@/components/ui/RupeeIcon';
+import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../../../lib/axiosInterceptor';
 import { generateInvoice, InvoiceData } from '../../../utils/invoiceGenerator';
 import html2canvas from 'html2canvas';
@@ -124,12 +125,9 @@ interface RideDetails {
   updatedAt: string;
 }
 
-interface RideDetailsPageProps {
-  rideId: string;
-  onBack: () => void;
-}
-
-export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
+export const RideDetailsPage = () => {
+  const { rideId } = useParams<{ rideId: string }>();
+  const navigate = useNavigate();
   const [rideDetails, setRideDetails] = useState<RideDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -440,7 +438,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
     return (
       <div className="text-center py-8">
         <div className="text-red-600 mb-4">Error: {error}</div>
-        <Button onClick={onBack}>
+        <Button onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Rides
         </Button>
@@ -452,7 +450,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
     return (
       <div className="text-center py-8">
         <div className="text-gray-600 mb-4">Ride not found</div>
-        <Button onClick={onBack}>
+        <Button onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Rides
         </Button>
@@ -465,7 +463,7 @@ export const RideDetailsPage = ({ rideId, onBack }: RideDetailsPageProps) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={onBack}>
+          <Button variant="outline" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
