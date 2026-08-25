@@ -4534,7 +4534,7 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
     const selectedDates = ride.rideInfo.selectedDates || [];
     const remainingDates = ride.rideInfo.remainingDates || [];
     const completedDates = ride.rideInfo.completedDates || [];
-    const completedDays = ride.rideInfo.completedDays || [];
+    const completedDays = ride.rideInfo.completedDays || 0;
     const selectedDays = parseInt(ride.rideInfo.SelectedDays) || 0;
 
     // Check if current date exists in remainingDates
@@ -4550,13 +4550,23 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
     // Update arrays
     const updatedCompletedDates = [...completedDates, currentDate];
     const updatedRemainingDates = remainingDates.filter(date => date !== currentDate);
-    const updatedCompletedDays = [...completedDays, "1"];
+    const updatedCompletedDays = completedDays + 1;
+
+    console.log('\n========== COMPLETE-DAY ROUTE ==========');
+    console.log('📍 Incrementing completedDays:', {
+      previous: completedDays,
+      current: updatedCompletedDays,
+      selectedDays: selectedDays
+    });
 
     // Check if all days are completed
-    if (updatedCompletedDays.length >= selectedDays) {
+    if (updatedCompletedDays >= selectedDays) {
+      console.log('✅ All selected days are now completed');
+      console.log('========== END COMPLETE-DAY ROUTE ==========\n');
       return res.status(400).json({ message: "All selected days are already completed" });
     }
 
+    console.log('📍 Updating ride with new completedDays');
     const updatedRide = await Ride.findByIdAndUpdate(
       rideId,
       {
@@ -4577,11 +4587,16 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
       if (driver && (driver.rideStatus === "ONGOING" || driver.rideStatus === "EXTENDED")) {
         await Driver.findByIdAndUpdate(driverId, { rideStatus: "CONFIRMED" });
       } else {
+        console.log('❌ Driver rideStatus error');
+        console.log('========== END COMPLETE-DAY ROUTE ==========\n');
         return res.status(400).json({
           message: "Driver rideStatus must be ONGOING or EXTENDED to update to CONFIRMED.",
         });
       }
     }
+
+    console.log('✅ Day completed and updated successfully');
+    console.log('========== END COMPLETE-DAY ROUTE ==========\n');
 
     res.json({
       success: true,
@@ -4590,7 +4605,7 @@ router.post("/complete-day", driverAuthMiddleware, async (req, res) => {
         completedDates: updatedCompletedDates,
         remainingDates: updatedRemainingDates,
         completedDays: updatedCompletedDays,
-        totalCompletedDays: updatedCompletedDays.length,
+        totalCompletedDays: updatedCompletedDays,
         totalSelectedDays: selectedDays
       }
     });

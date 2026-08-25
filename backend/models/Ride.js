@@ -74,7 +74,7 @@ const rideSchema = new mongoose.Schema(
       selectedDates: [{ type: String }],
       remainingDates: [{ type: String }],
 
-      completedDays: [{ type: String }],
+      completedDays: { type: Number, default: 0 },
       completedDates: [{ type: String }],
 
       //for extended 
