@@ -5,7 +5,7 @@ const Category = require("../models/Category");
 const SubCategory = require("../models/SubCategory");
 
 async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId) {
-  // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km")
+  // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km", "2 Hours")
   const parseUsage = (usageStr) => {
     const usage = { km: 0, minutes: 0 };
     if (!usageStr) return usage;
@@ -14,7 +14,7 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
 
     parts.forEach(part => {
       const kmMatch = part.match(/(\d+)\s*km/i);
-      const hrMatch = part.match(/(\d+)\s*hrs?/i);
+      const hrMatch = part.match(/(\d+)\s*hours?/i);
       const minMatch = part.match(/(\d+)\s*min/i);
 
       if (kmMatch) usage.km = parseInt(kmMatch[1]);
@@ -25,9 +25,24 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
     return usage;
   };
 
-  const parsedUsage = parseUsage(selectedUsage);
+  console.log('\n========== getDriverRideIncludedData CALLED ==========');
+  console.log('Input parameters:', {
+    categoryId,
+    subcategoryId,
+    subSubcategoryId,
+    selectedUsage,
+    selectedCategoryId
+  });
 
-  let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId, priceCategory: selectedCategoryId };
+  const parsedUsage = parseUsage(selectedUsage);
+  console.log('Parsed usage:', parsedUsage);
+
+  let rideCostQuery = { category: categoryId, subcategory: subcategoryId, priceCategory: selectedCategoryId };
+
+  // Only add subSubCategory if it's not undefined
+  if (subSubcategoryId) {
+    rideCostQuery.subSubCategory = subSubcategoryId;
+  }
 
   // Add both km and minutes to query if they exist
   if (parsedUsage.km > 0) {
@@ -37,18 +52,38 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
     rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
   }
 
+  console.log('Database query:', rideCostQuery);
+
   const records = await DriverRideCost.find(
     rideCostQuery
   ).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
 
-  const includedKm = [...new Set(records.map(r => r.includedKm))];
-  const includedMinutes = [...new Set(records.map(r => r.includedMinutes))];
-  const extraChargePerKm = records[0]?.extraChargePerKm || 0;
-  const extraChargePerMinute = records[0]?.extraChargePerMinute || 0;
-  const extraChargesFromAdmin = records[0]?.extraChargesFromAdmin || 0;
-  const gst = records[0]?.gst || 0;
-  const cancellationBufferTime = records[0]?.cancellationBufferTime || 0
-  return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
+  console.log('Records found:', records.length);
+  console.log('Raw records:', records);
+
+  // Validate that we got exactly one record
+  if (records.length === 0) {
+    throw new Error(`No pricing configuration found for Driver - Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
+  }
+
+  if (records.length > 1) {
+    throw new Error(`Multiple pricing configurations found for Driver (expected 1, got ${records.length}). This indicates a data integrity issue. Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
+  }
+
+  const record = records[0];
+  const includedKm = record.includedKm;
+  const includedMinutes = record.includedMinutes;
+  const extraChargePerKm = record.extraChargePerKm || 0;
+  const extraChargePerMinute = record.extraChargePerMinute || 0;
+  const extraChargesFromAdmin = record.extraChargesFromAdmin || 0;
+  const gst = record.gst || 0;
+  const cancellationBufferTime = record.cancellationBufferTime || 0;
+
+  const result = { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
+  console.log('Returning result:', result);
+  console.log('========== END getDriverRideIncludedData ==========\n');
+
+  return result;
 }
 
 async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId) {
@@ -58,7 +93,7 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   const subCategory = await SubCategory.findById(subcategoryId).select("name");
   if (!subCategory) throw new Error("Subcategory not found");
 
-  // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km")
+  // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km", "2 Hours")
   const parseUsage = (usageStr) => {
     const usage = { km: 0, minutes: 0 };
     if (!usageStr) return usage;
@@ -67,7 +102,7 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
 
     parts.forEach(part => {
       const kmMatch = part.match(/(\d+)\s*km/i);
-      const hrMatch = part.match(/(\d+)\s*hrs?/i);
+      const hrMatch = part.match(/(\d+)\s*hours?/i);
       const minMatch = part.match(/(\d+)\s*min/i);
 
       if (kmMatch) usage.km = parseInt(kmMatch[1]);
@@ -78,9 +113,24 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
     return usage;
   };
 
-  const parsedUsage = parseUsage(selectedUsage);
+  console.log('\n========== getCabRideIncludedData CALLED ==========');
+  console.log('Input parameters:', {
+    categoryId,
+    subcategoryId,
+    subSubcategoryId,
+    selectedUsage,
+    selectedCategoryId
+  });
 
-  let rideCostQuery = { category: categoryId, subcategory: subcategoryId, subSubCategory: subSubcategoryId, car: selectedCategoryId };
+  const parsedUsage = parseUsage(selectedUsage);
+  console.log('Parsed usage:', parsedUsage);
+
+  let rideCostQuery = { category: categoryId, subcategory: subcategoryId, car: selectedCategoryId };
+
+  // Only add subSubCategory if it's not undefined
+  if (subSubcategoryId) {
+    rideCostQuery.subSubCategory = subSubcategoryId;
+  }
 
   // Add both km and minutes to query if they exist
   if (parsedUsage.km > 0) {
@@ -89,27 +139,44 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   if (parsedUsage.minutes > 0) {
     rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
   }
-  //console.log("Cab Ride Cost Query:", rideCostQuery);
+
+  console.log('Database query:', rideCostQuery);
+
   const records = await CabRideCost.find(rideCostQuery).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
 
-  const includedKm = [...new Set(records.map(r => r.includedKm))];
-  const includedMinutes = [...new Set(records.map(r => r.includedMinutes))];
-  const extraChargePerKm = records[0]?.extraChargePerKm || 0;
-  const extraChargePerMinute = records[0]?.extraChargePerMinute || 0;
-  const extraChargesFromAdmin = records[0]?.extraChargesFromAdmin || 0;
-  const gst = records[0]?.gst || 0;
-  const cancellationBufferTime = records[0]?.cancellationBufferTime || 0
+  console.log('Records found:', records.length);
+  console.log('Raw records:', records);
 
-  //console.log("Cab Ride Cost Records:", records);
-  return { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
+  // Validate that we got exactly one record
+  if (records.length === 0) {
+    throw new Error(`No pricing configuration found for Cab - Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
+  }
 
+  if (records.length > 1) {
+    throw new Error(`Multiple pricing configurations found for Cab (expected 1, got ${records.length}). This indicates a data integrity issue. Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
+  }
+
+  const record = records[0];
+  const includedKm = record.includedKm;
+  const includedMinutes = record.includedMinutes;
+  const extraChargePerKm = record.extraChargePerKm || 0;
+  const extraChargePerMinute = record.extraChargePerMinute || 0;
+  const extraChargesFromAdmin = record.extraChargesFromAdmin || 0;
+  const gst = record.gst || 0;
+  const cancellationBufferTime = record.cancellationBufferTime || 0;
+
+  const result = { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
+  console.log('Returning result:', result);
+  console.log('========== END getCabRideIncludedData ==========\n');
+
+  return result;
 }
 
 async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsage, selectedCategoryId) {
   const category = await Category.findById(categoryId).select("name");
   if (!category) throw new Error("Category not found");
 
-  // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km")
+  // Parse combined usage string (e.g., "50km & 3Hrs", "3Hrs & 50Km", "2 Hours")
   const parseUsage = (usageStr) => {
     const usage = { km: 0, minutes: 0 };
     if (!usageStr) return usage;
@@ -118,7 +185,7 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
 
     parts.forEach(part => {
       const kmMatch = part.match(/(\d+)\s*km/i);
-      const hrMatch = part.match(/(\d+)\s*hrs?/i);
+      const hrMatch = part.match(/(\d+)\s*hours?/i);
       const minMatch = part.match(/(\d+)\s*min/i);
 
       if (kmMatch) usage.km = parseInt(kmMatch[1]);
@@ -129,7 +196,17 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
     return usage;
   };
 
+  console.log('\n========== getParcelRideIncludedData CALLED ==========');
+  console.log('Input parameters:', {
+    categoryId,
+    subcategoryId,
+    selectedUsage,
+    selectedCategoryId
+  });
+
   const parsedUsage = parseUsage(selectedUsage);
+  console.log('Parsed usage:', parsedUsage);
+
   const categoryName = category.name.toLowerCase();
 
   if (categoryName === "parcel") {
@@ -143,21 +220,39 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
       rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
     }
 
-    
+    console.log('Database query:', rideCostQuery);
+
     const records = await ParcelRideCost.find(rideCostQuery).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
 
+    console.log('Records found:', records.length);
+    console.log('Raw records:', records);
 
-    const includedKm = [...new Set(records.map(r => r.includedKm))];
-  const includedMinutes = [...new Set(records.map(r => r.includedMinutes))];
-    const extraChargePerKm = records[0]?.extraChargePerKm || 0;
-    const extraChargePerMinute = records[0]?.extraChargePerMinute || 0;
-    const extraChargesFromAdmin = records[0]?.extraChargesFromAdmin || 0;
-    const gst = records[0]?.gst || 0;
-    const cancellationBufferTime = records[0]?.cancellationBufferTime || 0
+    // Validate that we got exactly one record
+    if (records.length === 0) {
+      throw new Error(`No pricing configuration found for Parcel - Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
+    }
 
-    return { includedKm,includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
+    if (records.length > 1) {
+      throw new Error(`Multiple pricing configurations found for Parcel (expected 1, got ${records.length}). This indicates a data integrity issue. Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
+    }
+
+    const record = records[0];
+    const includedKm = record.includedKm;
+    const includedMinutes = record.includedMinutes;
+    const extraChargePerKm = record.extraChargePerKm || 0;
+    const extraChargePerMinute = record.extraChargePerMinute || 0;
+    const extraChargesFromAdmin = record.extraChargesFromAdmin || 0;
+    const gst = record.gst || 0;
+    const cancellationBufferTime = record.cancellationBufferTime || 0;
+
+    const result = { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
+    console.log('Returning result:', result);
+    console.log('========== END getParcelRideIncludedData ==========\n');
+
+    return result;
   }
 
+  console.log('========== END getParcelRideIncludedData (categoryName mismatch) ==========\n');
   return {};
 }
 

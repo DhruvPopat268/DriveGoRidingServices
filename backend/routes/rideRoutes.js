@@ -4129,7 +4129,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     const { categoryId, categoryName, subcategoryId, subcategoryName, subSubcategoryId, ridseStartTime, selectedUsage, selectedCategoryId, } = ride.rideInfo;
 
-
     // Determine extra charges based on category
     let extraChargePerKm = 0;
     let extraChargePerMinute = 0;
@@ -4141,8 +4140,13 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     const catNameLower = categoryName.toLowerCase();
     const subcategoryNameLower = subcategoryName.toLowerCase();
 
+    console.log('\n========== PRICING CONFIG FETCHED ==========');
+    console.log('Category:', catNameLower, '| Subcategory:', subcategoryNameLower, '| Usage:', selectedUsage);
+
     if (catNameLower === "driver") {
       const driverData = await getDriverRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId);
+      console.log('Driver pricing data:', driverData);
+      
       includedKm = driverData.includedKm;
       includedMinutes = driverData.includedMinutes;
       extraChargePerKm = driverData.extraChargePerKm;
@@ -4152,6 +4156,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     } else if (catNameLower === "cab") {
       const cabData = await getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryId, selectedUsage, selectedCategoryId);
+      console.log('Cab pricing data:', cabData);
+      
       includedKm = cabData.includedKm;
       includedMinutes = cabData.includedMinutes;
       extraChargePerKm = cabData.extraChargePerKm;
@@ -4161,6 +4167,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     } else if (catNameLower === "parcel") {
       const parcelData = await getParcelRideIncludedData(categoryId, subcategoryId, selectedUsage, selectedCategoryId);
+      console.log('Parcel pricing data:', parcelData);
+      
       includedKm = parcelData.includedKm;
       extraChargePerKm = parcelData.extraChargePerKm;
       extraChargePerMinute = parcelData.extraChargePerMinute;
@@ -4169,11 +4177,20 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     }
 
+    console.log('Final pricing config:', {
+      includedKm,
+      includedMinutes,
+      extraChargePerKm,
+      extraChargePerMinute,
+      adminChargesInPercentage,
+      gstChargesInPercentage
+    });
+    console.log('========== END PRICING CONFIG ==========\n');
+
     // Validate inputs and calculate extraKm
     const safeTotalKm = Number(totalKm) || 0;
     const safeIncludedKm = Number(includedKm) || 0;
     let extraKm = Math.max(0, safeTotalKm - safeIncludedKm);
-
 
     let driverCharges = ride.rideInfo?.driverCharges || 0;
     let adminCharges = ride.rideInfo?.adminCharges || 0;
@@ -4183,7 +4200,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     let subtotal = ride.rideInfo?.subtotal || 0;
     let gstCharges = ride.rideInfo?.gstCharges || 0;
     let totalPayable = ride.totalPayable || 0;
-
 
     // Helper to convert "HH:MM:SS" string to minutes
     function timeToMinutes(timeStr) {
@@ -4199,7 +4215,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     let diffOfMinutes = endMinutes - startMinutes;
     if (diffOfMinutes < 0) diffOfMinutes += 24 * 60; // handle overnight rides
-
 
     const safeIncludedMinutes = Number(includedMinutes) || 0;
     let extraMinutes = 0
@@ -4217,13 +4232,6 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     // Calculate extraMinutes charges
     let extraMinutesCharges = 0;
-    if (diffOfMinutes > safeIncludedMinutes) {
-      extraMinutes = Number((diffOfMinutes - safeIncludedMinutes).toFixed(1));
-      extraMinutesCharges = extraMinutes * extraChargePerMinute;
-      const extraMinutesAdminCharges = extraMinutesCharges * adminChargesInPercentage / 100;
-      const extraMinutesGstCharges = extraMinutesCharges * gstChargesInPercentage / 100;
-      extraMinutesCharges = Math.ceil(extraMinutesCharges + extraMinutesAdminCharges + extraMinutesGstCharges);
-    }
 
     // Add to totalPayable
     totalPayable += extraKmCharges + extraMinutesCharges;
