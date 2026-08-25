@@ -4232,6 +4232,13 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
 
     // Calculate extraMinutes charges
     let extraMinutesCharges = 0;
+    if (diffOfMinutes > safeIncludedMinutes) {
+      extraMinutes = Number((diffOfMinutes - safeIncludedMinutes).toFixed(1));
+      extraMinutesCharges = extraMinutes * extraChargePerMinute;
+      const extraMinutesAdminCharges = extraMinutesCharges * adminChargesInPercentage / 100;
+      const extraMinutesGstCharges = extraMinutesCharges * gstChargesInPercentage / 100;
+      extraMinutesCharges = Math.ceil(extraMinutesCharges + extraMinutesAdminCharges + extraMinutesGstCharges);
+    }
 
     // Add to totalPayable
     totalPayable += extraKmCharges + extraMinutesCharges;

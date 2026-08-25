@@ -667,26 +667,84 @@ export const RideDetailsPage = () => {
                   <Separator />
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h4 className="text-sm font-semibold text-gray-700 mb-3">Ride Timings</h4>
-                    <div className="grid grid-cols-3 gap-4">
-                      {rideDetails.rideInfo.driverReachTime && (
-                        <div>
-                          <label className="text-xs font-medium text-gray-600">Driver Reach Time</label>
-                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.driverReachTime}</p>
+                    
+                    {/* For Weekly/Monthly rides - show date-wise timings */}
+                    {(rideDetails.rideInfo.subcategoryName?.toLowerCase() === 'weekly' || 
+                      rideDetails.rideInfo.subcategoryName?.toLowerCase() === 'monthly') &&
+                     rideDetails.rideInfo.weeklyMonthlyRideTimings && 
+                     rideDetails.rideInfo.weeklyMonthlyRideTimings.length > 0 ? (
+                      <div className="space-y-4">
+                        {rideDetails.rideInfo.weeklyMonthlyRideTimings.map((timing: any, index: number) => (
+                          <div key={index} className="bg-white p-3 rounded-lg border border-gray-200">
+                            <p className="text-xs font-medium text-gray-600 mb-2">
+                              Date: {new Date(timing.date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </p>
+                            <div className="grid grid-cols-3 gap-3">
+                              {timing.driverReachTime && (
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600">Driver Reach</label>
+                                  <p className="text-sm font-semibold text-gray-900">{timing.driverReachTime}</p>
+                                </div>
+                              )}
+                              {timing.rideStartTime && (
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600">Ride Start</label>
+                                  <p className="text-sm font-semibold text-gray-900">{timing.rideStartTime}</p>
+                                </div>
+                              )}
+                              {timing.rideEndTime && (
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600">Ride End</label>
+                                  <p className="text-sm font-semibold text-gray-900">{timing.rideEndTime}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* For single/hourly rides - show root level timings */
+                      <div className="grid grid-cols-3 gap-4">
+                        {rideDetails.rideInfo.driverReachTime && (
+                          <div>
+                            <label className="text-xs font-medium text-gray-600">Driver Reach Time</label>
+                            <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.driverReachTime}</p>
+                          </div>
+                        )}
+                        {rideDetails.rideInfo.ridseStartTime && (
+                          <div>
+                            <label className="text-xs font-medium text-gray-600">Ride Start Time</label>
+                            <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.ridseStartTime}</p>
+                          </div>
+                        )}
+                        {rideDetails.rideInfo.rideEndTime && (
+                          <div>
+                            <label className="text-xs font-medium text-gray-600">Ride End Time</label>
+                            <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.rideEndTime}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {(rideDetails.rideInfo.extraMinutes !== undefined || rideDetails.rideInfo.extraKm !== undefined) && (
+                      <>
+                        <Separator className="my-3" />
+                        <div className="grid grid-cols-2 gap-4">
+                          {rideDetails.rideInfo.extraMinutes !== undefined && (
+                            <div>
+                              <label className="text-xs font-medium text-gray-600">Extra Minutes</label>
+                              <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.extraMinutes} mins</p>
+                            </div>
+                          )}
+                          {rideDetails.rideInfo.extraKm !== undefined && (
+                            <div>
+                              <label className="text-xs font-medium text-gray-600">Extra KM</label>
+                              <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.extraKm} km</p>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {rideDetails.rideInfo.ridseStartTime && (
-                        <div>
-                          <label className="text-xs font-medium text-gray-600">Ride Start Time</label>
-                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.ridseStartTime}</p>
-                        </div>
-                      )}
-                      {rideDetails.rideInfo.rideEndTime && (
-                        <div>
-                          <label className="text-xs font-medium text-gray-600">Ride End Time</label>
-                          <p className="text-sm font-semibold text-gray-900">{rideDetails.rideInfo.rideEndTime}</p>
-                        </div>
-                      )}
-                    </div>
+                      </>
+                    )}
                   </div>
                 </>
               )}
