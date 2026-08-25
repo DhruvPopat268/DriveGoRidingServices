@@ -4185,6 +4185,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       adminChargesInPercentage,
       gstChargesInPercentage
     });
+    console.log('✅ Got this config from utility function - Ready for calculation');
     console.log('========== END PRICING CONFIG ==========\n');
 
     // Validate inputs and calculate extraKm

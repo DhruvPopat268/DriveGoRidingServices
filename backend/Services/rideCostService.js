@@ -26,7 +26,7 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   };
 
   console.log('\n========== getDriverRideIncludedData CALLED ==========');
-  console.log('Input parameters:', {
+  console.log('📍 [DRIVER] Input parameters:', {
     categoryId,
     subcategoryId,
     subSubcategoryId,
@@ -35,38 +35,47 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   });
 
   const parsedUsage = parseUsage(selectedUsage);
-  console.log('Parsed usage:', parsedUsage);
+  console.log('📍 [DRIVER] Parsed usage from "' + selectedUsage + '":', parsedUsage);
 
   let rideCostQuery = { category: categoryId, subcategory: subcategoryId, priceCategory: selectedCategoryId };
 
   // Only add subSubCategory if it's not undefined
   if (subSubcategoryId) {
     rideCostQuery.subSubCategory = subSubcategoryId;
+    console.log('📍 [DRIVER] Added subSubCategory to query:', subSubcategoryId);
+  } else {
+    console.log('⚠️ [DRIVER] subSubcategoryId is undefined - NOT added to query');
   }
 
   // Add both km and minutes to query if they exist
   if (parsedUsage.km > 0) {
     rideCostQuery.includedKm = parsedUsage.km.toString();
+    console.log('📍 [DRIVER] Added includedKm to query:', rideCostQuery.includedKm);
   }
   if (parsedUsage.minutes > 0) {
     rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
+    console.log('📍 [DRIVER] Added includedMinutes to query:', rideCostQuery.includedMinutes);
   }
 
-  console.log('Database query:', rideCostQuery);
+  console.log('📍 [DRIVER] Final database query:', rideCostQuery);
 
   const records = await DriverRideCost.find(
     rideCostQuery
   ).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
 
-  console.log('Records found:', records.length);
-  console.log('Raw records:', records);
+  console.log('📍 [DRIVER] Records found from DB:', records.length);
+  if (records.length > 0) {
+    console.log('📍 [DRIVER] Raw records:', records);
+  }
 
   // Validate that we got exactly one record
   if (records.length === 0) {
+    console.log('❌ [DRIVER] ERROR - No records found!');
     throw new Error(`No pricing configuration found for Driver - Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
   }
 
   if (records.length > 1) {
+    console.log('❌ [DRIVER] ERROR - Multiple records found! Expected 1, got', records.length);
     throw new Error(`Multiple pricing configurations found for Driver (expected 1, got ${records.length}). This indicates a data integrity issue. Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
   }
 
@@ -80,7 +89,7 @@ async function getDriverRideIncludedData(categoryId, subcategoryId, subSubcatego
   const cancellationBufferTime = record.cancellationBufferTime || 0;
 
   const result = { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
-  console.log('Returning result:', result);
+  console.log('✅ [DRIVER] Final result to return:', result);
   console.log('========== END getDriverRideIncludedData ==========\n');
 
   return result;
@@ -114,7 +123,7 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   };
 
   console.log('\n========== getCabRideIncludedData CALLED ==========');
-  console.log('Input parameters:', {
+  console.log('📍 [CAB] Input parameters:', {
     categoryId,
     subcategoryId,
     subSubcategoryId,
@@ -123,36 +132,45 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   });
 
   const parsedUsage = parseUsage(selectedUsage);
-  console.log('Parsed usage:', parsedUsage);
+  console.log('📍 [CAB] Parsed usage from "' + selectedUsage + '":', parsedUsage);
 
   let rideCostQuery = { category: categoryId, subcategory: subcategoryId, car: selectedCategoryId };
 
   // Only add subSubCategory if it's not undefined
   if (subSubcategoryId) {
     rideCostQuery.subSubCategory = subSubcategoryId;
+    console.log('📍 [CAB] Added subSubCategory to query:', subSubcategoryId);
+  } else {
+    console.log('⚠️ [CAB] subSubcategoryId is undefined - NOT added to query');
   }
 
   // Add both km and minutes to query if they exist
   if (parsedUsage.km > 0) {
     rideCostQuery.includedKm = parsedUsage.km.toString();
+    console.log('📍 [CAB] Added includedKm to query:', rideCostQuery.includedKm);
   }
   if (parsedUsage.minutes > 0) {
     rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
+    console.log('📍 [CAB] Added includedMinutes to query:', rideCostQuery.includedMinutes);
   }
 
-  console.log('Database query:', rideCostQuery);
+  console.log('📍 [CAB] Final database query:', rideCostQuery);
 
   const records = await CabRideCost.find(rideCostQuery).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
 
-  console.log('Records found:', records.length);
-  console.log('Raw records:', records);
+  console.log('📍 [CAB] Records found from DB:', records.length);
+  if (records.length > 0) {
+    console.log('📍 [CAB] Raw records:', records);
+  }
 
   // Validate that we got exactly one record
   if (records.length === 0) {
+    console.log('❌ [CAB] ERROR - No records found!');
     throw new Error(`No pricing configuration found for Cab - Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
   }
 
   if (records.length > 1) {
+    console.log('❌ [CAB] ERROR - Multiple records found! Expected 1, got', records.length);
     throw new Error(`Multiple pricing configurations found for Cab (expected 1, got ${records.length}). This indicates a data integrity issue. Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
   }
 
@@ -166,7 +184,7 @@ async function getCabRideIncludedData(categoryId, subcategoryId, subSubcategoryI
   const cancellationBufferTime = record.cancellationBufferTime || 0;
 
   const result = { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
-  console.log('Returning result:', result);
+  console.log('✅ [CAB] Final result to return:', result);
   console.log('========== END getCabRideIncludedData ==========\n');
 
   return result;
@@ -197,7 +215,7 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
   };
 
   console.log('\n========== getParcelRideIncludedData CALLED ==========');
-  console.log('Input parameters:', {
+  console.log('📍 [PARCEL] Input parameters:', {
     categoryId,
     subcategoryId,
     selectedUsage,
@@ -205,9 +223,10 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
   });
 
   const parsedUsage = parseUsage(selectedUsage);
-  console.log('Parsed usage:', parsedUsage);
+  console.log('📍 [PARCEL] Parsed usage from "' + selectedUsage + '":', parsedUsage);
 
   const categoryName = category.name.toLowerCase();
+  console.log('📍 [PARCEL] Category name from DB:', categoryName);
 
   if (categoryName === "parcel") {
     let rideCostQuery = { category: categoryId, subcategory: subcategoryId, parcelVehicle: selectedCategoryId };
@@ -215,24 +234,30 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
     // Add both km and minutes to query if they exist
     if (parsedUsage.km > 0) {
       rideCostQuery.includedKm = parsedUsage.km.toString();
+      console.log('📍 [PARCEL] Added includedKm to query:', rideCostQuery.includedKm);
     }
     if (parsedUsage.minutes > 0) {
       rideCostQuery.includedMinutes = parsedUsage.minutes.toString();
+      console.log('📍 [PARCEL] Added includedMinutes to query:', rideCostQuery.includedMinutes);
     }
 
-    console.log('Database query:', rideCostQuery);
+    console.log('📍 [PARCEL] Final database query:', rideCostQuery);
 
     const records = await ParcelRideCost.find(rideCostQuery).select("includedKm includedMinutes extraChargePerKm extraChargePerMinute extraChargesFromAdmin gst cancellationBufferTime");
 
-    console.log('Records found:', records.length);
-    console.log('Raw records:', records);
+    console.log('📍 [PARCEL] Records found from DB:', records.length);
+    if (records.length > 0) {
+      console.log('📍 [PARCEL] Raw records:', records);
+    }
 
     // Validate that we got exactly one record
     if (records.length === 0) {
+      console.log('❌ [PARCEL] ERROR - No records found!');
       throw new Error(`No pricing configuration found for Parcel - Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
     }
 
     if (records.length > 1) {
+      console.log('❌ [PARCEL] ERROR - Multiple records found! Expected 1, got', records.length);
       throw new Error(`Multiple pricing configurations found for Parcel (expected 1, got ${records.length}). This indicates a data integrity issue. Category: ${categoryId}, Subcategory: ${subcategoryId}, Usage: ${selectedUsage}`);
     }
 
@@ -246,12 +271,13 @@ async function getParcelRideIncludedData(categoryId, subcategoryId, selectedUsag
     const cancellationBufferTime = record.cancellationBufferTime || 0;
 
     const result = { includedKm, includedMinutes, extraChargePerKm, extraChargePerMinute, extraChargesFromAdmin, gst , cancellationBufferTime };
-    console.log('Returning result:', result);
+    console.log('✅ [PARCEL] Final result to return:', result);
     console.log('========== END getParcelRideIncludedData ==========\n');
 
     return result;
   }
 
+  console.log('❌ [PARCEL] ERROR - Category name mismatch! Expected "parcel", got:', categoryName);
   console.log('========== END getParcelRideIncludedData (categoryName mismatch) ==========\n');
   return {};
 }
