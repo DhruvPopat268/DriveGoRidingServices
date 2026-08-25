@@ -4127,7 +4127,35 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
     });
     const currentDate = new Date().toISOString().split('T')[0];
 
-    const { categoryId, categoryName, subcategoryId, subcategoryName, subSubcategoryId, ridseStartTime, selectedUsage, selectedCategoryId, } = ride.rideInfo;
+    const { categoryId, categoryName, subcategoryId, subcategoryName, subSubcategoryId, ridseStartTime, selectedUsage, selectedCategoryId, SelectedDays } = ride.rideInfo;
+
+    // Parse selectedDays to determine if single day or multi-day ride
+    const selectedDaysNum = parseInt(SelectedDays) || 1;
+    console.log('\n========== SELECTED DAYS CHECK ==========');
+    console.log('📍 SelectedDays (string):', SelectedDays);
+    console.log('📍 SelectedDays (number):', selectedDaysNum);
+    console.log('========== END SELECTED DAYS CHECK ==========\n');
+
+    // Determine which start time to use
+    let rideStartTimeToUse = ridseStartTime;
+    
+    if (selectedDaysNum > 1) {
+      // For weekly/monthly rides, find today's timing from array
+      console.log('📍 Multi-day ride detected - Finding timing from weeklyMonthlyRideTimings array');
+      const weeklyMonthlyRideTimings = ride.rideInfo.weeklyMonthlyRideTimings || [];
+      const todayTiming = weeklyMonthlyRideTimings.find(timing => 
+        timing.date === currentDate && !timing.rideEndTime
+      );
+      
+      if (todayTiming && todayTiming.rideStartTime) {
+        rideStartTimeToUse = todayTiming.rideStartTime;
+        console.log('📍 Found today\'s incomplete timing in array, using rideStartTime:', rideStartTimeToUse);
+      } else {
+        console.log('⚠️ No incomplete timing found for today in array, using root level time:', rideStartTimeToUse);
+      }
+    } else {
+      console.log('📍 Single day ride - using root level rideStartTime:', rideStartTimeToUse);
+    }
 
     // Determine extra charges based on category
     let extraChargePerKm = 0;
@@ -4211,7 +4239,7 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       return hours * 60 + minutes + seconds / 60;
     }
 
-    const startMinutes = timeToMinutes(ride.rideInfo.ridseStartTime);
+    const startMinutes = timeToMinutes(rideStartTimeToUse);
     const endMinutes = timeToMinutes(rideEndTime);
 
     let diffOfMinutes = endMinutes - startMinutes;
@@ -4241,22 +4269,74 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       extraMinutesCharges = Math.ceil(extraMinutesCharges + extraMinutesAdminCharges + extraMinutesGstCharges);
     }
 
-    // Add to totalPayable
-    totalPayable += extraKmCharges + extraMinutesCharges;
+    console.log('\n========== CALCULATING EXTRA CHARGES MODE ==========');
+    console.log('📍 SelectedDays:', selectedDaysNum);
+    
+    // For multi-day rides, increment charges. For single day, update/replace
+    let finalExtraKm = extraKm;
+    let finalExtraMinutes = extraMinutes;
+    let finalExtraKmCharges = extraKmCharges;
+    let finalExtraMinutesCharges = extraMinutesCharges;
+    let finalTotalPayable = totalPayable;
+
+    if (selectedDaysNum > 1) {
+      console.log('📍 Multi-day ride - INCREMENTING extra charges');
+      // For weekly/monthly, increment the values
+      const existingExtraKm = ride.rideInfo?.extraKm || 0;
+      const existingExtraMinutes = ride.rideInfo?.extraMinutes || 0;
+      const existingExtraKmCharges = ride.rideInfo?.extraKmCharges || 0;
+      const existingExtraMinutesCharges = ride.rideInfo?.extraMinutesCharges || 0;
+      
+      console.log('Existing extra charges:', {
+        existingExtraKm,
+        existingExtraMinutes,
+        existingExtraKmCharges,
+        existingExtraMinutesCharges
+      });
+
+      finalExtraKm = existingExtraKm + extraKm;
+      finalExtraMinutes = Number((existingExtraMinutes + extraMinutes).toFixed(1));
+      finalExtraKmCharges = existingExtraKmCharges + extraKmCharges;
+      finalExtraMinutesCharges = existingExtraMinutesCharges + extraMinutesCharges;
+      finalTotalPayable = totalPayable - existingExtraKmCharges - existingExtraMinutesCharges + finalExtraKmCharges + finalExtraMinutesCharges;
+      
+      console.log('After incrementing:', {
+        finalExtraKm,
+        finalExtraMinutes,
+        finalExtraKmCharges,
+        finalExtraMinutesCharges,
+        finalTotalPayable
+      });
+    } else {
+      console.log('📍 Single day ride - UPDATING/REPLACING extra charges');
+      // For single day, just use calculated values
+      finalTotalPayable += extraKmCharges + extraMinutesCharges;
+      console.log('Calculated charges:', {
+        finalExtraKm,
+        finalExtraMinutes,
+        finalExtraKmCharges,
+        finalExtraMinutesCharges,
+        finalTotalPayable
+      });
+    }
+    console.log('========== END EXTRA CHARGES MODE ==========\n');
+
+    // Add to totalPayable (already handled above)
+    totalPayable = finalTotalPayable;
 
     // Prepare update data dynamically
     const updateData = {
       "rideInfo.extraChargePerKm": extraChargePerKm,
       "rideInfo.extraChargePerMinute": extraChargePerMinute,
-      "rideInfo.extraKm": extraKm,
-      'rideInfo.extraMinutes': extraMinutes,
+      "rideInfo.extraKm": finalExtraKm,
+      'rideInfo.extraMinutes': finalExtraMinutes,
       'rideInfo.driverCharges': driverCharges,
       'rideInfo.adminCharges': adminCharges,
       'rideInfo.subtotal': subtotal,
       'rideInfo.gstCharges': gstCharges,
       'rideInfo.extended': true,
-      "rideInfo.extraKmCharges": extraKmCharges,
-      "rideInfo.extraMinutesCharges": extraMinutesCharges,
+      "rideInfo.extraKmCharges": finalExtraKmCharges,
+      "rideInfo.extraMinutesCharges": finalExtraMinutesCharges,
       totalPayable
     };
 
@@ -4316,6 +4396,8 @@ router.post("/count-extra-charges", driverAuthMiddleware, async (req, res) => {
       success: true,
       message: "Extra charges calculated and ride updated successfully",
       rideEndTime: updatedRide.rideInfo.rideEndTime,
+      startMinutes: startMinutes,
+      endMinutes: endMinutes,
       diffOfMinutes: diffOfMinutes,
       includedMinutes: safeIncludedMinutes,
       includedKm: safeIncludedKm,
