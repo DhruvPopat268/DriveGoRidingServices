@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Check, X, Loader, Loader2, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Check, X, Loader, Loader2, Eye, ChevronLeft, ChevronRight, Pencil, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +15,9 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import apiClient from "../../../lib/axiosInterceptor";
+import { toast } from "@/hooks/use-toast";
 
 interface DriverDetail {
   _id: string;
@@ -99,6 +103,104 @@ export const DriverDetailPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [ridesCurrentPage, setRidesCurrentPage] = useState(1);
   const [ridesPerPage] = useState(10);
+
+  // ── Edit Basic Info state ─────────────────────────────────────────────────
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    email: '',
+    permanentAddress: '',
+    subCategory: [] as string[],
+    vehicleType: [] as string[],
+    canDrive: [] as string[],
+    knownLanguages: [] as string[],
+  });
+  const [langInput, setLangInput] = useState('');
+
+  // Fetch subcategories filtered by driver's category
+  const driverCategoryId = driver?.personalInformation?.category?._id;
+  const { data: allSubcategories = [] } = useQuery({
+    queryKey: ['subcategories'],
+    queryFn: async () => {
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      return res.data || [];
+    },
+    enabled: showEditDialog,
+  });
+  const filteredSubcategories = driverCategoryId
+    ? allSubcategories.filter((s: any) => String(s.categoryId) === String(driverCategoryId))
+    : allSubcategories;
+
+  const { data: vehicleTypes = [] } = useQuery({
+    queryKey: ['driverVehicleTypes'],
+    queryFn: async () => {
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/active`);
+      return res.data?.data || [];
+    },
+    enabled: showEditDialog,
+  });
+
+  const { data: vehicleCategories = [] } = useQuery({
+    queryKey: ['vehicleCategories'],
+    queryFn: async () => {
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/active`);
+      return res.data?.data || [];
+    },
+    enabled: showEditDialog,
+  });
+
+  const openEditDialog = () => {
+    if (!driver) return;
+    setEditForm({
+      fullName: driver.personalInformation?.fullName || '',
+      email: driver.personalInformation?.email || '',
+      permanentAddress: driver.personalInformation?.permanentAddress || '',
+      subCategory: driver.personalInformation?.subCategory?.map((s) => String(s._id)) || [],
+      vehicleType: driver.drivingDetails?.vehicleType?.map((v: any) => String(v._id || v)) || [],
+      canDrive: driver.drivingDetails?.canDrive?.map((c: any) => String(c._id || c)) || [],
+      knownLanguages: driver.languageSkillsAndReferences?.knownLanguages || [],
+    });
+    setLangInput('');
+    setShowEditDialog(true);
+  };
+
+  const toggleArrayItem = (arr: string[], id: string): string[] =>
+    arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
+
+  const addLanguage = () => {
+    const lang = langInput.trim();
+    if (lang && !editForm.knownLanguages.includes(lang)) {
+      setEditForm((f) => ({ ...f, knownLanguages: [...f.knownLanguages, lang] }));
+    }
+    setLangInput('');
+  };
+
+  const removeLanguage = (lang: string) => {
+    setEditForm((f) => ({ ...f, knownLanguages: f.knownLanguages.filter((l) => l !== lang) }));
+  };
+
+  const handleEditSave = async () => {
+    try {
+      setEditLoading(true);
+      await apiClient.patch(
+        `${import.meta.env.VITE_API_URL}/api/admin/all-drivers/${driverId}/update-basic-info`,
+        editForm
+      );
+      toast({ title: 'Driver info updated successfully' });
+      setShowEditDialog(false);
+      fetchDriverDetail();
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error?.response?.data?.message || 'Something went wrong',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const stepOptions = [
     { step: 1, label: "Personal Information" },
@@ -207,18 +309,24 @@ export const DriverDetailPage = () => {
           </Button>
           <Badge variant="secondary" className="text-sm">{driver.status}</Badge>
         </div>
-        {driver.status === "Onreview" && (
-          <div className="flex space-x-2">
-            <Button onClick={handleApprove}>
-              <Check className="w-4 h-4 mr-2" />
-              Approve
-            </Button>
-            <Button variant="destructive" onClick={() => setShowRejectDialog(true)}>
-              <X className="w-4 h-4 mr-2" />
-              Reject
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" onClick={openEditDialog} className="bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100">
+            <Pencil className="w-4 h-4 mr-2" />
+            Edit Driver Info
+          </Button>
+          {driver.status === "Onreview" && (
+            <>
+              <Button onClick={handleApprove}>
+                <Check className="w-4 h-4 mr-2" />
+                Approve
+              </Button>
+              <Button variant="destructive" onClick={() => setShowRejectDialog(true)}>
+                <X className="w-4 h-4 mr-2" />
+                Reject
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -627,6 +735,193 @@ export const DriverDetailPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Edit Basic Info Dialog ────────────────────────────────────────── */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Driver Info</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Full Name */}
+            <div className="space-y-1">
+              <Label>Full Name</Label>
+              <Input
+                value={editForm.fullName}
+                onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+                placeholder="Enter full name"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="Enter email address"
+              />
+            </div>
+
+            {/* Permanent Address */}
+            <div className="space-y-1">
+              <Label>Area (Permanent Address)</Label>
+              <Input
+                value={editForm.permanentAddress}
+                onChange={(e) => setEditForm((f) => ({ ...f, permanentAddress: e.target.value }))}
+                placeholder="Enter permanent address / area"
+              />
+            </div>
+
+            {/* Sub Categories */}
+            <div className="space-y-2">
+              <Label>Sub Categories</Label>
+              {filteredSubcategories.length === 0 ? (
+                <p className="text-sm text-gray-500">No subcategories available</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                  {filteredSubcategories.map((sub: any) => (
+                    <div key={sub.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`sub-${sub.id}`}
+                        checked={editForm.subCategory.includes(String(sub.id))}
+                        onCheckedChange={() =>
+                          setEditForm((f) => ({ ...f, subCategory: toggleArrayItem(f.subCategory, String(sub.id)) }))
+                        }
+                      />
+                      <label htmlFor={`sub-${sub.id}`} className="text-sm cursor-pointer">{sub.name}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Vehicle Types */}
+            <div className="space-y-2">
+              <Label>Vehicle Types</Label>
+              {vehicleTypes.length === 0 ? (
+                <p className="text-sm text-gray-500">No vehicle types available</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                  {vehicleTypes.map((vt: any) => (
+                    <div key={vt._id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`vt-${vt._id}`}
+                        checked={editForm.vehicleType.includes(String(vt._id))}
+                        onCheckedChange={() => {
+                          const vtId = String(vt._id);
+                          const isRemoving = editForm.vehicleType.includes(vtId);
+                          setEditForm((f) => {
+                            const newVehicleType = toggleArrayItem(f.vehicleType, vtId);
+                            // If unchecking a vehicle type, also deselect its canDrive children
+                            const newCanDrive = isRemoving
+                              ? f.canDrive.filter(cdId => {
+                                  const vc = vehicleCategories.find((v: any) => String(v._id) === cdId);
+                                  return String(vc?.DriveVehicleType?._id || vc?.DriveVehicleType || '') !== vtId;
+                                })
+                              : f.canDrive;
+                            return { ...f, vehicleType: newVehicleType, canDrive: newCanDrive };
+                          });
+                        }}
+                      />
+                      <label htmlFor={`vt-${vt._id}`} className="text-sm cursor-pointer">{vt.name}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Can Drive (Vehicle Categories) */}
+            <div className="space-y-2">
+              <Label>Can Drive</Label>
+              <p className="text-xs text-gray-500">Only vehicles whose vehicle type is selected above are enabled.</p>
+              {vehicleCategories.length === 0 ? (
+                <p className="text-sm text-gray-500">No vehicle categories available</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                  {vehicleCategories.map((vc: any) => {
+                    const parentTypeId = String(vc.DriveVehicleType?._id || vc.DriveVehicleType || '');
+                    const isEnabled = editForm.vehicleType.includes(parentTypeId);
+                    const parentTypeName = vc.DriveVehicleType?.name || '';
+                    return (
+                      <div key={vc._id} className={`flex items-center space-x-2 ${!isEnabled ? 'opacity-40' : ''}`}>
+                        <Checkbox
+                          id={`vc-${vc._id}`}
+                          checked={editForm.canDrive.includes(String(vc._id))}
+                          disabled={!isEnabled}
+                          onCheckedChange={() => {
+                            if (!isEnabled) return;
+                            setEditForm((f) => ({ ...f, canDrive: toggleArrayItem(f.canDrive, String(vc._id)) }));
+                          }}
+                        />
+                        <label
+                          htmlFor={`vc-${vc._id}`}
+                          className={`text-sm ${isEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                        >
+                          {vc.vehicleName}
+                          {parentTypeName && (
+                            <span className="ml-1 text-xs text-gray-400">({parentTypeName})</span>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Known Languages */}
+            <div className="space-y-2">
+              <Label>Known Languages</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={langInput}
+                  onChange={(e) => setLangInput(e.target.value)}
+                  placeholder="Type a language and press Add"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addLanguage())}
+                />
+                <Button type="button" variant="outline" onClick={addLanguage} className="shrink-0">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+              {editForm.knownLanguages.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {editForm.knownLanguages.map((lang) => (
+                    <span
+                      key={lang}
+                      className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full"
+                    >
+                      {lang}
+                      <button
+                        type="button"
+                        onClick={() => removeLanguage(lang)}
+                        className="hover:text-blue-600 ml-0.5"
+                        aria-label={`Remove ${lang}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={editLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editLoading}>
+              {editLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ─────────────────────────────────────────────────────────────────── */}
 
       <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
         <DialogContent className="max-w-full max-h-full w-screen h-screen p-0 bg-black">

@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Eye, Loader, ChevronLeft, ChevronRight, Search, X, Filter, Wallet } from "lucide-react";
+import { Eye, Loader, Loader2, ChevronLeft, ChevronRight, Search, X, Filter, Wallet, Pencil, Plus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -14,8 +15,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import apiClient from '../../../lib/axiosInterceptor';
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 interface Driver {
   _id: string;
@@ -80,6 +90,135 @@ export const AllDriversPage = () => {
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  // ── Edit Basic Info state ─────────────────────────────────────────────────
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    email: '',
+    permanentAddress: '',
+    subCategory: [] as string[],
+    vehicleType: [] as string[],
+    canDrive: [] as string[],
+    knownLanguages: [] as string[],
+  });
+  const [langInput, setLangInput] = useState('');
+
+  const { data: editSubcategories = [] } = useQuery({
+    queryKey: ['subcategories'],
+    queryFn: async () => {
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`);
+      return res.data || [];
+    },
+    enabled: showEditDialog,
+  });
+
+  const editCategoryId = editingDriver?.personalInformation?.category?._id;
+  const filteredEditSubcategories = editCategoryId
+    ? editSubcategories.filter((s: any) => String(s.categoryId) === String(editCategoryId))
+    : editSubcategories;
+
+  const { data: vehicleTypes = [] } = useQuery({
+    queryKey: ['driverVehicleTypes'],
+    queryFn: async () => {
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/drivervehicletypes/active`);
+      return res.data?.data || [];
+    },
+    enabled: showEditDialog,
+  });
+
+  const { data: vehicleCategories = [] } = useQuery({
+    queryKey: ['vehicleCategories'],
+    queryFn: async () => {
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/vehiclecategories/active`);
+      return res.data?.data || [];
+    },
+    enabled: showEditDialog,
+  });
+
+  const [editFetchLoading, setEditFetchLoading] = useState(false);
+
+  const openEditDialog = async (driver: Driver) => {
+    setEditingDriver(driver);
+    setShowEditDialog(true);
+    setLangInput('');
+    // Pre-fill what we already have from the list immediately
+    setEditForm({
+      fullName: driver.personalInformation?.fullName || '',
+      email: '',
+      permanentAddress: driver.personalInformation?.permanentAddress || '',
+      subCategory: driver.personalInformation?.subCategory?.map((s: any) => String(s._id || s)) || [],
+      vehicleType: [],
+      canDrive: [],
+      knownLanguages: [],
+    });
+
+    // Fetch full driver detail to populate all fields
+    try {
+      setEditFetchLoading(true);
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/driver/${driver._id}`);
+      const full = res.data?.driver || res.data;
+      setEditForm({
+        fullName: full.personalInformation?.fullName || '',
+        email: full.personalInformation?.email || '',
+        permanentAddress: full.personalInformation?.permanentAddress || '',
+        subCategory: full.personalInformation?.subCategory?.map((s: any) => String(s._id || s)) || [],
+        vehicleType: full.drivingDetails?.vehicleType?.map((v: any) => String(v._id || v)) || [],
+        canDrive: full.drivingDetails?.canDrive?.map((c: any) => String(c._id || c)) || [],
+        knownLanguages: full.languageSkillsAndReferences?.knownLanguages || [],
+      });
+    } catch (error) {
+      console.error('Failed to fetch full driver details for edit:', error);
+      toast({
+        title: 'Could not load full driver details',
+        description: 'Some fields may not be pre-filled',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditFetchLoading(false);
+    }
+  };
+
+  const toggleArrayItem = (arr: string[], id: string): string[] =>
+    arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
+
+  const addLanguage = () => {
+    const lang = langInput.trim();
+    if (lang && !editForm.knownLanguages.includes(lang)) {
+      setEditForm((f) => ({ ...f, knownLanguages: [...f.knownLanguages, lang] }));
+    }
+    setLangInput('');
+  };
+
+  const removeLanguage = (lang: string) => {
+    setEditForm((f) => ({ ...f, knownLanguages: f.knownLanguages.filter((l) => l !== lang) }));
+  };
+
+  const handleEditSave = async () => {
+    if (!editingDriver) return;
+    try {
+      setEditLoading(true);
+      await apiClient.patch(
+        `${import.meta.env.VITE_API_URL}/api/admin/all-drivers/${editingDriver._id}/update-basic-info`,
+        editForm
+      );
+      toast({ title: 'Driver info updated successfully' });
+      setShowEditDialog(false);
+      setEditingDriver(null);
+      fetchDrivers();
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error?.response?.data?.message || 'Something went wrong',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Fetch categories
   const { data: categories = [] } = useQuery({
@@ -190,6 +329,7 @@ export const AllDriversPage = () => {
   };
 
   return (
+    <>
     <div className="p-6 space-y-6">
       {/* Filters */}
       <Card>
@@ -407,6 +547,15 @@ export const AllDriversPage = () => {
                               <Eye className="w-4 h-4 mr-1" />
                               View Details
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs w-full justify-start bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                              onClick={() => openEditDialog(driver)}
+                            >
+                              <Pencil className="w-4 h-4 mr-1" />
+                              Edit Driver Info
+                            </Button>
                             {['Approved', 'Suspended', 'deleted'].includes(driver.status) && (
                               <>
                                 <Button
@@ -479,6 +628,205 @@ export const AllDriversPage = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Edit Basic Info Dialog ────────────────────────────────────────── */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) setEditingDriver(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Driver Basic Info
+              {editingDriver?.personalInformation?.fullName && (
+                <span className="ml-2 text-sm font-normal text-gray-500">— {editingDriver.personalInformation.fullName}</span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {editFetchLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin mr-2 text-gray-500" />
+              <span className="text-gray-500">Loading driver details...</span>
+            </div>
+          ) : (
+          <div className="space-y-5 py-2">
+            {/* Full Name */}
+            <div className="space-y-1">
+              <Label>Full Name</Label>
+              <Input
+                value={editForm.fullName}
+                onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))}
+                placeholder="Enter full name"
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                placeholder="Enter email address"
+              />
+            </div>
+
+            {/* Permanent Address */}
+            <div className="space-y-1">
+              <Label>Area (Permanent Address)</Label>
+              <Input
+                value={editForm.permanentAddress}
+                onChange={(e) => setEditForm((f) => ({ ...f, permanentAddress: e.target.value }))}
+                placeholder="Enter permanent address / area"
+              />
+            </div>
+
+            {/* Sub Categories */}
+            <div className="space-y-2">
+              <Label>Sub Categories</Label>
+              {filteredEditSubcategories.length === 0 ? (
+                <p className="text-sm text-gray-500">No subcategories available</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                  {filteredEditSubcategories.map((sub: any) => (
+                    <div key={sub.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-sub-${sub.id}`}
+                        checked={editForm.subCategory.includes(String(sub.id))}
+                        onCheckedChange={() =>
+                          setEditForm((f) => ({ ...f, subCategory: toggleArrayItem(f.subCategory, String(sub.id)) }))
+                        }
+                      />
+                      <label htmlFor={`edit-sub-${sub.id}`} className="text-sm cursor-pointer">{sub.name}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Vehicle Types */}
+            <div className="space-y-2">
+              <Label>Vehicle Types</Label>
+              {vehicleTypes.length === 0 ? (
+                <p className="text-sm text-gray-500">No vehicle types available</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                  {vehicleTypes.map((vt: any) => (
+                    <div key={vt._id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-vt-${vt._id}`}
+                        checked={editForm.vehicleType.includes(String(vt._id))}
+                        onCheckedChange={() => {
+                          const vtId = String(vt._id);
+                          const isRemoving = editForm.vehicleType.includes(vtId);
+                          setEditForm((f) => {
+                            const newVehicleType = toggleArrayItem(f.vehicleType, vtId);
+                            const newCanDrive = isRemoving
+                              ? f.canDrive.filter(cdId => {
+                                  const vc = vehicleCategories.find((v: any) => String(v._id) === cdId);
+                                  return String(vc?.DriveVehicleType?._id || vc?.DriveVehicleType || '') !== vtId;
+                                })
+                              : f.canDrive;
+                            return { ...f, vehicleType: newVehicleType, canDrive: newCanDrive };
+                          });
+                        }}
+                      />
+                      <label htmlFor={`edit-vt-${vt._id}`} className="text-sm cursor-pointer">{vt.name}</label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Can Drive (Vehicle Categories) */}
+            <div className="space-y-2">
+              <Label>Can Drive</Label>
+              <p className="text-xs text-gray-500">Only vehicles whose vehicle type is selected above are enabled.</p>
+              {vehicleCategories.length === 0 ? (
+                <p className="text-sm text-gray-500">No vehicle categories available</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 border rounded-md p-3 max-h-40 overflow-y-auto">
+                  {vehicleCategories.map((vc: any) => {
+                    const parentTypeId = String(vc.DriveVehicleType?._id || vc.DriveVehicleType || '');
+                    const isEnabled = editForm.vehicleType.includes(parentTypeId);
+                    const parentTypeName = vc.DriveVehicleType?.name || '';
+                    return (
+                      <div key={vc._id} className={`flex items-center space-x-2 ${!isEnabled ? 'opacity-40' : ''}`}>
+                        <Checkbox
+                          id={`edit-vc-${vc._id}`}
+                          checked={editForm.canDrive.includes(String(vc._id))}
+                          disabled={!isEnabled}
+                          onCheckedChange={() => {
+                            if (!isEnabled) return;
+                            setEditForm((f) => ({ ...f, canDrive: toggleArrayItem(f.canDrive, String(vc._id)) }));
+                          }}
+                        />
+                        <label
+                          htmlFor={`edit-vc-${vc._id}`}
+                          className={`text-sm ${isEnabled ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                        >
+                          {vc.vehicleName}
+                          {parentTypeName && (
+                            <span className="ml-1 text-xs text-gray-400">({parentTypeName})</span>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Known Languages */}
+            <div className="space-y-2">
+              <Label>Known Languages</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={langInput}
+                  onChange={(e) => setLangInput(e.target.value)}
+                  placeholder="Type a language and press Add"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addLanguage())}
+                />
+                <Button type="button" variant="outline" onClick={addLanguage} className="shrink-0">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+              {editForm.knownLanguages.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {editForm.knownLanguages.map((lang) => (
+                    <span
+                      key={lang}
+                      className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full"
+                    >
+                      {lang}
+                      <button
+                        type="button"
+                        onClick={() => removeLanguage(lang)}
+                        className="hover:text-blue-600 ml-0.5"
+                        aria-label={`Remove ${lang}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          )} {/* end editFetchLoading ternary */}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowEditDialog(false); setEditingDriver(null); }} disabled={editLoading || editFetchLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editLoading || editFetchLoading}>
+              {editLoading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ─────────────────────────────────────────────────────────────────── */}
     </div>
+    </>
   );
 };
