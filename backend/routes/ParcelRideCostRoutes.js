@@ -17,8 +17,15 @@ const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 // Get all parcel ride costs
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
-    const parcelRideCosts = await ParcelRideCost.find()
+    const { category, subcategory, parcelCategory, parcelVehicle } = req.query;
 
+    const filter = {};
+    if (category) filter.category = new mongoose.Types.ObjectId(category);
+    if (subcategory) filter.subcategory = new mongoose.Types.ObjectId(subcategory);
+    if (parcelCategory) filter.parcelCategory = new mongoose.Types.ObjectId(parcelCategory);
+    if (parcelVehicle) filter.parcelVehicle = new mongoose.Types.ObjectId(parcelVehicle);
+
+    const parcelRideCosts = await ParcelRideCost.find(filter)
       .populate('category', 'name')
       .populate('subcategory', 'name')
       .populate('parcelCategory', 'categoryName')

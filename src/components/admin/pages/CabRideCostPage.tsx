@@ -93,7 +93,6 @@ interface SubSubCategory {
 
 export const CabRideCostPage = () => {
     const [rideCosts, setRideCosts] = useState<RideCost[]>([]);
-    const [filteredRideCosts, setFilteredRideCosts] = useState<RideCost[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
     const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>([]);
@@ -109,12 +108,20 @@ export const CabRideCostPage = () => {
     // Filter states
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+    const [filterCarCategory, setFilterCarCategory] = useState<string>('all');
+    const [filterCar, setFilterCar] = useState<string>('all');
     const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<Subcategory[]>([]);
+    const [filterCarsForFilter, setFilterCarsForFilter] = useState<Car[]>([]);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [recordsPerPage, setRecordsPerPage] = useState(10);
-    const [paginatedRideCosts, setPaginatedRideCosts] = useState<RideCost[]>([]);
+
+    // Server-side totals from API response
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+    const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
+    const endRecord = Math.min(currentPage * recordsPerPage, totalRecords);
 
     const [rideCostForm, setRideCostForm] = useState({
         category: '',
@@ -185,6 +192,37 @@ export const CabRideCostPage = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    // Re-fetch cab ride costs whenever filters, page, or limit change
+    useEffect(() => {
+        fetchCabRideCosts();
+    }, [currentPage, recordsPerPage, filterCategory, filterSubcategory, filterCarCategory, filterCar]);
+
+    // Filter subcategories for filter dropdown
+    useEffect(() => {
+        if (filterCategory && filterCategory !== 'all') {
+            const filtered = subcategories.filter(sub => sub.categoryId === filterCategory);
+            setFilterSubcategoriesForFilter(filtered);
+            setFilterSubcategory('all');
+        } else {
+            setFilterSubcategoriesForFilter([]);
+            setFilterSubcategory('all');
+        }
+        setCurrentPage(1);
+    }, [filterCategory, subcategories]);
+
+    // Filter cars for filter dropdown based on selected car category
+    useEffect(() => {
+        if (filterCarCategory && filterCarCategory !== 'all') {
+            const filtered = cars.filter(car => String(car.category?._id) === filterCarCategory);
+            setFilterCarsForFilter(filtered);
+            setFilterCar('all');
+        } else {
+            setFilterCarsForFilter([]);
+            setFilterCar('all');
+        }
+        setCurrentPage(1);
+    }, [filterCarCategory, cars]);
 
     // Filter subcategories when category changes in form
     useEffect(() => {
@@ -263,80 +301,47 @@ export const CabRideCostPage = () => {
         }
     }, [rideCostForm.category]);
 
-    // Filter subcategories for filter dropdown
-    useEffect(() => {
-        if (filterCategory && filterCategory !== 'all') {
-            const filtered = subcategories.filter(sub => sub.categoryId === filterCategory);
-            setFilterSubcategoriesForFilter(filtered);
-            setFilterSubcategory('all');
-        } else {
-            setFilterSubcategoriesForFilter([]);
-            setFilterSubcategory('all');
-        }
-    }, [filterCategory, subcategories]);
-
-    // Apply filters to ride costs
-    useEffect(() => {
-        let filtered = [...rideCosts];
-
-        if (filterCategory && filterCategory !== 'all') {
-            filtered = filtered.filter(rideCost => {
-                const categoryId = extractId(rideCost.category);
-                return categoryId === filterCategory;
-            });
-        }
-
-        if (filterSubcategory && filterSubcategory !== 'all') {
-            filtered = filtered.filter(rideCost => {
-                const subcategoryId = extractId(rideCost.subcategory);
-                return subcategoryId === filterSubcategory;
-            });
-        }
-
-        setFilteredRideCosts(filtered);
-        setCurrentPage(1); // Reset to first page when filters change
-    }, [rideCosts, filterCategory, filterSubcategory]);
-
-    // Pagination logic
-    useEffect(() => {
-        const startIndex = (currentPage - 1) * recordsPerPage;
-        const endIndex = startIndex + recordsPerPage;
-        setPaginatedRideCosts(filteredRideCosts.slice(startIndex, endIndex));
-    }, [filteredRideCosts, currentPage, recordsPerPage]);
-
-    // Calculate pagination info
-    const totalPages = Math.ceil(filteredRideCosts.length / recordsPerPage);
-    const startRecord = filteredRideCosts.length === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
-    const endRecord = Math.min(currentPage * recordsPerPage, filteredRideCosts.length);
-
-    const fetchData = async () => {
+    // Fetch only cab ride costs (with filters + pagination)
+    const fetchCabRideCosts = async () => {
         setLoading(true);
         try {
-            const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, carCategoriesRes, carsRes] = await Promise.all([
-                apiClient.get(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`),
+            const params = new URLSearchParams({
+                page: currentPage.toString(),
+                limit: recordsPerPage.toString(),
+                ...(filterCategory !== 'all' && { category: filterCategory }),
+                ...(filterSubcategory !== 'all' && { subcategory: filterSubcategory }),
+                ...(filterCarCategory !== 'all' && { priceCategory: filterCarCategory }),
+                ...(filterCar !== 'all' && { car: filterCar }),
+            });
+            const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/CabRideCosts?${params}`);
+            setRideCosts(res.data.data || []);
+            setTotalRecords(res.data.totalRecords || 0);
+            setTotalPages(res.data.totalPages || 1);
+        } catch (error) {
+            console.error('Error fetching cab ride costs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch dropdown data only once on mount
+    const fetchData = async () => {
+        try {
+            const [categoriesRes, subcategoriesRes, subSubCategoriesRes, carCategoriesRes, carsRes] = await Promise.all([
                 apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`),
                 apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
                 apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
-
                 apiClient.get(`${import.meta.env.VITE_API_URL}/api/car-categories`),
                 apiClient.get(`${import.meta.env.VITE_API_URL}/api/cars`)
             ]);
 
-            setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
             setCategories(categoriesRes.data);
             setSubcategories(subcategoriesRes.data);
-            console.log('subcategoriesRes.data:', subcategoriesRes.data);
             setSubSubCategories(subSubCategoriesRes.data);
-            console.log('subSubCategoriesRes.data:', subSubCategoriesRes.data);
-
             setCarCategories(carCategoriesRes.data.filter((cat: CarCategory & { status: boolean }) => cat.status));
-            console.log('carCategoriesRes.data:', carCategoriesRes.data);
             setCars(carsRes.data.filter((car: Car & { status: boolean }) => car.status));
-            console.log('carsRes.data:', carsRes.data);
         } catch (error) {
-            console.error('Error fetching data:', error);
-        } finally {
-            setLoading(false);
+            console.error('Error fetching dropdown data:', error);
         }
     };
 
@@ -384,7 +389,7 @@ export const CabRideCostPage = () => {
                 await apiClient.post(`${import.meta.env.VITE_API_URL}/api/CabRideCosts`, payload);
             }
 
-            await fetchData();
+            await fetchCabRideCosts();
             setDialogOpen(false);
             resetForm();
         } catch (error) {
@@ -471,7 +476,7 @@ export const CabRideCostPage = () => {
             await apiClient.patch(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}/status`, {
                 status: !currentStatus
             });
-            await fetchData();
+            await fetchCabRideCosts();
         } catch (error) {
             console.error('Error updating status:', error);
         }
@@ -482,7 +487,7 @@ export const CabRideCostPage = () => {
         setLoading(true);
         try {
             await apiClient.delete(`${import.meta.env.VITE_API_URL}/api/CabRideCosts/${id}`);
-            await fetchData();
+            await fetchCabRideCosts();
         } catch (error) {
             console.error('Error deleting ride cost:', error);
         } finally {
@@ -520,6 +525,9 @@ export const CabRideCostPage = () => {
     const clearFilters = () => {
         setFilterCategory('all');
         setFilterSubcategory('all');
+        setFilterCarCategory('all');
+        setFilterCar('all');
+        setCurrentPage(1);
     };
 
     const handlePageChange = (page: number) => {
@@ -560,7 +568,7 @@ export const CabRideCostPage = () => {
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold">Cab Ride Cost Management</h1>
+                <h1 className="text-3xl font-bold">Cab Packages</h1>
             </div>
 
             <div className="flex items-center justify-between">
@@ -962,40 +970,20 @@ export const CabRideCostPage = () => {
                 </div>
 
                 {/* Filter Section */}
+                {/* Filter Section */}
                 <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                        {(filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={clearFilters}
-                                className="text-xs"
-                            >
-                                <X className="w-3 h-3 mr-1" />
-                                Clear Filters
-                            </Button>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Filter by Category
-                            </label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Category</label>
                             <div>
-                                <Select
-                                    value={filterCategory}
-                                    onValueChange={setFilterCategory}
-                                >
+                                <Select value={filterCategory} onValueChange={setFilterCategory}>
                                     <SelectTrigger className="w-full">
                                         <SelectValue placeholder="All Categories" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Categories</SelectItem>
                                         {categories.map((cat) => (
-                                            <SelectItem key={cat._id} value={cat._id}>
-                                                {cat.name}
-                                            </SelectItem>
+                                            <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -1009,9 +997,7 @@ export const CabRideCostPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                                Filter by Subcategory
-                            </label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Subcategory</label>
                             <Select
                                 value={filterSubcategory}
                                 onValueChange={setFilterSubcategory}
@@ -1023,18 +1009,57 @@ export const CabRideCostPage = () => {
                                 <SelectContent>
                                     <SelectItem value="all">All Subcategories</SelectItem>
                                     {filterSubcategoriesForFilter.map((sub) => (
-                                        <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
-                                            {sub.name}
-                                        </SelectItem>
+                                        <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>{sub.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="flex items-end">
-                            <div className="text-sm text-gray-600">
-                                Showing {startRecord}-{endRecord} of {filteredRideCosts.length} models
-                            </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Car Category</label>
+                            <Select value={filterCarCategory} onValueChange={setFilterCarCategory}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="All Car Categories" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Car Categories</SelectItem>
+                                    {carCategories.map((cc) => (
+                                        <SelectItem key={cc._id} value={cc._id}>{cc.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Car</label>
+                            <Select
+                                value={filterCar}
+                                onValueChange={setFilterCar}
+                                disabled={filterCarCategory === 'all'}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="All Cars" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Cars</SelectItem>
+                                    {filterCarsForFilter.map((c) => (
+                                        <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex items-end justify-end">
+                            {((filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') || (filterCarCategory && filterCarCategory !== 'all') || (filterCar && filterCar !== 'all')) ? (
+                                <Button variant="outline" size="sm" onClick={clearFilters} className="text-xs">
+                                    <X className="w-3 h-3 mr-1" />
+                                    Clear Filters
+                                </Button>
+                            ) : (
+                                <div className="text-sm text-gray-600">
+                                    Showing {startRecord}-{endRecord} of {totalRecords}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1074,7 +1099,7 @@ export const CabRideCostPage = () => {
                                 <TableHead>Extra/Km</TableHead>
                                 <TableHead>Extra/Min</TableHead>
                                 {/* Show Weight column header if any filtered ride cost is from parcel category */}
-                                {filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) && (
+                                {rideCosts.some(rideCost => isParcelCategory(rideCost.category)) && (
                                     <TableHead>Weight (kg)</TableHead>
                                 )}
                                 <TableHead>Status</TableHead>
@@ -1084,16 +1109,16 @@ export const CabRideCostPage = () => {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 13 : 12} className="text-center py-8">
+                                    <TableCell colSpan={rideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 13 : 12} className="text-center py-8">
                                         <div className="flex justify-center items-center">
                                             <Loader className="w-6 h-6 animate-spin mr-2" />
                                             <span>Loading cab ride costs...</span>
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredRideCosts.length === 0 ? (
+                            ) : rideCosts.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 13 : 12} className="text-center py-6">
+                                    <TableCell colSpan={rideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 13 : 12} className="text-center py-6">
                                         {rideCosts.length === 0
                                             ? "No ride cost models found. Create your first one!"
                                             : "No models match the selected filters."
@@ -1101,7 +1126,7 @@ export const CabRideCostPage = () => {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                paginatedRideCosts.map((rideCost, index) => (
+                                rideCosts.map((rideCost, index) => (
                                     <TableRow key={rideCost._id}>
                                         <TableCell>{(currentPage - 1) * recordsPerPage + index + 1}</TableCell>
                                         <TableCell>{getName(rideCost.category)}</TableCell>
@@ -1115,7 +1140,7 @@ export const CabRideCostPage = () => {
                                         <TableCell>₹{rideCost.extraChargePerKm}</TableCell>
                                         <TableCell>₹{rideCost.extraChargePerMinute}</TableCell>
                                         {/* Show Weight column data if any filtered ride cost is from parcel category */}
-                                        {filteredRideCosts.some(rc => isParcelCategory(rc.category)) && (
+                                        {rideCosts.some(rc => isParcelCategory(rc.category)) && (
                                             <TableCell>
                                                 {isParcelCategory(rideCost.category) ? `${rideCost.weight || 0} kg` : '-'}
                                             </TableCell>
@@ -1177,10 +1202,10 @@ export const CabRideCostPage = () => {
                 </ScrollArea>
 
                 {/* Pagination Controls */}
-                {filteredRideCosts.length > 0 && (
+                {totalRecords > 0 && (
                     <div className="flex items-center justify-between mt-4">
                         <div className="text-sm text-gray-600">
-                            Showing {startRecord} to {endRecord} of {filteredRideCosts.length} entries
+                            Showing {startRecord} to {endRecord} of {totalRecords} entries
                         </div>
                         <div className="flex items-center space-x-2">
                             <Button

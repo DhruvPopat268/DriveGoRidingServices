@@ -107,7 +107,11 @@ export const ParcelRideCostPage = () => {
   // Filter states
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+  const [filterParcelCategory, setFilterParcelCategory] = useState<string>('all');
+  const [filterParcelVehicle, setFilterParcelVehicle] = useState<string>('all');
   const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<Subcategory[]>([]);
+  const [filterParcelCategoriesList, setFilterParcelCategoriesList] = useState<ParcelCategory[]>([]);
+  const [filterParcelVehiclesList, setFilterParcelVehiclesList] = useState<ParcelVehicleType[]>([]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -180,9 +184,6 @@ export const ParcelRideCostPage = () => {
     return getSelectedSubCategoryName().toLowerCase() === 'outstation';
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   // Filter subcategories when category changes in form
   useEffect(() => {
@@ -265,6 +266,11 @@ export const ParcelRideCostPage = () => {
   }, [rideCostForm.parcelCategory, parcelVehicleTypes, isEditing]);
 
   // Filter subcategories for filter dropdown
+
+  // Load dropdown data once on mount
+  useEffect(() => {
+    fetchDropdownData();
+  }, []);
   useEffect(() => {
     if (filterCategory && filterCategory !== 'all') {
       const filtered = subcategories.filter(sub => sub.categoryId === filterCategory);
@@ -276,27 +282,41 @@ export const ParcelRideCostPage = () => {
     }
   }, [filterCategory, subcategories]);
 
-  // Apply filters to ride costs
+  // Rebuild parcel vehicles dropdown list when parcelVehicleTypes data loads
   useEffect(() => {
-    let filtered = [...rideCosts];
-
-    if (filterCategory && filterCategory !== 'all') {
-      filtered = filtered.filter(rideCost => {
-        const categoryId = extractId(rideCost.category);
-        return categoryId === filterCategory;
+    if (filterParcelCategory && filterParcelCategory !== 'all' && parcelVehicleTypes.length > 0) {
+      const filtered = parcelVehicleTypes.filter((v) => {
+        const catId = typeof v.parcelCategory === 'object' ? v.parcelCategory._id : v.parcelCategory;
+        return catId === filterParcelCategory;
       });
+      setFilterParcelVehiclesList(filtered);
     }
+  }, [parcelVehicleTypes]);
 
-    if (filterSubcategory && filterSubcategory !== 'all') {
-      filtered = filtered.filter(rideCost => {
-        const subcategoryId = extractId(rideCost.subcategory);
-        return subcategoryId === filterSubcategory;
+  // Reset parcel vehicle filter and list when parcel category filter changes
+  useEffect(() => {
+    if (filterParcelCategory && filterParcelCategory !== 'all') {
+      const filtered = parcelVehicleTypes.filter((v) => {
+        const catId = typeof v.parcelCategory === 'object' ? v.parcelCategory._id : v.parcelCategory;
+        return catId === filterParcelCategory;
       });
+      setFilterParcelVehiclesList(filtered);
+    } else {
+      setFilterParcelVehiclesList([]);
     }
+    setFilterParcelVehicle('all');
+  }, [filterParcelCategory]);
 
-    setFilteredRideCosts(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [rideCosts, filterCategory, filterSubcategory]);
+  // Re-fetch data whenever any filter changes
+  useEffect(() => {
+    fetchData(filterCategory, filterSubcategory, filterParcelCategory, filterParcelVehicle);
+    setCurrentPage(1);
+  }, [filterCategory, filterSubcategory, filterParcelCategory, filterParcelVehicle]);
+
+  // Sync filteredRideCosts directly from rideCosts (server already filtered)
+  useEffect(() => {
+    setFilteredRideCosts(rideCosts);
+  }, [rideCosts]);
 
   // Pagination logic
   useEffect(() => {
@@ -310,25 +330,24 @@ export const ParcelRideCostPage = () => {
   const startRecord = filteredRideCosts.length === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
   const endRecord = Math.min(currentPage * recordsPerPage, filteredRideCosts.length);
 
-  const fetchData = async () => {
+  const fetchData = async (
+    catFilter = filterCategory,
+    subFilter = filterSubcategory,
+    parcelCatFilter = filterParcelCategory,
+    parcelVehFilter = filterParcelVehicle
+  ) => {
     setLoading(true);
     try {
-      const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes, carCategoriesRes, carsRes] = await Promise.all([
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/ParcelRideCosts`),
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`),
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/price-categories`),
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/car-categories`),
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/cars`)
-      ]);
+      // Build query params for server-side filtering
+      const params = new URLSearchParams();
+      if (catFilter && catFilter !== 'all') params.append('category', catFilter);
+      if (subFilter && subFilter !== 'all') params.append('subcategory', subFilter);
+      if (parcelCatFilter && parcelCatFilter !== 'all') params.append('parcelCategory', parcelCatFilter);
+      if (parcelVehFilter && parcelVehFilter !== 'all') params.append('parcelVehicle', parcelVehFilter);
+      const queryString = params.toString() ? `?${params.toString()}` : '';
 
+      const rideCostsRes = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/ParcelRideCosts${queryString}`);
       setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
-      setCategories(categoriesRes.data);
-      setSubcategories(subcategoriesRes.data);
-      setSubSubCategories(subSubCategoriesRes.data);
-      setPriceCategories(priceCategoriesRes.data);
-      setCarCategories(carCategoriesRes.data.filter((cat: CarCategory & { status: boolean }) => cat.status));
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -337,23 +356,35 @@ export const ParcelRideCostPage = () => {
     }
   };
 
-  const fetchParcelCategories = async () => {
+  // Load static dropdown data once on mount
+  const fetchDropdownData = async () => {
     try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`);
-      setParcelCategories(response.data);
+      const [categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes, carCategoriesRes, parcelCatsRes, parcelVehsRes] = await Promise.all([
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/price-categories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/car-categories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcel-categories`),
+        apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`)
+      ]);
+
+      setCategories(categoriesRes.data);
+      setSubcategories(subcategoriesRes.data);
+      setSubSubCategories(subSubCategoriesRes.data);
+      setPriceCategories(priceCategoriesRes.data);
+      setCarCategories(carCategoriesRes.data.filter((cat: CarCategory & { status: boolean }) => cat.status));
+      setFilterParcelCategoriesList(parcelCatsRes.data);
+      setParcelCategories(parcelCatsRes.data);
+      setParcelVehicleTypes(parcelVehsRes.data);
     } catch (error) {
-      console.error('Error fetching parcel categories:', error);
+      console.error('Error fetching dropdown data:', error);
     }
   };
 
-  const fetchParcelVehicleTypes = async () => {
-    try {
-      const response = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/parcelVehicles`);
-      setParcelVehicleTypes(response.data);
-    } catch (error) {
-      console.error('Error fetching parcel vehicle types:', error);
-    }
-  };
+  // These are no-ops — data is already loaded by fetchDropdownData on mount
+  const fetchParcelCategories = () => { /* data preloaded */ };
+  const fetchParcelVehicleTypes = () => { /* data preloaded */ };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -529,6 +560,8 @@ export const ParcelRideCostPage = () => {
   const clearFilters = () => {
     setFilterCategory('all');
     setFilterSubcategory('all');
+    setFilterParcelCategory('all');
+    setFilterParcelVehicle('all');
   };
 
   const handlePageChange = (page: number) => {
@@ -569,7 +602,7 @@ export const ParcelRideCostPage = () => {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Parcel Ride Cost Management</h1>
+        <h1 className="text-3xl font-bold">Parcel Packages</h1>
       </div>
 
       <Card className="p-6">
@@ -862,39 +895,18 @@ export const ParcelRideCostPage = () => {
 
         {/* Filter Section */}
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            {(filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                className="text-xs"
-              >
-                <X className="w-3 h-3 mr-1" />
-                Clear Filters
-              </Button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Filter by Category
-              </label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Category</label>
               <div>
-                <Select
-                  value={filterCategory}
-                  onValueChange={setFilterCategory}
-                >
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     {categories.map((cat) => (
-                      <SelectItem key={cat._id} value={cat._id}>
-                        {cat.name}
-                      </SelectItem>
+                      <SelectItem key={cat._id} value={cat._id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -908,9 +920,7 @@ export const ParcelRideCostPage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Filter by Subcategory
-              </label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Subcategory</label>
               <Select
                 value={filterSubcategory}
                 onValueChange={setFilterSubcategory}
@@ -922,18 +932,57 @@ export const ParcelRideCostPage = () => {
                 <SelectContent>
                   <SelectItem value="all">All Subcategories</SelectItem>
                   {filterSubcategoriesForFilter.map((sub) => (
-                    <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>
-                      {sub.name}
-                    </SelectItem>
+                    <SelectItem key={sub.id || sub._id} value={sub.id || sub._id}>{sub.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex items-end">
-              <div className="text-sm text-gray-600">
-                Showing {startRecord}-{endRecord} of {filteredRideCosts.length} models
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Parcel Category</label>
+              <Select value={filterParcelCategory} onValueChange={setFilterParcelCategory}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Parcel Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Parcel Categories</SelectItem>
+                  {filterParcelCategoriesList.map((pc) => (
+                    <SelectItem key={pc._id} value={pc._id}>{pc.categoryName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Filter by Parcel Vehicle</label>
+              <Select
+                value={filterParcelVehicle}
+                onValueChange={setFilterParcelVehicle}
+                disabled={filterParcelCategory === 'all'}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Parcel Vehicles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Parcel Vehicles</SelectItem>
+                  {filterParcelVehiclesList.map((pv) => (
+                    <SelectItem key={pv._id} value={pv._id}>{pv.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end justify-end">
+              {((filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') || (filterParcelCategory && filterParcelCategory !== 'all') || (filterParcelVehicle && filterParcelVehicle !== 'all')) ? (
+                <Button variant="outline" size="sm" onClick={clearFilters} className="text-xs">
+                  <X className="w-3 h-3 mr-1" />
+                  Clear Filters
+                </Button>
+              ) : (
+                <div className="text-sm text-gray-600">
+                  Showing {startRecord}-{endRecord} of {filteredRideCosts.length}
+                </div>
+              )}
             </div>
           </div>
         </div>

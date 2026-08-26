@@ -20,14 +20,39 @@ const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
 // Get all cab ride costs
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {
-    const cabRideCosts = await CabRideCost.find()
-      .populate('category', 'name')
-      .populate('subcategory', 'name')
-      .populate('subSubCategory', 'name')
-      .populate('priceCategory', 'name')
-      .populate('car', 'name')
+    const { category, subcategory, priceCategory, car, page = 1, limit = 10 } = req.query;
 
-    res.json({ data: cabRideCosts });
+    const filter = {};
+    if (category) filter.category = category;
+    if (subcategory) filter.subcategory = subcategory;
+    if (priceCategory) filter.priceCategory = priceCategory;
+    if (car) filter.car = car;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const [cabRideCosts, totalRecords] = await Promise.all([
+      CabRideCost.find(filter)
+        .populate('category', 'name')
+        .populate('subcategory', 'name')
+        .populate('subSubCategory', 'name')
+        .populate('priceCategory', 'name')
+        .populate('car', 'name')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      CabRideCost.countDocuments(filter)
+    ]);
+
+    res.json({
+      success: true,
+      count: cabRideCosts.length,
+      totalRecords,
+      totalPages: Math.ceil(totalRecords / limitNum),
+      currentPage: pageNum,
+      data: cabRideCosts
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

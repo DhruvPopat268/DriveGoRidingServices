@@ -79,7 +79,6 @@ interface SubSubCategory {
 
 export const DriverRideCostPage = () => {
   const [rideCosts, setRideCosts] = useState<RideCost[]>([]);
-  const [filteredRideCosts, setFilteredRideCosts] = useState<RideCost[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [subSubCategories, setSubSubCategories] = useState<SubSubCategory[]>([]);
@@ -92,12 +91,12 @@ export const DriverRideCostPage = () => {
   // Filter states
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSubcategory, setFilterSubcategory] = useState<string>('all');
+  const [filterPriceCategory, setFilterPriceCategory] = useState<string>('all');
   const [filterSubcategoriesForFilter, setFilterSubcategoriesForFilter] = useState<Subcategory[]>([]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
-  const [paginatedRideCosts, setPaginatedRideCosts] = useState<RideCost[]>([]);
 
   const [rideCostForm, setRideCostForm] = useState({
     category: '',
@@ -167,6 +166,11 @@ export const DriverRideCostPage = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Re-fetch ride costs whenever filters, page, or limit change
+  useEffect(() => {
+    fetchRideCosts();
+  }, [currentPage, recordsPerPage, filterCategory, filterSubcategory, filterPriceCategory]);
 
   // Filter subcategories when category changes in form
   useEffect(() => {
@@ -240,63 +244,56 @@ export const DriverRideCostPage = () => {
       setFilterSubcategoriesForFilter([]);
       setFilterSubcategory('all');
     }
+    setCurrentPage(1);
   }, [filterCategory, subcategories]);
 
-  // Apply filters to ride costs
-  useEffect(() => {
-    let filtered = [...rideCosts];
+  // Apply filters to ride costs — removed (now server-side)
 
-    if (filterCategory && filterCategory !== 'all') {
-      filtered = filtered.filter(rideCost => {
-        const categoryId = extractId(rideCost.category);
-        return categoryId === filterCategory;
-      });
-    }
+  // Pagination logic — removed (now server-side)
 
-    if (filterSubcategory && filterSubcategory !== 'all') {
-      filtered = filtered.filter(rideCost => {
-        const subcategoryId = extractId(rideCost.subcategory);
-        return subcategoryId === filterSubcategory;
-      });
-    }
+  // Server-side totals from API response
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
+  const endRecord = Math.min(currentPage * recordsPerPage, totalRecords);
 
-    setFilteredRideCosts(filtered);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [rideCosts, filterCategory, filterSubcategory]);
-
-  // Pagination logic
-  useEffect(() => {
-    const startIndex = (currentPage - 1) * recordsPerPage;
-    const endIndex = startIndex + recordsPerPage;
-    setPaginatedRideCosts(filteredRideCosts.slice(startIndex, endIndex));
-  }, [filteredRideCosts, currentPage, recordsPerPage]);
-
-  // Calculate pagination info
-  const totalPages = Math.ceil(filteredRideCosts.length / recordsPerPage);
-  const startRecord = filteredRideCosts.length === 0 ? 0 : (currentPage - 1) * recordsPerPage + 1;
-  const endRecord = Math.min(currentPage * recordsPerPage, filteredRideCosts.length);
-
-  const fetchData = async () => {
+  // Fetch only ride costs (with filters + pagination) — called whenever filters/page change
+  const fetchRideCosts = async () => {
     setLoading(true);
     try {
-      const [rideCostsRes, categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes] = await Promise.all([
-        apiClient.get(`${import.meta.env.VITE_API_URL}/api/DriverRideCosts`),
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: recordsPerPage.toString(),
+        ...(filterCategory !== 'all' && { category: filterCategory }),
+        ...(filterSubcategory !== 'all' && { subcategory: filterSubcategory }),
+        ...(filterPriceCategory !== 'all' && { priceCategory: filterPriceCategory }),
+      });
+      const res = await apiClient.get(`${import.meta.env.VITE_API_URL}/api/DriverRideCosts?${params}`);
+      setRideCosts(res.data.data || []);
+      setTotalRecords(res.data.totalRecords || 0);
+      setTotalPages(res.data.totalPages || 1);
+    } catch (error) {
+      console.error('Error fetching ride costs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch dropdown data only once on mount
+  const fetchData = async () => {
+    try {
+      const [categoriesRes, subcategoriesRes, subSubCategoriesRes, priceCategoriesRes] = await Promise.all([
         apiClient.get(`${import.meta.env.VITE_API_URL}/api/categories`),
         apiClient.get(`${import.meta.env.VITE_API_URL}/api/subcategories`),
         apiClient.get(`${import.meta.env.VITE_API_URL}/api/subsubcategories`),
         apiClient.get(`${import.meta.env.VITE_API_URL}/api/price-categories`)
       ]);
-
-      setRideCosts(rideCostsRes.data.data || rideCostsRes.data);
       setCategories(categoriesRes.data);
       setSubcategories(subcategoriesRes.data);
-      console.log(subcategoriesRes.data);
       setSubSubCategories(subSubCategoriesRes.data);
       setPriceCategories(priceCategoriesRes.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching dropdown data:', error);
     }
   };
 
@@ -471,6 +468,8 @@ export const DriverRideCostPage = () => {
   const clearFilters = () => {
     setFilterCategory('all');
     setFilterSubcategory('all');
+    setFilterPriceCategory('all');
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
@@ -511,7 +510,7 @@ export const DriverRideCostPage = () => {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Driver Ride Cost Management</h1>
+        <h1 className="text-3xl font-bold">Driver Packages</h1>
       </div>
 
       <div className="flex items-center justify-between">
@@ -858,21 +857,7 @@ export const DriverRideCostPage = () => {
 
         {/* Filter Section */}
         <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            {(filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearFilters}
-                className="text-xs"
-              >
-                <X className="w-3 h-3 mr-1" />
-                Clear Filters
-              </Button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Filter by Category
@@ -926,10 +911,44 @@ export const DriverRideCostPage = () => {
               </Select>
             </div>
 
-            <div className="flex items-end">
-              <div className="text-sm text-gray-600">
-                Showing {startRecord}-{endRecord} of {filteredRideCosts.length} models
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Filter by Driver Category
+              </label>
+              <Select
+                value={filterPriceCategory}
+                onValueChange={setFilterPriceCategory}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="All Driver Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Driver Categories</SelectItem>
+                  {priceCategories.map((pc) => (
+                    <SelectItem key={pc._id} value={pc._id}>
+                      {pc.priceCategoryName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end justify-end">
+              {((filterCategory && filterCategory !== 'all') || (filterSubcategory && filterSubcategory !== 'all') || (filterPriceCategory && filterPriceCategory !== 'all')) ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="text-xs"
+                >
+                  <X className="w-3 h-3 mr-1" />
+                  Clear Filters
+                </Button>
+              ) : (
+                <div className="text-sm text-gray-600">
+                  Showing {startRecord}-{endRecord} of {totalRecords}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -967,8 +986,8 @@ export const DriverRideCostPage = () => {
                 <TableHead>Incl. Min</TableHead>
                 <TableHead>Extra/Km</TableHead>
                 <TableHead>Extra/Min</TableHead>
-                {/* Show Weight column header if any filtered ride cost is from parcel category */}
-                {filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) && (
+                {/* Show Weight column header if any ride cost is from parcel category */}
+                {rideCosts.some(rideCost => isParcelCategory(rideCost.category)) && (
                   <TableHead>Weight (kg)</TableHead>
                 )}
                 <TableHead>Status</TableHead>
@@ -978,16 +997,16 @@ export const DriverRideCostPage = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-8">
+                  <TableCell colSpan={rideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-8">
                     <div className="flex justify-center items-center">
                       <Loader className="w-6 h-6 animate-spin mr-2" />
                       <span>Loading driver ride costs...</span>
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredRideCosts.length === 0 ? (
+              ) : rideCosts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={filteredRideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-6">
+                  <TableCell colSpan={rideCosts.some(rideCost => isParcelCategory(rideCost.category)) ? 12 : 11} className="text-center py-6">
                     {rideCosts.length === 0
                       ? "No ride cost models found. Create your first one!"
                       : "No models match the selected filters."
@@ -995,7 +1014,7 @@ export const DriverRideCostPage = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedRideCosts.map((rideCost, index) => (
+                rideCosts.map((rideCost, index) => (
                   <TableRow key={rideCost._id}>
                     <TableCell>{(currentPage - 1) * recordsPerPage + index + 1}</TableCell>
                     <TableCell>{getName(rideCost.category)}</TableCell>
@@ -1007,8 +1026,8 @@ export const DriverRideCostPage = () => {
                     <TableCell>{formatMinutesDisplay(rideCost.includedMinutes, rideCost.subcategory)}</TableCell>
                     <TableCell>₹{rideCost.extraChargePerKm}</TableCell>
                     <TableCell>₹{rideCost.extraChargePerMinute}</TableCell>
-                    {/* Show Weight column data if any filtered ride cost is from parcel category */}
-                    {filteredRideCosts.some(rc => isParcelCategory(rc.category)) && (
+                    {/* Show Weight column data if any ride cost is from parcel category */}
+                    {rideCosts.some(rc => isParcelCategory(rc.category)) && (
                       <TableCell>
                         {isParcelCategory(rideCost.category) ? `${rideCost.weight || 0} kg` : '-'}
                       </TableCell>
@@ -1070,10 +1089,10 @@ export const DriverRideCostPage = () => {
         </ScrollArea>
 
         {/* Pagination Controls */}
-        {filteredRideCosts.length > 0 && (
+        {totalRecords > 0 && (
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-gray-600">
-              Showing {startRecord} to {endRecord} of {filteredRideCosts.length} entries
+              Showing {startRecord} to {endRecord} of {totalRecords} entries
             </div>
             <div className="flex items-center space-x-2">
               <Button

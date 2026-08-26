@@ -84,7 +84,7 @@ const menuItems = [
       { icon: Bike, label: "Driver Vehicle Type", path: "/drivervehicletype" },
       { icon: Truck, label: "Vehicle Category", path: "/vehiclecategory" },
       { icon: RupeeIcon, label: "Driver Category", path: "/drivercategory" },
-      { icon: Calculator, label: "Driver Ride Cost Management", path: "/DriverRidecost" }
+      { icon: Calculator, label: "Driver Packages", path: "/DriverRidecost" }
     ]
   },
   {
@@ -96,7 +96,7 @@ const menuItems = [
       { icon: Tags, label: "Cab Category", path: "/carcategory" },
       { icon: Truck, label: "Vehicle Type", path: "/vehicletype" },
       { icon: Car, label: "Cab Management", path: "/carmanagement" },
-      { icon: Calculator, label: "Cab Ride Cost Management", path: "/cabridecost" }
+      { icon: Calculator, label: "Cab Packages", path: "/cabridecost" }
     ]
   },
   {
@@ -108,7 +108,7 @@ const menuItems = [
       { icon: Tags, label: "Parcel Category", path: "/parcelcategory" },
       { icon: Truck, label: "Parcel Vehicle Type", path: "/parcelvehicletype" },
       { icon: Truck, label: "Parcel Vehicle Management", path: "/parcelvehicleManagement" },
-      { icon: Calculator, label: "Parcel Ride Cost Management", path: "/parcelridecost" }
+      { icon: Calculator, label: "Parcel Packages", path: "/parcelridecost" }
     ]
   },
   { icon: Truck, label: "Vehicle Management", path: "/approved-vehicles" },
