@@ -38,6 +38,9 @@ const RiderNotification = require("../models/RiderNotification");
 const { combinedAuthMiddleware } = require('../Services/authService');
 const adminAuthMiddleware = require("../middleware/adminAuthMiddleware");
 const AdminWalletLedger = require("../models/AdminWalletLedger");
+const XLSX = require("xlsx");
+const UserRating = require("../DriverModel/UserRating");
+const DriverRating = require("../DriverModel/DriverRating");
 
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>             Admin                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
@@ -258,6 +261,196 @@ const getPaginatedRides = async (status = null, req) => {
 };
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
+// Export all rides to Excel (.xlsx)
+router.get('/export', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { date, fromDate, toDate, status, search, categoryId, subCategoryId, city, userId, driverId } = req.query;
+
+    let query = {};
+
+    // Date quick filters
+    if (date === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      query.createdAt = { $gte: today, $lt: tomorrow };
+    } else if (date === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      const end = new Date(yesterday);
+      end.setDate(end.getDate() + 1);
+      query.createdAt = { $gte: yesterday, $lt: end };
+    }
+
+    // Date range filter
+    if (fromDate && toDate) {
+      const from = new Date(fromDate);
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      query['rideInfo.selectedDate'] = { $gte: from, $lte: to };
+    } else if (fromDate) {
+      query['rideInfo.selectedDate'] = { $gte: new Date(fromDate) };
+    } else if (toDate) {
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      query['rideInfo.selectedDate'] = { $lte: to };
+    }
+
+    // Category filter
+    if (categoryId && categoryId !== 'all' && mongoose.Types.ObjectId.isValid(categoryId)) {
+      query['rideInfo.categoryId'] = categoryId;
+    }
+
+    // SubCategory filter
+    if (subCategoryId && subCategoryId !== 'all' && mongoose.Types.ObjectId.isValid(subCategoryId)) {
+      query['rideInfo.subcategoryId'] = subCategoryId;
+    }
+
+    // City filter
+    if (city && city !== 'all') {
+      query.city = city;
+    }
+
+    // Rider filter
+    if (userId && userId !== 'all' && mongoose.Types.ObjectId.isValid(userId)) {
+      query.riderId = new mongoose.Types.ObjectId(userId);
+    }
+
+    // Driver filter
+    if (driverId && driverId !== 'all' && mongoose.Types.ObjectId.isValid(driverId)) {
+      query.driverId = new mongoose.Types.ObjectId(driverId);
+    }
+
+    // Status filter
+    if (status && status !== 'all') query.status = status;
+
+    // Search filter
+    if (search) {
+      const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchConditions = [
+        { 'riderInfo.riderName': { $regex: escaped, $options: 'i' } },
+        { 'riderInfo.riderMobile': { $regex: escaped, $options: 'i' } },
+        { 'driverInfo.driverName': { $regex: escaped, $options: 'i' } },
+      ];
+      if (!isNaN(search.trim()) && search.trim().length <= 7) {
+        searchConditions.push({ bookingId: parseInt(search.trim()) });
+      }
+      query.$or = searchConditions;
+    }
+
+    const rides = await Ride.find(query).sort({ createdAt: -1 }).lean();
+
+    // Fetch all ratings for completed rides
+    const completedRideIds = rides
+      .filter(ride => ride.status === 'COMPLETED')
+      .map(ride => new mongoose.Types.ObjectId(ride._id));
+
+    const userRatings = await UserRating.find({ rideId: { $in: completedRideIds } }).lean();
+    const driverRatings = await DriverRating.find({ rideId: { $in: completedRideIds } }).lean();
+
+    // Create maps for quick lookup
+    const userRatingsMap = {};
+    const driverRatingsMap = {};
+
+    userRatings.forEach(rating => {
+      userRatingsMap[rating.rideId.toString()] = rating;
+    });
+
+    driverRatings.forEach(rating => {
+      driverRatingsMap[rating.rideId.toString()] = rating;
+    });
+
+    // Build rows with only the required columns
+    const rows = rides.map((ride) => {
+      const userRating = userRatingsMap[ride._id.toString()];
+      const driverRating = driverRatingsMap[ride._id.toString()];
+
+      return {
+        'Ride ID': ride.bookingId || ride._id.toString().slice(-6).toUpperCase(),
+        'Date': ride.rideInfo?.selectedDate
+          ? new Date(ride.rideInfo.selectedDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+          : '',
+        'Time': ride.rideInfo?.selectedTime || '',
+        'Rider Name': ride.riderInfo?.riderName || '',
+        'Rider Mobile': ride.riderInfo?.riderMobile || '',
+        'From Location': ride.rideInfo?.fromLocation?.address || '',
+        'To Location': ride.rideInfo?.toLocation?.address || '',
+        'Category': ride.rideInfo?.categoryName || '',
+        'Sub Category': ride.rideInfo?.subcategoryName || '',
+        'Sub-Sub Category': ride.rideInfo?.subSubcategoryName || '',
+        'Selected Category': ride.rideInfo?.selectedCategory || '',
+        'Selected Usage': ride.rideInfo?.selectedUsage || '',
+        'Driver Name': ride.driverInfo?.driverName || '',
+        'Driver Phone': ride.driverInfo?.driverMobile || '',
+        'Rider Rating': userRating?.rating || '',
+        'Rider Comment': userRating?.comment || '',
+        'Driver Rating': driverRating?.rating || '',
+        'Driver Comment': driverRating?.comment || '',
+        'Driver Charges (₹)': ride.rideInfo?.driverCharges || 0,
+        'Pick Charges (₹)': ride.rideInfo?.pickCharges || 0,
+        'Peak Charges (₹)': ride.rideInfo?.peakCharges || 0,
+        'Night Charges (₹)': ride.rideInfo?.nightCharges || 0,
+        'Insurance Charges (₹)': ride.rideInfo?.insuranceCharges || 0,
+        'Admin Charges (₹)': ride.rideInfo?.adminCharges || 0,
+        'GST (₹)': ride.rideInfo?.gstCharges || 0,
+        'Discount (₹)': ride.rideInfo?.discount || 0,
+        'Total Payable (₹)': ride.totalPayable || 0,
+        'Payment Type': ride.paymentType || '',
+        'Status': ride.status || '',
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rides');
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 12 }, // Ride ID
+      { wch: 15 }, // Date
+      { wch: 10 }, // Time
+      { wch: 22 }, // Rider Name
+      { wch: 15 }, // Rider Mobile
+      { wch: 35 }, // From Location
+      { wch: 35 }, // To Location
+      { wch: 15 }, // Category
+      { wch: 18 }, // Sub Category
+      { wch: 18 }, // Sub-Sub Category
+      { wch: 18 }, // Selected Category
+      { wch: 20 }, // Selected Usage
+      { wch: 20 }, // Driver Name
+      { wch: 15 }, // Driver Phone
+      { wch: 15 }, // Rider Rating
+      { wch: 30 }, // Rider Comment
+      { wch: 15 }, // Driver Rating
+      { wch: 30 }, // Driver Comment
+      { wch: 18 }, // Driver Charges
+      { wch: 14 }, // Pick Charges
+      { wch: 14 }, // Peak Charges
+      { wch: 14 }, // Night Charges
+      { wch: 18 }, // Insurance Charges
+      { wch: 14 }, // Admin Charges
+      { wch: 10 }, // GST
+      { wch: 12 }, // Discount
+      { wch: 15 }, // Total Payable
+      { wch: 14 }, // Payment Type
+      { wch: 12 }, // Status
+    ];
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const filename = `rides_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (error) {
+    console.error('Export error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {

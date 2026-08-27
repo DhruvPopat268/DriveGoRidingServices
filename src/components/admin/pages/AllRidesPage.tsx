@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Calendar, Clock, Eye, UserPlus, UserMinus, Loader, ChevronLeft, ChevronRight, XCircle, CalendarClock, MapPin } from 'lucide-react';
+import { Calendar, Clock, Eye, UserPlus, UserMinus, Loader, ChevronLeft, ChevronRight, XCircle, CalendarClock, MapPin, Download } from 'lucide-react';
 import { RupeeIcon } from '@/components/ui/RupeeIcon';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
@@ -24,6 +24,7 @@ export const AllRidesPage = () => {
   const [totalRides, setTotalRides] = useState(0);
   const [recordsPerPage, setRecordsPerPage] = useState(10);
   const [dateFilter, setDateFilter] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   const [riderStats, setRiderStats] = useState<Record<string, { completed: number; cancelled: number }>>({});
   const [driverStats, setDriverStats] = useState<Record<string, { completed: number; cancelled: number }>>({}); 
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -159,6 +160,44 @@ export const AllRidesPage = () => {
   const handleRecordsPerPageChange = (value: string) => {
     setRecordsPerPage(parseInt(value));
     setCurrentPage(1);
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const params = new URLSearchParams({
+        ...(dateFilter && { date: dateFilter }),
+        ...(appliedDateRange.from && { fromDate: appliedDateRange.from }),
+        ...(appliedDateRange.to && { toDate: appliedDateRange.to }),
+        ...(appliedFilterCategory && appliedFilterCategory !== 'all' && { categoryId: appliedFilterCategory }),
+        ...(appliedFilterSubcategory && appliedFilterSubcategory !== 'all' && { subCategoryId: appliedFilterSubcategory }),
+        ...(appliedFilterCity && appliedFilterCity !== 'all' && { city: appliedFilterCity }),
+        ...(appliedSearchQuery && { search: appliedSearchQuery }),
+        ...(appliedFilterRider && appliedFilterRider !== 'all' && { userId: appliedFilterRider }),
+        ...(appliedFilterDriver && appliedFilterDriver !== 'all' && { driverId: appliedFilterDriver }),
+        ...(appliedFilterStatus && appliedFilterStatus !== 'all' && { status: appliedFilterStatus })
+      });
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      const response = await apiClient.get(
+        `${import.meta.env.VITE_API_URL}/api/rides/export${query}`,
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      link.setAttribute('download', `rides_export_${today}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const fetchRides = async () => {
@@ -400,6 +439,18 @@ export const AllRidesPage = () => {
           <AlertDescription className="text-red-800">{error}</AlertDescription>
         </Alert>
       )}
+      
+      {/* Export Button Row */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleExport}
+          disabled={isExporting}
+          className="bg-green-600 hover:bg-green-700 text-white"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          {isExporting ? 'Exporting...' : 'Export to Excel'}
+        </Button>
+      </div>
       
       <div className="flex flex-wrap justify-between items-center gap-2">
         <h1 className="text-2xl font-bold text-black">Rides Management</h1>

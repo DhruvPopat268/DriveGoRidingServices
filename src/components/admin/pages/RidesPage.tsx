@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, User, Car, Phone, Calendar, CreditCard, Eye } from "lucide-react";
+import { MapPin, Clock, User, Car, Phone, Calendar, CreditCard, Eye, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import apiClient from '../../../lib/axiosInterceptor';
@@ -15,6 +15,7 @@ export const RidesPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalRides, setTotalRides] = useState(0);
   const [dateFilter, setDateFilter] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   const limit = 10;
 
   useEffect(() => {
@@ -28,6 +29,34 @@ export const RidesPage = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const params = new URLSearchParams();
+      if (dateFilter) params.append('date', dateFilter);
+      const query = params.toString() ? `?${params.toString()}` : '';
+
+      const response = await apiClient.get(
+        `${import.meta.env.VITE_API_URL}/api/rides/export${query}`,
+        { responseType: 'blob' }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const today = new Date().toISOString().slice(0, 10);
+      link.setAttribute('download', `rides_export_${today}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const fetchRides = async () => {
@@ -82,26 +111,6 @@ export const RidesPage = () => {
     return `₹${amount?.toFixed(2) || '0.00'}`;
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6 bg-white text-black p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-lg">Loading rides...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6 bg-white text-black p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-red-600">Error: {error}</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 bg-white text-black p-6">
       {/* Summary Cards */}
@@ -147,17 +156,23 @@ export const RidesPage = () => {
         <h1 className="text-2xl font-bold text-black">Rides Management</h1>
         <div className="flex space-x-2">
           <Button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? 'Exporting...' : 'Export to Excel'}
+          </Button>
+          <Button
             variant={dateFilter === 'today' ? "default" : "outline"}
             onClick={handleTodayFilter}
-            className={dateFilter === 'today' ? "bg-green-600 hover:bg-green-700" : ""}
+            className={dateFilter === 'today' ? "bg-blue-600 hover:bg-blue-700" : ""}
           >
             {dateFilter === 'today' ? "Show All" : "Today Rides"}
           </Button>
           <Button variant="outline" onClick={fetchRides}>
             Refresh
           </Button>
-          <Button variant="outline">Filter</Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">Export</Button>
         </div>
       </div>
 
