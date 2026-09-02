@@ -397,6 +397,66 @@ router.post('/',adminAuthMiddleware, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────
+// GET /export — Export filtered records as Excel
+// ─────────────────────────────────────────────
+router.get('/export', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { category, subcategory, priceCategory } = req.query;
+
+    const filter = {};
+    if (category) filter.category = category;
+    if (subcategory) filter.subcategory = subcategory;
+    if (priceCategory) filter.priceCategory = priceCategory;
+
+    const records = await DriverRideCost.find(filter)
+      .populate('category', 'name')
+      .populate('subcategory', 'name')
+      .populate('subSubCategory', 'name')
+      .populate('priceCategory', 'priceCategoryName')
+      .sort({ createdAt: -1 });
+
+    // Build rows for Excel
+    const rows = records.map((r, i) => ({
+      '#': i + 1,
+      'Category': r.category?.name || '',
+      'Subcategory': r.subcategory?.name || '',
+      'Sub-Sub Category': r.subSubCategory?.name || '',
+      'Driver Category': r.priceCategory?.priceCategoryName || '',
+      'Base Fare': r.baseFare,
+      'Included KM': r.includedKm,
+      'Included Minutes': r.includedMinutes,
+      'Extra Charge per KM': r.extraChargePerKm,
+      'Extra Charge per Minute': r.extraChargePerMinute,
+      'Pick Charges': r.pickCharges,
+      'Night Charges': r.nightCharges,
+      'User Cancellation Charges': r.cancellationFee,
+      'Cancellation Buffer Time (minutes)': r.cancellationBufferTime,
+      'Insurance': r.insurance,
+      'Admin Commission %': r.extraChargesFromAdmin,
+      'GST %': r.gst,
+      'Discount': r.discount,
+      'Driver Cancellation Charges': r.driverCancellationCharges,
+      'Status': r.status ? 'Active' : 'Inactive',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 22 }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Driver Packages');
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="driver_packages_export.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error exporting driver ride costs:', err);
+    res.status(500).json({ success: false, error: 'Failed to export data' });
+  }
+});
+
 // GET ALL - Retrieve all ride cost models
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {

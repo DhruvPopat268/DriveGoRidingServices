@@ -381,6 +381,68 @@ router.post('/bulk-import', adminAuthMiddleware, upload.single('file'), async (r
   }
 });
 
+// ─────────────────────────────────────────────
+// GET /export — Export filtered records as Excel
+// ─────────────────────────────────────────────
+router.get('/export', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { category, subcategory, priceCategory, car } = req.query;
+
+    const filter = {};
+    if (category) filter.category = category;
+    if (subcategory) filter.subcategory = subcategory;
+    if (priceCategory) filter.priceCategory = priceCategory;
+    if (car) filter.car = car;
+
+    const records = await CabRideCost.find(filter)
+      .populate('category', 'name')
+      .populate('subcategory', 'name')
+      .populate('subSubCategory', 'name')
+      .populate('priceCategory', 'name')
+      .populate('car', 'name')
+      .sort({ createdAt: -1 });
+
+    const rows = records.map((r, i) => ({
+      '#': i + 1,
+      'Category': r.category?.name || '',
+      'Subcategory': r.subcategory?.name || '',
+      'Sub-Sub Category': r.subSubCategory?.name || '',
+      'Cab Category': r.priceCategory?.name || '',
+      'Car': r.car?.name || '',
+      'Base Fare': r.baseFare,
+      'Included KM': r.includedKm,
+      'Included Minutes': r.includedMinutes,
+      'Extra Charge per KM': r.extraChargePerKm,
+      'Extra Charge per Minute': r.extraChargePerMinute,
+      'Pick Charges': r.pickCharges,
+      'Night Charges': r.nightCharges,
+      'Cancellation Fee': r.cancellationFee,
+      'Cancellation Buffer Time (minutes)': r.cancellationBufferTime,
+      'Insurance': r.insurance,
+      'Admin Commission %': r.extraChargesFromAdmin,
+      'GST %': r.gst,
+      'Discount': r.discount,
+      'Driver Cancellation Charges': r.driverCancellationCharges,
+      'Status': r.status ? 'Active' : 'Inactive',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 22 }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Cab Packages');
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="cab_packages_export.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error exporting cab ride costs:', err);
+    res.status(500).json({ success: false, error: 'Failed to export data' });
+  }
+});
+
 // Get all cab ride costs
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {

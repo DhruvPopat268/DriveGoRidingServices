@@ -354,6 +354,66 @@ router.post('/bulk-import', adminAuthMiddleware, upload.single('file'), async (r
   }
 });
 
+// ─────────────────────────────────────────────
+// GET /export — Export filtered records as Excel
+// ─────────────────────────────────────────────
+router.get('/export', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { category, subcategory, parcelCategory, parcelVehicle } = req.query;
+
+    const filter = {};
+    if (category) filter.category = new mongoose.Types.ObjectId(category);
+    if (subcategory) filter.subcategory = new mongoose.Types.ObjectId(subcategory);
+    if (parcelCategory) filter.parcelCategory = new mongoose.Types.ObjectId(parcelCategory);
+    if (parcelVehicle) filter.parcelVehicle = new mongoose.Types.ObjectId(parcelVehicle);
+
+    const records = await ParcelRideCost.find(filter)
+      .populate('category', 'name')
+      .populate('subcategory', 'name')
+      .populate('parcelCategory', 'categoryName')
+      .populate('parcelVehicle', 'name')
+      .sort({ createdAt: -1 });
+
+    const rows = records.map((r, i) => ({
+      '#': i + 1,
+      'Category': r.category?.name || '',
+      'Subcategory': r.subcategory?.name || '',
+      'Parcel Category': r.parcelCategory?.categoryName || '',
+      'Parcel Vehicle': r.parcelVehicle?.name || '',
+      'Base Fare': r.baseFare,
+      'Included KM': r.includedKm,
+      'Included Minutes': r.includedMinutes,
+      'Extra Charge per KM': r.extraChargePerKm,
+      'Extra Charge per Minute': r.extraChargePerMinute,
+      'Pick Charges': r.pickCharges,
+      'Night Charges': r.nightCharges,
+      'Cancellation Fee': r.cancellationFee,
+      'Cancellation Buffer Time (minutes)': r.cancellationBufferTime,
+      'Insurance': r.insurance,
+      'Admin Commission %': r.extraChargesFromAdmin,
+      'GST %': r.gst,
+      'Discount': r.discount,
+      'Driver Cancellation Charges': r.driverCancellationCharges,
+      'Status': r.status ? 'Active' : 'Inactive',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 22 }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Parcel Packages');
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="parcel_packages_export.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error exporting parcel ride costs:', err);
+    res.status(500).json({ success: false, error: 'Failed to export data' });
+  }
+});
+
 // Get all parcel ride costs
 router.get('/', adminAuthMiddleware, async (req, res) => {
   try {

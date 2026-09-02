@@ -158,6 +158,7 @@ export const ParcelRideCostPage = () => {
   }[]>([]);
   const [bulkImportSuccess, setBulkImportSuccess] = useState<string | null>(null);
   const [sampleDownloading, setSampleDownloading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper function to extract ID from objects that might have either _id or id
@@ -634,6 +635,35 @@ export const ParcelRideCostPage = () => {
     }
   };
 
+  // Export filtered records as Excel
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams({
+        ...(filterCategory !== 'all' && { category: filterCategory }),
+        ...(filterSubcategory !== 'all' && { subcategory: filterSubcategory }),
+        ...(filterParcelCategory !== 'all' && { parcelCategory: filterParcelCategory }),
+        ...(filterParcelVehicle !== 'all' && { parcelVehicle: filterParcelVehicle }),
+      });
+      const response = await apiClient.get(
+        `${import.meta.env.VITE_API_URL}/api/ParcelRideCosts/export?${params}`,
+        { responseType: 'blob' }
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'parcel_packages_export.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting data:', error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Bulk import handler
   const handleBulkImport = async () => {
     if (!bulkImportFile) return;
@@ -685,6 +715,21 @@ export const ParcelRideCostPage = () => {
 
       <Card className="p-6">
         <div className="flex items-center justify-end mb-1">
+          {/* Export Button */}
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={exporting}
+            className="mr-2"
+          >
+            {exporting ? (
+              <Loader className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            Export
+          </Button>
+
           {/* Download Sample Button */}
           <Button
             variant="outline"
