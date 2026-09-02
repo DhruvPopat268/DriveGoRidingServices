@@ -744,7 +744,7 @@ export const DriverRideCostPage = () => {
             <DialogTrigger asChild>
               <Button onClick={resetForm} disabled={loading}>
                 <Plus className="w-4 h-4 mr-2" />
-                Create Model
+                Create Package
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">

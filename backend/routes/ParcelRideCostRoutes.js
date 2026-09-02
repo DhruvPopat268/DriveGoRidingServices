@@ -11,8 +11,348 @@ const { combinedAuthMiddleware } = require('../Services/authService');
 const Rider = require('../models/Rider');
 const {Wallet} = require('../models/Payment&Wallet')
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
+const ParcelCategory = require('../models/ParcelCategory');
+const ParcelVehicle = require('../models/ParcelVehicle');
+const multer = require('multer');
+const XLSX = require('xlsx');
 
+// Multer — memory storage for Excel upload (no disk writes)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel'
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .xlsx and .xls files are allowed'), false);
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB max
+});
 
+// ─────────────────────────────────────────────
+// GET /sample-excel — Download sample Excel file
+// ─────────────────────────────────────────────
+router.get('/sample-excel', adminAuthMiddleware, async (req, res) => {
+  try {
+    const headers = [
+      'Category',
+      'Subcategory',
+      'Parcel Category',
+      'Parcel Vehicle',
+      'Base Fare',
+      'Included KM',
+      'Included Minutes',
+      'Extra Charge per KM',
+      'Extra Charge per Minute',
+      'Pick Charges',
+      'Night Charges',
+      'Cancellation Fee',
+      'Cancellation Buffer Time (minutes)',
+      'Insurance',
+      'Admin Commission %',
+      'GST %',
+      'Discount',
+      'Driver Cancellation Charges'
+    ];
+
+    // One example row so admin understands the expected format
+    const exampleRow = [
+      'Parcel',       // Category — must match exact name in system (case-insensitive)
+      'Express',      // Subcategory — must match exact name in system (case-insensitive)
+      'Standard',     // Parcel Category — must match exact categoryName in system (case-insensitive)
+      'Bike',         // Parcel Vehicle — must match exact name belonging to selected Parcel Category (case-insensitive)
+      100,            // Base Fare ₹
+      '10',           // Included KM
+      '60',           // Included Minutes
+      5,              // Extra Charge per KM ₹
+      1,              // Extra Charge per Minute ₹
+      20,             // Pick Charges ₹
+      15,             // Night Charges ₹
+      30,             // Cancellation Fee ₹
+      5,              // Cancellation Buffer Time (minutes)
+      10,             // Insurance ₹
+      8,              // Admin Commission %
+      5,              // GST %
+      0,              // Discount ₹
+      50              // Driver Cancellation Charges ₹
+    ];
+
+    const worksheetData = [headers, exampleRow];
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+    // Set column widths for readability
+    worksheet['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 4, 18) }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Parcel Packages');
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="parcel_packages_sample.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error generating sample Excel:', err);
+    res.status(500).json({ success: false, error: 'Failed to generate sample file' });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /bulk-import — Validate & import all rows (all-or-nothing)
+// ─────────────────────────────────────────────
+router.post('/bulk-import', adminAuthMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    // Parse Excel from buffer
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'Excel file is empty or has no data rows' });
+    }
+
+    // Fetch all reference data from DB once
+    const [allCategories, allSubcategories, allParcelCategories, allParcelVehicles] = await Promise.all([
+      Category.find({}).lean(),
+      SubCategory.find({}).lean(),
+      ParcelCategory.find({}).lean(),
+      ParcelVehicle.find({}).lean()
+    ]);
+
+    const errors = [];
+    const validatedRows = [];
+
+    // Track unique combos within the file to catch intra-file duplicates
+    const seenCombos = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // +2 because row 1 is header
+      const rowErrors = [];
+
+      // ── Helper: trim safely ──
+      const trim = (val) => (val !== null && val !== undefined ? String(val).trim() : '');
+
+      const categoryName        = trim(row['Category']);
+      const subcategoryName     = trim(row['Subcategory']);
+      const parcelCategoryName  = trim(row['Parcel Category']);
+      const parcelVehicleName   = trim(row['Parcel Vehicle']);
+      const baseFare            = row['Base Fare'];
+      const includedKm          = trim(row['Included KM']);
+      const includedMinutes     = trim(row['Included Minutes']);
+      const extraPerKm          = row['Extra Charge per KM'];
+      const extraPerMin         = row['Extra Charge per Minute'];
+      const pickCharges         = row['Pick Charges'];
+      const nightCharges        = row['Night Charges'];
+      const cancellationFee     = row['Cancellation Fee'];
+      const cancellationBuffer  = row['Cancellation Buffer Time (minutes)'];
+      const insurance           = row['Insurance'];
+      const adminCommission     = row['Admin Commission %'];
+      const gst                 = row['GST %'];
+      const discount            = row['Discount'];
+      const driverCancelCharge  = row['Driver Cancellation Charges'];
+
+      // ── 1. Required text fields ──
+      if (!categoryName)       rowErrors.push({ field: 'Category',        value: categoryName,       message: 'Category is required' });
+      if (!subcategoryName)    rowErrors.push({ field: 'Subcategory',     value: subcategoryName,    message: 'Subcategory is required' });
+      if (!parcelCategoryName) rowErrors.push({ field: 'Parcel Category', value: parcelCategoryName, message: 'Parcel Category is required' });
+      if (!parcelVehicleName)  rowErrors.push({ field: 'Parcel Vehicle',  value: parcelVehicleName,  message: 'Parcel Vehicle is required' });
+      if (!includedKm)         rowErrors.push({ field: 'Included KM',     value: includedKm,         message: 'Included KM is required' });
+      if (!includedMinutes)    rowErrors.push({ field: 'Included Minutes',value: includedMinutes,    message: 'Included Minutes is required' });
+
+      // ── 2. Numeric fields (must be >= 0) ──
+      const numericFields = [
+        { key: 'Base Fare',                          val: baseFare },
+        { key: 'Extra Charge per KM',                val: extraPerKm },
+        { key: 'Extra Charge per Minute',            val: extraPerMin },
+        { key: 'Pick Charges',                       val: pickCharges },
+        { key: 'Night Charges',                      val: nightCharges },
+        { key: 'Cancellation Fee',                   val: cancellationFee },
+        { key: 'Cancellation Buffer Time (minutes)', val: cancellationBuffer },
+        { key: 'Insurance',                          val: insurance },
+        { key: 'Admin Commission %',                 val: adminCommission },
+        { key: 'GST %',                              val: gst },
+        { key: 'Discount',                           val: discount },
+        { key: 'Driver Cancellation Charges',        val: driverCancelCharge },
+      ];
+
+      for (const field of numericFields) {
+        const num = parseFloat(field.val);
+        if (field.val === '' || isNaN(num) || num < 0) {
+          rowErrors.push({
+            field: field.key,
+            value: field.val,
+            message: `${field.key} must be a valid number >= 0`
+          });
+        }
+      }
+
+      // ── 3. DB lookups ──
+      let categoryDoc       = null;
+      let subcategoryDoc    = null;
+      let parcelCategoryDoc = null;
+      let parcelVehicleDoc  = null;
+
+      if (categoryName) {
+        categoryDoc = allCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+        if (!categoryDoc) {
+          rowErrors.push({ field: 'Category', value: categoryName, message: `Category '${categoryName}' not found in system` });
+        } else if (categoryDoc.name.toLowerCase() !== 'parcel') {
+          rowErrors.push({ field: 'Category', value: categoryName, message: `Only 'Parcel' category is allowed. '${categoryName}' is not permitted` });
+        }
+      }
+
+      if (subcategoryName && categoryDoc) {
+        subcategoryDoc = allSubcategories.find(
+          s => s.name.toLowerCase() === subcategoryName.toLowerCase() &&
+               String(s.categoryId) === String(categoryDoc._id)
+        );
+        if (!subcategoryDoc) {
+          rowErrors.push({ field: 'Subcategory', value: subcategoryName, message: `Subcategory '${subcategoryName}' not found under category '${categoryName}'` });
+        }
+      }
+
+      // Parcel Category lookup — field name in DB is `categoryName` not `name`
+      if (parcelCategoryName) {
+        parcelCategoryDoc = allParcelCategories.find(
+          pc => pc.categoryName.toLowerCase() === parcelCategoryName.toLowerCase()
+        );
+        if (!parcelCategoryDoc) {
+          rowErrors.push({ field: 'Parcel Category', value: parcelCategoryName, message: `Parcel Category '${parcelCategoryName}' not found in system` });
+        }
+      }
+
+      // Parcel Vehicle lookup — must belong to selected Parcel Category
+      if (parcelVehicleName && parcelCategoryDoc) {
+        parcelVehicleDoc = allParcelVehicles.find(
+          pv => pv.name.toLowerCase() === parcelVehicleName.toLowerCase() &&
+                String(pv.parcelCategory) === String(parcelCategoryDoc._id)
+        );
+        if (!parcelVehicleDoc) {
+          rowErrors.push({ field: 'Parcel Vehicle', value: parcelVehicleName, message: `Parcel Vehicle '${parcelVehicleName}' not found under Parcel Category '${parcelCategoryName}'` });
+        }
+      } else if (parcelVehicleName && !parcelCategoryDoc) {
+        // Parcel Category failed — can't validate vehicle without it, skip
+      }
+
+      // ── 4. Intra-file duplicate check ──
+      if (categoryDoc && subcategoryDoc && parcelCategoryDoc && parcelVehicleDoc && includedKm && includedMinutes) {
+        const comboKey = [
+          String(categoryDoc._id),
+          String(subcategoryDoc._id || subcategoryDoc.id),
+          String(parcelCategoryDoc._id),
+          String(parcelVehicleDoc._id),
+          includedKm,
+          includedMinutes
+        ].join('|');
+
+        if (seenCombos.has(comboKey)) {
+          rowErrors.push({
+            field: 'Duplicate',
+            value: '',
+            message: `Duplicate row within the file: same Category, Subcategory, Parcel Category, Parcel Vehicle, Included KM and Minutes already exists in a row above`
+          });
+        } else {
+          seenCombos.add(comboKey);
+        }
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push({ row: rowNum, errors: rowErrors });
+      } else {
+        validatedRows.push({
+          category:              categoryDoc._id,
+          subcategory:           subcategoryDoc._id || subcategoryDoc.id,
+          parcelCategory:        parcelCategoryDoc._id,
+          parcelVehicle:         parcelVehicleDoc._id,
+          baseFare:              parseFloat(baseFare),
+          includedKm:            String(includedKm),
+          includedMinutes:       String(includedMinutes),
+          extraChargePerKm:      parseFloat(extraPerKm),
+          extraChargePerMinute:  parseFloat(extraPerMin),
+          pickCharges:           parseFloat(pickCharges) || 0,
+          nightCharges:          parseFloat(nightCharges) || 0,
+          cancellationFee:       parseFloat(cancellationFee) || 0,
+          cancellationBufferTime: parseInt(cancellationBuffer) || 0,
+          insurance:             parseFloat(insurance) || 0,
+          extraChargesFromAdmin: parseFloat(adminCommission) || 0,
+          gst:                   parseFloat(gst) || 0,
+          discount:              parseFloat(discount) || 0,
+          driverCancellationCharges: parseFloat(driverCancelCharge) || 0,
+          status: true
+        });
+      }
+    }
+
+    // ── 5. If any errors → reject entire file (all-or-nothing) ──
+    if (errors.length > 0) {
+      return res.status(422).json({
+        success: false,
+        message: `Import failed. ${errors.length} row(s) have errors. Fix them and re-upload.`,
+        totalRows: rows.length,
+        validRows: rows.length - errors.length,
+        invalidRows: errors.length,
+        errors
+      });
+    }
+
+    // ── 6. DB-level duplicate check against existing records ──
+    const dbDuplicateErrors = [];
+    for (let i = 0; i < validatedRows.length; i++) {
+      const r = validatedRows[i];
+      const existing = await ParcelRideCost.findOne({
+        category:       r.category,
+        subcategory:    r.subcategory,
+        parcelCategory: r.parcelCategory,
+        parcelVehicle:  r.parcelVehicle,
+        includedKm:     r.includedKm,
+        includedMinutes: r.includedMinutes
+      });
+      if (existing) {
+        dbDuplicateErrors.push({
+          row: i + 2,
+          errors: [{
+            field: 'Duplicate',
+            value: '',
+            message: `A package with the same Category, Subcategory, Parcel Category, Parcel Vehicle, Included KM '${r.includedKm}' and Minutes '${r.includedMinutes}' already exists in the database`
+          }]
+        });
+      }
+    }
+
+    if (dbDuplicateErrors.length > 0) {
+      return res.status(422).json({
+        success: false,
+        message: `Import failed. ${dbDuplicateErrors.length} row(s) already exist in the database.`,
+        totalRows: rows.length,
+        validRows: rows.length - dbDuplicateErrors.length,
+        invalidRows: dbDuplicateErrors.length,
+        errors: dbDuplicateErrors
+      });
+    }
+
+    // ── 7. All valid → insert all ──
+    await ParcelRideCost.insertMany(validatedRows);
+
+    return res.status(201).json({
+      success: true,
+      message: `${validatedRows.length} package(s) imported successfully`,
+      totalInserted: validatedRows.length
+    });
+
+  } catch (err) {
+    console.error('Error in parcel bulk-import:', err);
+    res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+});
 
 // Get all parcel ride costs
 router.get('/', adminAuthMiddleware, async (req, res) => {
@@ -30,6 +370,7 @@ router.get('/', adminAuthMiddleware, async (req, res) => {
       .populate('subcategory', 'name')
       .populate('parcelCategory', 'categoryName')
       .populate('parcelVehicle', 'name')
+      .sort({ createdAt: -1 })
 
     res.json({ data: parcelRideCosts });
   } catch (error) {
@@ -60,6 +401,22 @@ router.get('/:id', adminAuthMiddleware, async (req, res) => {
 
 router.post('/', adminAuthMiddleware, async (req, res) => {
   try {
+    // Duplicate check before creating
+    const existing = await ParcelRideCost.findOne({
+      category:       req.body.category,
+      subcategory:    req.body.subcategory,
+      parcelCategory: req.body.parcelCategory,
+      parcelVehicle:  req.body.parcelVehicle,
+      includedKm:     req.body.includedKm,
+      includedMinutes: req.body.includedMinutes
+    });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: 'A package with the same Category, Subcategory, Parcel Category, Parcel Vehicle, Included KM and Minutes already exists'
+      });
+    }
+
     // Create new ParcelRideCost
     const parcelRideCost = new ParcelRideCost(req.body);
     await parcelRideCost.save();

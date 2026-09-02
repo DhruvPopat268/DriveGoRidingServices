@@ -361,6 +361,22 @@ router.post('/bulk-import', adminAuthMiddleware, upload.single('file'), async (r
 
 router.post('/',adminAuthMiddleware, async (req, res) => {
   try {
+    // Duplicate check before creating
+    const existing = await DriverRideCost.findOne({
+      category:       req.body.category,
+      subcategory:    req.body.subcategory,
+      subSubCategory: req.body.subSubCategory || null,
+      priceCategory:  req.body.priceCategory,
+      includedKm:     req.body.includedKm,
+      includedMinutes: req.body.includedMinutes
+    });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        error: 'A package with the same Category, Subcategory, Driver Category, Included KM and Minutes already exists'
+      });
+    }
+
     const rideCost = new DriverRideCost(req.body);
     const saved = await rideCost.save();
     const populated = await DriverRideCost.findById(saved._id)

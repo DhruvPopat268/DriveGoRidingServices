@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import apiClient from '../../../lib/axiosInterceptor';
-import { Plus, Edit, Trash2, Eye, X, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, X, Loader, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -152,6 +152,18 @@ export const CabRideCostPage = () => {
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+
+    // Bulk import state
+    const [bulkImportDialogOpen, setBulkImportDialogOpen] = useState(false);
+    const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+    const [bulkImportLoading, setBulkImportLoading] = useState(false);
+    const [bulkImportErrors, setBulkImportErrors] = useState<{
+        row: number;
+        errors: { field: string; value: string; message: string }[];
+    }[]>([]);
+    const [bulkImportSuccess, setBulkImportSuccess] = useState<string | null>(null);
+    const [sampleDownloading, setSampleDownloading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Helper function to extract ID from objects that might have either _id or id
     const extractId = (item: string | { _id?: string; id?: string }) => {
@@ -565,6 +577,72 @@ export const CabRideCostPage = () => {
         return minutes.toString();
     };
 
+    // Download sample Excel file
+    const handleDownloadSample = async () => {
+        setSampleDownloading(true);
+        try {
+            const response = await apiClient.get(
+                `${import.meta.env.VITE_API_URL}/api/CabRideCosts/sample-excel`,
+                { responseType: 'blob' }
+            );
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'cab_packages_sample.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading sample file:', error);
+        } finally {
+            setSampleDownloading(false);
+        }
+    };
+
+    // Bulk import handler
+    const handleBulkImport = async () => {
+        if (!bulkImportFile) return;
+        setBulkImportLoading(true);
+        setBulkImportErrors([]);
+        setBulkImportSuccess(null);
+
+        const formData = new FormData();
+        formData.append('file', bulkImportFile);
+
+        try {
+            const response = await apiClient.post(
+                `${import.meta.env.VITE_API_URL}/api/CabRideCosts/bulk-import`,
+                formData,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+            setBulkImportSuccess(response.data.message);
+            setBulkImportFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            // Refresh the table
+            await fetchCabRideCosts();
+        } catch (error: any) {
+            const data = error?.response?.data;
+            if (data && data.errors) {
+                setBulkImportErrors(data.errors);
+            } else {
+                setBulkImportErrors([{
+                    row: 0,
+                    errors: [{ field: 'Server', value: '', message: data?.error || data?.message || 'Upload failed' }]
+                }]);
+            }
+        } finally {
+            setBulkImportLoading(false);
+        }
+    };
+
+    const resetBulkImportDialog = () => {
+        setBulkImportFile(null);
+        setBulkImportErrors([]);
+        setBulkImportSuccess(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
@@ -577,16 +655,160 @@ export const CabRideCostPage = () => {
 
             <Card className="p-6">
                 <div className="flex items-center justify-end mb-1">
+                    {/* Download Sample Button */}
+                    <Button
+                        variant="outline"
+                        onClick={handleDownloadSample}
+                        disabled={sampleDownloading}
+                        className="mr-2"
+                    >
+                        {sampleDownloading ? (
+                            <Loader className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <Download className="w-4 h-4 mr-2" />
+                        )}
+                        Download Sample
+                    </Button>
+
+                    {/* Bulk Import Button + Dialog */}
+                    <Dialog
+                        open={bulkImportDialogOpen}
+                        onOpenChange={(open) => {
+                            setBulkImportDialogOpen(open);
+                            if (!open) resetBulkImportDialog();
+                        }}
+                    >
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="mr-2" disabled={loading}>
+                                <Upload className="w-4 h-4 mr-2" />
+                                Bulk Import
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Bulk Import Cab Packages</DialogTitle>
+                            </DialogHeader>
+
+                            <div className="space-y-4">
+                                {/* Instructions */}
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                                    <p className="font-semibold mb-1">Instructions:</p>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        <li>Download the sample file first and fill in your data</li>
+                                        <li>Category, Subcategory, Cab Category, and Car names must match exactly (case-insensitive) with the names in the system</li>
+                                        <li>Car must belong to the selected Cab Category</li>
+                                        <li>Sub-Sub Category is required only when Subcategory is <strong>Outstation</strong></li>
+                                        <li>All numeric fields must be 0 or greater</li>
+                                        <li>All rows must be valid — even one error will reject the entire file</li>
+                                    </ul>
+                                </div>
+
+                                {/* File picker */}
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">Select Excel File (.xlsx)</label>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".xlsx,.xls"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0] || null;
+                                            setBulkImportFile(file);
+                                            setBulkImportErrors([]);
+                                            setBulkImportSuccess(null);
+                                        }}
+                                        className="block w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 p-2"
+                                    />
+                                    {bulkImportFile && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Selected: <span className="font-medium">{bulkImportFile.name}</span> ({(bulkImportFile.size / 1024).toFixed(1)} KB)
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Upload button */}
+                                <Button
+                                    onClick={handleBulkImport}
+                                    disabled={!bulkImportFile || bulkImportLoading}
+                                    className="w-full"
+                                >
+                                    {bulkImportLoading ? (
+                                        <>
+                                            <Loader className="w-4 h-4 mr-2 animate-spin" />
+                                            Validating & Importing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-4 h-4 mr-2" />
+                                            Upload & Import
+                                        </>
+                                    )}
+                                </Button>
+
+                                {/* Success message */}
+                                {bulkImportSuccess && (
+                                    <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-sm text-green-800 font-medium">
+                                        ✅ {bulkImportSuccess}
+                                    </div>
+                                )}
+
+                                {/* Error table */}
+                                {bulkImportErrors.length > 0 && (
+                                    <div>
+                                        <p className="text-sm font-semibold text-red-600 mb-2">
+                                            ❌ {bulkImportErrors.length} row(s) have errors. Fix them in the file and re-upload.
+                                        </p>
+                                        <div className="border border-red-200 rounded-lg overflow-hidden">
+                                            <table className="w-full text-xs">
+                                                <thead className="bg-red-50">
+                                                    <tr>
+                                                        <th className="text-left px-3 py-2 font-semibold text-red-700 w-16">Row #</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-red-700 w-36">Field</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-red-700 w-28">Your Value</th>
+                                                        <th className="text-left px-3 py-2 font-semibold text-red-700">Error</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {bulkImportErrors.map((rowErr) =>
+                                                        rowErr.errors.map((err, idx) => (
+                                                            <tr
+                                                                key={`${rowErr.row}-${idx}`}
+                                                                className={idx % 2 === 0 ? 'bg-white' : 'bg-red-50/40'}
+                                                            >
+                                                                {idx === 0 && (
+                                                                    <td
+                                                                        className="px-3 py-2 font-bold text-red-600 align-top"
+                                                                        rowSpan={rowErr.errors.length}
+                                                                    >
+                                                                        {rowErr.row === 0 ? '—' : rowErr.row}
+                                                                    </td>
+                                                                )}
+                                                                <td className="px-3 py-2 text-gray-700">{err.field}</td>
+                                                                <td className="px-3 py-2 text-gray-500 italic">
+                                                                    {err.value !== '' ? err.value : <span className="text-gray-300">(empty)</span>}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-red-700">{err.message}</td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                         <DialogTrigger asChild>
                             <Button onClick={resetForm} disabled={loading}>
                                 <Plus className="w-4 h-4 mr-2" />
-                                Create Model
+                                Create Package
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
-                                <DialogTitle>{editingRideCost ? 'Edit' : 'Create'} Ride Cost Model</DialogTitle>
+                                <DialogTitle>{editingRideCost ? 'Edit' : 'Create'} Cab Package</DialogTitle>
                             </DialogHeader>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
@@ -1262,7 +1484,7 @@ export const CabRideCostPage = () => {
                 <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle>View Ride Cost Model</DialogTitle>
+                            <DialogTitle>View Cab Package</DialogTitle>
                         </DialogHeader>
                         {viewingRideCost && (
                             <div className="grid grid-cols-2 gap-4">
