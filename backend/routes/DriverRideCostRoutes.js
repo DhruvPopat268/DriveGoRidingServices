@@ -13,6 +13,351 @@ const Rider = require('../models/Rider');
 const mongoose = require('mongoose');
 const {Wallet} = require('../models/Payment&Wallet')
 const adminAuthMiddleware = require('../middleware/adminAuthMiddleware');
+const multer = require('multer');
+const XLSX = require('xlsx');
+
+// Multer — memory storage for Excel upload (no disk writes)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+      file.mimetype === 'application/vnd.ms-excel'
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .xlsx and .xls files are allowed'), false);
+    }
+  },
+  limits: { fileSize: 5 * 1024 * 1024 } // 5 MB max
+});
+
+// ─────────────────────────────────────────────
+// GET /sample-excel — Download sample Excel file
+// ─────────────────────────────────────────────
+router.get('/sample-excel', adminAuthMiddleware, async (req, res) => {
+  try {
+    // Headers matching the create form fields exactly
+    const headers = [
+      'Category',
+      'Subcategory',
+      'Sub-Sub Category',
+      'Driver Category',
+      'Base Fare',
+      'Included KM',
+      'Included Minutes',
+      'Extra Charge per KM',
+      'Extra Charge per Minute',
+      'Pick Charges',
+      'Night Charges',
+      'User Cancellation Charges',
+      'Cancellation Buffer Time (minutes)',
+      'Insurance',
+      'Admin Commission %',
+      'GST %',
+      'Discount',
+      'Driver Cancellation Charges'
+    ];
+
+    // One example row so admin understands the expected format
+    const exampleRow = [
+      'Driver',         // Category — must match exact name in system
+      'Hourly',         // Subcategory — must match exact name in system
+      '',               // Sub-Sub Category — only for Outstation subcategory, else leave blank
+      'Economy',        // Driver Category — must match exact name in system
+      500,              // Base Fare ₹
+      '50',             // Included KM
+      '480',            // Included Minutes
+      10,               // Extra Charge per KM ₹
+      2,                // Extra Charge per Minute ₹
+      50,               // Pick Charges ₹
+      30,               // Night Charges ₹
+      50,               // User Cancellation Charges ₹
+      5,                // Cancellation Buffer Time (minutes)
+      20,               // Insurance ₹
+      10,               // Admin Commission %
+      5,                // GST %
+      0,                // Discount ₹
+      100               // Driver Cancellation Charges ₹
+    ];
+
+    const worksheetData = [headers, exampleRow];
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+    // Set column widths for readability
+    worksheet['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 4, 18) }));
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Driver Packages');
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename="driver_packages_sample.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error generating sample Excel:', err);
+    res.status(500).json({ success: false, error: 'Failed to generate sample file' });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /bulk-import — Validate & import all rows (all-or-nothing)
+// ─────────────────────────────────────────────
+router.post('/bulk-import', adminAuthMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    // Parse Excel from buffer
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+    if (!rows || rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'Excel file is empty or has no data rows' });
+    }
+
+    // Fetch all reference data from DB once (case-insensitive matching)
+    const [allCategories, allSubcategories, allSubSubCategories, allPriceCategories] = await Promise.all([
+      Category.find({}).lean(),
+      SubCategory.find({}).lean(),
+      SubSubCategory.find({}).lean(),
+      pricecategories.find({}).lean()
+    ]);
+
+    const errors = [];
+    const validatedRows = [];
+
+    // Track unique combos within the uploaded file to catch intra-file duplicates
+    const seenCombos = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNum = i + 2; // +2 because row 1 is header in Excel
+      const rowErrors = [];
+
+      // ── Helper: trim safely ──
+      const trim = (val) => (val !== null && val !== undefined ? String(val).trim() : '');
+
+      const categoryName       = trim(row['Category']);
+      const subcategoryName    = trim(row['Subcategory']);
+      const subSubCategoryName = trim(row['Sub-Sub Category']);
+      const priceCategoryName  = trim(row['Driver Category']);
+      const baseFare           = row['Base Fare'];
+      const includedKm         = trim(row['Included KM']);
+      const includedMinutes    = trim(row['Included Minutes']);
+      const extraPerKm         = row['Extra Charge per KM'];
+      const extraPerMin        = row['Extra Charge per Minute'];
+      const pickCharges        = row['Pick Charges'];
+      const nightCharges       = row['Night Charges'];
+      const cancellationFee    = row['User Cancellation Charges'];
+      const cancellationBuffer = row['Cancellation Buffer Time (minutes)'];
+      const insurance          = row['Insurance'];
+      const adminCommission    = row['Admin Commission %'];
+      const gst                = row['GST %'];
+      const discount           = row['Discount'];
+      const driverCancelCharge = row['Driver Cancellation Charges'];
+
+      // ── 1. Required text fields ──
+      if (!categoryName) rowErrors.push({ field: 'Category', value: categoryName, message: 'Category is required' });
+      if (!subcategoryName) rowErrors.push({ field: 'Subcategory', value: subcategoryName, message: 'Subcategory is required' });
+      if (!priceCategoryName) rowErrors.push({ field: 'Driver Category', value: priceCategoryName, message: 'Driver Category is required' });
+      if (!includedKm) rowErrors.push({ field: 'Included KM', value: includedKm, message: 'Included KM is required' });
+      if (!includedMinutes) rowErrors.push({ field: 'Included Minutes', value: includedMinutes, message: 'Included Minutes is required' });
+
+      // ── 2. Numeric fields (must be >= 0) ──
+      const numericFields = [
+        { key: 'Base Fare', val: baseFare },
+        { key: 'Extra Charge per KM', val: extraPerKm },
+        { key: 'Extra Charge per Minute', val: extraPerMin },
+        { key: 'Pick Charges', val: pickCharges },
+        { key: 'Night Charges', val: nightCharges },
+        { key: 'User Cancellation Charges', val: cancellationFee },
+        { key: 'Cancellation Buffer Time (minutes)', val: cancellationBuffer },
+        { key: 'Insurance', val: insurance },
+        { key: 'Admin Commission %', val: adminCommission },
+        { key: 'GST %', val: gst },
+        { key: 'Discount', val: discount },
+        { key: 'Driver Cancellation Charges', val: driverCancelCharge },
+      ];
+
+      for (const field of numericFields) {
+        const num = parseFloat(field.val);
+        if (field.val === '' || isNaN(num) || num < 0) {
+          rowErrors.push({
+            field: field.key,
+            value: field.val,
+            message: `${field.key} must be a valid number >= 0`
+          });
+        }
+      }
+
+      // ── 3. DB lookups (only if basic fields are present) ──
+      let categoryDoc = null;
+      let subcategoryDoc = null;
+      let subSubCategoryDoc = null;
+      let priceCategoryDoc = null;
+
+      if (categoryName) {
+        // Case-insensitive match
+        categoryDoc = allCategories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+        if (!categoryDoc) {
+          rowErrors.push({ field: 'Category', value: categoryName, message: `Category '${categoryName}' not found in system` });
+        } else if (categoryDoc.name.toLowerCase() !== 'driver') {
+          rowErrors.push({ field: 'Category', value: categoryName, message: `Only 'Driver' category is allowed. '${categoryName}' is not permitted` });
+        }
+      }
+
+      if (subcategoryName && categoryDoc) {
+        subcategoryDoc = allSubcategories.find(
+          s => s.name.toLowerCase() === subcategoryName.toLowerCase() &&
+               String(s.categoryId) === String(categoryDoc._id)
+        );
+        if (!subcategoryDoc) {
+          rowErrors.push({ field: 'Subcategory', value: subcategoryName, message: `Subcategory '${subcategoryName}' not found under category '${categoryName}'` });
+        }
+      }
+
+      // Sub-Sub Category: required only when subcategory is "outstation"
+      const isOutstation = subcategoryDoc && subcategoryDoc.name.toLowerCase() === 'outstation';
+
+      if (isOutstation) {
+        if (!subSubCategoryName) {
+          rowErrors.push({ field: 'Sub-Sub Category', value: '', message: 'Sub-Sub Category is required for Outstation subcategory' });
+        } else if (subcategoryDoc) {
+          subSubCategoryDoc = allSubSubCategories.find(
+            ss => ss.name.toLowerCase() === subSubCategoryName.toLowerCase() &&
+                  String(ss.subCategoryId) === String(subcategoryDoc._id || subcategoryDoc.id)
+          );
+          if (!subSubCategoryDoc) {
+            rowErrors.push({ field: 'Sub-Sub Category', value: subSubCategoryName, message: `Sub-Sub Category '${subSubCategoryName}' not found under subcategory '${subcategoryName}'` });
+          }
+        }
+      }
+
+      if (priceCategoryName) {
+        priceCategoryDoc = allPriceCategories.find(
+          p => p.priceCategoryName.toLowerCase() === priceCategoryName.toLowerCase()
+        );
+        if (!priceCategoryDoc) {
+          rowErrors.push({ field: 'Driver Category', value: priceCategoryName, message: `Driver Category '${priceCategoryName}' not found in system` });
+        }
+      }
+
+      // ── 4. Intra-file duplicate check ──
+      if (categoryDoc && subcategoryDoc && priceCategoryDoc && includedKm && includedMinutes) {
+        const comboKey = [
+          String(categoryDoc._id),
+          String(subcategoryDoc._id || subcategoryDoc.id),
+          subSubCategoryDoc ? String(subSubCategoryDoc._id || subSubCategoryDoc.id) : 'none',
+          String(priceCategoryDoc._id),
+          includedKm,
+          includedMinutes
+        ].join('|');
+
+        if (seenCombos.has(comboKey)) {
+          rowErrors.push({
+            field: 'Duplicate',
+            value: '',
+            message: `Duplicate row within the file: same Category, Subcategory, Driver Category, Included KM and Minutes already exists in row above`
+          });
+        } else {
+          seenCombos.add(comboKey);
+        }
+      }
+
+      if (rowErrors.length > 0) {
+        errors.push({ row: rowNum, errors: rowErrors });
+      } else {
+        // Build validated document for insertion
+        validatedRows.push({
+          category: categoryDoc._id,
+          subcategory: subcategoryDoc._id || subcategoryDoc.id,
+          subSubCategory: subSubCategoryDoc ? (subSubCategoryDoc._id || subSubCategoryDoc.id) : null,
+          priceCategory: priceCategoryDoc._id,
+          baseFare: parseFloat(baseFare),
+          includedKm: String(includedKm),
+          includedMinutes: String(includedMinutes),
+          extraChargePerKm: parseFloat(extraPerKm),
+          extraChargePerMinute: parseFloat(extraPerMin),
+          pickCharges: parseFloat(pickCharges) || 0,
+          nightCharges: parseFloat(nightCharges) || 0,
+          cancellationFee: parseFloat(cancellationFee) || 0,
+          cancellationBufferTime: parseInt(cancellationBuffer) || 0,
+          insurance: parseFloat(insurance) || 0,
+          extraChargesFromAdmin: parseFloat(adminCommission) || 0,
+          gst: parseFloat(gst) || 0,
+          discount: parseFloat(discount) || 0,
+          driverCancellationCharges: parseFloat(driverCancelCharge) || 0,
+          status: true
+        });
+      }
+    }
+
+    // ── 5. If any errors → reject entire file (all-or-nothing) ──
+    if (errors.length > 0) {
+      return res.status(422).json({
+        success: false,
+        message: `Import failed. ${errors.length} row(s) have errors. Fix them and re-upload.`,
+        totalRows: rows.length,
+        validRows: rows.length - errors.length,
+        invalidRows: errors.length,
+        errors
+      });
+    }
+
+    // ── 6. DB-level duplicate check against existing records ──
+    const dbDuplicateErrors = [];
+    for (let i = 0; i < validatedRows.length; i++) {
+      const r = validatedRows[i];
+      const existing = await DriverRideCost.findOne({
+        category: r.category,
+        subcategory: r.subcategory,
+        subSubCategory: r.subSubCategory || null,
+        priceCategory: r.priceCategory,
+        includedKm: r.includedKm,
+        includedMinutes: r.includedMinutes
+      });
+      if (existing) {
+        dbDuplicateErrors.push({
+          row: i + 2,
+          errors: [{
+            field: 'Duplicate',
+            value: '',
+            message: `A package with the same Category, Subcategory, Driver Category, Included KM '${r.includedKm}' and Minutes '${r.includedMinutes}' already exists in the database`
+          }]
+        });
+      }
+    }
+
+    if (dbDuplicateErrors.length > 0) {
+      return res.status(422).json({
+        success: false,
+        message: `Import failed. ${dbDuplicateErrors.length} row(s) already exist in the database.`,
+        totalRows: rows.length,
+        validRows: rows.length - dbDuplicateErrors.length,
+        invalidRows: dbDuplicateErrors.length,
+        errors: dbDuplicateErrors
+      });
+    }
+
+    // ── 7. All valid → insert all ──
+    await DriverRideCost.insertMany(validatedRows);
+
+    return res.status(201).json({
+      success: true,
+      message: `${validatedRows.length} package(s) imported successfully`,
+      totalInserted: validatedRows.length
+    });
+
+  } catch (err) {
+    console.error('Error in bulk-import:', err);
+    res.status(500).json({ success: false, error: err.message || 'Internal server error' });
+  }
+});
 
 router.post('/',adminAuthMiddleware, async (req, res) => {
   try {
